@@ -1,0 +1,165 @@
+/* Hero */
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-white);
+  padding: 80px 0 0;
+  text-align: center;
+}
+.hero-content { position: relative; z-index: 2; }
+.hero-title {
+  font-family: var(--font-heading);
+  font-size: clamp(44px, 7vw, 80px);
+  font-weight: 800;
+  line-height: 1.05;
+  margin-bottom: 20px;
+  letter-spacing: -1px;
+}
+.hero-sub {
+  font-size: 17px;
+  color: var(--color-gray-600);
+  line-height: 1.7;
+  margin-bottom: 32px;
+}
+.hero-cta { margin: 0 auto; }
+.hero-image-wrap {
+  position: relative;
+  margin-top: 48px;
+  height: 380px;
+  overflow: hidden;
+}
+.hero-image-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.1) 100%);
+}
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 60%;
+}
+
+/* Seen on */
+.seen-on { padding: 24px 0; border-bottom: 1px solid var(--color-gray-100); }
+.seen-on-inner {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  overflow-x: auto;
+}
+.seen-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--color-gray-400); text-transform: uppercase; white-space: nowrap; }
+.seen-logo { font-size: 14px; font-weight: 700; color: var(--color-gray-400); white-space: nowrap; }
+
+/* What We Offer */
+.what-we-offer { padding: 80px 0; background: var(--color-white); }
+.offer-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 48px;
+  line-height: 1.2;
+}
+.offer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+.offer-col { display: flex; flex-direction: column; gap: 16px; }
+.offer-col-header { margin-bottom: 4px; }
+.offer-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 700;
+}
+.offer-badge-pink { background: #fce7f3; color: #9d174d; }
+.offer-badge-teal { background: #ccfbf1; color: #065f46; }
+.offer-badge-lavender { background: #ede9fe; color: #5b21b6; }
+
+.offer-card {
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.offer-card h3 { font-size: 16px; font-weight: 700; }
+.offer-card p { font-size: 14px; color: var(--color-gray-600); line-height: 1.6; }
+.offer-card-pink { background: #fce7f3; }
+.offer-card-teal { background: #ccfbf1; }
+.offer-card-lavender { background: #ede9fe; }
+.offer-learn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-black);
+  cursor: pointer;
+  padding: 0;
+  margin-top: auto;
+  text-align: left;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s;
+}
+.offer-learn:hover { opacity: 0.6; }
+
+/* Havlo Difference */
+.difference-section {
+  padding: 80px 0;
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #312e81 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.difference-section::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 60px;
+  background: white;
+  clip-path: ellipse(60% 100% at 50% 100%);
+}
+.difference-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 48px;
+  color: white;
+}
+.difference-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.difference-card {
+  background: rgba(255,255,255,0.12);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.difference-num {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.05em;
+}
+.difference-card h3 { font-size: 18px; font-weight: 700; color: white; }
+.difference-card p { font-size: 14px; color: rgba(255,255,255,0.75); line-height: 1.65; }
+
+/* CTA Banner */
+.cta-banner { padding: 100px 0; background: white; text-align: center; }
+.cta-banner-inner { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.cta-banner h2 { font-size: clamp(32px, 5vw, 52px); font-weight: 800; line-height: 1.15; }
+.cta-banner p { font-size: 16px; color: var(--color-gray-500); max-width: 500px; }
+.cta-banner-btn { margin-top: 8px; }
+
+@media (max-width: 900px) {
+  .offer-grid { grid-template-columns: 1fr; }
+  .difference-grid { grid-template-columns: 1fr; }
+}

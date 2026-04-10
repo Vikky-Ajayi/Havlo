@@ -1,0 +1,28 @@
+.consultation { }
+.consult-banner { background: var(--color-black); color: white; padding: 40px 48px; }
+.consult-banner h1 { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+.consult-banner p { color: rgba(255,255,255,0.6); font-size: 15px; }
+.consult-body { padding: 32px 48px; display: flex; flex-direction: column; gap: 32px; }
+.consult-expert-card { background: white; border-radius: var(--radius-xl); padding: 32px; border: 1px solid var(--color-gray-200); display: flex; justify-content: space-between; align-items: flex-start; gap: 32px; box-shadow: var(--shadow-sm); }
+.consult-expert-left h2 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+.consult-expert-left p { color: var(--color-gray-500); margin-bottom: 16px; font-size: 14px; }
+.consult-features { display: flex; flex-direction: column; gap: 8px; }
+.consult-feature { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.consult-check { color: var(--color-green); font-weight: 700; }
+.consult-expert-right { display: flex; flex-direction: column; align-items: flex-end; gap: 16px; flex-shrink: 0; }
+.consult-price { display: flex; align-items: baseline; gap: 8px; background: var(--color-gray-100); padding: 12px 20px; border-radius: var(--radius-md); }
+.consult-price-amt { font-size: 28px; font-weight: 800; }
+.consult-price-label { font-size: 13px; color: var(--color-gray-500); }
+.consult-upcoming-title { font-size: 24px; font-weight: 800; }
+.consult-upcoming-card { background: white; border-radius: var(--radius-xl); padding: 32px; border: 1px solid var(--color-gray-200); display: flex; flex-direction: column; gap: 20px; box-shadow: var(--shadow-sm); }
+.consult-expert-info { display: flex; align-items: center; gap: 12px; }
+.consult-expert-avatar img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+.consult-expert-name { font-size: 16px; font-weight: 700; }
+.consult-expert-role { font-size: 13px; color: var(--color-gray-500); }
+.consult-details { display: flex; flex-direction: column; gap: 10px; }
+.consult-detail-row { display: flex; justify-content: space-between; font-size: 14px; }
+.consult-detail-row span { color: var(--color-gray-500); }
+.consult-detail-row strong { font-weight: 700; }
+.consult-link-box { background: var(--color-gray-50); border-radius: var(--radius-md); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; }
+.consult-link-box span { font-size: 13px; color: var(--color-gray-600); }
+.consult-copy-btn { padding: 8px 16px; background: var(--color-black); color: white; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; cursor: pointer; }

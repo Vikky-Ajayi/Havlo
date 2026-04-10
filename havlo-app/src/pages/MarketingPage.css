@@ -1,0 +1,71 @@
+.mkt-hero { position: relative; min-height: 560px; display: flex; align-items: center; color: white; text-align: center; overflow: hidden; }
+.mkt-hero-bg { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,20,0.92) 0%, rgba(30,10,60,0.88) 100%), url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&q=80') center/cover; }
+.mkt-hero-content { position: relative; z-index: 2; padding: 80px 0; }
+.mkt-hero-content h1 { font-size: clamp(36px,6vw,72px); font-weight: 800; line-height: 1.05; margin-bottom: 20px; }
+.mkt-hero-content p { font-size: 16px; color: rgba(255,255,255,0.75); max-width: 560px; margin: 0 auto 32px; line-height: 1.7; }
+.mkt-stats { display: flex; justify-content: center; gap: 48px; margin-bottom: 32px; flex-wrap: wrap; }
+.mkt-stat { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mkt-stat strong { font-family: var(--font-heading); font-size: 28px; font-weight: 800; background: linear-gradient(135deg,#a855f7,#ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.mkt-stat span { font-size: 12px; color: rgba(255,255,255,0.6); letter-spacing: 0.05em; }
+
+.mkt-problem { padding: 80px 0; }
+.mkt-problem h2 { font-size: clamp(24px,4vw,44px); font-weight: 800; margin-bottom: 12px; }
+.mkt-problem-sub { color: var(--color-gray-500); max-width: 600px; margin-bottom: 48px; line-height: 1.7; }
+.mkt-problems { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--color-gray-200); border-radius: var(--radius-xl); overflow: hidden; }
+.mkt-problem-item { display: grid; grid-template-columns: 60px 1fr auto; gap: 24px; align-items: center; padding: 32px; border-bottom: 1px solid var(--color-gray-100); }
+.mkt-problem-item:last-child { border-bottom: none; }
+.mkt-problem-num { font-family: var(--font-heading); font-size: 28px; font-weight: 800; color: var(--color-gray-300); }
+.mkt-problem-item h4 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.mkt-problem-item p { font-size: 14px; color: var(--color-gray-600); line-height: 1.6; }
+.mkt-problem-stat { text-align: right; }
+.mkt-problem-stat strong { display: block; font-size: 28px; font-weight: 800; color: var(--color-purple); }
+.mkt-problem-stat span { font-size: 12px; color: var(--color-gray-500); max-width: 160px; display: block; }
+
+.mkt-how { padding: 80px 0; background: linear-gradient(135deg,#8b5cf6,#6d28d9); color: white; }
+.mkt-how h2 { font-size: clamp(24px,4vw,44px); font-weight: 800; text-align: center; margin-bottom: 48px; }
+.mkt-how-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.mkt-how-card { background: rgba(255,255,255,0.12); border-radius: var(--radius-lg); padding: 28px; }
+.mkt-how-num { font-family: var(--font-heading); font-size: 32px; font-weight: 800; color: rgba(255,255,255,0.4); display: block; margin-bottom: 12px; }
+.mkt-how-card h4 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+.mkt-how-card p { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.6; }
+
+.mkt-pricing { padding: 80px 0; }
+.mkt-pricing h2 { font-size: clamp(24px,4vw,44px); font-weight: 800; margin-bottom: 12px; }
+.mkt-pricing-sub { color: var(--color-gray-600); max-width: 700px; margin-bottom: 16px; line-height: 1.6; font-size: 15px; }
+.mkt-pricing-note { font-size: 13px; color: var(--color-gray-500); max-width: 700px; margin-bottom: 48px; line-height: 1.6; background: var(--color-gray-50); padding: 14px 18px; border-radius: var(--radius-md); }
+.mkt-plans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: start; }
+.mkt-plan-card { background: white; border: 1.5px solid var(--color-gray-200); border-radius: var(--radius-xl); padding: 28px; display: flex; flex-direction: column; gap: 16px; position: relative; }
+.mkt-plan-card.popular { background: var(--color-purple); color: white; border-color: var(--color-purple); }
+.mkt-plan-card.bespoke { background: var(--color-black); color: white; border-color: var(--color-black); }
+.mkt-plan-badge { font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: var(--radius-full); display: inline-block; }
+.mkt-plan-card h3 { font-size: 22px; font-weight: 800; }
+.mkt-plan-price { font-size: 24px; font-weight: 800; }
+.mkt-plan-price span { font-size: 13px; font-weight: 400; opacity: 0.7; display: block; }
+.mkt-plan-card ul { list-style: none; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.mkt-plan-card li { font-size: 13px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+.mkt-plan-check { color: var(--color-green); font-weight: 700; flex-shrink: 0; }
+.mkt-plan-card.popular .mkt-plan-check { color: #86efac; }
+.mkt-plan-card.bespoke .mkt-plan-check { color: #86efac; }
+
+.mkt-faqs { padding: 80px 0; background: var(--color-gray-50); }
+.mkt-faqs h2 { font-size: clamp(24px,4vw,44px); font-weight: 800; text-align: center; margin-bottom: 48px; }
+.mkt-faq-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 0; }
+.mkt-faq-item { padding: 24px 0; border-bottom: 1px solid var(--color-gray-200); cursor: pointer; }
+.mkt-faq-q { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.mkt-faq-q span:first-child { font-size: 16px; font-weight: 600; }
+.mkt-faq-toggle { font-size: 22px; color: var(--color-gray-500); flex-shrink: 0; }
+.mkt-faq-a { margin-top: 16px; font-size: 14px; color: var(--color-gray-600); line-height: 1.7; }
+
+.mkt-cta { padding: 80px 0; text-align: center; }
+.mkt-cta-inner { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.mkt-cta h2 { font-size: clamp(28px,4vw,52px); font-weight: 800; }
+.mkt-cta p { color: var(--color-gray-500); max-width: 560px; line-height: 1.7; }
+
+@media (max-width: 900px) {
+  .mkt-how-steps, .mkt-plans { grid-template-columns: 1fr 1fr; }
+  .mkt-problem-item { grid-template-columns: 48px 1fr; }
+  .mkt-problem-stat { display: none; }
+}
+@media (max-width: 600px) {
+  .mkt-how-steps, .mkt-plans { grid-template-columns: 1fr; }
+}
