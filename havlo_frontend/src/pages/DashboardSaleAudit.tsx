@@ -3,16 +3,37 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/Button';
 import { X, Check, FileText, Search, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export const DashboardSaleAudit: React.FC = () => {
+  const { token } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const [hasFeedback, setHasFeedback] = useState(false); // Toggle this to show the feedback alert
+  const [hasFeedback, setHasFeedback] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsDrawerOpen(false);
-    setIsSuccessModalOpen(true);
+    if (!token) return;
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const fd = new FormData(e.currentTarget);
+      await api.submitSaleAudit(token, {
+        listing_url: (fd.get('listingUrl') as string) || undefined,
+        number_of_viewings: (fd.get('viewings') as string) || undefined,
+        number_of_offers: (fd.get('offers') as string) || undefined,
+        price_currency: 'GBP',
+      });
+      setIsDrawerOpen(false);
+      setIsSuccessModalOpen(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -137,7 +158,8 @@ export const DashboardSaleAudit: React.FC = () => {
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-bold text-[#001C47]">Link of where the property is currently listed</label>
                       <input 
-                        type="text" 
+                        type="text"
+                        name="listingUrl"
                         placeholder="(Paste Rightmove / Zoopla / other listing URL)" 
                         className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" 
                       />
@@ -151,8 +173,9 @@ export const DashboardSaleAudit: React.FC = () => {
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-bold text-[#001C47]">How many viewings have you received?</label>
                       <input 
-                        type="text" 
-                        placeholder="(Approximate number is fine" 
+                        type="text"
+                        name="viewings"
+                        placeholder="(Approximate number is fine)" 
                         className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" 
                       />
                     </div>
@@ -160,7 +183,8 @@ export const DashboardSaleAudit: React.FC = () => {
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-bold text-[#001C47]">How many offers have you received?</label>
                       <input 
-                        type="text" 
+                        type="text"
+                        name="offers"
                         placeholder="Enter 0 if none" 
                         className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" 
                       />
@@ -186,12 +210,14 @@ export const DashboardSaleAudit: React.FC = () => {
 
               {/* Drawer Footer */}
               <div className="p-6 bg-white border-t border-[#F1F1F0] flex-shrink-0">
+                {submitError && <p className="text-red-500 text-sm font-body mb-3">{submitError}</p>}
                 <Button 
                   type="submit"
                   form="sale-audit-form"
-                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none"
+                  disabled={submitting}
+                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none disabled:opacity-50"
                 >
-                  <span className="font-body text-base lg:text-lg font-semibold tracking-[-0.32px] uppercase">SUBMIT & PROCEED TO PAYMENT</span>
+                  <span className="font-body text-base lg:text-lg font-semibold tracking-[-0.32px] uppercase">{submitting ? 'SUBMITTING...' : 'SUBMIT & PROCEED TO PAYMENT'}</span>
                 </Button>
               </div>
             </motion.div>

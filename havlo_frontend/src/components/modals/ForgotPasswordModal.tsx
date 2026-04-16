@@ -1,16 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../ui/Button';
-import { X } from 'lucide-react';
+import { api } from '../../lib/api';
 
 export const ForgotPasswordModal: React.FC = () => {
-  const { closeModal, switchModal } = useModal();
+  const { closeModal } = useModal();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await api.forgotPassword(email.trim());
+      setSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset link. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ModalWrapper>
       <div className="flex flex-col gap-8 p-8 sm:p-[32px_24px] bg-white">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-[32px] font-black leading-none text-black">
             Forgot Password?
@@ -25,7 +45,6 @@ export const ForgotPasswordModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex flex-col gap-[80px]">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-black/10 p-[16px_12px]">
@@ -38,28 +57,46 @@ export const ForgotPasswordModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-center font-body text-base font-medium tracking-[-0.32px] text-black/80">
-                We will send you a 6-digit code to reset your password
+                {success
+                  ? 'A password reset link has been sent to your email. Please check your inbox.'
+                  : 'We will send you a link to reset your password.'}
               </p>
             </div>
 
-            {/* Email Input */}
-            <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
-              />
-            </div>
+            {!success && (
+              <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                  className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
+                />
+              </div>
+            )}
+
+            {error && <p className="text-red-500 text-sm font-body">{error}</p>}
           </div>
 
-          {/* Submit Button */}
-          <Button 
-            variant="primary" 
-            className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors"
-            onClick={() => switchModal('otp')}
-          >
-            Request password reset
-          </Button>
+          {success ? (
+            <Button 
+              variant="primary" 
+              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors"
+              onClick={closeModal}
+            >
+              Done
+            </Button>
+          ) : (
+            <Button 
+              variant="primary" 
+              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors disabled:opacity-50"
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Request password reset'}
+            </Button>
+          )}
         </div>
       </div>
     </ModalWrapper>

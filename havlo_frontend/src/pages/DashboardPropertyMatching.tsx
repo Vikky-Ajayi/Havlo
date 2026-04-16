@@ -7,15 +7,38 @@ import {
 import { Button } from '../components/ui/Button';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export const DashboardPropertyMatching: React.FC = () => {
+  const { token } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsDrawerOpen(false);
-    setIsSuccess(true);
+    if (!token) return;
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const fd = new FormData(e.currentTarget);
+      await api.submitPropertyMatching(token, {
+        property_type: (fd.get('propertyType') as string) || 'Residential',
+        location: (fd.get('country') as string) || '',
+        budget_amount: (fd.get('budget') as string) || undefined,
+        budget_currency: 'GBP',
+        additional_requirements: (fd.get('helpNeeded') as string) || undefined,
+        contact_preference: (fd.get('timeline') as string) || undefined,
+      });
+      setIsDrawerOpen(false);
+      setIsSuccess(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -164,7 +187,7 @@ export const DashboardPropertyMatching: React.FC = () => {
                       Which country or location are you interested in?
                     </label>
                     <div className="relative">
-                      <select className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
+                      <select name="country" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
                         <option>Select your country</option>
                         <option>United Kingdom</option>
                         <option>United States</option>
@@ -185,7 +208,8 @@ export const DashboardPropertyMatching: React.FC = () => {
                       What is your budget range? (£)<span className="text-[#FA4242]">*</span>
                     </label>
                     <input 
-                      type="text" 
+                      type="text"
+                      name="budget"
                       placeholder="e.g £200,000 - £500,000"
                       required
                       className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10"
@@ -198,7 +222,7 @@ export const DashboardPropertyMatching: React.FC = () => {
                       What is your main goal?
                     </label>
                     <div className="relative">
-                      <select className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
+                      <select name="goal" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
                         <option>Select</option>
                         <option>Live in it</option>
                         <option>Rental income</option>
@@ -219,7 +243,7 @@ export const DashboardPropertyMatching: React.FC = () => {
                       What property type do you prefer?
                     </label>
                     <div className="relative">
-                      <select className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
+                      <select name="propertyType" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
                         <option>Select</option>
                         <option>Apartment</option>
                         <option>House</option>
@@ -245,7 +269,7 @@ export const DashboardPropertyMatching: React.FC = () => {
                       {['ASAP', '1–3 months', '3–6 months', 'Just exploring'].map((time) => (
                         <label key={time} className="flex items-center gap-3 cursor-pointer group">
                           <div className="relative flex items-center justify-center">
-                            <input type="radio" name="timeline" className="peer sr-only" defaultChecked={time === 'ASAP'} />
+                            <input type="radio" name="timeline" value={time} className="peer sr-only" defaultChecked={time === 'ASAP'} />
                             <div className="h-6 w-6 rounded-full border-2 border-[#3A3C3E] peer-checked:border-none peer-checked:bg-[#00BC67] transition-all" />
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute opacity-0 peer-checked:opacity-100 transition-opacity">
                               <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -268,7 +292,7 @@ export const DashboardPropertyMatching: React.FC = () => {
                       {['YES', 'NO', 'Not sure'].map((option) => (
                         <label key={option} className="flex items-center gap-3 cursor-pointer group">
                           <div className="relative flex items-center justify-center">
-                            <input type="radio" name="helpNeeded" className="peer sr-only" defaultChecked={option === 'YES'} />
+                            <input type="radio" name="helpNeeded" value={option} className="peer sr-only" defaultChecked={option === 'YES'} />
                             <div className="h-6 w-6 rounded-full border-2 border-[#3A3C3E] peer-checked:border-none peer-checked:bg-[#00BC67] transition-all" />
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute opacity-0 peer-checked:opacity-100 transition-opacity">
                               <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -287,12 +311,14 @@ export const DashboardPropertyMatching: React.FC = () => {
 
               {/* Drawer Footer */}
               <div className="p-6 bg-white border-t border-[#F1F1F0] flex-shrink-0">
+                {submitError && <p className="text-red-500 text-sm font-body mb-3">{submitError}</p>}
                 <Button 
                   type="submit"
                   form="property-needs-form"
-                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none"
+                  disabled={submitting}
+                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none disabled:opacity-50"
                 >
-                  <span className="font-body text-xl font-semibold tracking-[-0.4px] uppercase">SUBMIT PREFERENCES</span>
+                  <span className="font-body text-xl font-semibold tracking-[-0.4px] uppercase">{submitting ? 'SUBMITTING...' : 'SUBMIT PREFERENCES'}</span>
                   <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="transition-transform group-hover:translate-x-1">
                     <path d="M24.666 16.0039H6.66602" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M17.3341 24.004C17.3341 24.004 25.334 18.112 25.334 16.0038C25.334 13.8957 17.3339 8.00391 17.3339 8.00391" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

@@ -4,8 +4,12 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { useNavigate } from 'react-router-dom';
+import { useModal } from '../hooks/useModal';
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { openModal } = useModal();
   return (
     <DashboardLayout title="Buy Property Abroad">
       <div className="max-w-[1162px] mx-auto space-y-10">
@@ -54,6 +58,7 @@ export const Dashboard: React.FC = () => {
               <Button 
                 variant="primary" 
                 className="h-[72px] w-full lg:w-fit rounded-full bg-black text-white px-8 flex items-center justify-center gap-3 group border border-black/5"
+                onClick={() => navigate('/dashboard/property-matching')}
               >
                 <span className="font-body text-xl font-semibold tracking-[-0.4px]">GET STARTED</span>
                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="transition-transform group-hover:translate-x-1">
@@ -86,6 +91,7 @@ export const Dashboard: React.FC = () => {
               <Button 
                 variant="primary" 
                 className="h-[72px] flex-1 min-w-[180px] rounded-full bg-[#006AFE] text-white px-5 flex items-center justify-center gap-3 border border-black/5"
+                onClick={() => openModal('book-session')}
               >
                 <div className="h-10 w-10 flex items-center justify-center">
                   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">

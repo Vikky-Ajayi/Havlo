@@ -10,7 +10,9 @@ Havlo is an international real estate platform that facilitates property matchin
 - Tailwind CSS for styling
 - React Router for navigation
 - Runs on port 5000 in development (workflow: "Start application")
-- Currently a UI prototype with hardcoded mock data (no live API calls wired yet)
+- All frontend features wired to real backend API via `src/lib/api.ts`
+- Auth state managed via `AuthContext` with token in localStorage (`havlo_token`)
+- Vite proxies `/api/v1` to `http://localhost:8000`
 
 ### Backend (`/app`)
 - FastAPI (Python 3.12)
@@ -29,8 +31,31 @@ Havlo is an international real estate platform that facilitates property matchin
 - **Supabase**: Authentication + PostgreSQL database
 - **Google Sheets**: Form submission logging
 - **Twilio**: SMS notifications
-- **SumUp**: Payments
-- **Calendly**: Session booking
+- **SumUp**: Payments (note: `SUMUP_API_KEY` currently returns 401 — sell-faster and buyer-network payment flows fail at the SumUp checkout creation step)
+- **Calendly**: Session booking (redirect after payment)
+
+## Frontend-Backend Wiring Status
+
+### Fully Wired Features
+- **Auth**: Register, Login, Logout, token persistence, AuthContext, auth-aware Navbar
+- **Onboarding**: Multi-step flow → `api.submitOnboarding`, redirects to dashboard
+- **Dashboard Settings**: Profile loaded from AuthContext, saves via `api.updateProfile`, password change via `api.changePassword`
+- **Dashboard Inbox**: Real conversations loaded from API, message sending, new conversation creation with error states
+- **Dashboard Property Matching**: Form with `name` attributes + `value` on radios → `api.submitPropertyMatching`
+- **Dashboard Elite Property**: Form with named inputs → `api.submitEliteProperty`
+- **Dashboard Sale Audit**: Form with named inputs → `api.submitSaleAudit`
+- **Dashboard Sell Faster**: Plan selection + drawer inputs (listing URL, contact pref, contact details) → `api.submitSellFaster` → opens checkout URL
+- **Dashboard Buyer Network**: Package selection + drawer inputs (listing URLs, contact pref) → `api.submitBuyerNetwork` → opens checkout URL
+- **Forgot Password Modal**: Calls `api.forgotPassword`, shows success message (backend sends email link, NOT OTP)
+- **Book Session Modal**: Full form with date/time → `api.bookSession` → opens SumUp checkout URL
+- **Dashboard**: "GET STARTED" → navigates to `/dashboard/property-matching`, "BOOK A CALL" → opens BookSession modal
+- **Onboarding Success**: "CALL NOW" → tel: link, "Book Now" → opens BookSession modal
+
+### Known Limitations
+- SumUp API key returns 401 — payment checkout creation fails for SellFaster, BuyerNetwork, and BookSession
+- Google Sheets integration has invalid JWT signature (non-fatal, doesn't block functionality)
+- NewPasswordModal: Backend uses email-link password reset, not OTP code — the OTP modal flow is obsolete
+- Role-restricted endpoints: Elite property + sale audit require `seller`/`agent` role; buyer network requires `agent`
 
 ## Environment Variables Required
 All secrets are stored in Replit secrets. Key ones:
@@ -64,3 +89,5 @@ Non-secret env vars (set in Replit):
 - `DATABASE_URL` secret in Replit points to a local Helium DB — NOT used. Always derive DB URL from `SUPABASE_DB_*` params.
 - The backend hardcodes the pooler host (`aws-0-eu-west-1.pooler.supabase.com`) in `app/db/database.py` to guarantee correct connectivity regardless of env var values.
 - On startup, the backend verifies DB tables (create_all) and Google Sheets tabs.
+- Messaging: `POST /api/v1/messaging/conversations` takes `subject` as query param, not body.
+- Password validation: Min 8 chars on both frontend and backend.

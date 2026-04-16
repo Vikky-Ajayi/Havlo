@@ -1,24 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/Button';
-import { Eye, EyeOff, User, Mail, Phone, Lock } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export const DashboardSettings: React.FC = () => {
+  const { user, token, refreshUser } = useAuth();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phoneCode, setPhoneCode] = useState('+44');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
+  const [profileError, setProfileError] = useState('');
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name || '');
+      setLastName(user.last_name || '');
+      setPhoneCode(user.phone_country_code || '+44');
+      setPhoneNumber(user.phone_number || '');
+      setEmail(user.email || '');
+    }
+  }, [user]);
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to save changes would go here
+    if (!token) return;
+    setProfileLoading(true);
+    setProfileError('');
+    setProfileMsg('');
+    try {
+      await api.updateProfile(token, {
+        first_name: firstName,
+        last_name: lastName,
+        phone_country_code: phoneCode,
+        phone_number: phoneNumber,
+      });
+      await refreshUser();
+      setProfileMsg('Profile updated successfully.');
+    } catch (err: unknown) {
+      setProfileError(err instanceof Error ? err.message : 'Failed to update profile.');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordError('');
+    setPasswordMsg('');
+    try {
+      await api.changePassword(token, {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordMsg('Password changed successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: unknown) {
+      setPasswordError(err instanceof Error ? err.message : 'Failed to change password.');
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return (
     <DashboardLayout title="Settings">
       <div className="max-w-[1162px] mx-auto px-6 lg:px-0 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* Profile Section */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -29,65 +104,76 @@ export const DashboardSettings: React.FC = () => {
               <div className="h-[1px] bg-black/10 w-full" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleProfileSubmit} className="space-y-6">
               <div className="space-y-6">
-                {/* Full Name */}
-                <div className="space-y-4">
-                  <label className="block font-display text-sm font-bold text-[#001C47]">Full name</label>
-                  <div className="relative group">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <label className="block font-display text-sm font-bold text-[#001C47]">First name</label>
                     <input 
                       type="text" 
-                      placeholder="Enter name" 
-                      defaultValue="Freeborn Ehirhere"
+                      placeholder="First name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full h-12 px-4 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block font-display text-sm font-bold text-[#001C47]">Last name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Last name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
                       className="w-full h-12 px-4 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
                     />
                   </div>
                 </div>
 
-                {/* Email */}
                 <div className="space-y-4">
                   <label className="block font-display text-sm font-bold text-[#001C47]">Email</label>
-                  <div className="relative group">
-                    <input 
-                      type="email" 
-                      placeholder="Enter email" 
-                      defaultValue="freeborn@example.com"
-                      className="w-full h-12 px-4 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
-                    />
-                  </div>
+                  <input 
+                    type="email" 
+                    value={email}
+                    disabled
+                    className="w-full h-12 px-4 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black/50 focus:outline-none transition-all cursor-not-allowed" 
+                  />
                 </div>
 
-                {/* Contact Phone */}
                 <div className="space-y-4">
                   <label className="block font-display text-sm font-bold text-[#001C47]">Contact phone</label>
                   <div className="flex gap-2">
                     <div className="flex items-center gap-2 px-3 bg-[#DDD] rounded-lg h-12 cursor-pointer hover:bg-gray-300 transition-colors">
-                      <span className="text-sm font-medium text-black/80">+44</span>
+                      <span className="text-sm font-medium text-black/80">{phoneCode}</span>
                       <svg width="8" height="4" viewBox="0 0 8 4" fill="none">
                         <path opacity="0.8" d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
                       </svg>
                     </div>
                     <input 
                       type="tel" 
-                      placeholder="0000 0000 000" 
+                      placeholder="0000 0000 000"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
                       className="flex-1 h-12 px-4 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
                     />
                   </div>
                 </div>
               </div>
 
+              {profileError && <p className="text-red-500 text-sm font-body">{profileError}</p>}
+              {profileMsg && <p className="text-green-600 text-sm font-body">{profileMsg}</p>}
+
               <div className="flex justify-end pt-4">
                 <Button 
                   type="submit"
-                  className="h-[60px] px-8 rounded-full bg-black text-white font-body text-base font-semibold tracking-[-0.32px] uppercase hover:bg-black/90 transition-colors border-none"
+                  disabled={profileLoading}
+                  className="h-[60px] px-8 rounded-full bg-black text-white font-body text-base font-semibold tracking-[-0.32px] uppercase hover:bg-black/90 transition-colors border-none disabled:opacity-50"
                 >
-                  SAVE CHANGES
+                  {profileLoading ? 'SAVING...' : 'SAVE CHANGES'}
                 </Button>
               </div>
             </form>
           </motion.div>
 
-          {/* Change Password Section */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -99,15 +185,16 @@ export const DashboardSettings: React.FC = () => {
               <div className="h-[1px] bg-black/10 w-full" />
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handlePasswordSubmit} className="space-y-6">
               <div className="space-y-6">
-                {/* Current Password */}
                 <div className="space-y-4">
                   <label className="block font-display text-sm font-bold text-[#001C47]">Current password</label>
                   <div className="relative">
                     <input 
-                      type={showCurrentPassword ? "text" : "password"} 
-                      placeholder="--------" 
+                      type={showCurrentPassword ? "text" : "password"}
+                      placeholder="--------"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
                       className="w-full h-12 px-4 pr-12 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
                     />
                     <button 
@@ -120,13 +207,14 @@ export const DashboardSettings: React.FC = () => {
                   </div>
                 </div>
 
-                {/* New Password */}
                 <div className="space-y-4">
                   <label className="block font-display text-sm font-bold text-[#001C47]">New password</label>
                   <div className="relative">
                     <input 
-                      type={showNewPassword ? "text" : "password"} 
-                      placeholder="--------" 
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="--------"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                       className="w-full h-12 px-4 pr-12 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
                     />
                     <button 
@@ -139,13 +227,14 @@ export const DashboardSettings: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Confirm Password */}
                 <div className="space-y-4">
                   <label className="block font-display text-sm font-bold text-[#001C47]">Confirm password</label>
                   <div className="relative">
                     <input 
-                      type={showConfirmPassword ? "text" : "password"} 
-                      placeholder="--------" 
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="--------"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full h-12 px-4 pr-12 rounded-lg border border-white bg-black/5 font-body text-sm font-medium text-black placeholder:text-[#676B80]/50 focus:outline-none focus:ring-1 focus:ring-black/10 transition-all" 
                     />
                     <button 
@@ -159,12 +248,16 @@ export const DashboardSettings: React.FC = () => {
                 </div>
               </div>
 
+              {passwordError && <p className="text-red-500 text-sm font-body">{passwordError}</p>}
+              {passwordMsg && <p className="text-green-600 text-sm font-body">{passwordMsg}</p>}
+
               <div className="flex justify-end pt-4">
                 <Button 
                   type="submit"
-                  className="h-[60px] px-8 rounded-full bg-black text-white font-body text-base font-semibold tracking-[-0.32px] uppercase hover:bg-black/90 transition-colors border-none"
+                  disabled={passwordLoading}
+                  className="h-[60px] px-8 rounded-full bg-black text-white font-body text-base font-semibold tracking-[-0.32px] uppercase hover:bg-black/90 transition-colors border-none disabled:opacity-50"
                 >
-                  SAVE CHANGES
+                  {passwordLoading ? 'SAVING...' : 'SAVE CHANGES'}
                 </Button>
               </div>
             </form>

@@ -3,11 +3,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/Button';
 import { X, Check, Users, ArrowRight, Globe, Zap, Shield } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 interface Package {
   id: string;
   name: string;
   price: string;
+  setupAmount: number;
+  monthlyAmount: number;
   description: string;
   features: string[];
   isRecommended?: boolean;
@@ -18,6 +22,8 @@ const packages: Package[] = [
     id: 'partner',
     name: 'Partner',
     price: '£2,000/mo',
+    setupAmount: 0,
+    monthlyAmount: 2000,
     description: 'Up to 2 active properties',
     features: [
       'International buyer network access',
@@ -30,6 +36,8 @@ const packages: Package[] = [
     id: 'growth',
     name: 'Growth Partner',
     price: '£4,000/mo',
+    setupAmount: 0,
+    monthlyAmount: 4000,
     description: 'Up to 5 active properties',
     features: [
       'Everything in Partner',
@@ -44,6 +52,8 @@ const packages: Package[] = [
     id: 'private',
     name: 'Private Client Partner',
     price: '£7,500+/mo',
+    setupAmount: 0,
+    monthlyAmount: 7500,
     description: 'High-volume',
     features: [
       'Dedicated account manager',
@@ -56,20 +66,51 @@ const packages: Package[] = [
 ];
 
 export const DashboardBuyerNetwork: React.FC = () => {
+  const { token } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [contactPreference, setContactPreference] = useState<'email' | 'phone'>('email');
+  const [listingUrl1, setListingUrl1] = useState('');
+  const [listingUrl2, setListingUrl2] = useState('');
+  const [listingUrl3, setListingUrl3] = useState('');
+  const [contactEmailField, setContactEmailField] = useState('');
+  const [contactPhoneField, setContactPhoneField] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handlePackageSelect = (pkg: Package) => {
     setSelectedPackage(pkg);
     setIsDrawerOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsDrawerOpen(false);
-    setIsSuccessModalOpen(true);
+    if (!token || !selectedPackage) return;
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const listings = [listingUrl1, listingUrl2, listingUrl3].filter(Boolean);
+      const result = await api.submitBuyerNetwork(token, {
+        package_id: selectedPackage.id,
+        package_name: selectedPackage.name,
+        setup_price: selectedPackage.setupAmount,
+        monthly_price: selectedPackage.monthlyAmount,
+        contact_preference: contactPreference,
+        property_types: ['Residential'],
+        target_markets: ['International'],
+        additional_info: listings.length > 0 ? `Listings: ${listings.join(', ')}` : undefined,
+      });
+      setIsDrawerOpen(false);
+      if (result.checkout_url) {
+        window.open(result.checkout_url, '_blank');
+      }
+      setIsSuccessModalOpen(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -189,16 +230,18 @@ export const DashboardBuyerNetwork: React.FC = () => {
                     <h3 className="font-display text-xl font-medium tracking-[-0.4px] text-black">Property listing URLs</h3>
                     
                     <div className="space-y-6">
-                      {[1, 2, 3].map((num) => (
-                        <div key={num} className="space-y-4">
-                          <label className="block font-display text-sm font-bold text-[#001C47]">Link {num}</label>
-                          <input 
-                            type="text" 
-                            placeholder="Https//..." 
-                            className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" 
-                          />
-                        </div>
-                      ))}
+                      <div className="space-y-4">
+                        <label className="block font-display text-sm font-bold text-[#001C47]">Link 1</label>
+                        <input type="text" value={listingUrl1} onChange={(e) => setListingUrl1(e.target.value)} placeholder="Https//..." className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="block font-display text-sm font-bold text-[#001C47]">Link 2</label>
+                        <input type="text" value={listingUrl2} onChange={(e) => setListingUrl2(e.target.value)} placeholder="Https//..." className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="block font-display text-sm font-bold text-[#001C47]">Link 3</label>
+                        <input type="text" value={listingUrl3} onChange={(e) => setListingUrl3(e.target.value)} placeholder="Https//..." className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      </div>
                     </div>
                   </div>
 
@@ -244,7 +287,9 @@ export const DashboardBuyerNetwork: React.FC = () => {
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-bold text-[#001C47]">Contact email</label>
                       <input 
-                        type="email" 
+                        type="email"
+                        value={contactEmailField}
+                        onChange={(e) => setContactEmailField(e.target.value)}
                         placeholder="Enter email" 
                         className="w-full h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" 
                       />
@@ -260,7 +305,9 @@ export const DashboardBuyerNetwork: React.FC = () => {
                           </svg>
                         </div>
                         <input 
-                          type="tel" 
+                          type="tel"
+                          value={contactPhoneField}
+                          onChange={(e) => setContactPhoneField(e.target.value)}
                           placeholder="0000 0000 000" 
                           className="flex-1 h-12 px-4 rounded-lg border border-black/5 bg-white font-body text-sm font-medium text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" 
                         />
@@ -272,12 +319,14 @@ export const DashboardBuyerNetwork: React.FC = () => {
 
               {/* Drawer Footer */}
               <div className="p-6 bg-white border-t border-[#F1F1F0] flex-shrink-0">
+                {submitError && <p className="text-red-500 text-sm font-body mb-3">{submitError}</p>}
                 <Button 
                   type="submit"
                   form="buyer-network-form"
-                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none"
+                  disabled={submitting}
+                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none disabled:opacity-50"
                 >
-                  <span className="font-body text-base lg:text-lg font-semibold tracking-[-0.32px] uppercase">SUBMIT & PROCEED TO PAYMENT</span>
+                  <span className="font-body text-base lg:text-lg font-semibold tracking-[-0.32px] uppercase">{submitting ? 'SUBMITTING...' : 'SUBMIT & PROCEED TO PAYMENT'}</span>
                 </Button>
               </div>
             </motion.div>

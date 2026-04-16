@@ -2,8 +2,10 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { useModal } from '../hooks/useModal';
 
 export const OnboardingSuccess: React.FC = () => {
+  const { openModal } = useModal();
   return (
     <div className="flex flex-col min-h-screen bg-white overflow-x-hidden">
       <div className="flex flex-col items-center px-6 py-20 lg:px-[100px]">
@@ -33,6 +35,7 @@ export const OnboardingSuccess: React.FC = () => {
           </div>
           <Button 
             className="w-[233px] h-14 bg-white text-[#101C20] rounded-[48px] font-body text-lg font-bold tracking-[-0.36px] hover:bg-white/90 transition-colors"
+            onClick={() => window.location.href = 'tel:+448290219101'}
           >
             CALL NOW
           </Button>
@@ -62,7 +65,10 @@ export const OnboardingSuccess: React.FC = () => {
               Schedule a call at a time that works for you
             </p>
           </div>
-          <button className="h-11 px-6 rounded-[44px] border border-[#9607C1] text-[#9607C1] font-body text-base font-semibold tracking-[-0.32px] hover:bg-[#9607C1]/5 transition-colors">
+          <button 
+            onClick={() => openModal('book-session')}
+            className="h-11 px-6 rounded-[44px] border border-[#9607C1] text-[#9607C1] font-body text-base font-semibold tracking-[-0.32px] hover:bg-[#9607C1]/5 transition-colors"
+          >
             Book Now
           </button>
         </motion.div>

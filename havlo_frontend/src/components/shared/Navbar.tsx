@@ -3,15 +3,36 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useModal } from '../../hooks/useModal';
+import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 
 export const Navbar: React.FC = () => {
   const { openModal } = useModal();
+  const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    openModal('create-account');
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      openModal('create-account');
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLoginClick = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      openModal('login');
+    }
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
     setIsMobileMenuOpen(false);
   };
 
@@ -53,7 +74,6 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#F4F4F4] bg-white backdrop-blur-[5px] backdrop-brightness-[100%]">
       <div className="flex h-20 w-full items-center justify-between px-6 lg:px-[100px] py-3">
-        {/* Logo */}
         <Link to="/" className="flex-shrink-0">
           <img
             src="https://c.animaapp.com/KKHOxPDD/img/havlo-black-transparent@2x.png"
@@ -63,7 +83,6 @@ export const Navbar: React.FC = () => {
           />
         </Link>
  
-        {/* Desktop Navigation */}
         <nav className="hidden items-center gap-8 lg:flex">
           <div className="flex items-center gap-6">
             {navLinks.map((link) => (
@@ -84,7 +103,6 @@ export const Navbar: React.FC = () => {
                   )}
                 </Link>
 
-                {/* Dropdown Menu */}
                 {link.dropdownItems && (
                   <div className="absolute left-0 top-full hidden w-[280px] flex-col gap-1 rounded-xl bg-white p-2 shadow-xl border border-[#F4F4F4] group-hover:flex">
                     {link.dropdownItems.map((item) => (
@@ -104,23 +122,43 @@ export const Navbar: React.FC = () => {
 
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-6">
-              <Button
-                variant="secondary"
-                className="w-[120px] h-12 px-5 py-3 rounded-[48px] bg-[#F4F4F4] text-black font-bold text-base tracking-[-0.32px] leading-6 whitespace-nowrap"
-                onClick={() => openModal('login')}
-              >
-                Log in
-              </Button>
-              <Button
-                variant="primary"
-                className="h-12 px-5 py-3 rounded-[48px] bg-black text-white font-bold text-base tracking-[-0.32px] leading-6 whitespace-nowrap"
-                onClick={handleGetStarted}
-              >
-                Get Started
-              </Button>
+              {user ? (
+                <>
+                  <Button
+                    variant="primary"
+                    className="h-12 px-5 py-3 rounded-[48px] bg-black text-white font-bold text-base tracking-[-0.32px] leading-6 whitespace-nowrap"
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    Dashboard
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-[120px] h-12 px-5 py-3 rounded-[48px] bg-[#F4F4F4] text-black font-bold text-base tracking-[-0.32px] leading-6 whitespace-nowrap"
+                    onClick={handleLogout}
+                  >
+                    Log out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="secondary"
+                    className="w-[120px] h-12 px-5 py-3 rounded-[48px] bg-[#F4F4F4] text-black font-bold text-base tracking-[-0.32px] leading-6 whitespace-nowrap"
+                    onClick={handleLoginClick}
+                  >
+                    Log in
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="h-12 px-5 py-3 rounded-[48px] bg-black text-white font-bold text-base tracking-[-0.32px] leading-6 whitespace-nowrap"
+                    onClick={handleGetStarted}
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
 
-            {/* Country Code Container */}
             <img
               className="relative w-14 h-8 cursor-pointer"
               alt="Country code"
@@ -129,9 +167,7 @@ export const Navbar: React.FC = () => {
           </div>
         </nav>
 
-        {/* Mobile Actions */}
         <div className="flex items-center gap-3 lg:hidden">
-          {/* Country Code Container Mobile */}
           <div className="flex w-14 h-8 px-1.5 items-center gap-2 rounded-[32px] bg-[#F3F5F7] cursor-pointer">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g clipPath="url(#clip0_uk)">
@@ -155,7 +191,6 @@ export const Navbar: React.FC = () => {
             </svg>
           </div>
 
-          {/* Mobile Menu Toggle */}
           <button
             className="flex p-3"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -165,7 +200,6 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
       <div
         className={cn(
           'fixed inset-0 top-20 z-40 bg-white transition-transform duration-300 lg:hidden overflow-y-auto',
@@ -200,23 +234,44 @@ export const Navbar: React.FC = () => {
           ))}
           <hr className="border-[#F4F4F4]" />
           <div className="flex flex-col gap-4">
-            <Button
-              variant="secondary"
-              fullWidth
-              onClick={() => {
-                openModal('login');
-                setIsMobileMenuOpen(false);
-              }}
-            >
-              Log in
-            </Button>
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleGetStarted}
-            >
-              Get Started
-            </Button>
+            {user ? (
+              <>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={() => { navigate('/dashboard'); setIsMobileMenuOpen(false); }}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={handleLogout}
+                >
+                  Log out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => {
+                    openModal('login');
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  Log in
+                </Button>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={handleGetStarted}
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

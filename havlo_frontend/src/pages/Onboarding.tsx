@@ -4,10 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, Circle, X, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export const Onboarding: React.FC = () => {
   const navigate = useNavigate();
+  const { token, refreshUser } = useAuth();
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [selectedServices, setSelectedServices] = useState<string[]>(['Initial Consultation and Needs Assessment']);
   const [selectedCountries, setSelectedCountries] = useState<string[]>(['Nigeria', 'Ghana', 'United Kingdom']);
 
@@ -335,11 +340,36 @@ export const Onboarding: React.FC = () => {
                   </div>
                 </div>
 
+                {submitError && (
+                  <p className="text-red-500 text-sm font-body">{submitError}</p>
+                )}
+
                 <Button 
-                  onClick={() => navigate('/get-started/success')}
-                  className="w-[233px] h-14 bg-black text-white rounded-[48px] font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors mt-4"
+                  onClick={async () => {
+                    if (!token) { navigate('/'); return; }
+                    setSubmitting(true);
+                    setSubmitError('');
+                    try {
+                      await api.submitOnboarding(token, {
+                        services: selectedServices,
+                        countries: selectedCountries,
+                        property_type: selectedPropertyType,
+                        timeframe: selectedTimeframe,
+                        budget_amount: budget || undefined,
+                        budget_currency: currency,
+                      });
+                      await refreshUser();
+                      navigate('/get-started/success');
+                    } catch (err: unknown) {
+                      setSubmitError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  disabled={submitting}
+                  className="w-[233px] h-14 bg-black text-white rounded-[48px] font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors mt-4 disabled:opacity-50"
                 >
-                  Continue
+                  {submitting ? 'Saving...' : 'Continue'}
                 </Button>
               </motion.div>
             )}

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/Button';
 import { X, Check, Globe, Zap, Shield, Star, ArrowRight, Phone } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 interface Plan {
   id: string;
@@ -11,6 +13,8 @@ interface Plan {
   description: string;
   setupPrice: string;
   monthlyPrice: string;
+  setupAmount: number;
+  monthlyAmount: number;
   features: string[];
   isPopular?: boolean;
   isDark?: boolean;
@@ -25,6 +29,8 @@ const plans: Plan[] = [
     description: 'Targeted exposure in three key international markets most likely to convert for your property.',
     setupPrice: '£2,000',
     monthlyPrice: '£1,500',
+    setupAmount: 2000,
+    monthlyAmount: 1500,
     features: [
       '3 regions of your choice',
       'Static + camuse ads',
@@ -40,6 +46,8 @@ const plans: Plan[] = [
     description: 'Broader reach with richer creative and a dedicated landing page for serious international buyers.',
     setupPrice: '£3,500',
     monthlyPrice: '£2,500',
+    setupAmount: 3500,
+    monthlyAmount: 2500,
     features: [
       '5 regions of your choice',
       'Static, carousel + short-form video',
@@ -57,6 +65,8 @@ const plans: Plan[] = [
     description: 'Maximum global exposure for properties that need the widest possible international audience.',
     setupPrice: '£5,000',
     monthlyPrice: '£3,500',
+    setupAmount: 5000,
+    monthlyAmount: 3500,
     features: [
       '30+ countries worldwide',
       'Full creative suite - static, carousel + video',
@@ -72,6 +82,8 @@ const plans: Plan[] = [
     description: 'For high-value properties that demand a campaign built entirely around them. Pricing tailored to scope - discussed privately.',
     setupPrice: '£5,000',
     monthlyPrice: '£3,500',
+    setupAmount: 5000,
+    monthlyAmount: 3500,
     features: [
       'Bespoke worldwide targeting strategy',
       'Premium creative production',
@@ -84,20 +96,53 @@ const plans: Plan[] = [
 ];
 
 export const DashboardSellFaster: React.FC = () => {
+  const { token } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [contactPreference, setContactPreference] = useState<'you' | 'agent'>('you');
+  const [listingUrl, setListingUrl] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
 
   const handlePlanSelect = (plan: Plan) => {
     setSelectedPlan(plan);
     setIsDrawerOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsDrawerOpen(false);
-    setIsSuccessModalOpen(true);
+    if (!token || !selectedPlan) return;
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const result = await api.submitSellFaster(token, {
+        plan_id: selectedPlan.id,
+        plan_name: selectedPlan.name,
+        setup_price: selectedPlan.setupAmount,
+        monthly_price: selectedPlan.monthlyAmount,
+        property_address: listingUrl || 'Not provided',
+        property_type: 'Residential',
+        contact_preference: contactPreference,
+        target_countries: ['International'],
+        agent_name: contactPreference === 'agent' ? contactName : undefined,
+        agent_email: contactPreference === 'agent' ? contactEmail : undefined,
+        agent_phone: contactPreference === 'agent' ? contactPhone : undefined,
+      });
+      setIsDrawerOpen(false);
+      if (result.checkout_url) {
+        window.open(result.checkout_url, '_blank');
+      }
+      setIsSuccessModalOpen(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -249,6 +294,8 @@ export const DashboardSellFaster: React.FC = () => {
                     <div className="relative">
                       <input 
                         type="text"
+                        value={listingUrl}
+                        onChange={(e) => setListingUrl(e.target.value)}
                         placeholder="(Paste Rightmove / Zoopla / other listing URL)"
                         className="w-full h-12 px-4 bg-white border border-black/5 rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-black/5"
                       />
@@ -300,6 +347,8 @@ export const DashboardSellFaster: React.FC = () => {
                       </label>
                       <input 
                         type="text"
+                        value={contactName}
+                        onChange={(e) => setContactName(e.target.value)}
                         placeholder="Enter name"
                         className="w-full h-12 px-4 bg-white border border-black/5 rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-black/5"
                       />
@@ -310,6 +359,8 @@ export const DashboardSellFaster: React.FC = () => {
                       </label>
                       <input 
                         type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
                         placeholder="Enter email"
                         className="w-full h-12 px-4 bg-white border border-black/5 rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-black/5"
                       />
@@ -329,6 +380,8 @@ export const DashboardSellFaster: React.FC = () => {
                         </div>
                         <input 
                           type="tel"
+                          value={contactPhone}
+                          onChange={(e) => setContactPhone(e.target.value)}
                           placeholder="0000 0000 000"
                           className="flex-1 h-12 px-4 bg-white border border-black/5 rounded-lg text-sm font-body focus:outline-none focus:ring-2 focus:ring-black/5"
                         />
@@ -340,11 +393,13 @@ export const DashboardSellFaster: React.FC = () => {
 
               {/* Drawer Footer */}
               <div className="p-6 bg-white border-t border-[#F1F1F0]">
+                {submitError && <p className="text-red-500 text-sm font-body mb-3">{submitError}</p>}
                 <button 
                   onClick={handleSubmit}
-                  className="w-full h-[60px] bg-black text-white rounded-full text-base font-semibold tracking-tight uppercase hover:bg-black/90 transition-colors"
+                  disabled={submitting}
+                  className="w-full h-[60px] bg-black text-white rounded-full text-base font-semibold tracking-tight uppercase hover:bg-black/90 transition-colors disabled:opacity-50"
                 >
-                  SUBMIT
+                  {submitting ? 'SUBMITTING...' : 'SUBMIT'}
                 </button>
               </div>
             </motion.div>

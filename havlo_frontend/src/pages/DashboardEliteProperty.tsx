@@ -3,15 +3,39 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { Button } from '../components/ui/Button';
 import { X, Check, Globe, Phone, ArrowRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export const DashboardEliteProperty: React.FC = () => {
+  const { token } = useAuth();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsDrawerOpen(false);
-    setIsSuccess(true);
+    if (!token) return;
+    setSubmitting(true);
+    setSubmitError('');
+    try {
+      const fd = new FormData(e.currentTarget);
+      await api.submitEliteProperty(token, {
+        property_address: (fd.get('city') as string) || '',
+        property_type: (fd.get('propertyType') as string) || '',
+        asking_price: (fd.get('estimatedValue') as string) || undefined,
+        asking_price_currency: 'GBP',
+        description: (fd.get('uniqueAsset') as string) || undefined,
+        target_buyer_profile: (fd.get('primaryObjective') as string) || undefined,
+        additional_info: (fd.get('listingUrl') as string) || undefined,
+      });
+      setIsDrawerOpen(false);
+      setIsSuccess(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -131,7 +155,7 @@ export const DashboardEliteProperty: React.FC = () => {
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-black">Property type</label>
                       <div className="relative">
-                        <select className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
+                        <select name="propertyType" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
                           <option>Select</option>
                           <option>Apartment</option>
                           <option>House</option>
@@ -166,13 +190,13 @@ export const DashboardEliteProperty: React.FC = () => {
                       </div>
                       <div className="space-y-4">
                         <label className="block font-display text-sm font-black text-[#001C47]">City</label>
-                        <input type="text" placeholder="Enter City" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                        <input type="text" name="city" placeholder="Enter City" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                       </div>
                     </div>
 
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-[#001C47]">Estimated value range</label>
-                      <input type="text" placeholder="e.g £200,000 - £500,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      <input type="text" name="estimatedValue" placeholder="e.g £200,000 - £500,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                     </div>
 
                     <div className="space-y-4">
@@ -194,7 +218,7 @@ export const DashboardEliteProperty: React.FC = () => {
 
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-[#001C47]">Current listing URL</label>
-                      <input type="text" placeholder="https//.." className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      <input type="text" name="listingUrl" placeholder="https//.." className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                     </div>
                   </div>
 
@@ -294,6 +318,7 @@ export const DashboardEliteProperty: React.FC = () => {
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-black">What makes this property a unique international asset?</label>
                       <textarea 
+                        name="uniqueAsset"
                         placeholder="Describe property key selling point..." 
                         className="w-full h-32 p-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10 resize-none"
                       />
@@ -328,7 +353,7 @@ export const DashboardEliteProperty: React.FC = () => {
                     
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-[#001C47]">Expected sale price range</label>
-                      <input type="text" placeholder="e.g £200,000 - £500,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      <input type="text" name="expectedPrice" placeholder="e.g £200,000 - £500,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                     </div>
 
                     <div className="space-y-4">
@@ -499,12 +524,14 @@ export const DashboardEliteProperty: React.FC = () => {
 
               {/* Drawer Footer */}
               <div className="p-6 bg-white border-t border-[#F1F1F0] flex-shrink-0">
+                {submitError && <p className="text-red-500 text-sm font-body mb-3">{submitError}</p>}
                 <Button 
                   type="submit"
                   form="elite-property-form"
-                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none"
+                  disabled={submitting}
+                  className="h-[60px] w-full rounded-full bg-black text-white flex items-center justify-center gap-3 group border-none disabled:opacity-50"
                 >
-                  <span className="font-body text-base lg:text-lg font-semibold tracking-[-0.32px] uppercase">SUBMIT APPLICATION & PROCEED TO PAYMENT</span>
+                  <span className="font-body text-base lg:text-lg font-semibold tracking-[-0.32px] uppercase">{submitting ? 'SUBMITTING...' : 'SUBMIT APPLICATION & PROCEED TO PAYMENT'}</span>
                 </Button>
               </div>
             </motion.div>
