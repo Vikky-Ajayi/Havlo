@@ -40,60 +40,58 @@ export const Home: React.FC = () => {
       {/* 2. Marquee Strip */}
       <MarqueeStrip />
 
-      {/* 3. Press + Reviews Section */}
-      <section className="flex w-full flex-col items-center bg-white px-4 py-12 lg:py-20 sm:px-10 lg:px-[100px] gap-12 lg:gap-20">
-        <div className="flex w-full flex-col lg:flex-row items-center lg:items-start justify-between gap-10 lg:gap-16">
-          {/* As Seen In */}
-          <div className="flex flex-col items-center lg:items-start gap-5 lg:gap-7 lg:max-w-[440px]">
-            <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
-              As seen in
-            </span>
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-8 gap-y-5 lg:gap-x-10">
-              <img
-                src="/press-logos/the-times.svg"
-                alt="The Times & The Sunday Times"
-                className="h-9 w-auto object-contain lg:h-11"
-                loading="lazy"
-              />
-              <img
-                src="/press-logos/the-guardian.svg"
-                alt="The Guardian"
-                className="h-4 w-auto object-contain lg:h-5"
-                loading="lazy"
-              />
-              <img
-                src="/press-logos/the-telegraph.svg"
-                alt="The Daily Telegraph"
-                className="h-6 w-auto object-contain lg:h-7"
-                loading="lazy"
-              />
-              <img
-                src="/press-logos/daily-mail.svg"
-                alt="Daily Mail"
-                className="h-7 w-auto object-contain lg:h-9"
-                loading="lazy"
-              />
-              <img
-                src="/press-logos/the-spectator.svg"
-                alt="The Spectator"
-                className="h-8 w-auto object-contain lg:h-9"
-                loading="lazy"
-              />
-            </div>
-          </div>
+      {/* 3. As Seen In */}
+      <section className="flex w-full flex-col items-center bg-white px-4 py-10 sm:px-10 lg:px-[100px] lg:py-14">
+        <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
+          As seen in
+        </span>
+        <div className="mt-7 flex w-full flex-wrap items-center justify-center gap-x-10 gap-y-6 lg:mt-10 lg:gap-x-16">
+          <img
+            src="/press-logos/the-times.svg"
+            alt="The Times & The Sunday Times"
+            className="h-10 w-auto object-contain lg:h-12"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/the-guardian.svg"
+            alt="The Guardian"
+            className="h-5 w-auto object-contain lg:h-6"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/the-telegraph.svg"
+            alt="The Daily Telegraph"
+            className="h-7 w-auto object-contain lg:h-8"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/daily-mail.svg"
+            alt="Daily Mail"
+            className="h-8 w-auto object-contain lg:h-10"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/the-spectator.svg"
+            alt="The Spectator"
+            className="h-9 w-auto object-contain lg:h-10"
+            loading="lazy"
+          />
+        </div>
+      </section>
 
-          {/* Excellent Block */}
-          <div className="flex flex-col items-center gap-5 text-center min-w-[200px]">
-            <div className="flex flex-col items-center gap-3">
-              <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-                Excellent
-              </h2>
-              <TrustpilotStars className="h-[45px]" />
-            </div>
-            <p className="font-body text-[22px] font-normal text-black">
-              Based on <span className="font-bold underline">4,359 reviews</span>
-            </p>
+      {/* 4. Reviews Section */}
+      <section className="flex w-full flex-col items-center bg-white px-4 py-12 lg:py-20 sm:px-10 lg:px-[100px] gap-12 lg:gap-20">
+        {/* Excellent Block */}
+        <div className="flex flex-col items-center gap-5 text-center min-w-[200px]">
+          <div className="flex flex-col items-center gap-3">
+            <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+              Excellent
+            </h2>
+            <TrustpilotStars className="h-[45px]" />
           </div>
+          <p className="font-body text-[22px] font-normal text-black">
+            Based on <span className="font-bold underline">4,359 reviews</span>
+          </p>
         </div>
 
         <div className="relative flex w-full flex-col lg:flex-row items-center gap-8">
