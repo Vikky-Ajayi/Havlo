@@ -66,14 +66,37 @@ SHEET_TABS: dict[str, list[str]] = {
 }
 
 
+def is_configured() -> bool:
+    """Return True only when both the service-account JSON and a spreadsheet ID are set."""
+    s = get_settings()
+    raw = (s.GOOGLE_SERVICE_ACCOUNT_JSON or "").strip()
+    sid = (s.GOOGLE_SPREADSHEET_ID or "").strip()
+    return bool(raw) and raw not in (".", "./") and bool(sid)
+
+
 def _get_credentials() -> Credentials:
     settings = get_settings()
-    raw = settings.GOOGLE_SERVICE_ACCOUNT_JSON
+    raw = (settings.GOOGLE_SERVICE_ACCOUNT_JSON or "").strip()
+    if not raw:
+        raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_JSON is not set")
+    # Strip wrapping quotes (Railway "Raw editor" sometimes leaves them)
+    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+        raw = raw[1:-1]
     # Support both a file path and a raw JSON string
-    if raw.strip().startswith("{"):
-        info = json.loads(raw)
+    if raw.lstrip().startswith("{"):
+        try:
+            info = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON: {exc}. "
+                "If pasting into Railway, use the Raw Editor and ensure the value is the full JSON object on a single line."
+            ) from exc
     else:
         path = Path(raw)
+        if not path.is_file():
+            raise RuntimeError(
+                f"GOOGLE_SERVICE_ACCOUNT_JSON is set to '{raw}' which is not valid JSON and not an existing file path."
+            )
         info = json.loads(path.read_text())
     return Credentials.from_service_account_info(info, scopes=SCOPES)
 
@@ -82,11 +105,14 @@ def _get_spreadsheet() -> gspread.Spreadsheet:
     settings = get_settings()
     creds = _get_credentials()
     gc = gspread.authorize(creds)
-    return gc.open_by_key(settings.GOOGLE_SPREADSHEET_ID)
+    return gc.open_by_key(settings.GOOGLE_SPREADSHEET_ID.strip())
 
 
 def ensure_tabs_exist() -> None:
     """Create all required tabs (worksheets) if they do not exist yet."""
+    if not is_configured():
+        logger.info("Google Sheets not configured — skipping tab setup.")
+        return
     try:
         sheet = _get_spreadsheet()
         existing = {ws.title for ws in sheet.worksheets()}
@@ -96,7 +122,6 @@ def ensure_tabs_exist() -> None:
                 ws.append_row(headers)
                 logger.info("Created Google Sheet tab: %s", tab_name)
             else:
-                # Ensure header row exists
                 ws = sheet.worksheet(tab_name)
                 if ws.row_count == 0 or not ws.row_values(1):
                     ws.insert_row(headers, 1)
@@ -107,13 +132,43 @@ def ensure_tabs_exist() -> None:
 
 
 def _append_row(tab_name: str, row: list[Any]) -> None:
+    if not is_configured():
+        logger.debug("Google Sheets not configured — skipping append to %s.", tab_name)
+        return
     try:
         sheet = _get_spreadsheet()
         ws = sheet.worksheet(tab_name)
         ws.append_row(row, value_input_option="USER_ENTERED")
+        logger.info("Appended row to Google Sheet tab: %s", tab_name)
     except Exception as exc:
         logger.error("Failed to append row to %s: %s", tab_name, exc)
-        raise
+
+
+def diagnostics() -> dict:
+    """Quick diagnostics for troubleshooting Sheets config."""
+    s = get_settings()
+    raw = (s.GOOGLE_SERVICE_ACCOUNT_JSON or "").strip()
+    info = {
+        "configured": is_configured(),
+        "spreadsheet_id_set": bool((s.GOOGLE_SPREADSHEET_ID or "").strip()),
+        "service_account_json_len": len(raw),
+        "service_account_looks_like_json": raw.lstrip().startswith("{") if raw else False,
+        "service_account_looks_like_path": (not raw.lstrip().startswith("{")) and bool(raw),
+    }
+    if raw:
+        try:
+            _get_credentials()
+            info["credentials_parse"] = "ok"
+        except Exception as e:
+            info["credentials_parse"] = f"FAIL: {type(e).__name__}: {e}"
+    if is_configured():
+        try:
+            sheet = _get_spreadsheet()
+            info["spreadsheet_title"] = sheet.title
+            info["existing_tabs"] = sorted({w.title for w in sheet.worksheets()})
+        except Exception as e:
+            info["spreadsheet_open"] = f"FAIL: {type(e).__name__}: {e}"
+    return info
 
 
 def record_registration(user_data: dict[str, Any]) -> None:

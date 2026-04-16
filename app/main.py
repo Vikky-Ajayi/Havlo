@@ -164,6 +164,33 @@ async def health_v1() -> JSONResponse:
     })
 
 
+@app.get("/api/v1/diag/sheets", tags=["Health"])
+async def diag_sheets() -> JSONResponse:
+    """Check Google Sheets configuration and connectivity."""
+    return JSONResponse(google_sheets.diagnostics())
+
+
+@app.post("/api/v1/diag/sheets/test", tags=["Health"])
+async def diag_sheets_test() -> JSONResponse:
+    """Append a test row to the Registrations tab to confirm write access."""
+    from datetime import datetime
+    if not google_sheets.is_configured():
+        return JSONResponse({"ok": False, "error": "Google Sheets is not configured."}, status_code=400)
+    try:
+        google_sheets.record_registration({
+            "id": "diag-test",
+            "first_name": "Diag",
+            "last_name": "Test",
+            "email": f"diag-{datetime.utcnow().isoformat()}@havlo.test",
+            "phone_country_code": "+44",
+            "phone_number": "0000000000",
+            "role": "buyer",
+        })
+        return JSONResponse({"ok": True, "message": "Test row appended to Registrations tab."})
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
+
+
 @app.options("/{full_path:path}", include_in_schema=False)
 async def options_catch_all(full_path: str) -> JSONResponse:
     return JSONResponse({"ok": True})
