@@ -167,8 +167,36 @@ async def diag() -> JSONResponse:
             user_part = creds.split(":", 1)[0]
             safe_url = f"{scheme}//{user_part}:***@{host_part}"
 
+    import hashlib
     raw_pw = os.environ.get("SUPABASE_DB_PASSWORD", "")
     raw_db_url = os.environ.get("DATABASE_URL", "")
+
+    def pw_fingerprint(pw: str) -> dict:
+        if not pw:
+            return {"len": 0, "sha256_prefix": "", "first": "", "last": "",
+                    "has_whitespace": False, "has_quotes": False,
+                    "has_dollar": False, "has_hash": False}
+        return {
+            "len": len(pw),
+            "sha256_prefix": hashlib.sha256(pw.encode()).hexdigest()[:10],
+            "first": pw[0] if pw else "",
+            "last": pw[-1] if pw else "",
+            "has_whitespace": pw != pw.strip(),
+            "has_quotes": pw.startswith(('"', "'")) or pw.endswith(('"', "'")),
+            "has_dollar": "$" in pw,
+            "has_hash": "#" in pw,
+        }
+
+    # Reconstruct password being used to build DB URL (post-regex-extraction)
+    from app.config import _extract_supabase_password_from_url
+    used_pw = raw_pw
+    if not used_pw:
+        for cand in (raw_db_url, os.environ.get("SUPABASE_DATABASE_URL", "")):
+            extracted = _extract_supabase_password_from_url(cand)
+            if extracted:
+                used_pw = extracted
+                break
+
     return JSONResponse({
         "db_ready": DB_READY,
         "db_error": DB_ERROR,
@@ -179,12 +207,11 @@ async def diag() -> JSONResponse:
             "SUPABASE_DB_USER": os.environ.get("SUPABASE_DB_USER", ""),
             "SUPABASE_DB_PORT": os.environ.get("SUPABASE_DB_PORT", ""),
             "SUPABASE_DB_NAME": os.environ.get("SUPABASE_DB_NAME", ""),
-            "SUPABASE_DB_PASSWORD_masked": mask(raw_pw),
-            "SUPABASE_DB_PASSWORD_ends_with_comma": raw_pw.endswith(",") if raw_pw else False,
-            "DATABASE_URL_present": bool(raw_db_url),
-            "DATABASE_URL_masked": mask(raw_db_url) if raw_db_url else "",
             "ALLOWED_ORIGINS": os.environ.get("ALLOWED_ORIGINS", ""),
+            "DATABASE_URL_present": bool(raw_db_url),
         },
+        "password_from_env": pw_fingerprint(raw_pw),
+        "password_used_for_connection": pw_fingerprint(used_pw),
     })
 
 
