@@ -297,7 +297,7 @@ async def admin_list_users(
         )
         .outerjoin(convo_count_subq, convo_count_subq.c.uid == User.id)
         .outerjoin(unread_subq, unread_subq.c.uid == User.id)
-        .where(User.id != _admin.id)
+        .where(User.id != _admin.id, User.is_admin == False)  # noqa: E712
     )
 
     if q:
@@ -352,6 +352,10 @@ async def admin_list_user_conversations(
         user_uuid = uuid.UUID(user_id)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user ID.")
+
+    user_exists = await db.execute(select(User.id).where(User.id == user_uuid))
+    if user_exists.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
     res = await db.execute(
         select(Conversation)

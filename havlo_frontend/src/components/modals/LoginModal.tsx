@@ -31,7 +31,9 @@ export const LoginModal: React.FC = () => {
       await login(resp);
       closeModal();
 
-      if (!resp.onboarding_complete) {
+      if (resp.is_admin) {
+        navigate('/admin');
+      } else if (!resp.onboarding_complete) {
         navigate('/get-started');
       } else {
         navigate('/dashboard');

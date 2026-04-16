@@ -33,6 +33,7 @@ import { DashboardBuyerNetwork } from './pages/DashboardBuyerNetwork';
 import { DashboardInbox } from './pages/DashboardInbox';
 import { DashboardSettings } from './pages/DashboardSettings';
 import { Dashboard } from './pages/Dashboard';
+import { AdminPanel } from './pages/AdminPanel';
 
 // Shared Components
 import { Navbar } from './components/shared/Navbar';
@@ -100,8 +101,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname } = useLocation();
   const isOnboarding = pathname.startsWith('/get-started');
   const isDashboard = pathname.startsWith('/dashboard');
+  const isAdmin = pathname.startsWith('/admin');
 
-  if (isDashboard) {
+  if (isDashboard || isAdmin) {
     return <main className="flex-grow">{children}</main>;
   }
 
@@ -152,6 +154,7 @@ export default function App() {
             <Route path="/dashboard/buyer-network" element={<ProtectedRoute><DashboardBuyerNetwork /></ProtectedRoute>} />
             <Route path="/dashboard/inbox" element={<ProtectedRoute><DashboardInbox /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
           </Routes>
         </Layout>
         <ModalRenderer />

@@ -60,6 +60,7 @@ export interface AuthResponse {
   user_id: string;
   role: string;
   onboarding_complete: boolean;
+  is_admin?: boolean;
 }
 
 export interface RegisterResponse {
@@ -77,6 +78,31 @@ export interface UserProfile {
   phone_number: string;
   role: string;
   onboarding_complete: boolean;
+  is_admin?: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  role: string;
+  phone: string;
+  created_at: string;
+  conversation_count: number;
+  last_message_at: string | null;
+  has_unread: boolean;
+  unread_count: number;
+}
+
+export interface AdminStartConversationPayload {
+  user_id: string;
+  subject: string;
+  initial_message?: string;
+  sender_name?: string;
+  team_member_initials?: string;
+  team_member_color?: string;
 }
 
 export interface OnboardingPayload {
@@ -280,4 +306,42 @@ export const api = {
 
   bookSession: (token: string, payload: BookSessionPayload) =>
     request<{ booking_id: string; checkout_url: string; checkout_id: string; amount: number; currency: string; message: string }>('/bookings/session', { method: 'POST', token, body: payload }),
+
+  // ── Admin messaging ──────────────────────────────────────────────────────
+  adminListUsers: (
+    token: string,
+    opts: { q?: string; only_with_threads?: boolean } = {},
+  ) => {
+    const queryParams: Record<string, string> = {};
+    if (opts.q && opts.q.trim()) queryParams.q = opts.q.trim();
+    if (opts.only_with_threads) queryParams.only_with_threads = 'true';
+    return request<AdminUser[]>('/messaging/admin/users', { token, queryParams });
+  },
+
+  adminListUserConversations: (token: string, userId: string) =>
+    request<Conversation[]>(`/messaging/admin/users/${userId}/conversations`, { token }),
+
+  adminGetConversation: (token: string, conversationId: string) =>
+    request<ConversationDetail>(`/messaging/admin/conversations/${conversationId}`, { token }),
+
+  adminStartConversation: (token: string, payload: AdminStartConversationPayload) =>
+    request<{ id: string; subject: string; user_id: string; initial_message_id: string | null }>(
+      '/messaging/admin/conversations',
+      { method: 'POST', token, body: payload },
+    ),
+
+  adminSendMessage: (
+    token: string,
+    conversationId: string,
+    content: string,
+    senderName?: string,
+  ) =>
+    request<{ message: Message }>(
+      `/messaging/admin/conversations/${conversationId}/send`,
+      {
+        method: 'POST',
+        token,
+        body: { content, sender_name: senderName || 'Havlo Advisory' },
+      },
+    ),
 };
