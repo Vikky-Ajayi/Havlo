@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
 *.pyo
@@ -10,3 +12,12 @@ dist/
 .mypy_cache/
 service-account.json
 *.key
+
+# Replit internal
+.local/
+.cache/
+.config/
+.upm/
+attached_assets/
+replit.nix
+.replit
