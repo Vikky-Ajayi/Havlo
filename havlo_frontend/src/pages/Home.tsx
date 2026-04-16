@@ -40,18 +40,40 @@ export const Home: React.FC = () => {
       {/* 2. Marquee Strip */}
       <MarqueeStrip />
 
-      {/* 3. As Seen On */}
-      <section className="flex w-full bg-[#FEFFFF] px-4 py-8 sm:px-10 lg:px-[100px]">
-        <div className="mx-auto flex w-full flex-col lg:flex-row items-center justify-between gap-6 lg:gap-10">
-          <span className="font-body text-base font-normal lg:font-bold uppercase tracking-[0.05em] text-black/70 opacity-70 lg:opacity-100">
-            As seen on
+      {/* 3. As Seen In */}
+      <section className="flex w-full flex-col items-center bg-white px-4 py-10 sm:px-10 lg:px-[100px] lg:py-14">
+        <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
+          As seen in
+        </span>
+        <div className="mt-7 flex w-full flex-wrap items-center justify-center gap-x-10 gap-y-6 lg:mt-10 lg:gap-x-16">
+          {/* The Times / The Sunday Times */}
+          <div className="font-libre flex flex-col items-center leading-tight text-black">
+            <span className="text-[13px] uppercase tracking-[0.02em] lg:text-[15px]">The Times</span>
+            <span className="text-[13px] uppercase tracking-[0.02em] lg:text-[15px]">The Sunday Times</span>
+          </div>
+
+          {/* theguardian */}
+          <span className="font-body text-[22px] font-black lowercase tracking-[-0.02em] text-black lg:text-[26px]">
+            theguardian
           </span>
-          <div className="flex flex-wrap justify-center items-center gap-8 lg:gap-16">
-            {['BusinessDay', 'The Guardian', 'Punch', 'TechCabal', 'Nairametrics'].map((brand) => (
-              <span key={brand} className="font-display text-xl font-black text-black/50">
-                {brand}
-              </span>
-            ))}
+
+          {/* The Daily Telegraph */}
+          <span className="font-libre text-[22px] leading-none text-black lg:text-[28px]">
+            The Daily Telegraph
+          </span>
+
+          {/* Daily Mail */}
+          <div className="flex items-baseline gap-1 text-black">
+            <span className="font-libre text-[26px] italic leading-none lg:text-[32px]">Daily</span>
+            <span className="font-body text-[22px] font-black uppercase leading-none tracking-[-0.01em] lg:text-[26px]">
+              Mail
+            </span>
+          </div>
+
+          {/* The Spectator */}
+          <div className="flex flex-col items-center leading-none text-black">
+            <span className="font-libre text-[9px] uppercase tracking-[0.3em] lg:text-[10px]">The</span>
+            <span className="font-libre text-[20px] uppercase tracking-[0.02em] lg:text-[24px]">Spectator</span>
           </div>
         </div>
       </section>
