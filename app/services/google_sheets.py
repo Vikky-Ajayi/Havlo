@@ -131,9 +131,11 @@ def ensure_tabs_exist() -> None:
         raise
 
 
-def _append_row(tab_name: str, row: list[Any]) -> None:
+def _append_row(tab_name: str, row: list[Any], raise_on_error: bool = False) -> None:
     if not is_configured():
         logger.debug("Google Sheets not configured — skipping append to %s.", tab_name)
+        if raise_on_error:
+            raise RuntimeError("Google Sheets is not configured")
         return
     try:
         sheet = _get_spreadsheet()
@@ -142,6 +144,18 @@ def _append_row(tab_name: str, row: list[Any]) -> None:
         logger.info("Appended row to Google Sheet tab: %s", tab_name)
     except Exception as exc:
         logger.error("Failed to append row to %s: %s", tab_name, exc)
+        if raise_on_error:
+            raise
+
+
+def append_test_row(tab_name: str = "Registrations") -> None:
+    """Strict append used by the diag endpoint — re-raises on any failure."""
+    _append_row(tab_name, [
+        datetime.utcnow().isoformat(),
+        "diag-test", "Diag", "Test",
+        f"diag-{datetime.utcnow().isoformat()}@havlo.test",
+        "+44", "0000000000", "+440000000000", "buyer",
+    ], raise_on_error=True)
 
 
 def diagnostics() -> dict:

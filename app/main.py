@@ -164,28 +164,35 @@ async def health_v1() -> JSONResponse:
     })
 
 
+def _check_diag_token(request: Request) -> bool:
+    """Allow diag endpoints in dev, or with a valid X-Diag-Token in any env."""
+    settings = get_settings()
+    if (getattr(settings, "APP_ENV", "development") or "development").lower() != "production":
+        return True
+    expected = os.environ.get("DIAG_TOKEN", "").strip()
+    if not expected:
+        return False
+    provided = request.headers.get("X-Diag-Token", "").strip()
+    return bool(provided) and provided == expected
+
+
 @app.get("/api/v1/diag/sheets", tags=["Health"])
-async def diag_sheets() -> JSONResponse:
+async def diag_sheets(request: Request) -> JSONResponse:
     """Check Google Sheets configuration and connectivity."""
+    if not _check_diag_token(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     return JSONResponse(google_sheets.diagnostics())
 
 
 @app.post("/api/v1/diag/sheets/test", tags=["Health"])
-async def diag_sheets_test() -> JSONResponse:
+async def diag_sheets_test(request: Request) -> JSONResponse:
     """Append a test row to the Registrations tab to confirm write access."""
-    from datetime import datetime
+    if not _check_diag_token(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     if not google_sheets.is_configured():
         return JSONResponse({"ok": False, "error": "Google Sheets is not configured."}, status_code=400)
     try:
-        google_sheets.record_registration({
-            "id": "diag-test",
-            "first_name": "Diag",
-            "last_name": "Test",
-            "email": f"diag-{datetime.utcnow().isoformat()}@havlo.test",
-            "phone_country_code": "+44",
-            "phone_number": "0000000000",
-            "role": "buyer",
-        })
+        google_sheets.append_test_row("Registrations")
         return JSONResponse({"ok": True, "message": "Test row appended to Registrations tab."})
     except Exception as e:
         return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
