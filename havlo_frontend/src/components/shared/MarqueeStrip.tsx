@@ -2,10 +2,8 @@ import React from 'react';
 import { motion } from 'motion/react';
 
 const marqueeItems = [
-  'Initial Consultation and Needs Assessment',
-  'International Property Search',
-  'Legal and Regulatory Guidance',
-  'Due Diligence and Documentation',
+  'International Property Purchase',
+  'International Property Exposure',
 ];
 
 export const MarqueeStrip: React.FC = () => {
@@ -27,7 +25,7 @@ export const MarqueeStrip: React.FC = () => {
           <React.Fragment key={i}>
             {marqueeItems.map((item, index) => (
               <div key={`${i}-${index}`} className="flex items-center gap-4 lg:gap-8">
-                <span className="font-display text-[20px] lg:text-[48px] font-black lg:italic uppercase text-black">
+                <span className="font-display text-[20px] lg:text-[48px] font-black uppercase text-black">
                   {item}
                 </span>
                 <div className="h-3 w-3 lg:h-4 lg:w-4 rounded-full bg-[#602FD3] opacity-60" />
