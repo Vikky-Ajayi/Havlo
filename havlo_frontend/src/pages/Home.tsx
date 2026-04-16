@@ -80,7 +80,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="flex w-full bg-white px-4 py-12 lg:py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex w-full bg-white px-4 py-12 lg:py-20 sm:px-6 lg:px-10">
         {/* Desktop: Excellent on left, carousel on right */}
         <div className="hidden w-full lg:flex items-center gap-10">
           {/* Left — Excellent block */}
