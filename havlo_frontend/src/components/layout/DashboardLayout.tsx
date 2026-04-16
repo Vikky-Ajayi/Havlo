@@ -16,7 +16,7 @@ import {
   LogOut,
   ArrowRight
 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 interface DashboardLayoutProps {
@@ -178,15 +178,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       <aside className={`hidden lg:flex flex-col border-r border-[#F1F1F0] bg-white transition-all duration-300 relative ${isCollapsed ? 'w-[80px]' : 'w-[300px]'}`}>
         <div className={`h-16 flex items-center border-b border-[#F1F1F0] transition-all duration-300 ${isCollapsed ? 'justify-center px-0' : 'px-8'}`}>
           {!isCollapsed ? (
-            <img 
-              src="https://api.builder.io/api/v1/image/assets/TEMP/2a7671c12cd9eeba4b100270f10d5f94932da00f?width=204" 
-              alt="Havlo" 
-              className="h-6"
-            />
+            <Link to="/" aria-label="Go to homepage">
+              <img
+                src="https://api.builder.io/api/v1/image/assets/TEMP/2a7671c12cd9eeba4b100270f10d5f94932da00f?width=204"
+                alt="Havlo"
+                className="h-6"
+              />
+            </Link>
           ) : (
-            <div className="h-8 w-8 bg-black rounded-lg flex items-center justify-center">
+            <Link to="/" aria-label="Go to homepage" className="h-8 w-8 bg-black rounded-lg flex items-center justify-center">
               <span className="text-white font-black text-xl">H</span>
-            </div>
+            </Link>
           )}
         </div>
 
@@ -261,11 +263,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
               className="fixed inset-y-0 left-0 z-50 w-[320px] bg-white lg:hidden flex flex-col"
             >
               <div className="h-16 flex items-center justify-between px-4 border-b border-[#F1F1F0]">
-                <img 
-                  src="https://api.builder.io/api/v1/image/assets/TEMP/2a7671c12cd9eeba4b100270f10d5f94932da00f?width=204" 
-                  alt="Havlo" 
-                  className="h-6"
-                />
+                <Link to="/" aria-label="Go to homepage" onClick={() => setIsSidebarOpen(false)}>
+                  <img
+                    src="https://api.builder.io/api/v1/image/assets/TEMP/2a7671c12cd9eeba4b100270f10d5f94932da00f?width=204"
+                    alt="Havlo"
+                    className="h-6"
+                  />
+                </Link>
                 <button 
                   onClick={() => setIsSidebarOpen(false)}
                   className="p-2 bg-[#EFEFEF] rounded-md"
