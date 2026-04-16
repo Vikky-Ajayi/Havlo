@@ -145,6 +145,49 @@ async def options_catch_all(full_path: str) -> JSONResponse:
     return JSONResponse({"ok": True})
 
 
+@app.get("/api/v1/diag", tags=["Health"])
+async def diag() -> JSONResponse:
+    """Diagnostic endpoint that reveals what env-driven config the backend
+    is actually using, with secrets masked. Use this to debug Railway env."""
+    import os
+    from app.db.database import DATABASE_URL as _RESOLVED_URL
+
+    def mask(value: str | None) -> str:
+        if not value:
+            return ""
+        if len(value) <= 4:
+            return "*" * len(value)
+        return f"{value[:2]}***{value[-2:]} (len={len(value)})"
+
+    safe_url = _RESOLVED_URL or ""
+    if "@" in safe_url:
+        scheme_creds, host_part = safe_url.split("@", 1)
+        if ":" in scheme_creds and "//" in scheme_creds:
+            scheme, creds = scheme_creds.split("//", 1)
+            user_part = creds.split(":", 1)[0]
+            safe_url = f"{scheme}//{user_part}:***@{host_part}"
+
+    raw_pw = os.environ.get("SUPABASE_DB_PASSWORD", "")
+    raw_db_url = os.environ.get("DATABASE_URL", "")
+    return JSONResponse({
+        "db_ready": DB_READY,
+        "db_error": DB_ERROR,
+        "resolved_database_url": safe_url,
+        "env": {
+            "APP_ENV": os.environ.get("APP_ENV", ""),
+            "SUPABASE_DB_HOST": os.environ.get("SUPABASE_DB_HOST", ""),
+            "SUPABASE_DB_USER": os.environ.get("SUPABASE_DB_USER", ""),
+            "SUPABASE_DB_PORT": os.environ.get("SUPABASE_DB_PORT", ""),
+            "SUPABASE_DB_NAME": os.environ.get("SUPABASE_DB_NAME", ""),
+            "SUPABASE_DB_PASSWORD_masked": mask(raw_pw),
+            "SUPABASE_DB_PASSWORD_ends_with_comma": raw_pw.endswith(",") if raw_pw else False,
+            "DATABASE_URL_present": bool(raw_db_url),
+            "DATABASE_URL_masked": mask(raw_db_url) if raw_db_url else "",
+            "ALLOWED_ORIGINS": os.environ.get("ALLOWED_ORIGINS", ""),
+        },
+    })
+
+
 API_PREFIX = "/api/v1"
 
 app.include_router(auth.router, prefix=API_PREFIX)
