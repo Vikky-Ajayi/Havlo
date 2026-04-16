@@ -100,8 +100,8 @@ export const Home: React.FC = () => {
               <ChevronLeft size={18} />
             </button>
 
-            <div className="grid flex-1 grid-cols-2 gap-4">
-              {[0, 1].map((i) => (
+            <div className="grid flex-1 grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => (
                 <div key={i} className="rounded-xl bg-[#F5F5F3] p-5">
                   <ReviewCard
                     title="Outstanding support for first time buyer"
