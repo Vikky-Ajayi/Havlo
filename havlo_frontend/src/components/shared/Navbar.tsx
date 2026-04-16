@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useModal } from '../../hooks/useModal';
@@ -10,7 +10,25 @@ export const Navbar: React.FC = () => {
   const { openModal } = useModal();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setOpenSection(null);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
 
   const handleGetStarted = () => {
     if (user) {
@@ -202,79 +220,111 @@ export const Navbar: React.FC = () => {
 
       <div
         className={cn(
-          'fixed inset-0 top-20 z-40 bg-white transition-transform duration-300 lg:hidden overflow-y-auto',
+          'fixed inset-0 top-20 z-40 bg-black/40 transition-opacity duration-300 lg:hidden',
+          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setIsMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside
+        className={cn(
+          'fixed top-20 bottom-0 right-0 z-40 w-[85%] max-w-[380px] bg-white shadow-2xl transition-transform duration-300 lg:hidden flex flex-col',
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}
+        aria-hidden={!isMobileMenuOpen}
       >
-        <div className="flex flex-col p-6 gap-6">
-          {navLinks.map((link) => (
-            <div key={link.name} className="flex flex-col gap-4">
-              <Link
-                to={link.href}
-                className="font-body text-xl font-bold text-black"
-                onClick={() => !link.dropdownItems && setIsMobileMenuOpen(false)}
-              >
-                {link.name}
-              </Link>
-              {link.dropdownItems && (
-                <div className="flex flex-col gap-4 pl-4">
-                  {link.dropdownItems.map((item) => (
+        <div className="flex-1 overflow-y-auto px-6 py-6">
+          <nav className="flex flex-col gap-2">
+            {navLinks.map((link) => {
+              const hasDropdown = !!link.dropdownItems?.length;
+              const isOpen = openSection === link.name;
+              return (
+                <div key={link.name} className="border-b border-[#F4F4F4] last:border-b-0">
+                  {hasDropdown ? (
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between py-4 text-left"
+                      onClick={() => setOpenSection(isOpen ? null : link.name)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="font-body text-lg font-bold text-black">
+                        {link.name}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          'h-5 w-5 text-black transition-transform duration-200',
+                          isOpen ? 'rotate-180' : 'rotate-0'
+                        )}
+                      />
+                    </button>
+                  ) : (
                     <Link
-                      key={item.name}
-                      to={item.href}
-                      className="font-body text-lg font-semibold text-black/60"
+                      to={link.href}
+                      className="block py-4 font-body text-lg font-bold text-black"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      {item.name}
+                      {link.name}
                     </Link>
-                  ))}
+                  )}
+                  {hasDropdown && isOpen && (
+                    <div className="flex flex-col pb-4 pl-2">
+                      {link.dropdownItems!.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className="rounded-lg px-3 py-2.5 font-body text-base font-semibold text-black/70 hover:bg-[#F4F4F4] hover:text-black transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-          <hr className="border-[#F4F4F4]" />
-          <div className="flex flex-col gap-4">
-            {user ? (
-              <>
-                <Button
-                  variant="primary"
-                  fullWidth
-                  onClick={() => { navigate('/dashboard'); setIsMobileMenuOpen(false); }}
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={handleLogout}
-                >
-                  Log out
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => {
-                    openModal('login');
-                    setIsMobileMenuOpen(false);
-                  }}
-                >
-                  Log in
-                </Button>
-                <Button
-                  variant="primary"
-                  fullWidth
-                  onClick={handleGetStarted}
-                >
-                  Get Started
-                </Button>
-              </>
-            )}
-          </div>
+              );
+            })}
+          </nav>
         </div>
-      </div>
+
+        <div className="border-t border-[#F4F4F4] p-6 flex flex-col gap-3">
+          {user ? (
+            <>
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => { navigate('/dashboard'); setIsMobileMenuOpen(false); }}
+              >
+                Dashboard
+              </Button>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={handleLogout}
+              >
+                Log out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={handleLoginClick}
+              >
+                Log in
+              </Button>
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={handleGetStarted}
+              >
+                Get Started
+              </Button>
+            </>
+          )}
+        </div>
+      </aside>
     </header>
   );
 };
