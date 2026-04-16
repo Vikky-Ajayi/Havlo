@@ -15,19 +15,19 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({
   time,
 }) => {
   return (
-    <div className="flex flex-col items-center gap-5 flex-1 min-w-[250px]">
-      <div className="flex flex-col items-start gap-3 self-stretch">
+    <div className="flex w-full min-w-0 flex-col items-start gap-4">
+      <div className="flex w-full min-w-0 flex-col items-start gap-3">
         <TrustpilotStars className="h-[26px]" />
-        <h3 className="self-stretch font-body text-[18px] font-semibold leading-[110%] tracking-[-0.36px] text-[#040504]">
+        <h3 className="w-full break-words font-body text-[16px] font-semibold leading-[120%] tracking-[-0.32px] text-[#040504]">
           {title}
         </h3>
       </div>
-      
-      <p className="self-stretch font-body text-base font-normal leading-[120%] text-black">
+
+      <p className="w-full break-words font-body text-[14px] font-normal leading-[140%] text-black/80">
         {content}
       </p>
-      
-      <div className="self-stretch font-body text-base leading-[120%] text-black">
+
+      <div className="w-full break-words font-body text-[14px] leading-[140%] text-black">
         <span className="font-bold">{author}</span>
         {time && <span className="font-normal">, {time}</span>}
       </div>
