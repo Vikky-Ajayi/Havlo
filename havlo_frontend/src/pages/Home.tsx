@@ -84,7 +84,7 @@ export const Home: React.FC = () => {
         {/* Desktop: Excellent on left, carousel on right */}
         <div className="hidden w-full lg:flex items-center gap-10">
           {/* Left — Excellent block */}
-          <div className="flex shrink-0 flex-col items-center gap-4 text-center">
+          <div className="flex shrink-0 flex-col items-start gap-4 text-left">
             <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
               Excellent
             </h2>
