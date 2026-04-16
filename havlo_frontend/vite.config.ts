@@ -20,6 +20,12 @@ export default defineConfig(({mode}) => {
       port: 5000,
       host: '0.0.0.0',
       allowedHosts: 'all',
+      proxy: {
+        '/api/v1': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+        },
+      },
     },
   };
 });

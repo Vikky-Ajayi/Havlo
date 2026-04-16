@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ModalProvider } from './context/ModalContext';
+import { AuthProvider } from './context/AuthContext';
 import { useModal } from './hooks/useModal';
 
 // Pages
@@ -92,6 +93,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
 export default function App() {
   return (
+    <AuthProvider>
     <ModalProvider>
       <Router>
         <ScrollToTop />
@@ -130,5 +132,6 @@ export default function App() {
         <ModalRenderer />
       </Router>
     </ModalProvider>
+    </AuthProvider>
   );
 }

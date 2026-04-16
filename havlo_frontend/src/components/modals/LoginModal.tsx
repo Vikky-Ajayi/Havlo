@@ -1,24 +1,55 @@
 import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../lib/api';
 import { Button } from '../ui/Button';
-import { X, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const LoginModal: React.FC = () => {
   const { closeModal, switchModal } = useModal();
-  const [showPassword, setShowPassword] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = () => {
-    closeModal();
-    navigate('/dashboard');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setError('');
+
+    if (!email || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const resp = await api.login({ email, password });
+      await login(resp);
+      closeModal();
+
+      if (!resp.onboarding_complete) {
+        navigate('/get-started');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleLogin();
   };
 
   return (
     <ModalWrapper>
       <div className="flex flex-col gap-8 p-8 sm:p-[32px_24px] bg-white">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-[32px] font-black leading-none text-black">
             Log in
@@ -33,24 +64,33 @@ export const LoginModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Form */}
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
+
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-6">
-              {/* Email Input */}
               <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
                 <input
                   type="email"
                   placeholder="Email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
                 />
               </div>
 
-              {/* Password Input */}
               <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
                 />
                 <button
@@ -64,7 +104,6 @@ export const LoginModal: React.FC = () => {
                 </button>
               </div>
 
-              {/* Forgot Password */}
               <div className="flex h-14 items-center justify-center">
                 <button
                   onClick={() => switchModal('forgot-password')}
@@ -75,18 +114,17 @@ export const LoginModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
             <Button 
               variant="primary" 
-              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors"
+              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors disabled:opacity-50"
               onClick={handleLogin}
+              disabled={loading}
             >
-              Log in
+              {loading ? 'Logging in…' : 'Log in'}
             </Button>
 
-            {/* Footer Link */}
             <div className="flex h-14 items-center justify-center font-body text-base font-medium tracking-[-0.32px] text-black">
-              Don’t have an account?{' '}
+              Don't have an account?{' '}
               <button
                 onClick={() => switchModal('create-account')}
                 className="ml-1 font-bold underline underline-offset-4 hover:opacity-70"
