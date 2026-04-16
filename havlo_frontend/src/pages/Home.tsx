@@ -197,7 +197,7 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Sell Faster (Havlo Relaunch™)"
                     description="A dedicated programme helping slow to slow-to sell properties listed for over 6 months find their buyer."
-                    href="/dashboard/sell-faster"
+                    href="/relaunch-assessment"
                     className="bg-white"
                   />
                   <ServiceCard
@@ -265,7 +265,7 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Sell Faster (Havlo Relaunch™)"
                 description="A dedicated programme helping slow to slow-to sell properties listed for over 6 months find their buyer."
-                href="/dashboard/sell-faster"
+                href="/relaunch-assessment"
                 className="bg-white h-[245px]"
               />
               <ServiceCard
