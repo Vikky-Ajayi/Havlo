@@ -17,19 +17,58 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   title: string;
 }
 
+const ROLE_VISIBLE: Record<string, string[]> = {
+  buyer: [
+    '/dashboard',
+    '/dashboard/property-matching',
+    '/dashboard/inbox',
+    '/dashboard/settings',
+  ],
+  seller: [
+    '/dashboard',
+    '/dashboard/elite-property',
+    '/dashboard/sell-faster',
+    '/dashboard/sale-audit',
+    '/dashboard/buyer-network',
+    '/dashboard/inbox',
+    '/dashboard/settings',
+  ],
+  agent: [
+    '/dashboard',
+    '/dashboard/property-matching',
+    '/dashboard/elite-property',
+    '/dashboard/sell-faster',
+    '/dashboard/sale-audit',
+    '/dashboard/buyer-network',
+    '/dashboard/inbox',
+    '/dashboard/settings',
+  ],
+};
+
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
-  const sidebarItems = [
+  const userRole = user?.role || 'buyer';
+  const userName = user ? `${user.first_name} ${user.last_name}` : 'User';
+  const allowedPaths = ROLE_VISIBLE[userRole] || ROLE_VISIBLE.buyer;
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const allSidebarItems = [
     {
       title: 'MAIN',
       items: [
@@ -96,17 +135,26 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
     {
       title: 'ACCOUNT',
       items: [
-        { icon: <User size={20} />, label: 'Freeborn Ehirhere', bold: true, path: '/dashboard/profile' },
+        { icon: <User size={20} />, label: userName, bold: true, path: '/dashboard/settings' },
         { 
           icon: <Settings size={20} />, 
           label: 'Settings', 
           path: '/dashboard/settings',
           active: location.pathname === '/dashboard/settings'
         },
-        { icon: <LogOut size={20} />, label: 'Logout', onClick: () => navigate('/') },
+        { icon: <LogOut size={20} />, label: 'Logout', onClick: handleLogout },
       ]
     }
   ];
+
+  const sidebarItems = allSidebarItems
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item =>
+        item.onClick || !item.path || section.title === 'ACCOUNT' || allowedPaths.includes(item.path)
+      ),
+    }))
+    .filter(section => section.items.length > 0);
 
   return (
     <div className="flex h-screen bg-[#F4F5F4] overflow-hidden">
@@ -287,7 +335,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
                 <User size={16} className="text-white" />
               </div>
               <span className="hidden sm:inline font-libre text-sm font-medium tracking-[-0.42px] text-[#020202]">
-                Freeborn Ehirhere
+                {userName}
               </span>
               <ChevronDown size={16} className="text-black" />
             </div>

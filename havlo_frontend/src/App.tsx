@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ModalProvider } from './context/ModalContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { useModal } from './hooks/useModal';
 
 // Pages
@@ -71,6 +71,31 @@ const ModalRenderer = () => {
   }
 };
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { token, loading } = useAuth();
+  const { openModal } = useModal();
+
+  useEffect(() => {
+    if (!loading && !token) {
+      openModal('login');
+    }
+  }, [loading, token, openModal]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-lg text-black/50">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname } = useLocation();
   const isOnboarding = pathname.startsWith('/get-started');
@@ -119,14 +144,14 @@ export default function App() {
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/property-matching" element={<PropertyMatching />} />
             <Route path="/buyer-network" element={<BuyerNetwork />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/property-matching" element={<DashboardPropertyMatching />} />
-            <Route path="/dashboard/elite-property" element={<DashboardEliteProperty />} />
-            <Route path="/dashboard/sell-faster" element={<DashboardSellFaster />} />
-            <Route path="/dashboard/sale-audit" element={<DashboardSaleAudit />} />
-            <Route path="/dashboard/buyer-network" element={<DashboardBuyerNetwork />} />
-            <Route path="/dashboard/inbox" element={<DashboardInbox />} />
-            <Route path="/dashboard/settings" element={<DashboardSettings />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/property-matching" element={<ProtectedRoute><DashboardPropertyMatching /></ProtectedRoute>} />
+            <Route path="/dashboard/elite-property" element={<ProtectedRoute><DashboardEliteProperty /></ProtectedRoute>} />
+            <Route path="/dashboard/sell-faster" element={<ProtectedRoute><DashboardSellFaster /></ProtectedRoute>} />
+            <Route path="/dashboard/sale-audit" element={<ProtectedRoute><DashboardSaleAudit /></ProtectedRoute>} />
+            <Route path="/dashboard/buyer-network" element={<ProtectedRoute><DashboardBuyerNetwork /></ProtectedRoute>} />
+            <Route path="/dashboard/inbox" element={<ProtectedRoute><DashboardInbox /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
           </Routes>
         </Layout>
         <ModalRenderer />
