@@ -70,14 +70,33 @@ app.add_middleware(
 )
 
 
+DB_READY: bool = False
+DB_ERROR: str | None = None
+
+
 @app.on_event("startup")
 async def startup() -> None:
-    logger.info("Starting Havlo API …")
+    global DB_READY, DB_ERROR
+    logger.info("Starting Havlo API … (env=%s)", settings.APP_ENV)
 
     if HAS_DATABASE:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables verified ✓")
+        try:
+            from app.db.database import DATABASE_URL as _RESOLVED_URL
+            safe_url = _RESOLVED_URL
+            if "@" in safe_url:
+                scheme_creds, host_part = safe_url.split("@", 1)
+                if "//" in scheme_creds:
+                    scheme, _ = scheme_creds.split("//", 1)
+                    safe_url = f"{scheme}//***:***@{host_part}"
+            logger.info("Attempting database connection to: %s", safe_url)
+
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            DB_READY = True
+            logger.info("Database tables verified ✓")
+        except Exception as exc:
+            DB_ERROR = f"{type(exc).__name__}: {exc}"
+            logger.error("DATABASE STARTUP FAILED (non-fatal, app will keep running): %s", DB_ERROR)
     else:
         logger.warning("No database credentials configured — DB features will be unavailable.")
 
@@ -99,7 +118,31 @@ async def shutdown() -> None:
 
 @app.get("/health", tags=["Health"])
 async def health() -> JSONResponse:
-    return JSONResponse({"status": "ok", "service": "havlo-api"})
+    return JSONResponse({
+        "status": "ok",
+        "service": "havlo-api",
+        "env": settings.APP_ENV,
+        "db_ready": DB_READY,
+        "db_error": DB_ERROR,
+        "db_configured": HAS_DATABASE,
+    })
+
+
+@app.get("/api/v1/health", tags=["Health"])
+async def health_v1() -> JSONResponse:
+    return JSONResponse({
+        "status": "ok",
+        "service": "havlo-api",
+        "env": settings.APP_ENV,
+        "db_ready": DB_READY,
+        "db_error": DB_ERROR,
+        "db_configured": HAS_DATABASE,
+    })
+
+
+@app.options("/{full_path:path}", include_in_schema=False)
+async def options_catch_all(full_path: str) -> JSONResponse:
+    return JSONResponse({"ok": True})
 
 
 API_PREFIX = "/api/v1"
