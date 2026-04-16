@@ -55,7 +55,23 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
-        """Build the asyncpg URL, properly encoding credentials."""
+        """Build the asyncpg URL, properly encoding credentials.
+
+        Priority:
+        - In development (APP_ENV != production): prefer the existing
+          DATABASE_URL (e.g. Replit local DB) if it points to a local host.
+        - In production or when no local DB is available: build the Supabase URL.
+        """
+        import os
+        is_local_db = (
+            self.DATABASE_URL
+            and ("helium" in self.DATABASE_URL or "localhost" in self.DATABASE_URL)
+            and os.environ.get("PGHOST") in ("helium", "localhost", "127.0.0.1")
+        )
+
+        if is_local_db and self.APP_ENV != "production":
+            return self
+
         if self.SUPABASE_DB_PASSWORD:
             host = self.SUPABASE_DB_HOST
             user = self.SUPABASE_DB_USER
@@ -71,7 +87,7 @@ class Settings(BaseSettings):
             port = self.SUPABASE_DB_PORT
             db = self.SUPABASE_DB_NAME
             self.DATABASE_URL = (
-                f"postgresql+asyncpg://{user_enc}:{password}@{host}:{port}/{db}"
+                f"postgresql+asyncpg://{user_enc}:{password}@{host}:{port}/{db}?ssl=require"
             )
         elif self.SUPABASE_DATABASE_URL:
             url = self.SUPABASE_DATABASE_URL
@@ -80,7 +96,6 @@ class Settings(BaseSettings):
             elif url.startswith("postgresql://") and "+asyncpg" not in url:
                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
             self.DATABASE_URL = url
-        # else: DATABASE_URL may already be set (e.g. Replit local DB) — leave it
 
         return self
 

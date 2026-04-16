@@ -1,4 +1,5 @@
 """Async SQLAlchemy engine and session factory."""
+import ssl as _ssl
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import DeclarativeBase
@@ -19,14 +20,26 @@ if DATABASE_URL:
     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
     parsed = urlparse(DATABASE_URL)
     qs = parse_qs(parsed.query)
+    sslmode_val = qs.get("sslmode", [""])[0].lower()
+    ssl_val = qs.get("ssl", [""])[0].lower()
+    needs_ssl = ssl_val in ("require", "true", "1") or sslmode_val in ("require", "verify-ca", "verify-full", "prefer")
     qs.pop("sslmode", None)
+    qs.pop("ssl", None)
     clean_query = urlencode(qs, doseq=True)
     DATABASE_URL = urlunparse(parsed._replace(query=clean_query))
+
+    connect_args = {}
+    if needs_ssl:
+        ssl_ctx = _ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = _ssl.CERT_NONE
+        connect_args["ssl"] = ssl_ctx
 
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
         poolclass=NullPool,
+        connect_args=connect_args,
     )
 else:
     engine = create_async_engine(
