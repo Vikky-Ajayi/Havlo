@@ -20,9 +20,9 @@ class Settings(BaseSettings):
 
     # ── PostgreSQL ───────────────────────────────────────────────────────
     # Individual Supabase DB connection params (preferred — avoids URL encoding issues)
-    SUPABASE_DB_HOST: str = ""
-    SUPABASE_DB_PORT: int = 6543        # Supabase session pooler
-    SUPABASE_DB_USER: str = ""
+    SUPABASE_DB_HOST: str = "aws-0-eu-west-1.pooler.supabase.com"
+    SUPABASE_DB_PORT: int = 5432        # Supabase session pooler (supports prepared statements)
+    SUPABASE_DB_USER: str = "postgres.noeghrlsmecadfuukjma"
     SUPABASE_DB_PASSWORD: str = ""
     SUPABASE_DB_NAME: str = "postgres"
 
@@ -60,15 +60,27 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
         """Build the asyncpg URL, properly encoding credentials."""
-        if self.SUPABASE_DB_HOST and self.SUPABASE_DB_USER and self.SUPABASE_DB_PASSWORD:
-            # Use explicit params — safe even with special chars in password
-            user = quote_plus(self.SUPABASE_DB_USER)
-            password = quote_plus(self.SUPABASE_DB_PASSWORD)
+        if self.SUPABASE_DB_PASSWORD:
+            # Always use the Supabase transaction pooler — it's reachable on port 6543
+            # and avoids issues with special chars in passwords by encoding them.
+            # The host/user defaults above may be overridden by env secrets, so we
+            # always fall back to the known-working pooler values if the host looks
+            # like a direct DB host (db.<ref>.supabase.co).
             host = self.SUPABASE_DB_HOST
+            user = self.SUPABASE_DB_USER
+            project_ref = "noeghrlsmecadfuukjma"
+
+            if not host or host.startswith("db."):
+                host = "aws-0-eu-west-1.pooler.supabase.com"
+            if not user or user == "postgres":
+                user = f"postgres.{project_ref}"
+
+            password = quote_plus(self.SUPABASE_DB_PASSWORD)
+            user_enc = quote_plus(user)
             port = self.SUPABASE_DB_PORT
             db = self.SUPABASE_DB_NAME
             self.DATABASE_URL = (
-                f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}"
+                f"postgresql+asyncpg://{user_enc}:{password}@{host}:{port}/{db}"
             )
         elif self.SUPABASE_DATABASE_URL:
             # Fallback: try to use the composite URL as-is (works only if password
