@@ -29,8 +29,10 @@ Havlo is an international real estate platform that facilitates property matchin
 - Tokens expire after 7 days; stored in localStorage as `havlo_token`
 
 ### Database
-- PostgreSQL via Replit's built-in `DATABASE_URL` env var
-- `app/db/database.py` strips `sslmode` param (incompatible with asyncpg) and converts to `postgresql+asyncpg://`
+- **Development**: PostgreSQL via Replit's built-in `DATABASE_URL` env var (host: `helium`)
+- **Production**: Supabase PostgreSQL — requires `SUPABASE_DB_PASSWORD` env var; `app/config.py` builds the full connection URL from Supabase credentials
+- `app/db/database.py` uses `get_settings()` from `app/config.py` to resolve the correct DATABASE_URL
+- Strips `sslmode` param (incompatible with asyncpg) and converts to `postgresql+asyncpg://`
 - Tables created via `Base.metadata.create_all` on startup
 - `supabase_uid` column is nullable (legacy); `password_hash` column stores bcrypt hashes
 
@@ -69,7 +71,8 @@ Havlo is an international real estate platform that facilitates property matchin
 - **Book Session Modal**: Full form with date/time + country codes → `api.bookSession`
 
 ## Environment Variables Required
-- `DATABASE_URL` - PostgreSQL connection string (provided by Replit)
+- `DATABASE_URL` - PostgreSQL connection string (provided by Replit in dev)
+- `SUPABASE_DB_PASSWORD` - Supabase database password (**required for production**)
 - `SECRET_KEY` - JWT signing key (defaults to dev key)
 - `ALLOWED_ORIGINS` - CORS origins (set to `*`)
 - `GOOGLE_SERVICE_ACCOUNT_JSON`, `GOOGLE_SPREADSHEET_ID` (optional)

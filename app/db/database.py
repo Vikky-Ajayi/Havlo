@@ -1,10 +1,12 @@
 """Async SQLAlchemy engine and session factory."""
-import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import NullPool
 from sqlalchemy.orm import DeclarativeBase
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+from app.config import get_settings
+
+settings = get_settings()
+DATABASE_URL = settings.DATABASE_URL
 
 HAS_DATABASE = bool(DATABASE_URL)
 

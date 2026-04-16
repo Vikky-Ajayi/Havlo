@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db.database import Base, engine, HAS_DATABASE
@@ -112,3 +114,15 @@ app.include_router(elite_property.router, prefix=API_PREFIX)
 app.include_router(sell_faster.router, prefix=API_PREFIX)
 app.include_router(sale_audit.router, prefix=API_PREFIX)
 app.include_router(buyer_network.router, prefix=API_PREFIX)
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
+
+if FRONTEND_DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        file_path = FRONTEND_DIST / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(FRONTEND_DIST / "index.html"))
