@@ -187,7 +187,7 @@ export const Home: React.FC = () => {
             {activeTab === 'BUYERS' && (
               <div className="flex flex-col gap-5 rounded-[24px] bg-[#FFB0E8] p-4 pt-6">
                 <div className="border-b-[1.5px] border-black pb-3 text-center">
-                  <h3 className="font-display text-[32px] font-black leading-none text-black">For Buyers</h3>
+                  <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Buyers</h3>
                 </div>
                 <div className="flex flex-col gap-5">
                   <ServiceCard
@@ -208,7 +208,7 @@ export const Home: React.FC = () => {
             {activeTab === 'SELLERS' && (
               <div className="flex flex-col gap-5 rounded-[24px] bg-[#9FD4E3] p-4 pt-6">
                 <div className="border-b-[1.5px] border-black pb-3 text-center">
-                  <h3 className="font-display text-[32px] font-black leading-none text-black">For Sellers</h3>
+                  <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Sellers</h3>
                 </div>
                 <div className="flex flex-col gap-5">
                   <ServiceCard
@@ -235,7 +235,7 @@ export const Home: React.FC = () => {
             {activeTab === 'AGENTS' && (
               <div className="flex flex-col gap-5 rounded-[24px] bg-[#CDC5F3] p-4 pt-6">
                 <div className="border-b-[1.5px] border-black pb-3 text-center">
-                  <h3 className="font-display text-[32px] font-black leading-none text-black">For Agents</h3>
+                  <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Agents</h3>
                 </div>
                 <div className="flex flex-col gap-5">
                   <ServiceCard
@@ -255,7 +255,7 @@ export const Home: React.FC = () => {
           {/* For Buyers */}
           <div className="flex flex-col gap-5 rounded-[24px] bg-[#FFB0E8] p-4 pt-6">
             <div className="border-b-[1.5px] border-black pb-3 text-center">
-              <h3 className="font-display text-[32px] font-black leading-none text-black">For Buyers</h3>
+              <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Buyers</h3>
             </div>
             <div className="flex flex-1 flex-col gap-5">
               <ServiceCard
@@ -276,7 +276,7 @@ export const Home: React.FC = () => {
           {/* For Sellers */}
           <div className="flex flex-col gap-5 rounded-[24px] bg-[#9FD4E3] p-4 pt-6">
             <div className="border-b-[1.5px] border-black pb-3 text-center">
-              <h3 className="font-display text-[32px] font-black leading-none text-black">For Sellers</h3>
+              <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Sellers</h3>
             </div>
             <div className="flex flex-1 flex-col gap-5">
               <ServiceCard
@@ -303,7 +303,7 @@ export const Home: React.FC = () => {
           {/* For Agents */}
           <div className="flex flex-col gap-5 rounded-[24px] bg-[#CDC5F3] p-4 pt-6">
             <div className="border-b-[1.5px] border-black pb-3 text-center">
-              <h3 className="font-display text-[32px] font-black leading-none text-black">For Agents</h3>
+              <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Agents</h3>
             </div>
             <div className="flex flex-1 flex-col gap-5">
               <ServiceCard
