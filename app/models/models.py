@@ -60,6 +60,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"), nullable=False
     )
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     onboarding_complete: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

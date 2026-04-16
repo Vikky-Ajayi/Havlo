@@ -113,6 +113,7 @@ async def login(
         user_id=str(user.id),
         role=user.role.value,
         onboarding_complete=user.onboarding_complete,
+        is_admin=bool(user.is_admin),
     )
 
 
@@ -154,5 +155,6 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserProfile:
         full_phone=current_user.full_phone,
         role=current_user.role.value,
         onboarding_complete=current_user.onboarding_complete,
+        is_admin=bool(current_user.is_admin),
         created_at=current_user.created_at,
     )

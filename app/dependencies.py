@@ -97,3 +97,13 @@ def require_roles(*roles: str) -> Callable:
         return current_user
 
     return _check_role
+
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Require the authenticated user to have is_admin=True."""
+    if not bool(getattr(current_user, "is_admin", False)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    return current_user

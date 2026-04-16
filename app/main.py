@@ -74,6 +74,54 @@ DB_READY: bool = False
 DB_ERROR: str | None = None
 
 
+async def _seed_admin_user() -> None:
+    """Idempotent admin seeding from ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_NAME env vars.
+    On every startup: create the admin if missing; otherwise ensure is_admin=True
+    and update the password hash so rotating ADMIN_PASSWORD takes effect."""
+    email = (os.environ.get("ADMIN_EMAIL") or "").strip().lower()
+    password = (os.environ.get("ADMIN_PASSWORD") or "").strip()
+    full_name = (os.environ.get("ADMIN_NAME") or "Havlo Admin").strip()
+    if not email or not password:
+        logger.info("Admin seeding skipped — ADMIN_EMAIL/ADMIN_PASSWORD not set.")
+        return
+
+    parts = full_name.split(maxsplit=1)
+    first = parts[0] if parts else "Havlo"
+    last = parts[1] if len(parts) > 1 else "Admin"
+
+    from sqlalchemy import select as _select
+    from app.db.database import AsyncSessionLocal
+    from app.models.models import User as _User, UserRole as _UserRole
+    from app.services.local_auth import hash_password as _hash
+
+    async with AsyncSessionLocal() as session:
+        res = await session.execute(_select(_User).where(_User.email == email))
+        user = res.scalar_one_or_none()
+        if user is None:
+            user = _User(
+                email=email,
+                password_hash=_hash(password),
+                first_name=first,
+                last_name=last,
+                phone_country_code="+44",
+                phone_number="0000000000",
+                role=_UserRole.agent,
+                is_admin=True,
+                onboarding_complete=True,
+            )
+            session.add(user)
+            await session.commit()
+            logger.info("Admin user seeded: %s", email)
+        else:
+            user.is_admin = True
+            user.password_hash = _hash(password)
+            user.first_name = first
+            user.last_name = last
+            user.onboarding_complete = True
+            await session.commit()
+            logger.info("Admin user updated: %s", email)
+
+
 @app.on_event("startup")
 async def startup() -> None:
     global DB_READY, DB_ERROR
@@ -112,12 +160,19 @@ async def startup() -> None:
                         ADD COLUMN IF NOT EXISTS phone_country_code VARCHAR(10) DEFAULT '+44',
                         ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30),
                         ADD COLUMN IF NOT EXISTS role user_role,
+                        ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE,
                         ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT FALSE,
                         ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
                         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
                 """))
             DB_READY = True
             logger.info("Database tables verified ✓")
+
+            # Idempotent admin seeding from env vars (ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME)
+            try:
+                await _seed_admin_user()
+            except Exception as exc:
+                logger.error("Admin seeding failed (non-fatal): %s", exc)
         except Exception as exc:
             DB_ERROR = f"{type(exc).__name__}: {exc}"
             logger.error("DATABASE STARTUP FAILED (non-fatal, app will keep running): %s", DB_ERROR)

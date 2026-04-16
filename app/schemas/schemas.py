@@ -50,6 +50,7 @@ class LoginResponse(BaseModel):
     user_id: str
     role: str
     onboarding_complete: bool
+    is_admin: bool = False
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -74,9 +75,41 @@ class UserProfile(BaseModel):
     full_phone: str
     role: str
     onboarding_complete: bool
+    is_admin: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── Admin Messaging ────────────────────────────────────────────────────────────
+
+class AdminUserOut(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    full_name: str
+    email: str
+    role: str
+    phone: str
+    created_at: datetime
+    conversation_count: int
+    last_message_at: Optional[datetime] = None
+    has_unread: bool = False
+    unread_count: int = 0
+
+
+class AdminStartConversationRequest(BaseModel):
+    user_id: str
+    subject: str = Field(..., min_length=1, max_length=500)
+    initial_message: Optional[str] = Field(None, max_length=5000)
+    sender_name: str = Field(default="Havlo Advisory", max_length=255)
+    team_member_initials: str = Field(default="HA", max_length=10)
+    team_member_color: str = Field(default="#0052B4", max_length=20)
+
+
+class AdminSendRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
+    sender_name: str = Field(default="Havlo Advisory", max_length=255)
 
 
 class UpdateProfileRequest(BaseModel):
