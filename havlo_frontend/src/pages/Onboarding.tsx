@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, CheckCircle2, Circle, X, ChevronDown } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Circle, X, ChevronDown, Check, Search } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { COUNTRIES } from '../lib/countries';
 
 export const Onboarding: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +28,32 @@ export const Onboarding: React.FC = () => {
     'Due Diligence and Documentation',
   ];
 
-  const countries = ['Nigeria', 'Ghana', 'United Kingdom', 'United States', 'Canada', 'United Arab Emirates'];
+  const countries = COUNTRIES;
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const countryRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (countryRef.current && !countryRef.current.contains(e.target as Node)) {
+        setCountryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCountries = useMemo(() => {
+    const q = countrySearch.trim().toLowerCase();
+    if (!q) return countries;
+    return countries.filter(c => c.toLowerCase().includes(q));
+  }, [countrySearch, countries]);
+
+  const toggleCountry = (country: string) => {
+    setSelectedCountries(prev =>
+      prev.includes(country) ? prev.filter(c => c !== country) : [...prev, country]
+    );
+  };
 
   const marqueeItems = [
     'Initial Consultation and Needs Assessment',
@@ -175,20 +201,81 @@ export const Onboarding: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="w-full max-w-[587px]">
-                  <div className="flex flex-wrap items-center gap-3 p-4 min-h-[56px] rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 relative">
-                    {selectedCountries.map(country => (
-                      <div key={country} className="flex items-center gap-2 px-3 py-1 bg-[#DDDDDD] rounded-lg">
-                        <span className="font-body text-base font-medium text-black/80 tracking-[-0.32px]">{country}</span>
-                        <button onClick={() => removeCountry(country)} className="text-black/80 hover:text-black">
-                          <X size={16} strokeWidth={2.5} />
-                        </button>
-                      </div>
-                    ))}
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-black/80">
-                      <ChevronDown size={20} strokeWidth={2.5} />
+                <div className="w-full max-w-[587px] relative" ref={countryRef}>
+                  <button
+                    type="button"
+                    onClick={() => setCountryDropdownOpen(o => !o)}
+                    className="w-full flex flex-wrap items-center gap-3 p-4 pr-12 min-h-[56px] rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 relative text-left hover:border-[#3A3C3E]/30 transition-colors"
+                  >
+                    {selectedCountries.length === 0 ? (
+                      <span className="font-body text-base text-black/50">Select one or more countries…</span>
+                    ) : (
+                      selectedCountries.map(country => (
+                        <span
+                          key={country}
+                          className="flex items-center gap-2 px-3 py-1 bg-[#DDDDDD] rounded-lg"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="font-body text-base font-medium text-black/80 tracking-[-0.32px]">{country}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeCountry(country); }}
+                            className="text-black/80 hover:text-black"
+                            aria-label={`Remove ${country}`}
+                          >
+                            <X size={16} strokeWidth={2.5} />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-black/80 pointer-events-none">
+                      <ChevronDown
+                        size={20}
+                        strokeWidth={2.5}
+                        className={`transition-transform ${countryDropdownOpen ? 'rotate-180' : ''}`}
+                      />
                     </div>
-                  </div>
+                  </button>
+
+                  {countryDropdownOpen && (
+                    <div className="absolute z-20 mt-2 w-full bg-white border border-black/10 rounded-xl shadow-2xl overflow-hidden">
+                      <div className="flex items-center gap-2 px-4 py-3 border-b border-black/10">
+                        <Search size={18} className="text-black/50" />
+                        <input
+                          type="text"
+                          autoFocus
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          placeholder="Search countries…"
+                          className="flex-1 bg-transparent outline-none font-body text-base text-black placeholder:text-black/40"
+                        />
+                      </div>
+                      <div className="max-h-[280px] overflow-y-auto py-1">
+                        {filteredCountries.length === 0 ? (
+                          <div className="px-4 py-3 font-body text-sm text-black/50">No countries match "{countrySearch}"</div>
+                        ) : (
+                          filteredCountries.map(country => {
+                            const isSelected = selectedCountries.includes(country);
+                            return (
+                              <button
+                                key={country}
+                                type="button"
+                                onClick={() => toggleCountry(country)}
+                                className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors ${
+                                  isSelected ? 'bg-black/5' : 'hover:bg-black/5'
+                                }`}
+                              >
+                                <span className={`font-body text-base ${isSelected ? 'font-semibold text-black' : 'font-medium text-black/80'}`}>
+                                  {country}
+                                </span>
+                                {isSelected && <Check size={18} strokeWidth={2.5} className="text-black" />}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Button 
