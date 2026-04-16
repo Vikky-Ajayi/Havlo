@@ -85,6 +85,24 @@ export const Onboarding: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('Within 6 months');
   const [budget, setBudget] = useState<string>('');
   const [currency, setCurrency] = useState<string>('GBP');
+  const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
+  const currencyRef = useRef<HTMLDivElement>(null);
+
+  const currencyOptions = [
+    { code: 'GBP', label: 'Pounds (£)' },
+    { code: 'EUR', label: 'Euro (€)' },
+    { code: 'USD', label: 'Dollars ($)' },
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
+        setCurrencyDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const timeframes = [
     'Within 6 months',
@@ -413,9 +431,35 @@ export const Onboarding: React.FC = () => {
 
                 <div className="w-full max-w-[587px]">
                   <div className="flex items-center h-14 px-2 rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5">
-                    <div className="flex items-center gap-1 px-2 py-1 bg-[#DDDDDD] rounded-lg cursor-pointer hover:bg-gray-300 transition-colors">
-                      <span className="font-body text-sm font-medium text-black/80 tracking-[-0.28px]">{currency}</span>
-                      <ChevronDown size={14} className="text-black/80" />
+                    <div className="relative" ref={currencyRef}>
+                      <button
+                        type="button"
+                        onClick={() => setCurrencyDropdownOpen(o => !o)}
+                        className="flex items-center gap-1 px-2 py-1 bg-[#DDDDDD] rounded-lg cursor-pointer hover:bg-gray-300 transition-colors"
+                      >
+                        <span className="font-body text-sm font-medium text-black/80 tracking-[-0.28px]">{currency}</span>
+                        <ChevronDown
+                          size={14}
+                          className={`text-black/80 transition-transform ${currencyDropdownOpen ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                      {currencyDropdownOpen && (
+                        <div className="absolute z-20 left-0 top-full mt-2 w-44 bg-white border border-black/10 rounded-xl shadow-2xl overflow-hidden">
+                          {currencyOptions.map(opt => (
+                            <button
+                              key={opt.code}
+                              type="button"
+                              onClick={() => { setCurrency(opt.code); setCurrencyDropdownOpen(false); }}
+                              className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors ${
+                                currency === opt.code ? 'bg-black/5' : 'hover:bg-black/5'
+                              }`}
+                            >
+                              <span className="font-body text-sm font-medium text-black">{opt.label}</span>
+                              {currency === opt.code && <Check size={16} strokeWidth={2.5} className="text-black" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <input 
                       type="text"
