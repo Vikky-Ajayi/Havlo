@@ -1,8 +1,38 @@
 """Application configuration loaded from environment variables."""
+import re
 from functools import lru_cache
 from urllib.parse import quote_plus
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_SUPABASE_URL_RE = re.compile(
+    r"^postgres(?:ql)?(?:\+\w+)?://"
+    r"(?P<user>[^:@/]+)"
+    r":"
+    r"(?P<password>.+)"
+    r"@"
+    r"(?P<host>[^:/@]+\.supabase\.(?:co|com))"
+    r"(?::(?P<port>\d+))?"
+    r"/(?P<db>[^?]+)"
+    r"(?:\?.*)?$"
+)
+
+
+def _extract_supabase_password_from_url(url: str) -> str | None:
+    """Extract the password from a possibly malformed Supabase DATABASE_URL.
+
+    Standard URL parsers split on the first '@' or '#', which breaks when the
+    password contains those characters (very common with Supabase passwords).
+    We use a greedy regex anchored on the supabase host suffix so the
+    password match captures everything between the user and the real host.
+    """
+    if not url:
+        return None
+    m = _SUPABASE_URL_RE.match(url.strip())
+    if not m:
+        return None
+    return m.group("password")
 
 
 class Settings(BaseSettings):
@@ -72,7 +102,16 @@ class Settings(BaseSettings):
         if is_local_db and self.APP_ENV != "production":
             return self
 
-        if self.SUPABASE_DB_PASSWORD:
+        password = self.SUPABASE_DB_PASSWORD
+
+        if not password:
+            for candidate in (self.DATABASE_URL, self.SUPABASE_DATABASE_URL):
+                extracted = _extract_supabase_password_from_url(candidate)
+                if extracted:
+                    password = extracted
+                    break
+
+        if password:
             host = self.SUPABASE_DB_HOST
             user = self.SUPABASE_DB_USER
             project_ref = "noeghrlsmecadfuukjma"
@@ -82,13 +121,14 @@ class Settings(BaseSettings):
             if not user or user == "postgres":
                 user = f"postgres.{project_ref}"
 
-            password = quote_plus(self.SUPABASE_DB_PASSWORD)
+            password_enc = quote_plus(password)
             user_enc = quote_plus(user)
             port = self.SUPABASE_DB_PORT
-            db = self.SUPABASE_DB_NAME
+            db = self.SUPABASE_DB_NAME or "postgres"
             self.DATABASE_URL = (
-                f"postgresql+asyncpg://{user_enc}:{password}@{host}:{port}/{db}?ssl=require"
+                f"postgresql+asyncpg://{user_enc}:{password_enc}@{host}:{port}/{db}?ssl=require"
             )
+            self.SUPABASE_DB_PASSWORD = password
         elif self.SUPABASE_DATABASE_URL:
             url = self.SUPABASE_DATABASE_URL
             if url.startswith("postgres://"):
