@@ -80,74 +80,74 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="flex w-full flex-col items-center bg-white px-4 py-12 lg:py-20 sm:px-10 lg:px-[100px] gap-12 lg:gap-20">
-        {/* Excellent Block */}
-        <div className="flex flex-col items-center gap-5 text-center min-w-[200px]">
-          <div className="flex flex-col items-center gap-3">
+      <section className="flex w-full bg-white px-4 py-12 lg:py-20 sm:px-10 lg:px-[100px]">
+        {/* Desktop: Excellent on left, carousel on right */}
+        <div className="hidden w-full lg:flex items-center gap-10">
+          {/* Left — Excellent block */}
+          <div className="flex shrink-0 flex-col items-center gap-4 text-center">
             <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
               Excellent
             </h2>
-            <TrustpilotStars className="h-[45px]" />
-          </div>
-          <p className="font-body text-[22px] font-normal text-black">
-            Based on <span className="font-bold underline">4,359 reviews</span>
-          </p>
-        </div>
-
-        <div className="relative flex w-full flex-col lg:flex-row items-center gap-8">
-          <div className="hidden lg:flex flex-1 items-center gap-8">
-            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
-              <ChevronLeft size={20} />
-            </button>
-            
-            <div className="flex flex-1 gap-8 overflow-x-auto pb-4 no-scrollbar sm:overflow-visible">
-              <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
-              />
-              <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
-              />
-              <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
-              />
-            </div>
-
-            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
-          {/* Mobile Review View */}
-          <div className="flex lg:hidden w-full flex-col items-center gap-6">
-            <div className="flex w-full items-center gap-4">
-              <button className="flex h-6 w-6 items-center justify-center rounded-full border border-black/20 shrink-0">
-                <ChevronLeft size={16} />
-              </button>
-              <div className="flex-1 rounded-[12px] bg-black/[0.02] p-5 border-b border-black/[0.02]">
-                <ReviewCard
-                  title="Outstanding support for first time buyer"
-                  content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                  author="Freeborn"
-                  time="50 minutes ago"
-                />
-              </div>
-              <button className="flex h-6 w-6 items-center justify-center rounded-full border border-black/20 shrink-0">
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <p className="font-body text-[22px] font-normal text-black">
+            <TrustpilotStars className="h-[36px]" />
+            <p className="font-body text-[18px] font-normal text-black">
               Based on <span className="font-bold underline">4,359 reviews</span>
             </p>
           </div>
+
+          {/* Right — carousel */}
+          <div className="flex flex-1 items-center gap-4">
+            <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+              <ChevronLeft size={18} />
+            </button>
+
+            <div className="grid flex-1 grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="rounded-xl bg-[#F5F5F3] p-5">
+                  <ReviewCard
+                    title="Outstanding support for first time buyer"
+                    content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
+                    author="Freeborn"
+                    time="50 minutes ago"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile: stacked */}
+        <div className="flex w-full flex-col items-center gap-6 lg:hidden">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <h2 className="font-body text-[32px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+              Excellent
+            </h2>
+            <TrustpilotStars className="h-[30px]" />
+          </div>
+
+          <div className="flex w-full items-center gap-3">
+            <button className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+              <ChevronLeft size={14} />
+            </button>
+            <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
+              <ReviewCard
+                title="Outstanding support for first time buyer"
+                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
+                author="Freeborn"
+                time="50 minutes ago"
+              />
+            </div>
+            <button className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <p className="font-body text-base font-normal text-black">
+            Based on <span className="font-bold underline">4,359 reviews</span>
+          </p>
         </div>
       </section>
 
