@@ -1,5 +1,6 @@
 """Application configuration loaded from environment variables."""
 from functools import lru_cache
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str
 
     # ── PostgreSQL ───────────────────────────────────────────────────────
-    DATABASE_URL: str  # asyncpg URL
+    DATABASE_URL: str  # asyncpg URL — auto-converted from postgresql:// if needed
 
     # ── Google Sheets ────────────────────────────────────────────────────
     GOOGLE_SERVICE_ACCOUNT_JSON: str  # path to JSON or raw JSON string
@@ -41,6 +42,16 @@ class Settings(BaseSettings):
 
     # ── Frontend ─────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:5173"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def fix_database_url(cls, v: str) -> str:
+        """Ensure DATABASE_URL uses the asyncpg driver prefix."""
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     @property
     def allowed_origins_list(self) -> list[str]:

@@ -9,9 +9,11 @@ channel = "stable-25_05"
 
 [userenv.shared]
 APP_ENV = "development"
-ALLOWED_ORIGINS = "http://localhost:5000,https://localhost:5000"
-SESSION_FEE_AMOUNT = "200.0"
+ALLOWED_ORIGINS = "https://www.heyhavlo.com,http://localhost:5000,https://localhost:5000"
+SESSION_FEE_AMOUNT = "200"
 SESSION_FEE_CURRENCY = "USD"
+FRONTEND_URL = "https://www.heyhavlo.com"
+CALENDLY_LINK = "https://calendly.com/vikkyoluwabukunmi/30min"
 
 [workflows]
 runButton = "Project"
