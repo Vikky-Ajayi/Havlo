@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800;12..96,900&family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@600;700&family=Libre+Caslon+Display&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply font-body text-black bg-white antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@theme {
+  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-tight: "Inter Tight", sans-serif;
+  --font-libre: "Libre Caslon Display", serif;
+  
+  --color-havlo-purple: #A409D2;
+  --color-havlo-purple-dark: #871EA6;
+  --color-havlo-pink: #FFB0E8;
+  --color-havlo-teal: #9FD4E3;
+  --color-havlo-lavender: #CDC5F3;
+  --color-havlo-footer-bg: #040504;
+  --color-havlo-footer-inner: #050505;
+  --color-havlo-card-bg: #F9F9F8;
+  --color-havlo-section-bg: #F9F9F8;
+  --color-havlo-marquee-dot: #602FD3;
+  --color-havlo-hero-bg: #FEFEFE;
+
+  --text-marquee: 48px;
+}
