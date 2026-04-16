@@ -1,6 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800;12..96,900&family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@600;700&family=Libre+Caslon+Display&display=swap');
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Right Grotesk";
+  src: url("/fonts/RightGrotesk-CompactBlack.woff2") format("woff2");
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   body {
     @apply font-body text-black bg-white antialiased;
@@ -12,7 +20,7 @@
 }
 
 @theme {
-  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-display: "Right Grotesk", "Bricolage Grotesque", sans-serif;
   --font-body: "Inter", sans-serif;
   --font-tight: "Inter Tight", sans-serif;
   --font-libre: "Libre Caslon Display", serif;
