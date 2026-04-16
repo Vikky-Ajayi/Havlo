@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -218,22 +219,24 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      <div
-        className={cn(
-          'fixed inset-0 top-20 z-40 bg-black/40 transition-opacity duration-300 lg:hidden',
-          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        )}
-        onClick={() => setIsMobileMenuOpen(false)}
-        aria-hidden="true"
-      />
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          <div
+            className={cn(
+              'fixed inset-0 top-20 z-[60] bg-black/40 transition-opacity duration-300 lg:hidden',
+              isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            )}
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
 
-      <aside
-        className={cn(
-          'fixed top-20 bottom-0 right-0 z-40 w-[85%] max-w-[380px] bg-white shadow-2xl transition-transform duration-300 lg:hidden flex flex-col',
-          isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        )}
-        aria-hidden={!isMobileMenuOpen}
-      >
+          <aside
+            className={cn(
+              'fixed top-20 bottom-0 right-0 z-[70] w-[85%] max-w-[380px] bg-white shadow-2xl transition-transform duration-300 lg:hidden flex flex-col',
+              isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+            )}
+            aria-hidden={!isMobileMenuOpen}
+          >
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="flex flex-col">
             {navLinks.map((link) => {
@@ -323,7 +326,10 @@ export const Navbar: React.FC = () => {
             </>
           )}
         </div>
-      </aside>
+          </aside>
+        </>,
+        document.body
+      )}
     </header>
   );
 };
