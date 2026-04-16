@@ -50,8 +50,9 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    supabase_uid: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    supabase_uid: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     phone_country_code: Mapped[str] = mapped_column(String(10), nullable=False, default="+44")
