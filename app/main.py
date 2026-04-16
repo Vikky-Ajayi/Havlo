@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import get_settings
-from app.db.database import Base, engine
+from app.db.database import Base, engine, HAS_DATABASE
 from app.models import models  # noqa: F401 — ensures models are registered with Base
 from app.routers import (
     auth,
@@ -62,10 +62,13 @@ app.add_middleware(
 async def startup() -> None:
     logger.info("Starting Havlo API …")
 
-    # Create all tables in Postgres
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables verified ✓")
+    # Create all tables in Postgres (only when a real DB is configured)
+    if HAS_DATABASE:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables verified ✓")
+    else:
+        logger.warning("No database credentials configured — DB features will be unavailable.")
 
     # Ensure Google Sheets tabs exist (runs in thread pool since gspread is sync)
     import asyncio

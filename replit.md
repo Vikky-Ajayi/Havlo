@@ -13,12 +13,14 @@ Havlo is an international real estate platform that facilitates property matchin
 - All frontend features wired to real backend API via `src/lib/api.ts`
 - Auth state managed via `AuthContext` with token in localStorage (`havlo_token`)
 - Vite proxies `/api/v1` to `http://localhost:8000`
+- Configured: `host: 0.0.0.0`, `allowedHosts: 'all'` for Replit proxy compatibility
 
 ### Backend (`/app`)
 - FastAPI (Python 3.12)
 - SQLAlchemy 2.0 + **psycopg3** (`psycopg[binary]`) for async PostgreSQL access
 - Runs on port 8000 (workflow: "Backend API")
 - **IMPORTANT**: Uses psycopg3 (NOT asyncpg) because Supabase uses PgBouncer which is incompatible with asyncpg's prepared statements. psycopg3 with `prepare_threshold=None` disables server-side prepared statements and is fully PgBouncer-compatible.
+- Gracefully starts without DB credentials (shows warning, DB endpoints unavailable)
 
 ### Database
 - PostgreSQL via Supabase **session pooler**: `aws-0-eu-west-1.pooler.supabase.com:5432`
@@ -74,20 +76,21 @@ All secrets are stored in Replit secrets. Key ones:
 Non-secret env vars (set in Replit):
 - `APP_ENV=development`
 - `ALLOWED_ORIGINS` - Comma-separated CORS origins
-- `FRONTEND_URL=https://www.heyhavlo.com`
+- `FRONTEND_URL`
 
 ## Development Workflows
-- **Frontend**: `cd havlo_frontend && npm run dev` → port 5000 (webview)
-- **Backend**: `uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level info` → port 8000 (console)
+- **Frontend**: `cd havlo_frontend && npm run dev` → port 5000 (webview) — "Start application" workflow
+- **Backend**: `uvicorn app.main:app --host localhost --port 8000 --reload` → port 8000 (console) — "Backend API" workflow
 
-## Deployment
-- **Frontend**: Deployed on **Vercel** — builds with `cd havlo_frontend && npm run build`, output in `havlo_frontend/dist`
-- **Backend**: Deployed on **Railway** — configured via `railway.json` and `Procfile`, runs `uvicorn app.main:app`
-- The frontend calls the Railway backend API via `VITE_API_URL` env var
+## Deployment (Replit)
+- **Target**: autoscale
+- **Build**: `cd havlo_frontend && npm run build`
+- **Run**: `uvicorn app.main:app --host 0.0.0.0 --port 5000`
 
 ## Important Technical Notes
-- `DATABASE_URL` secret in Replit points to a local Helium DB — NOT used. Always derive DB URL from `SUPABASE_DB_*` params.
+- `DATABASE_URL` secret in Replit points to a local Helium DB — NOT used for this app. Always derive DB URL from `SUPABASE_DB_*` params.
 - The backend hardcodes the pooler host (`aws-0-eu-west-1.pooler.supabase.com`) in `app/db/database.py` to guarantee correct connectivity regardless of env var values.
 - On startup, the backend verifies DB tables (create_all) and Google Sheets tabs.
 - Messaging: `POST /api/v1/messaging/conversations` takes `subject` as query param, not body.
 - Password validation: Min 8 chars on both frontend and backend.
+- All config fields are optional with sensible defaults — backend starts without any secrets (DB/integration features unavailable until secrets are configured).

@@ -10,45 +10,41 @@ class Settings(BaseSettings):
 
     # ── App ──────────────────────────────────────────────────────────────
     APP_ENV: str = "development"
-    SECRET_KEY: str
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
     ALLOWED_ORIGINS: str = "http://localhost:5173"
 
     # ── Supabase ─────────────────────────────────────────────────────────
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
 
     # ── PostgreSQL ───────────────────────────────────────────────────────
-    # Individual Supabase DB connection params (preferred — avoids URL encoding issues)
     SUPABASE_DB_HOST: str = "aws-0-eu-west-1.pooler.supabase.com"
-    SUPABASE_DB_PORT: int = 5432        # Supabase session pooler (supports prepared statements)
+    SUPABASE_DB_PORT: int = 5432
     SUPABASE_DB_USER: str = "postgres.noeghrlsmecadfuukjma"
     SUPABASE_DB_PASSWORD: str = ""
     SUPABASE_DB_NAME: str = "postgres"
 
-    # SUPABASE_DATABASE_URL is accepted as fallback but may fail if password
-    # contains special chars — use individual params above when possible.
     SUPABASE_DATABASE_URL: str = ""
-    DATABASE_URL: str = ""              # Replit-managed; not used for Supabase
+    DATABASE_URL: str = ""
 
-    # Resolved asyncpg URL built by model_validator below
     _resolved_db_url: str = ""
 
     # ── Google Sheets ────────────────────────────────────────────────────
-    GOOGLE_SERVICE_ACCOUNT_JSON: str  # path to JSON or raw JSON string
-    GOOGLE_SPREADSHEET_ID: str
+    GOOGLE_SERVICE_ACCOUNT_JSON: str = ""
+    GOOGLE_SPREADSHEET_ID: str = ""
 
     # ── Twilio ───────────────────────────────────────────────────────────
-    TWILIO_ACCOUNT_SID: str
-    TWILIO_AUTH_TOKEN: str
-    TWILIO_PHONE_NUMBER: str  # E.164 format e.g. +12025551234
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_PHONE_NUMBER: str = ""
 
     # ── SumUp ────────────────────────────────────────────────────────────
-    SUMUP_API_KEY: str
-    SUMUP_MERCHANT_CODE: str
+    SUMUP_API_KEY: str = ""
+    SUMUP_MERCHANT_CODE: str = ""
 
     # ── Calendly ─────────────────────────────────────────────────────────
-    CALENDLY_LINK: str
+    CALENDLY_LINK: str = ""
 
     # ── Session fee ──────────────────────────────────────────────────────
     SESSION_FEE_AMOUNT: float = 200.0
@@ -61,11 +57,6 @@ class Settings(BaseSettings):
     def resolve_database_url(self) -> "Settings":
         """Build the asyncpg URL, properly encoding credentials."""
         if self.SUPABASE_DB_PASSWORD:
-            # Always use the Supabase transaction pooler — it's reachable on port 6543
-            # and avoids issues with special chars in passwords by encoding them.
-            # The host/user defaults above may be overridden by env secrets, so we
-            # always fall back to the known-working pooler values if the host looks
-            # like a direct DB host (db.<ref>.supabase.co).
             host = self.SUPABASE_DB_HOST
             user = self.SUPABASE_DB_USER
             project_ref = "noeghrlsmecadfuukjma"
@@ -83,8 +74,6 @@ class Settings(BaseSettings):
                 f"postgresql+asyncpg://{user_enc}:{password}@{host}:{port}/{db}"
             )
         elif self.SUPABASE_DATABASE_URL:
-            # Fallback: try to use the composite URL as-is (works only if password
-            # has no special chars, or is already percent-encoded)
             url = self.SUPABASE_DATABASE_URL
             if url.startswith("postgres://"):
                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)

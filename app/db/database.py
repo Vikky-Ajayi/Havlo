@@ -8,40 +8,41 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# ── psycopg3 async driver (PgBouncer-compatible) ──────────────────────────────
-# asyncpg always uses prepared statements at the DBAPI level, which is
-# incompatible with Supabase's PgBouncer-fronted connection pooler.
-# psycopg3 supports prepare_threshold=None to disable all server-side
-# prepared statements, making it fully compatible with PgBouncer.
-#
-# We always use the Supabase session pooler host on port 5432.
-# The SUPABASE_DB_HOST/PORT env vars may point to the direct DB or the
-# transaction pooler — we override them here with known-good session-pooler
-# values to guarantee connectivity.
-
 _POOLER_HOST = "aws-0-eu-west-1.pooler.supabase.com"
-_POOLER_PORT = 5432  # session pooler — supports prepared statements & psycopg3
+_POOLER_PORT = 5432
 _PROJECT_REF = "noeghrlsmecadfuukjma"
 _POOLER_USER = f"postgres.{_PROJECT_REF}"
 
 _user = quote_plus(_POOLER_USER)
-_pw = quote_plus(settings.SUPABASE_DB_PASSWORD)
+_pw = quote_plus(settings.SUPABASE_DB_PASSWORD) if settings.SUPABASE_DB_PASSWORD else ""
 
-# psycopg3 DSN — sslmode, prepare_threshold passed as connect_args
-PSYCOPG_URL = (
-    f"postgresql+psycopg://{_user}:{_pw}@{_POOLER_HOST}:{_POOLER_PORT}"
-    f"/{settings.SUPABASE_DB_NAME}"
-)
+# Determine if we have a real database configured
+HAS_DATABASE = bool(settings.SUPABASE_DB_PASSWORD or settings.SUPABASE_DATABASE_URL)
 
-engine = create_async_engine(
-    PSYCOPG_URL,
-    echo=settings.APP_ENV == "development",
-    poolclass=NullPool,
-    connect_args={
+if HAS_DATABASE:
+    PSYCOPG_URL = (
+        f"postgresql+psycopg://{_user}:{_pw}@{_POOLER_HOST}:{_POOLER_PORT}"
+        f"/{settings.SUPABASE_DB_NAME}"
+    )
+    _connect_args = {
         "sslmode": "require",
-        "prepare_threshold": None,  # Disable server-side prepared statements
-    },
-)
+        "prepare_threshold": None,
+    }
+    engine = create_async_engine(
+        PSYCOPG_URL,
+        echo=settings.APP_ENV == "development",
+        poolclass=NullPool,
+        connect_args=_connect_args,
+    )
+else:
+    # No database credentials — create a null/dummy engine
+    # Tables won't be created, API endpoints will return 503 when no DB is configured
+    PSYCOPG_URL = "sqlite+aiosqlite:///:memory:"
+    engine = create_async_engine(
+        PSYCOPG_URL,
+        echo=False,
+        poolclass=NullPool,
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
