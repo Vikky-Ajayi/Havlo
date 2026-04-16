@@ -45,6 +45,6 @@ See `.env.example` for all required variables. Key secrets needed:
 - DB migrations: `alembic upgrade head`
 
 ## Deployment
-- Static site deployment: builds frontend with `cd havlo_frontend && npm run build`
-- Public directory: `havlo_frontend/dist`
-- The backend is designed for Railway deployment (see `railway.json` and `Procfile`)
+- **Frontend**: Deployed on **Vercel** — builds with `cd havlo_frontend && npm run build`, output in `havlo_frontend/dist`
+- **Backend**: Deployed on **Railway** — configured via `railway.json` and `Procfile`, runs `uvicorn app.main:app`
+- These are two separate deployment targets; the frontend calls the Railway backend API via `VITE_API_URL` or similar env var
