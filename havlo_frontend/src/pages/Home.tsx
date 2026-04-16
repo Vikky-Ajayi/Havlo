@@ -46,35 +46,36 @@ export const Home: React.FC = () => {
           As seen in
         </span>
         <div className="mt-7 flex w-full flex-wrap items-center justify-center gap-x-10 gap-y-6 lg:mt-10 lg:gap-x-16">
-          {/* The Times / The Sunday Times */}
-          <div className="font-libre flex flex-col items-center leading-tight text-black">
-            <span className="text-[13px] uppercase tracking-[0.02em] lg:text-[15px]">The Times</span>
-            <span className="text-[13px] uppercase tracking-[0.02em] lg:text-[15px]">The Sunday Times</span>
-          </div>
-
-          {/* theguardian */}
-          <span className="font-body text-[22px] font-black lowercase tracking-[-0.02em] text-black lg:text-[26px]">
-            theguardian
-          </span>
-
-          {/* The Daily Telegraph */}
-          <span className="font-libre text-[22px] leading-none text-black lg:text-[28px]">
-            The Daily Telegraph
-          </span>
-
-          {/* Daily Mail */}
-          <div className="flex items-baseline gap-1 text-black">
-            <span className="font-libre text-[26px] italic leading-none lg:text-[32px]">Daily</span>
-            <span className="font-body text-[22px] font-black uppercase leading-none tracking-[-0.01em] lg:text-[26px]">
-              Mail
-            </span>
-          </div>
-
-          {/* The Spectator */}
-          <div className="flex flex-col items-center leading-none text-black">
-            <span className="font-libre text-[9px] uppercase tracking-[0.3em] lg:text-[10px]">The</span>
-            <span className="font-libre text-[20px] uppercase tracking-[0.02em] lg:text-[24px]">Spectator</span>
-          </div>
+          <img
+            src="/press-logos/the-times.svg"
+            alt="The Times & The Sunday Times"
+            className="h-10 w-auto object-contain lg:h-12"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/the-guardian.svg"
+            alt="The Guardian"
+            className="h-5 w-auto object-contain lg:h-6"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/the-telegraph.svg"
+            alt="The Daily Telegraph"
+            className="h-7 w-auto object-contain lg:h-8"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/daily-mail.svg"
+            alt="Daily Mail"
+            className="h-8 w-auto object-contain lg:h-10"
+            loading="lazy"
+          />
+          <img
+            src="/press-logos/the-spectator.svg"
+            alt="The Spectator"
+            className="h-9 w-auto object-contain lg:h-10"
+            loading="lazy"
+          />
         </div>
       </section>
 
