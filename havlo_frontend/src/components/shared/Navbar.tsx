@@ -234,53 +234,52 @@ export const Navbar: React.FC = () => {
         )}
         aria-hidden={!isMobileMenuOpen}
       >
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <nav className="flex flex-col gap-2">
+        <div className="flex-1 overflow-y-auto py-4">
+          <nav className="flex flex-col">
             {navLinks.map((link) => {
               const hasDropdown = !!link.dropdownItems?.length;
-              const isOpen = openSection === link.name;
-              return (
-                <div key={link.name} className="border-b border-[#F4F4F4] last:border-b-0">
-                  {hasDropdown ? (
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between py-4 text-left"
-                      onClick={() => setOpenSection(isOpen ? null : link.name)}
-                      aria-expanded={isOpen}
-                    >
-                      <span className="font-body text-lg font-bold text-black">
-                        {link.name}
-                      </span>
-                      <ChevronDown
-                        className={cn(
-                          'h-5 w-5 text-black transition-transform duration-200',
-                          isOpen ? 'rotate-180' : 'rotate-0'
-                        )}
-                      />
-                    </button>
-                  ) : (
-                    <Link
-                      to={link.href}
-                      className="block py-4 font-body text-lg font-bold text-black"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
+              if (hasDropdown) {
+                return (
+                  <div key={link.name} className="mb-4">
+                    <div className="px-6 py-2 font-body text-[13px] font-semibold uppercase tracking-[0.5px] text-[#666]">
                       {link.name}
-                    </Link>
-                  )}
-                  {hasDropdown && isOpen && (
-                    <div className="flex flex-col pb-4 pl-2">
-                      {link.dropdownItems!.map((item) => (
+                    </div>
+                    {link.dropdownItems!.map((item) => {
+                      const isActive = location.pathname === item.href;
+                      return (
                         <Link
                           key={item.name}
                           to={item.href}
-                          className="rounded-lg px-3 py-2.5 font-body text-base font-semibold text-black/70 hover:bg-[#F4F4F4] hover:text-black transition-colors"
                           onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            'mx-4 flex items-center justify-between rounded-xl px-4 py-3 font-body text-[15px] transition-colors',
+                            isActive
+                              ? 'bg-black text-white font-semibold'
+                              : 'text-black hover:bg-[#F4F4F4] font-medium'
+                          )}
                         >
                           {item.name}
                         </Link>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
+                  </div>
+                );
+              }
+              const isActive = location.pathname === link.href;
+              return (
+                <div key={link.name} className="mb-1">
+                  <Link
+                    to={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      'mx-4 flex items-center justify-between rounded-xl px-4 py-3 font-body text-[15px] transition-colors',
+                      isActive
+                        ? 'bg-black text-white font-semibold'
+                        : 'text-black hover:bg-[#F4F4F4] font-bold'
+                    )}
+                  >
+                    {link.name}
+                  </Link>
                 </div>
               );
             })}
