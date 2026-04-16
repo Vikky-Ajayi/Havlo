@@ -9,6 +9,7 @@ Startup order:
 from __future__ import annotations
 
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,22 +48,30 @@ app = FastAPI(
     redoc_url="/redoc" if settings.APP_ENV != "production" else None,
 )
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
+allowed_origins = settings.allowed_origins_list
+replit_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+if replit_domain:
+    allowed_origins.append(f"https://{replit_domain}")
+replit_domains = os.environ.get("REPLIT_DOMAINS", "")
+if replit_domains:
+    for domain in replit_domains.split(","):
+        domain = domain.strip()
+        if domain:
+            allowed_origins.append(f"https://{domain}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# ── Startup ───────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup() -> None:
     logger.info("Starting Havlo API …")
 
-    # Create all tables in Postgres (only when a real DB is configured)
     if HAS_DATABASE:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -70,7 +79,6 @@ async def startup() -> None:
     else:
         logger.warning("No database credentials configured — DB features will be unavailable.")
 
-    # Ensure Google Sheets tabs exist (runs in thread pool since gspread is sync)
     import asyncio
 
     loop = asyncio.get_event_loop()
@@ -87,13 +95,11 @@ async def shutdown() -> None:
     logger.info("Database connections closed.")
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["Health"])
 async def health() -> JSONResponse:
     return JSONResponse({"status": "ok", "service": "havlo-api"})
 
 
-# ── Routers ───────────────────────────────────────────────────────────────────
 API_PREFIX = "/api/v1"
 
 app.include_router(auth.router, prefix=API_PREFIX)

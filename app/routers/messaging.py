@@ -43,7 +43,7 @@ from app.schemas.schemas import (
     SendMessageResponse,
 )
 from app.services import twilio_service
-from app.services.supabase_client import get_supabase_admin
+from app.services.local_auth import decode_access_token
 from app.services.ws_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -310,17 +310,23 @@ async def websocket_inbox(
       { "event": "new_message", "conversation_id": "...", "message": { ... } }
       { "event": "ping" }   (keepalive every 25 s)
     """
-    # Authenticate via token
-    admin = get_supabase_admin()
-    try:
-        user_response = admin.auth.get_user(token)
-        supabase_uid = str(user_response.user.id)
-    except Exception as exc:
-        logger.warning("WS auth failed: %s", exc)
+    payload = decode_access_token(token)
+    if payload is None:
         await websocket.close(code=4001, reason="Unauthorized")
         return
 
-    result = await db.execute(select(User).where(User.supabase_uid == supabase_uid))
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
+    try:
+        user_uuid = uuid.UUID(user_id_str)
+    except ValueError:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
     user = result.scalar_one_or_none()
     if not user:
         await websocket.close(code=4004, reason="User not found")

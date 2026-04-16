@@ -1,22 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../ui/Button';
 import { X, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
+import { cn } from '../../lib/utils';
+import { COUNTRY_CODES } from '../../lib/countryCodes';
 
 export const BookSessionModal: React.FC = () => {
   const { closeModal } = useModal();
   const { token, user } = useAuth();
   const [firstName, setFirstName] = useState(user?.first_name || '');
   const [lastName, setLastName] = useState(user?.last_name || '');
+  const [phoneCountryCode, setPhoneCountryCode] = useState(user?.phone_country_code || '+44');
   const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || '');
   const [email, setEmail] = useState(user?.email || '');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCountryCodeOpen, setIsCountryCodeOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const countrySearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isCountryCodeOpen && countrySearchRef.current) {
+      countrySearchRef.current.focus();
+    }
+  }, [isCountryCodeOpen]);
+
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === phoneCountryCode);
+
+  const filteredCodes = COUNTRY_CODES.filter(c => {
+    const q = countrySearch.toLowerCase();
+    return c.code.includes(q) || c.country.toLowerCase().includes(q);
+  });
 
   const generateDateOptions = () => {
     const dates: { value: string; label: string }[] = [];
@@ -59,7 +78,7 @@ export const BookSessionModal: React.FC = () => {
         first_name: firstName,
         last_name: lastName,
         email,
-        phone_country_code: '+44',
+        phone_country_code: phoneCountryCode,
         phone_number: phoneNumber,
         preferred_date: preferredDate,
         preferred_time: preferredTime,
@@ -119,11 +138,56 @@ export const BookSessionModal: React.FC = () => {
             </div>
 
             <div className="relative flex h-14 items-center gap-2 rounded-xl border border-black/10 bg-[#242628]/[0.05] px-2">
-              <div className="flex h-8 items-center gap-1 rounded-lg bg-[#DDD] px-1.5">
-                <span className="font-body text-sm font-medium tracking-[-0.28px] text-black/80 opacity-60">
-                  +44
-                </span>
-                <ChevronDown size={12} className="text-black/80 opacity-80" />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => { setIsCountryCodeOpen(!isCountryCodeOpen); setCountrySearch(''); }}
+                  className="flex h-8 items-center gap-1 rounded-lg bg-[#DDD] px-1.5 cursor-pointer hover:bg-[#CCC] transition-colors"
+                >
+                  <span className="text-sm">{selectedCountry?.flag}</span>
+                  <span className="font-body text-sm font-medium tracking-[-0.28px] text-black/80">
+                    {phoneCountryCode}
+                  </span>
+                  <ChevronDown size={12} className={cn("text-black/50 transition-transform", isCountryCodeOpen && "rotate-180")} />
+                </button>
+
+                {isCountryCodeOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[60]" onClick={() => setIsCountryCodeOpen(false)} />
+                    <div className="absolute top-full left-0 z-[70] mt-1 w-56 overflow-hidden rounded-xl border border-[rgba(58,60,62,0.10)] bg-white shadow-xl">
+                      <div className="p-2 border-b border-gray-100">
+                        <input
+                          ref={countrySearchRef}
+                          type="text"
+                          placeholder="Search..."
+                          value={countrySearch}
+                          onChange={e => setCountrySearch(e.target.value)}
+                          className="w-full rounded-lg bg-gray-50 px-3 py-1.5 text-sm outline-none placeholder:text-black/40"
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredCodes.map(c => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => {
+                              setPhoneCountryCode(c.code);
+                              setIsCountryCodeOpen(false);
+                            }}
+                            className={cn(
+                              "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50",
+                              phoneCountryCode === c.code && "bg-gray-100 font-semibold"
+                            )}
+                          >
+                            <span>{c.flag}</span>
+                            <span className="text-black/70">{c.country}</span>
+                            <span className="ml-auto text-black/50">{c.code}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <input
                 type="tel"
