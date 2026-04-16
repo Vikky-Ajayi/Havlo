@@ -45,7 +45,7 @@ export const Home: React.FC = () => {
         <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
           As seen in
         </span>
-        <div className="mt-7 flex w-full flex-nowrap items-center justify-between gap-3 overflow-x-auto sm:gap-6 lg:mt-10 lg:gap-10">
+        <div className="mt-7 flex w-full flex-wrap items-center justify-center gap-x-10 gap-y-6 lg:mt-10 lg:gap-x-16">
           <img
             src="/press-logos/the-times.svg"
             alt="The Times & The Sunday Times"
