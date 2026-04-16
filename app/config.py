@@ -1,6 +1,7 @@
 """Application configuration loaded from environment variables."""
 from functools import lru_cache
-from pydantic import field_validator
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,7 +19,11 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str
 
     # ── PostgreSQL ───────────────────────────────────────────────────────
-    DATABASE_URL: str  # asyncpg URL — auto-converted from postgresql:// if needed
+    # SUPABASE_DATABASE_URL is the preferred key (won't conflict with
+    # Replit's managed DATABASE_URL which points to a local Helium DB).
+    # Falls back to DATABASE_URL if SUPABASE_DATABASE_URL is not set.
+    SUPABASE_DATABASE_URL: str = ""
+    DATABASE_URL: str = ""
 
     # ── Google Sheets ────────────────────────────────────────────────────
     GOOGLE_SERVICE_ACCOUNT_JSON: str  # path to JSON or raw JSON string
@@ -43,15 +48,32 @@ class Settings(BaseSettings):
     # ── Frontend ─────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:5173"
 
-    @field_validator("DATABASE_URL", mode="before")
-    @classmethod
-    def fix_database_url(cls, v: str) -> str:
-        """Ensure DATABASE_URL uses the asyncpg driver prefix."""
-        if v.startswith("postgres://"):
-            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
-        elif v.startswith("postgresql://"):
-            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
+    @model_validator(mode="after")
+    def resolve_database_url(self) -> "Settings":
+        """Pick the right DB URL and convert it to asyncpg format."""
+        raw = self.SUPABASE_DATABASE_URL or self.DATABASE_URL
+        if not raw:
+            raise ValueError(
+                "Either SUPABASE_DATABASE_URL or DATABASE_URL must be set"
+            )
+        self.DATABASE_URL = self._to_asyncpg(raw)
+        return self
+
+    @staticmethod
+    def _to_asyncpg(url: str) -> str:
+        """Convert a plain postgresql:// URL to postgresql+asyncpg:// removing sslmode."""
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and "+asyncpg" not in url:
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+        # Strip sslmode from query string — asyncpg handles SSL via connect_args
+        parsed = urlparse(url)
+        qs = parse_qs(parsed.query, keep_blank_values=True)
+        qs.pop("sslmode", None)
+        new_query = urlencode({k: v[0] for k, v in qs.items()})
+        url = urlunparse(parsed._replace(query=new_query))
+        return url
 
     @property
     def allowed_origins_list(self) -> list[str]:
