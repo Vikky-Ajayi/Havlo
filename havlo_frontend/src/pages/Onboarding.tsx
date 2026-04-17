@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,7 +8,6 @@ import {
   X,
   ChevronDown,
   Check,
-  Search,
   MessageCircle,
   Calendar,
 } from 'lucide-react';
@@ -16,7 +15,6 @@ import { Button } from '../components/ui/Button';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
-import { COUNTRIES } from '../lib/countries';
 import { CountrySelect } from '../components/shared/CountrySelect';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
@@ -78,18 +76,11 @@ export const Onboarding: React.FC = () => {
   const [phoneCode, setPhoneCode] = useState<string>('+44');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
 
-  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
-  const [countrySearch, setCountrySearch] = useState('');
-  const countryRef = useRef<HTMLDivElement>(null);
-
   const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
   const currencyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (countryRef.current && !countryRef.current.contains(e.target as Node)) {
-        setCountryDropdownOpen(false);
-      }
       if (currencyRef.current && !currencyRef.current.contains(e.target as Node)) {
         setCurrencyDropdownOpen(false);
       }
@@ -98,17 +89,6 @@ export const Onboarding: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredCountries = useMemo(() => {
-    const q = countrySearch.trim().toLowerCase();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter(c => c.toLowerCase().includes(q));
-  }, [countrySearch]);
-
-  const toggleCountry = (country: string) => {
-    setSelectedCountries(prev =>
-      prev.includes(country) ? prev.filter(c => c !== country) : [...prev, country]
-    );
-  };
   const removeCountry = (country: string) => {
     setSelectedCountries(prev => prev.filter(c => c !== country));
   };
@@ -150,14 +130,21 @@ export const Onboarding: React.FC = () => {
     setSubmitError('');
     try {
       if (token) {
-        await api.submitOnboarding(token, {
+        const payload = {
           services: ['Buy property abroad'],
           countries: selectedCountries,
           property_type: selectedPropertyType,
           timeframe: selectedTimeframe,
           budget_amount: budget || undefined,
           budget_currency: currency,
-        });
+          how_can_we_help: helpChoice === 'sell' ? 'Sell a property abroad' : 'Buy a property abroad',
+          base_country: baseCountry,
+          name,
+          email,
+          phone_country_code: phoneCode,
+          phone_number: phoneNumber,
+        } as Parameters<typeof api.submitOnboarding>[1];
+        await api.submitOnboarding(token, payload);
         await refreshUser();
       }
       setShowSuccessPopup(true);
@@ -250,70 +237,35 @@ export const Onboarding: React.FC = () => {
                   <h1 className="font-display text-[56px] font-black leading-none tracking-[-1.12px] text-black">Where are you looking?</h1>
                   <p className="font-body text-base font-medium text-black/90 tracking-[-0.32px]">Select the country or countries where you're looking to buy property.</p>
                 </div>
-                <div className="w-full max-w-[587px] relative" ref={countryRef}>
-                  <button
-                    type="button"
-                    onClick={() => setCountryDropdownOpen(o => !o)}
-                    className="w-full flex flex-wrap items-center gap-3 p-4 pr-12 min-h-[56px] rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/05 relative text-left hover:border-[#3A3C3E]/30 transition-colors"
-                  >
-                    {selectedCountries.length === 0 ? (
-                      <span className="font-body text-base text-black/50">Select one or more countries…</span>
-                    ) : (
-                      selectedCountries.map(country => (
+                <div className="w-full max-w-[587px] flex flex-col gap-4">
+                  <CountrySelect
+                    value=""
+                    onChange={(c) => {
+                      if (!selectedCountries.includes(c)) {
+                        setSelectedCountries(prev => [...prev, c]);
+                      }
+                    }}
+                    placeholder="Add a country…"
+                    buttonClassName="h-14 rounded-xl bg-[#242628]/5 hover:bg-[#242628]/10 text-base"
+                  />
+                  {selectedCountries.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCountries.map(country => (
                         <span
                           key={country}
-                          className="flex items-center gap-2 px-3 py-1 bg-[#DDDDDD] rounded-lg"
-                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-[#DDDDDD] rounded-lg"
                         >
-                          <span className="font-body text-base font-medium text-black/80 tracking-[-0.32px]">{country}</span>
+                          <span className="font-body text-sm font-medium text-black/80 tracking-[-0.32px]">{country}</span>
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); removeCountry(country); }}
+                            onClick={() => removeCountry(country)}
                             className="text-black/80 hover:text-black"
                             aria-label={`Remove ${country}`}
                           >
-                            <X size={16} strokeWidth={2.5} />
+                            <X size={14} strokeWidth={2.5} />
                           </button>
                         </span>
-                      ))
-                    )}
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-black/80 pointer-events-none">
-                      <ChevronDown size={20} strokeWidth={2.5} className={`transition-transform ${countryDropdownOpen ? 'rotate-180' : ''}`} />
-                    </div>
-                  </button>
-                  {countryDropdownOpen && (
-                    <div className="absolute z-20 mt-2 w-full bg-white border border-black/10 rounded-xl shadow-2xl overflow-hidden">
-                      <div className="flex items-center gap-2 px-4 py-3 border-b border-black/10">
-                        <Search size={18} className="text-black/50" />
-                        <input
-                          type="text"
-                          autoFocus
-                          value={countrySearch}
-                          onChange={(e) => setCountrySearch(e.target.value)}
-                          placeholder="Search countries…"
-                          className="flex-1 bg-transparent outline-none font-body text-base text-black placeholder:text-black/40"
-                        />
-                      </div>
-                      <div className="max-h-[280px] overflow-y-auto py-1">
-                        {filteredCountries.length === 0 ? (
-                          <div className="px-4 py-3 font-body text-sm text-black/50">No countries match "{countrySearch}"</div>
-                        ) : (
-                          filteredCountries.map(country => {
-                            const isSelected = selectedCountries.includes(country);
-                            return (
-                              <button
-                                key={country}
-                                type="button"
-                                onClick={() => toggleCountry(country)}
-                                className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors ${isSelected ? 'bg-black/5' : 'hover:bg-black/5'}`}
-                              >
-                                <span className={`font-body text-base ${isSelected ? 'font-semibold text-black' : 'font-medium text-black/80'}`}>{country}</span>
-                                {isSelected && <Check size={18} strokeWidth={2.5} className="text-black" />}
-                              </button>
-                            );
-                          })
-                        )}
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -598,8 +550,16 @@ export const Onboarding: React.FC = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-[520px] rounded-3xl bg-white p-8 shadow-2xl flex flex-col gap-6"
+              className="relative w-full max-w-[520px] rounded-3xl bg-white p-8 shadow-2xl flex flex-col gap-6"
             >
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => { setShowSuccessPopup(false); navigate('/buy-abroad'); }}
+                className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors"
+              >
+                <X size={18} className="text-black/70" />
+              </button>
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#00BC67]/10">
                   <CheckCircle2 size={36} className="text-[#00BC67]" />
@@ -632,10 +592,10 @@ export const Onboarding: React.FC = () => {
                 </a>
                 <button
                   type="button"
-                  onClick={() => { setShowSuccessPopup(false); navigate('/'); }}
+                  onClick={() => { setShowSuccessPopup(false); navigate('/buy-abroad'); }}
                   className="mt-2 font-body text-sm font-semibold text-black/60 hover:text-black underline underline-offset-4"
                 >
-                  Back to homepage
+                  Back to Buy Abroad
                 </button>
               </div>
             </motion.div>
