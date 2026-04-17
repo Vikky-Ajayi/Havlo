@@ -414,7 +414,7 @@ export const EliteProperty: React.FC = () => {
               onClick={() => openModal('create-account')}
               className="flex shrink-0 items-center gap-3 self-start rounded-full bg-black px-7 py-4 font-body text-sm font-medium uppercase tracking-wide text-white transition-all hover:bg-black/90"
             >
-              Submit Your Property
+              Access Global Buyers
               <ArrowRight size={16} />
             </button>
           </div>
