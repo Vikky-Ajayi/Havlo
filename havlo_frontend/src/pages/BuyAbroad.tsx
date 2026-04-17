@@ -319,7 +319,7 @@ export const BuyAbroad: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-center gap-6 text-center z-10">
-          <h2 className="max-w-[900px] font-display text-[56px] font-black leading-[1.05] text-white sm:text-[72px] tracking-tight">
+          <h2 className="max-w-[900px] font-display text-[36px] sm:text-[56px] lg:text-[72px] font-black leading-[1.05] text-white tracking-tight">
             Need help buying a property<br className="hidden sm:block" /> abroad? We can help.
           </h2>
           <p className="max-w-[600px] font-body text-xs font-bold text-white/70 uppercase tracking-[0.2em]">

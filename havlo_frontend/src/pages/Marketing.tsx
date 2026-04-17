@@ -2,6 +2,7 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
+import { MarqueeStrip } from '../components/shared/MarqueeStrip';
 import { useModal } from '../hooks/useModal';
 
 const reachTiers = [
@@ -93,7 +94,10 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. Choose your reach */}
+      {/* 2. Marquee Strip */}
+      <MarqueeStrip />
+
+      {/* 3. Choose your reach */}
       <section className="flex flex-col items-center bg-white py-20 lg:py-32 px-6 lg:px-[100px]">
         <div className="max-w-[1240px] mx-auto w-full flex flex-col gap-12 lg:gap-16">
           <div className="flex flex-col items-center text-center gap-6">

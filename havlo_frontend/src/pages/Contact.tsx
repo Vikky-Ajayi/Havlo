@@ -14,13 +14,13 @@ export const Contact: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
-      <section className="flex flex-col items-center px-4 pt-20 pb-10 text-center sm:px-10 lg:px-[100px]">
-        <div className="flex max-w-[888px] flex-col items-center gap-8">
-          <div className="flex flex-col items-center gap-8">
-            <h1 className="font-display text-[56px] font-black leading-[1.1] tracking-tight text-[#001C47] sm:text-[64px]">
+      <section className="flex flex-col items-center px-6 pt-16 lg:pt-20 pb-10 text-center sm:px-10 lg:px-[100px]">
+        <div className="flex max-w-[888px] flex-col items-center gap-6 lg:gap-8">
+          <div className="flex flex-col items-center gap-4 lg:gap-8">
+            <h1 className="font-display text-[36px] sm:text-[48px] lg:text-[64px] font-black leading-[1.1] tracking-tight text-[#001C47]">
               Ready to Chat? Call Us Now
             </h1>
-            <p className="max-w-[652px] font-body text-[22px] leading-[1.2] text-black">
+            <p className="max-w-[652px] font-body text-base lg:text-[22px] leading-[1.4] lg:leading-[1.2] text-black">
               For any complaints or suggestions, please contact us via:
             </p>
           </div>
@@ -28,13 +28,13 @@ export const Contact: React.FC = () => {
       </section>
 
       {/* 2. Contact Info Section */}
-      <section className="flex flex-col items-center px-4 pb-24 sm:px-10 lg:px-[100px]">
-        <div className="flex w-full max-w-[888px] flex-col gap-8">
+      <section className="flex flex-col items-center px-6 pb-24 sm:px-10 lg:px-[100px]">
+        <div className="flex w-full max-w-[888px] flex-col gap-6 lg:gap-8">
           {/* Phone Numbers Card */}
-          <div className="flex w-full flex-col items-center justify-center gap-10 rounded-[24px] bg-[#081B2A] py-8 sm:flex-row sm:gap-20">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <span className="font-body text-[28px] font-bold text-white">+44 7919 483480</span>
-              <span className="font-body text-[28px] font-bold text-white">+44 7919 483480</span>
+          <div className="flex w-full flex-col items-center justify-center gap-6 lg:gap-10 rounded-[24px] bg-[#081B2A] px-6 py-8 sm:flex-row sm:gap-20">
+            <div className="flex flex-col items-center gap-3 lg:gap-4 text-center">
+              <span className="font-body text-xl lg:text-[28px] font-bold text-white break-all">+44 7919 483480</span>
+              <span className="font-body text-xl lg:text-[28px] font-bold text-white break-all">+44 7919 483480</span>
             </div>
           </div>
 
@@ -186,17 +186,17 @@ export const Contact: React.FC = () => {
 };
 
 const ContactMethodCard = ({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: string; href: string }) => (
-  <div className="flex h-[187px] flex-col items-center justify-center gap-3 rounded-[12px] border border-black/5 bg-white p-6 text-center">
+  <div className="flex min-h-[160px] lg:h-[187px] flex-col items-center justify-center gap-3 rounded-[12px] border border-black/5 bg-white p-6 text-center">
     <div className="flex h-10 w-10 items-center justify-center rounded-full border border-black p-2">
       {icon}
     </div>
     <div className="flex flex-col">
-      <span className="font-body text-[22px] font-normal text-[#A409D2]">{label}</span>
+      <span className="font-body text-base lg:text-[22px] font-normal text-[#A409D2]">{label}</span>
       <a
         href={href}
         target={href.startsWith('http') ? '_blank' : undefined}
         rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
-        className="font-body text-[22px] font-normal text-black underline underline-offset-4"
+        className="font-body text-base lg:text-[22px] font-normal text-black underline underline-offset-4 break-words"
       >
         {value}
       </a>

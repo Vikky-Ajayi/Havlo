@@ -13,7 +13,7 @@ export const AboutUs: React.FC = () => {
           <span className="font-body text-[16.7px] font-medium uppercase tracking-[-0.054px] text-black">
             About Us
           </span>
-          <h1 className="max-w-[1046px] font-display text-[52px] sm:text-[74.4px] lg:text-[88px] font-black leading-[1.1] lg:leading-[1.0] tracking-[-1.6px] text-[#1F1F1E]">
+          <h1 className="max-w-[1046px] font-display text-[40px] sm:text-[60px] md:text-[74.4px] lg:text-[88px] font-black leading-[1.05] lg:leading-[1.0] tracking-[-1.2px] lg:tracking-[-1.6px] text-[#1F1F1E]">
             Making property abroad simpler, safer, transparent
           </h1>
           <p className="max-w-[817px] font-body text-[16.7px] leading-[1.7] tracking-[-0.054px] text-black">
@@ -84,7 +84,7 @@ export const AboutUs: React.FC = () => {
         </div>
         <div className="grid w-full grid-cols-1 gap-14 lg:grid-cols-2 z-10">
           <div className="flex flex-col justify-start gap-10">
-            <h2 className="max-w-[600px] font-display text-[56px] font-medium leading-none tracking-[-1.28px] text-white sm:text-[64px]">
+            <h2 className="max-w-[600px] font-display text-[36px] sm:text-[56px] lg:text-[64px] font-medium leading-tight lg:leading-none tracking-[-1.0px] lg:tracking-[-1.28px] text-white">
               From Purchase to Ongoing Management
             </h2>
             <p className="max-w-[562px] font-body text-lg leading-[1.7] tracking-[-0.054px] text-white">
@@ -150,7 +150,7 @@ export const AboutUs: React.FC = () => {
       <section className="flex flex-col items-center bg-[#FAEFFC] px-4 py-32 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-14 text-center">
           <div className="flex max-w-[929px] flex-col items-center gap-10">
-            <h2 className="font-display text-[56px] font-medium leading-[1.1] tracking-[-1.44px] text-[#1F1F1E] sm:text-[72px]">
+            <h2 className="font-display text-[36px] sm:text-[56px] lg:text-[72px] font-medium leading-[1.1] tracking-[-1.0px] lg:tracking-[-1.44px] text-[#1F1F1E]">
               With Havlo, owning property abroad feels simple
             </h2>
             <p className="max-w-[881px] font-body text-lg leading-[1.7] tracking-[-0.054px] text-black">

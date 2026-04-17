@@ -1,57 +1,97 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useModal } from '../hooks/useModal';
-import { cn } from '../lib/utils';
 
-const regions: { name: string; image: string; countries: string[] }[] = [
+type Country = { name: string; flag: string };
+type Region = { name: string; intro: string; countries: Country[] };
+
+const regions: Region[] = [
   {
     name: 'Europe',
-    image: '/1.png',
+    intro: 'Established markets, strong rental demand and a clear residency path for many nationalities.',
     countries: [
-      'United Kingdom', 'Spain', 'Portugal', 'France', 'Italy', 'Greece',
-      'Germany', 'Netherlands', 'Switzerland', 'Ireland', 'Austria', 'Belgium',
-      'Cyprus', 'Malta', 'Sweden', 'Norway', 'Denmark', 'Finland',
+      { name: 'United Kingdom', flag: '🇬🇧' },
+      { name: 'Spain', flag: '🇪🇸' },
+      { name: 'Portugal', flag: '🇵🇹' },
+      { name: 'France', flag: '🇫🇷' },
+      { name: 'Italy', flag: '🇮🇹' },
+      { name: 'Greece', flag: '🇬🇷' },
+      { name: 'Germany', flag: '🇩🇪' },
+      { name: 'Netherlands', flag: '🇳🇱' },
+      { name: 'Switzerland', flag: '🇨🇭' },
+      { name: 'Ireland', flag: '🇮🇪' },
+      { name: 'Cyprus', flag: '🇨🇾' },
+      { name: 'Malta', flag: '🇲🇹' },
     ],
   },
   {
     name: 'Middle East',
-    image: '/2.png',
-    countries: ['United Arab Emirates', 'Saudi Arabia', 'Qatar', 'Bahrain', 'Oman', 'Kuwait', 'Jordan', 'Israel'],
-  },
-  {
-    name: 'Americas',
-    image: '/3.png',
+    intro: 'Tax-efficient ownership in fast-growing markets, with strong off-plan and luxury inventory.',
     countries: [
-      'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina',
-      'Colombia', 'Chile', 'Costa Rica', 'Panama', 'Dominican Republic',
+      { name: 'United Arab Emirates', flag: '🇦🇪' },
+      { name: 'Saudi Arabia', flag: '🇸🇦' },
+      { name: 'Qatar', flag: '🇶🇦' },
+      { name: 'Bahrain', flag: '🇧🇭' },
+      { name: 'Oman', flag: '🇴🇲' },
+      { name: 'Kuwait', flag: '🇰🇼' },
+      { name: 'Jordan', flag: '🇯🇴' },
+      { name: 'Israel', flag: '🇮🇱' },
     ],
   },
   {
-    name: 'Asia & Asia-Pacific',
-    image: '/4.png',
+    name: 'Americas',
+    intro: 'Diversified residential and commercial opportunities across North, Central and South America.',
     countries: [
-      'Singapore', 'Japan', 'South Korea', 'Thailand', 'Indonesia',
-      'Malaysia', 'Vietnam', 'Philippines', 'India', 'Australia', 'New Zealand',
+      { name: 'United States', flag: '🇺🇸' },
+      { name: 'Canada', flag: '🇨🇦' },
+      { name: 'Mexico', flag: '🇲🇽' },
+      { name: 'Brazil', flag: '🇧🇷' },
+      { name: 'Argentina', flag: '🇦🇷' },
+      { name: 'Colombia', flag: '🇨🇴' },
+      { name: 'Chile', flag: '🇨🇱' },
+      { name: 'Costa Rica', flag: '🇨🇷' },
+      { name: 'Panama', flag: '🇵🇦' },
+      { name: 'Dominican Republic', flag: '🇩🇴' },
+    ],
+  },
+  {
+    name: 'Asia & Pacific',
+    intro: 'Dynamic urban centres, beach lifestyle markets and structured investment routes across Asia-Pacific.',
+    countries: [
+      { name: 'Singapore', flag: '🇸🇬' },
+      { name: 'Japan', flag: '🇯🇵' },
+      { name: 'South Korea', flag: '🇰🇷' },
+      { name: 'Thailand', flag: '🇹🇭' },
+      { name: 'Indonesia', flag: '🇮🇩' },
+      { name: 'Malaysia', flag: '🇲🇾' },
+      { name: 'Vietnam', flag: '🇻🇳' },
+      { name: 'Philippines', flag: '🇵🇭' },
+      { name: 'India', flag: '🇮🇳' },
+      { name: 'Australia', flag: '🇦🇺' },
+      { name: 'New Zealand', flag: '🇳🇿' },
+      { name: 'Fiji', flag: '🇫🇯' },
     ],
   },
   {
     name: 'Africa',
-    image: '/5.png',
-    countries: ['South Africa', 'Morocco', 'Egypt', 'Kenya', 'Nigeria', 'Ghana', 'Tanzania', 'Mauritius'],
-  },
-  {
-    name: 'Oceania',
-    image: '/6.png',
-    countries: ['Australia', 'New Zealand', 'Fiji'],
+    intro: 'High-growth and lifestyle markets with strong returns for early movers.',
+    countries: [
+      { name: 'South Africa', flag: '🇿🇦' },
+      { name: 'Morocco', flag: '🇲🇦' },
+      { name: 'Egypt', flag: '🇪🇬' },
+      { name: 'Kenya', flag: '🇰🇪' },
+      { name: 'Nigeria', flag: '🇳🇬' },
+      { name: 'Ghana', flag: '🇬🇭' },
+      { name: 'Tanzania', flag: '🇹🇿' },
+      { name: 'Mauritius', flag: '🇲🇺' },
+    ],
   },
 ];
 
 export const PropertyPurchase: React.FC = () => {
   const { openModal } = useModal();
-  const [activeRegion, setActiveRegion] = useState<string>(regions[0].name);
-  const current = regions.find((r) => r.name === activeRegion) || regions[0];
 
   return (
     <div className="flex flex-col w-full bg-white">
@@ -65,65 +105,43 @@ export const PropertyPurchase: React.FC = () => {
             Buy property in any country, with confidence
           </h1>
           <p className="font-body text-base lg:text-xl leading-[1.4] text-black max-w-[640px]">
-            Browse the regions and countries we cover, then start your purchase journey with a vetted local team.
+            Browse our country directory by region, then start your purchase journey with a vetted local team.
           </p>
         </div>
       </section>
 
-      {/* 2. Regions tabs + countries grid */}
+      {/* 2. Country directory grouped by region */}
       <section className="flex flex-col items-center bg-white py-16 lg:py-24 px-6 lg:px-[100px]">
-        <div className="max-w-[1240px] mx-auto w-full flex flex-col gap-10 lg:gap-14">
-          <div className="flex flex-col gap-6">
-            <h2 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-black leading-[1.1] text-[#040504]">
-              Browse by region
-            </h2>
-            <div className="flex flex-wrap gap-2 lg:gap-3">
-              {regions.map((r) => (
-                <button
-                  key={r.name}
-                  onClick={() => setActiveRegion(r.name)}
-                  className={cn(
-                    'px-4 lg:px-6 py-2.5 rounded-full font-body text-sm lg:text-base font-semibold transition-colors whitespace-nowrap',
-                    activeRegion === r.name
-                      ? 'bg-[#A409D2] text-white'
-                      : 'bg-black/5 text-black hover:bg-black/10',
-                  )}
-                >
-                  {r.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-stretch">
-            <div className="lg:w-[40%] rounded-[24px] overflow-hidden bg-[#F9F8F9] aspect-[4/3] lg:aspect-auto">
-              <img
-                src={current.image}
-                alt={current.name}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div className="lg:w-[60%] flex flex-col gap-6">
-              <h3 className="font-display text-[28px] lg:text-[36px] font-black text-[#1F1F1E]">
-                {current.name}
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {current.countries.map((c) => (
+        <div className="max-w-[1240px] mx-auto w-full flex flex-col gap-16 lg:gap-20">
+          {regions.map((region) => (
+            <div key={region.name} className="flex flex-col gap-6 lg:gap-8">
+              <div className="flex flex-col gap-3 max-w-[760px]">
+                <h2 className="font-display text-[28px] sm:text-[36px] lg:text-[44px] font-black leading-[1.1] text-[#040504]">
+                  {region.name}
+                </h2>
+                <p className="font-body text-base lg:text-lg text-black/70">
+                  {region.intro}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+                {region.countries.map((c) => (
                   <Link
-                    key={c}
-                    to={`/countries`}
-                    className="flex items-center justify-between gap-2 px-4 py-3 rounded-xl bg-[#F9F8F9] border border-black/5 hover:border-[#A409D2]/40 transition-colors group"
+                    key={c.name}
+                    to="/countries"
+                    className="group flex items-center justify-between gap-3 px-4 lg:px-5 py-4 rounded-xl bg-[#F9F8F9] border border-black/5 hover:border-[#A409D2]/40 hover:bg-white transition-colors"
                   >
-                    <span className="font-body text-sm lg:text-base text-[#1F1F1E] truncate">
-                      {c}
-                    </span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-2xl shrink-0" aria-hidden="true">{c.flag}</span>
+                      <span className="font-body text-sm lg:text-base font-medium text-[#1F1F1E] truncate">
+                        {c.name}
+                      </span>
+                    </div>
                     <ChevronRight className="w-4 h-4 text-black/40 group-hover:text-[#A409D2] shrink-0" />
                   </Link>
                 ))}
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </section>
 

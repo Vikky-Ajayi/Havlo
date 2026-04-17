@@ -213,7 +213,7 @@ export const RelaunchAssessment: React.FC = () => {
         </div>
 
         <div className="relative z-10 flex flex-col items-center gap-8">
-          <h2 className="max-w-[750px] font-display text-[56px] font-black leading-[1.1] text-white sm:text-[80px]">
+          <h2 className="max-w-[750px] font-display text-[36px] sm:text-[56px] lg:text-[80px] font-black leading-[1.1] text-white">
             Get your Relaunch Assessment today
           </h2>
           <p className="max-w-[678px] font-body text-xl font-medium text-white/80">

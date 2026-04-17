@@ -393,7 +393,7 @@ export const Home: React.FC = () => {
       {/* 7. Bottom CTA Section */}
       <section className="relative flex flex-col items-center bg-white pt-20 lg:pt-60 pb-10 lg:pb-24 overflow-hidden">
         <div className="relative z-20 flex max-w-[903px] flex-col items-center gap-8 px-4 text-center">
-          <h2 className="font-display text-[48px] lg:text-[64px] font-black leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black sm:text-[80px]">
+          <h2 className="font-display text-[36px] sm:text-[56px] md:text-[64px] lg:text-[80px] font-black leading-tight lg:leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black">
             Ready to Start Your Property Journey?
           </h2>
           <p className="max-w-[678px] font-body text-base lg:text-xl font-medium leading-[1.5] tracking-[-0.32px] lg:tracking-[-0.4px] text-black/80">
