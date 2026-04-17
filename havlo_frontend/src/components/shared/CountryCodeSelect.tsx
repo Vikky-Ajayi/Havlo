@@ -98,7 +98,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
           buttonClassName,
         )}
       >
-        <FlagImg iso={selected?.iso} alt={selected?.country || ''} />
+        <FlagImg iso={selected?.iso} />
         <ChevronDown
           size={12}
           className={cn('text-black/50 transition-transform', isOpen && 'rotate-180')}
@@ -145,7 +145,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
                       isSelected && 'bg-gray-100 font-semibold',
                     )}
                   >
-                    <FlagImg iso={c.iso} alt={c.country} lazy />
+                    <FlagImg iso={c.iso} lazy />
                     <span className="text-black/80">{c.country}</span>
                     <span className="ml-auto text-black/50">{c.code}</span>
                   </button>
