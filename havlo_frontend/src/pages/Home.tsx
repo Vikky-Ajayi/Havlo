@@ -349,7 +349,7 @@ export const Home: React.FC = () => {
             Ready to Start Your Property Journey?
           </h2>
           <p className="max-w-[678px] font-body text-base lg:text-xl font-medium leading-[1.5] tracking-[-0.32px] lg:tracking-[-0.4px] text-black/80">
-            Get expert guidance and unbiased advice for your international property purchase. Let us make the process smooth and stress-free.
+            Are you a buyer, seller, or property agent? We deliver bespoke, tailored solutions designed to elevate your experience and help you achieve your property goals with confidence and ease. Explore our premium suite of services and experience a seamless, refined approach to property.
           </p>
           <div 
             onClick={handleGetStarted}
