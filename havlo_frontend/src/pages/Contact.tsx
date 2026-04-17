@@ -6,6 +6,9 @@ import { cn } from '../lib/utils';
 
 export const Contact: React.FC = () => {
   const [phoneCode, setPhoneCode] = useState('+44');
+  const [currency, setCurrency] = useState('GBP');
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const currencies = ['USD', 'GBP', 'EUR'];
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
@@ -85,9 +88,54 @@ export const Contact: React.FC = () => {
                     Currency<span className="text-[#FA4242]">*</span>
                   </label>
                   <div className="flex h-12 w-full items-center rounded-lg bg-[#EEF0F2] px-2">
-                    <div className="flex h-8 items-center gap-1 rounded-lg bg-[#DDD] px-2 cursor-pointer">
-                      <span className="font-body text-sm font-medium text-black/80">GBP</span>
-                      <ChevronDown className="h-3 w-3 text-black/80" />
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setCurrencyOpen(o => !o)}
+                        aria-haspopup="listbox"
+                        aria-expanded={currencyOpen}
+                        className="flex h-8 items-center gap-1 rounded-lg bg-[#DDD] px-2 cursor-pointer hover:bg-[#CCC] transition-colors"
+                      >
+                        <span className="font-body text-sm font-medium text-black/80">{currency}</span>
+                        <ChevronDown
+                          className={cn(
+                            'h-3 w-3 text-black/80 transition-transform',
+                            currencyOpen && 'rotate-180',
+                          )}
+                        />
+                      </button>
+                      {currencyOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-[60]"
+                            onClick={() => setCurrencyOpen(false)}
+                          />
+                          <ul
+                            role="listbox"
+                            className="absolute top-full left-0 z-[70] mt-1 w-28 overflow-hidden rounded-xl border border-[rgba(58,60,62,0.10)] bg-white shadow-xl"
+                          >
+                            {currencies.map(c => (
+                              <li key={c}>
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={currency === c}
+                                  onClick={() => {
+                                    setCurrency(c);
+                                    setCurrencyOpen(false);
+                                  }}
+                                  className={cn(
+                                    'w-full px-3 py-2 text-left font-body text-sm text-black/80 transition-colors hover:bg-gray-50',
+                                    currency === c && 'bg-gray-100 font-semibold',
+                                  )}
+                                >
+                                  {c}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
                     </div>
                     <input
                       type="text"
