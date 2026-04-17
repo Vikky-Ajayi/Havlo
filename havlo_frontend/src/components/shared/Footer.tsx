@@ -48,7 +48,7 @@ export const Footer: React.FC = () => {
             {[
               { id: 'fb', icon: <FacebookIcon />, href: 'https://www.facebook.com/profile.php?id=61586495581183' },
               { id: 'ig', icon: <InstagramIcon />, href: 'https://www.instagram.com/heyhavlo/' },
-              { id: 'x', icon: <XIcon />, href: '#' },
+              { id: 'x', icon: <XIcon />, href: 'https://x.com/heyhavlo?s=21' },
             ].map((social) => (
               <a
                 key={social.id}
