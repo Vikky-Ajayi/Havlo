@@ -10,19 +10,19 @@ export const PropertyMatching: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center pt-24 pb-0 overflow-hidden bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] h-[700px]">
-        <div className="relative z-20 max-w-[1144px] flex flex-col items-center gap-10 mb-24 px-6 lg:px-[100px]">
-          <span className="font-body text-lg font-normal uppercase tracking-[-0.36px] text-black -mt-[31px]">
+      <section className="relative flex flex-col items-center pt-16 lg:pt-24 pb-12 lg:pb-0 overflow-hidden bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] lg:h-[700px] px-6 lg:px-[100px]">
+        <div className="relative z-20 max-w-[1144px] w-full flex flex-col items-center gap-6 lg:gap-10 lg:mb-24">
+          <span className="font-body text-sm lg:text-lg font-normal uppercase tracking-[-0.36px] text-black">
             Havlo Property Matching
           </span>
-          <h1 className="max-w-[730px] font-display lg:text-[78px] font-black tracking-[-1.76px] text-[#1F1F1E] text-center -mt-[23px] text-[88px] leading-[1.0]">
-            Find your ideal property, <span className="text-[#1f1f1e] border-t-[#000000] border-r-[#000000] border-b-[#000000] border-l-[#000000]">effortlessly</span>
+          <h1 className="max-w-[730px] font-display font-black tracking-[-1.2px] lg:tracking-[-1.76px] text-[#1F1F1E] text-center text-[44px] sm:text-[56px] lg:text-[88px] leading-[1.05] lg:leading-[1.0]">
+            Find your ideal property, <span className="text-[#1f1f1e]">effortlessly</span>
           </h1>
-          <p className="max-w-[682px] font-body text-lg leading-[1.3] tracking-[-0.36px] text-black text-center -mt-[21px]">
+          <p className="max-w-[682px] font-body text-base lg:text-lg leading-[1.4] lg:leading-[1.3] tracking-[-0.36px] text-black text-center">
             Tell us what you want, location, type, budget and we'll do the legwork. Your request goes straight to our trusted partner agents, who handpick properties that match your exact needs.
           </p>
 
-          <h2 className="font-display text-[44px] font-medium leading-[37px] tracking-[-0.8px] text-[#1F1F1E] bg-[#f9f9f9] px-[37px] py-[25px] w-[1500px] max-w-none mt-[27px] text-left flex-shrink-0">
+          <h2 className="font-display text-xl sm:text-2xl lg:text-[44px] font-medium leading-snug lg:leading-[1.05] tracking-[-0.4px] lg:tracking-[-0.8px] text-[#1F1F1E] bg-[#f9f9f9] px-5 py-5 lg:px-[37px] lg:py-[25px] w-full mt-4 lg:mt-[27px] text-left rounded-md lg:rounded-none">
             The best part: If you buy through our agent, we contribute towards your legal or survey fees — helping you save while securing your perfect home.
           </h2>
         </div>

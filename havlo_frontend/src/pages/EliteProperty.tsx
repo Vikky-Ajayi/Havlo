@@ -202,7 +202,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 5. Why Sellers Choose Havlo (Purple Section) */}
-      <section className="relative flex flex-col items-center gap-14 bg-[#A409D2] px-4 pt-32 pb-48 sm:px-10 lg:px-[100px]">
+      <section className="relative flex flex-col items-center gap-14 bg-[#A409D2] px-4 pt-32 pb-48 sm:px-10 lg:px-[100px] overflow-hidden">
         <div className="flex flex-col items-center gap-8 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-white" />
@@ -239,8 +239,8 @@ export const EliteProperty: React.FC = () => {
         </div>
 
         {/* Concave Bottom Curve */}
-        <div 
-          className="absolute bottom-0 left-1/2 h-[221px] w-[1951px] -translate-x-1/2 translate-y-1/2 rounded-[100%] bg-white"
+        <div
+          className="absolute bottom-0 left-1/2 h-[120px] lg:h-[221px] w-[200vw] lg:w-[1951px] -translate-x-1/2 translate-y-1/2 rounded-[100%] bg-white pointer-events-none"
           style={{ boxShadow: '0 -20px 40px rgba(0,0,0,0.05)' }}
         />
       </section>

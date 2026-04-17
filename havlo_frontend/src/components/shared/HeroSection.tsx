@@ -1,5 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+
+const useIsLg = () => {
+  const [isLg, setIsLg] = useState<boolean>(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handler = (e: MediaQueryListEvent) => setIsLg(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isLg;
+};
 
 interface HeroSectionProps {
   overline?: string;
@@ -32,9 +44,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   imageStyle,
   containerStyle,
 }) => {
+  const isLg = useIsLg();
+  const safeTitleStyle = isLg ? titleStyle : undefined;
+  const safeSubtitleStyle = isLg ? subtitleStyle : undefined;
+  const safeOverlineStyle = isLg ? overlineStyle : undefined;
+  const safeImageStyle = isLg ? imageStyle : undefined;
+  const safeContainerStyle = isLg ? containerStyle : undefined;
   return (
     <section 
-      className="relative w-full bg-white overflow-hidden h-[812px] lg:h-[856px]"
+      className="relative w-full bg-white overflow-hidden min-h-[640px] sm:min-h-[720px] h-auto lg:h-[856px]"
     >
       <div className="relative w-full h-full">
         {/* 1. Gradient Ellipse — outer, NOT clipped */}
@@ -54,7 +72,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             src={imageSrc}
             alt="Hero House"
             className="absolute left-1/2 -translate-x-1/2 top-[340px] lg:top-[300px] w-full h-auto object-cover z-[5]"
-            style={imageStyle}
+            style={safeImageStyle}
             referrerPolicy="no-referrer"
           />
 
@@ -63,26 +81,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         {/* 3. Text Block — outer, NOT clipped */}
         <div
-          className="absolute left-1/2 -translate-x-1/2 top-[120px] lg:top-[110px] w-full px-4 lg:px-0 text-center z-10 flex flex-col items-center gap-6 lg:gap-6"
-          style={containerStyle}
+          className="absolute left-1/2 -translate-x-1/2 top-[80px] sm:top-[100px] lg:top-[110px] w-full px-6 lg:px-0 text-center z-10 flex flex-col items-center gap-4 sm:gap-5 lg:gap-6"
+          style={safeContainerStyle}
         >
           {overline && (
             <span 
-              className="font-body text-lg font-medium uppercase tracking-wider text-black/60"
-              style={overlineStyle}
+              className="font-body text-sm sm:text-base lg:text-lg font-medium uppercase tracking-wider text-black/60"
+              style={safeOverlineStyle}
             >
               {overline}
             </span>
           )}
           <h1 
-            className="font-display font-black lg:text-[80px] text-[#111] max-w-[900px] tracking-[-0.04em] text-[88px]"
-            style={titleStyle}
+            className="font-display font-black text-[#111] max-w-[900px] tracking-[-0.04em] text-[40px] sm:text-[56px] lg:text-[80px] leading-[1.05] lg:leading-[1.0]"
+            style={safeTitleStyle}
           >
             {title}
           </h1>
           <p
-            className="font-body text-lg lg:text-[18px] text-black lg:text-[#111] leading-[1.6] max-w-[343px] lg:max-w-[680px] mx-auto font-medium tracking-tight lg:tracking-normal"
-            style={subtitleStyle}
+            className="font-body text-base lg:text-[18px] text-black lg:text-[#111] leading-[1.5] lg:leading-[1.6] max-w-[343px] lg:max-w-[680px] mx-auto font-medium tracking-tight lg:tracking-normal"
+            style={safeSubtitleStyle}
           >
             {subtitle}
           </p>

@@ -4,126 +4,54 @@ import { ArrowUpRight, Quote } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const RelaunchHeroSection: React.FC = () => {
+  const stats = [
+    { value: "5×", label: "Areas of your listing we audit" },
+    { value: "2wk", label: "Average time to first offers after relaunch" },
+    { value: "100", label: "No disruption to your current sale process" },
+  ];
   return (
-    <section style={{ position: 'relative', width: '100%', height: '750px', overflow: 'hidden' }}>
-      {/* 1. House Image — full bleed */}
-      <img 
-        src="https://api.builder.io/api/v1/image/assets/TEMP/46673988b71a834a3489dd511265f99186cf5a29?width=2880" 
+    <section className="relative w-full min-h-[600px] lg:h-[750px] overflow-hidden">
+      <img
+        src="https://api.builder.io/api/v1/image/assets/TEMP/46673988b71a834a3489dd511265f99186cf5a29?width=2880"
         alt="Hero House"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          objectPosition: 'center',
-          zIndex: 0,
-        }}
+        className="absolute inset-0 w-full h-full object-cover z-0"
         referrerPolicy="no-referrer"
       />
-
-      {/* 2. Purple Gradient Overlay */}
-      <div 
+      <div
+        className="absolute inset-0 z-[1]"
         style={{
-          position: 'absolute',
-          inset: 0,
           background: 'linear-gradient(to bottom, rgba(80, 40, 120, 0.75) 0%, rgba(60, 20, 100, 0.85) 60%, rgba(20, 0, 40, 0.95) 100%)',
-          zIndex: 1,
         }}
       />
 
-      {/* 3. Centered Text Block */}
-      <div 
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '100%',
-          maxWidth: '800px',
-          textAlign: 'center',
-          zIndex: 10,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '0 20px'
-        }}
-      >
-        <h1 
-          className="font-display text-[88px] text-[#ffffff]"
-          style={{
-            fontWeight: 900,
-            fontSize: '56px',
-            lineHeight: 1.1,
-            color: 'white',
-          }}
-        >
-          Sell Your Home Faster with Havlo Relaunch Assessment
-        </h1>
-        <p
-          className="font-body"
-          style={{
-            fontSize: '18px',
-            color: 'rgba(255,255,255,0.85)',
-            lineHeight: 1.6,
-            maxWidth: '540px',
-            margin: '16px auto 0',
-          }}
-        >
-          Your home has been on the market too long. Get a data-driven, independent roadmap to selling faster — without switching agents.
-        </p>
-        <button
-          className="transition-all duration-200 hover:bg-[#f0f0f0] active:scale-95"
-          style={{
-            marginTop: '28px',
-            background: 'white',
-            color: '#111',
-            padding: '14px 32px',
-            borderRadius: '9999px',
-            fontSize: '16px',
-            fontWeight: 500,
-            border: 'none',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          Get Started
-          <ArrowUpRight size={18} />
-        </button>
+      <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 lg:px-[100px] pt-20 pb-32 lg:pt-32 lg:pb-40 min-h-[600px] lg:h-[750px]">
+        <div className="w-full max-w-[800px] flex flex-col items-center">
+          <h1 className="font-display font-black text-white leading-[1.1] text-[36px] sm:text-[48px] lg:text-[64px] xl:text-[72px]">
+            Sell Your Home Faster with Havlo Relaunch Assessment
+          </h1>
+          <p className="font-body mt-4 lg:mt-5 text-base lg:text-lg leading-[1.6] text-white/85 max-w-[540px]">
+            Your home has been on the market too long. Get a data-driven, independent roadmap to selling faster — without switching agents.
+          </p>
+          <button className="mt-7 inline-flex items-center gap-2 bg-white text-[#111] px-8 py-3.5 rounded-full text-base font-medium transition-all duration-200 hover:bg-[#f0f0f0] active:scale-95">
+            Get Started
+            <ArrowUpRight size={18} />
+          </button>
+        </div>
       </div>
 
-      {/* 4. Stats Bar — pinned to bottom */}
-      <div 
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          width: '100%',
-          background: 'transparent',
-          height: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          zIndex: 10,
-          paddingBottom: '20px'
-        }}
-      >
-        {[
-          { value: "5×", label: "Areas of your listing we audit" },
-          { value: "2wk", label: "Average time to first offers after relaunch" },
-          { value: "100", label: "No disruption to your current sale process" },
-        ].map((stat, idx) => (
-          <div key={idx} className="text-center">
-            <span style={{ fontSize: '20px', fontWeight: 800, color: '#c084fc', display: 'block' }}>
-              {stat.value}
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'white' }}>
-              {stat.label}
-            </span>
-          </div>
-        ))}
+      <div className="absolute bottom-0 left-0 w-full z-10 pb-6 lg:pb-5 px-6 lg:px-[100px]">
+        <div className="grid grid-cols-3 gap-4 lg:flex lg:items-center lg:justify-around">
+          {stats.map((stat, idx) => (
+            <div key={idx} className="text-center">
+              <span className="block text-base lg:text-xl font-extrabold text-[#c084fc]">
+                {stat.value}
+              </span>
+              <span className="block text-[11px] lg:text-[13px] font-bold text-white leading-tight mt-1">
+                {stat.label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

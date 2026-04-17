@@ -75,10 +75,10 @@ export const AboutUs: React.FC = () => {
       </section>
 
       {/* 4. Lifecycle Section */}
-      <section className="relative flex flex-col items-start gap-14 bg-[#040504] px-4 pt-40 pb-20 sm:px-10 lg:px-[100px]">
+      <section className="relative flex flex-col items-start gap-14 bg-[#040504] px-4 pt-40 pb-20 sm:px-10 lg:px-[100px] overflow-hidden">
         {/* Curved Transition from White Section */}
-        <div className="absolute top-[120px] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1951px] h-[463px] z-0 pointer-events-none">
-          <svg width="1951" height="463" viewBox="0 0 1951 463" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="absolute top-[60px] lg:top-[120px] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200vw] lg:w-[1951px] h-[200px] lg:h-[463px] z-0 pointer-events-none">
+          <svg className="w-full h-full" viewBox="0 0 1951 463" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
             <ellipse cx="975.5" cy="231.5" rx="975.5" ry="231.5" fill="#040504"/>
           </svg>
         </div>
