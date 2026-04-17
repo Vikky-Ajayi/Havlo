@@ -36,8 +36,8 @@ export const Contact: React.FC = () => {
             <ContactMethodCard
               icon={<Mail className="h-5 w-5 text-black" />}
               label="EMAIL"
-              value="info@havlo.co"
-              href="mailto:info@havlo.co"
+              value="hello@havlo.co"
+              href="mailto:hello@havlo.co"
             />
             <ContactMethodCard
               icon={<Calendar className="h-5 w-5 text-black" />}
