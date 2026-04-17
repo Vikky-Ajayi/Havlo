@@ -13,10 +13,84 @@ import { useModal } from '../hooks/useModal';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+const homeReviews = [
+  {
+    title: 'Great experience buying abroad',
+    content: 'I was looking to purchase property overseas for months with no success. Havlo connected me with genuine opportunities and made the whole process simple and efficient.',
+    author: 'Daniel, London',
+  },
+  {
+    title: 'Found my investment property internationally',
+    content: 'Havlo helped me find a great investment property abroad that I would never have discovered through traditional channels. Smooth and professional experience.',
+    author: 'Amir, Dubai',
+  },
+  {
+    title: 'Sold my £7M property offshore',
+    content: 'We had a £7m property sitting without serious interest locally. Havlo introduced us to offshore buyers and helped us secure a successful sale.',
+    author: 'James, Surrey',
+  },
+  {
+    title: 'Finally sold after 6 months on market',
+    content: 'Our home had been listed for over 6 months with very little traction. Havlo repositioned it internationally and we quickly saw real interest.',
+    author: 'Olivia, Bristol',
+  },
+  {
+    title: 'Sold after 18 months of no results',
+    content: 'After 18 months struggling on property portals, Havlo completely changed our outcome. The international exposure brought the right buyer.',
+    author: 'Richard, Manchester',
+  },
+  {
+    title: 'Havlo assessment was a game changer',
+    content: 'The Property Sale Audit showed us exactly why our home wasn’t selling. Once we followed the recommendations, everything improved.',
+    author: 'Sophie, Leeds',
+  },
+  {
+    title: 'Clear insight into why my property wasn’t selling',
+    content: 'The Havlo assessment gave us clarity on pricing and positioning issues we hadn’t considered. It completely reshaped our strategy.',
+    author: 'Matthew, Birmingham',
+  },
+  {
+    title: 'Helped us reach global buyers',
+    content: 'As estate agents, Havlo helped us reach international buyers beyond Rightmove and Zoopla. It added a powerful new channel for us.',
+    author: 'Laura, London',
+  },
+  {
+    title: 'Faster sales through international exposure',
+    content: 'Once we started using Havlo, our listings gained much more traction and sold significantly faster than before.',
+    author: 'Thomas, Edinburgh',
+  },
+  {
+    title: 'High-quality international leads',
+    content: 'The quality of enquiries improved dramatically. We were speaking to serious, qualified international buyers rather than time-wasters.',
+    author: 'Hannah, London',
+  },
+  {
+    title: 'A real competitive advantage for our agency',
+    content: 'Havlo gave our estate agency a clear edge in the market. It opened up a global buyer audience we couldn’t reach before.',
+    author: 'Andrew, Cardiff',
+  },
+  {
+    title: 'Helped me buy with confidence abroad',
+    content: 'I felt guided throughout the entire process of buying overseas. Havlo made international property search much more accessible.',
+    author: 'Natalie, Manchester',
+  },
+];
+
 export const Home: React.FC = () => {
   const { openModal } = useModal();
   const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('BUYERS');
-  
+  const [reviewIndex, setReviewIndex] = React.useState(0);
+  const [mobileReviewIndex, setMobileReviewIndex] = React.useState(0);
+
+  const visibleDesktopReviews = React.useMemo(() => {
+    return [0, 1, 2].map((offset) => homeReviews[(reviewIndex + offset) % homeReviews.length]);
+  }, [reviewIndex]);
+
+  const nextReviews = () => setReviewIndex((i) => (i + 3) % homeReviews.length);
+  const prevReviews = () => setReviewIndex((i) => (i - 3 + homeReviews.length) % homeReviews.length);
+  const nextMobileReview = () => setMobileReviewIndex((i) => (i + 1) % homeReviews.length);
+  const prevMobileReview = () => setMobileReviewIndex((i) => (i - 1 + homeReviews.length) % homeReviews.length);
+
   const handleGetStarted = () => {
     openModal('create-account');
   };
@@ -32,7 +106,7 @@ export const Home: React.FC = () => {
       {/* 1. Hero Section */}
       <HeroSection 
         title="Property Done Smarter"
-        subtitle="Buy, sell, or promote property with ease. From international purchases to connecting with serious buyers — we help you move faster."
+        subtitle="From first enquiry to final completion, we guide you through every step of buying property abroad—seamlessly and with confidence."
         imageSrc="/Mask group.png"
         onButtonClick={handleGetStarted}
       />
@@ -81,39 +155,47 @@ export const Home: React.FC = () => {
 
       {/* 4. Reviews Section */}
       <section className="flex w-full bg-white px-4 py-12 lg:py-20 sm:px-6 lg:px-10">
-        {/* Desktop: Excellent on left, carousel on right */}
+        {/* Desktop: Rated on left, carousel on right */}
         <div className="hidden w-full lg:flex items-center gap-10">
-          {/* Left — Excellent block */}
+          {/* Left — Rated block */}
           <div className="flex shrink-0 flex-col items-start gap-4 text-left">
             <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-              Excellent
+              Rated
             </h2>
             <TrustpilotStars className="h-[36px]" />
-            <p className="font-body text-[18px] font-normal text-black">
-              Based on <span className="font-bold underline">359 reviews</span>
+            <p className="font-body text-[18px] font-normal text-black max-w-[260px]">
+              Rated Excellent based on over <span className="font-bold underline">1,000 customer review.</span>
             </p>
           </div>
 
           {/* Right — carousel */}
           <div className="flex flex-1 items-center gap-4">
-            <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+            <button
+              onClick={prevReviews}
+              aria-label="Previous reviews"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
+            >
               <ChevronLeft size={18} />
             </button>
 
             <div className="grid flex-1 grid-cols-3 gap-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="rounded-xl bg-[#F5F5F3] p-5">
+              {visibleDesktopReviews.map((r, i) => (
+                <div key={`${reviewIndex}-${i}`} className="rounded-xl bg-[#F5F5F3] p-5">
                   <ReviewCard
-                    title="Outstanding support for first time buyer"
-                    content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                    author="Freeborn"
-                    time="50 minutes ago"
+                    title={r.title}
+                    content={r.content}
+                    author={r.author}
+                    time=""
                   />
                 </div>
               ))}
             </div>
 
-            <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+            <button
+              onClick={nextReviews}
+              aria-label="Next reviews"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
+            >
               <ChevronRight size={18} />
             </button>
           </div>
@@ -123,30 +205,38 @@ export const Home: React.FC = () => {
         <div className="flex w-full flex-col items-center gap-6 lg:hidden">
           <div className="flex flex-col items-center gap-3 text-center">
             <h2 className="font-body text-[32px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-              Excellent
+              Rated
             </h2>
             <TrustpilotStars className="h-[30px]" />
           </div>
 
           <div className="flex w-full items-center gap-3">
-            <button className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+            <button
+              onClick={prevMobileReview}
+              aria-label="Previous review"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
+            >
               <ChevronLeft size={14} />
             </button>
             <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
               <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
+                title={homeReviews[mobileReviewIndex].title}
+                content={homeReviews[mobileReviewIndex].content}
+                author={homeReviews[mobileReviewIndex].author}
+                time=""
               />
             </div>
-            <button className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+            <button
+              onClick={nextMobileReview}
+              aria-label="Next review"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
+            >
               <ChevronRight size={14} />
             </button>
           </div>
 
-          <p className="font-body text-base font-normal text-black">
-            Based on <span className="font-bold underline">359 reviews</span>
+          <p className="font-body text-base font-normal text-black text-center">
+            Rated Excellent based on over <span className="font-bold underline">1,000 customer review.</span>
           </p>
         </div>
       </section>
