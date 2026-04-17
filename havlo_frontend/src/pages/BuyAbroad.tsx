@@ -29,7 +29,7 @@ export const BuyAbroad: React.FC = () => {
   const tabContent: Record<string, { id: string; title: string; description: string; threshold: string }> = {
     'High-Value Investors': {
       id: '01',
-      title: 'Investors Deploying $X+',
+      title: 'Investors Deploying $100K+',
       description: 'Serious capital allocators seeking structured, high-yield real estate with clear return profiles and risk-managed entry points.',
       threshold: 'MINIMUM THRESHOLD APPLIES',
     },
