@@ -203,8 +203,8 @@ export const BuyAbroad: React.FC = () => {
         </div>
 
         {/* Tabs Container */}
-        <div className="w-full mx-auto">
-          <div className="inline-flex items-center gap-1 rounded-full bg-white/5 p-1.5">
+        <div className="w-full mx-auto overflow-x-auto no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
+          <div className="inline-flex items-center gap-1 rounded-full bg-white/5 p-1.5 w-max">
             {tabs.map((tab) => (
               <button
                 key={tab}
