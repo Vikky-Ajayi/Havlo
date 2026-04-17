@@ -154,7 +154,7 @@ export const EliteProperty: React.FC = () => {
             </span>
           </div>
           <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] sm:text-[56px]">
-            Precision Access to Global Capital
+            Precision Access to Global Property Buyers
           </h2>
           <p className="max-w-[440px] font-body text-lg leading-[1.2] text-black/80">
             Four pillars that set our approach apart from conventional property marketing.
