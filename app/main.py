@@ -144,40 +144,47 @@ async def startup() -> None:
                 from sqlalchemy import text
                 # Idempotent schema sync: add any columns missing on pre-existing tables.
                 # Safe to re-run; uses ADD COLUMN IF NOT EXISTS (Postgres >= 9.6).
-                await conn.execute(text("""
-                    DO $$ BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-                            CREATE TYPE user_role AS ENUM ('buyer','seller','admin','agent');
-                        END IF;
-                    END $$;
-                """))
-                await conn.execute(text("""
-                    DO $$ BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status_sale_audit') THEN
-                            CREATE TYPE payment_status_sale_audit AS ENUM ('pending','completed','failed');
-                        END IF;
-                    END $$;
-                """))
-                await conn.execute(text("""
-                    ALTER TABLE sale_audit_requests
-                        ADD COLUMN IF NOT EXISTS sumup_checkout_id VARCHAR(255),
-                        ADD COLUMN IF NOT EXISTS sumup_checkout_url TEXT,
-                        ADD COLUMN IF NOT EXISTS payment_status payment_status_sale_audit NOT NULL DEFAULT 'pending';
-                """))
-                await conn.execute(text("""
-                    ALTER TABLE users
-                        ADD COLUMN IF NOT EXISTS supabase_uid VARCHAR(255),
-                        ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
-                        ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
-                        ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
-                        ADD COLUMN IF NOT EXISTS phone_country_code VARCHAR(10) DEFAULT '+44',
-                        ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30),
-                        ADD COLUMN IF NOT EXISTS role user_role,
-                        ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-                        ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT FALSE,
-                        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
-                        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
-                """))
+                # Skip on non-Postgres backends (e.g. SQLite for local dev/tests).
+                if conn.dialect.name == "postgresql":
+                    await conn.execute(text("""
+                        DO $$ BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+                                CREATE TYPE user_role AS ENUM ('buyer','seller','admin','agent');
+                            END IF;
+                        END $$;
+                    """))
+                    await conn.execute(text("""
+                        DO $$ BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status_sale_audit') THEN
+                                CREATE TYPE payment_status_sale_audit AS ENUM ('pending','completed','failed');
+                            END IF;
+                        END $$;
+                    """))
+                    await conn.execute(text("""
+                        ALTER TABLE sale_audit_requests
+                            ADD COLUMN IF NOT EXISTS sumup_checkout_id VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS sumup_checkout_url TEXT,
+                            ADD COLUMN IF NOT EXISTS payment_status payment_status_sale_audit NOT NULL DEFAULT 'pending';
+                    """))
+                    await conn.execute(text("""
+                        ALTER TABLE users
+                            ADD COLUMN IF NOT EXISTS supabase_uid VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+                            ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
+                            ADD COLUMN IF NOT EXISTS phone_country_code VARCHAR(10) DEFAULT '+44',
+                            ADD COLUMN IF NOT EXISTS phone_number VARCHAR(30),
+                            ADD COLUMN IF NOT EXISTS role user_role,
+                            ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
+                            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+                    """))
+                else:
+                    logger.info(
+                        "Skipping Postgres-only schema sync on dialect=%s",
+                        conn.dialect.name,
+                    )
             DB_READY = True
             logger.info("Database tables verified ✓")
 

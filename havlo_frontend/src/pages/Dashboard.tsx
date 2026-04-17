@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   ArrowRight
 } from 'lucide-react';
@@ -6,10 +6,19 @@ import { Button } from '../components/ui/Button';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useNavigate } from 'react-router-dom';
 import { useModal } from '../hooks/useModal';
+import { useAuth } from '../context/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { openModal } = useModal();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user?.role === 'agent') {
+      navigate('/dashboard/buyer-network', { replace: true });
+    }
+  }, [user?.role, navigate]);
+
   return (
     <DashboardLayout title="Buy Property Abroad">
       <div className="max-w-[1162px] mx-auto space-y-10">
