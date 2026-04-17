@@ -27,6 +27,7 @@ export const Contact: React.FC = () => {
           <div className="flex w-full flex-col items-center justify-center gap-10 rounded-[24px] bg-[#081B2A] py-8 sm:flex-row sm:gap-20">
             <div className="flex flex-col items-center gap-4 text-center">
               <span className="font-body text-[28px] font-bold text-white">+44 7585 637752</span>
+              <span className="font-body text-[28px] font-bold text-white">+44 7585 637752</span>
             </div>
           </div>
 
