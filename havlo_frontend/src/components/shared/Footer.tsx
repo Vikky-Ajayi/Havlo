@@ -48,7 +48,7 @@ export const Footer: React.FC = () => {
           <div className="flex items-center gap-7">
             {[
               { id: 'fb', icon: <FacebookIcon />, href: 'https://www.facebook.com/profile.php?id=61586495581183' },
-              { id: 'ig', icon: <InstagramIcon />, href: '#' },
+              { id: 'ig', icon: <InstagramIcon />, href: 'https://www.instagram.com/heyhavlo/' },
               { id: 'x', icon: <XIcon />, href: '#' },
             ].map((social) => (
               <a
