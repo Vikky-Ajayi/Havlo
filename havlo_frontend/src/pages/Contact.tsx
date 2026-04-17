@@ -164,7 +164,7 @@ export const Contact: React.FC = () => {
 
               <div className="flex flex-col gap-4">
                 <label className="font-body text-sm font-bold text-[#001C47]">
-                  Please also provide a brief overview of your requirements:
+                  Please also provide a brief overview of your enquiry/questions
                 </label>
                 <textarea
                   placeholder="How can we be of help"
