@@ -398,11 +398,11 @@ export const EliteProperty: React.FC = () => {
                   Who This Is For
                 </span>
               </div>
-              <ul className="flex flex-wrap gap-3 list-none p-0 m-0">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 list-none p-0 m-0">
                 {whoThisIsFor.map((item) => (
                   <li
                     key={item}
-                    className="inline-flex w-fit items-center rounded-full border border-havlo-purple px-5 py-2 font-body text-sm font-medium text-havlo-purple whitespace-nowrap"
+                    className="inline-flex items-center justify-center text-center rounded-full border border-havlo-purple px-5 py-2 font-body text-sm font-medium text-havlo-purple"
                   >
                     {item}
                   </li>
