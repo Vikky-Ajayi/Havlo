@@ -10,10 +10,48 @@ import { ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useModal } from '../hooks/useModal';
 
+const buyAbroadReviews = [
+  { title: 'Simplifies international purchase', content: 'Havlo took all the stress out of buying property overseas. The step-by-step guidance and detailed info gave me confidence to make my first international purchase.', author: 'Tomiwa', time: 'Lagos' },
+  { title: 'Great experience from start to finish', content: 'I found exactly what I wanted through Havlo. The platform is intuitive, and the advisory team answered all my questions quickly.', author: 'Carlos', time: 'Madrid' },
+  { title: 'Transparent and reliable', content: "Havlo is one of the few platforms I've used that actually shows all the necessary details. No hidden surprises. Very trustworthy.", author: 'Emily', time: 'Manchester' },
+  { title: 'Perfect for commercial property', content: 'I used Havlo to purchase a commercial space abroad. The whole process was smooth, and I could track everything online.', author: 'Al-Fahad', time: 'Dubai' },
+  { title: 'Hassle-free overseas property buying', content: "I've tried a few platforms before, but Havlo made buying my apartment abroad so straightforward. Clear listings, easy communication, and really helpful support. Highly recommend!", author: 'Daniel', time: 'London' },
+  { title: 'Easy and stress-free', content: 'The platform made what I thought would be complicated very simple. From property search to legal documentation, everything was clearly explained.', author: 'Mark', time: 'Toronto' },
+  { title: 'Perfect for first-time international buyers', content: "As someone new to buying abroad, I felt supported at every stage. Havlo's guidance is top-notch.", author: 'Wei', time: 'Shanghai' },
+  { title: 'Smooth commercial property purchase', content: 'Everything was straightforward. The advisory team kept me informed and I was able to close my investment without any stress.', author: 'George', time: 'Monte Carlo' },
+  { title: 'Fantastic overseas property options', content: 'I used Havlo to diversify my property portfolio. Excellent support to buy abroad and a really supportive team.', author: 'Rajesh', time: 'Delhi' },
+  { title: 'Trustworthy and reliable', content: 'I felt completely safe using Havlo. The service is transparent, and the advisory team is always available to help.', author: 'Garcia', time: 'Milan' },
+  { title: 'Great platform for global buyers', content: 'Havlo made it easy to explore international markets. I now own a residential property abroad thanks to them.', author: 'Wilson', time: 'Glasgow' },
+  { title: 'Quick and hassle-free', content: 'From start to finish, Havlo made buying abroad simple. Highly recommend to anyone looking to invest internationally.', author: 'Al-Nasser', time: 'Doha' },
+  { title: 'Professional and efficient', content: 'Havlo provides all the necessary tools for making informed decisions. I felt like a pro investing overseas.', author: 'Viktor', time: 'Prague' },
+  { title: 'Ideal for investors', content: 'They gave me the confidence to invest abroad. Clear info, easy communication, and secure transactions.', author: 'Hassan', time: 'Kuala Lumpur' },
+  { title: 'Hassle-free commercial investment', content: 'Bought a commercial property abroad without any complications. The whole process was smooth thanks to Havlo.', author: 'Clark', time: 'New York' },
+  { title: 'Great for first-time buyers', content: 'I was nervous about buying property overseas, but Havlo made it very manageable. Excellent guidance at every step.', author: 'David', time: 'Tel Aviv' },
+  { title: 'Professional and reliable', content: 'Havlo is extremely professional. They guide you through legal and financial details and make sure nothing is overlooked.', author: 'Chloe', time: 'Lyon' },
+];
+
+const teamAvatars = [
+  'https://randomuser.me/api/portraits/women/68.jpg',
+  'https://randomuser.me/api/portraits/men/32.jpg',
+  'https://randomuser.me/api/portraits/women/44.jpg',
+  'https://randomuser.me/api/portraits/men/75.jpg',
+];
+
 export const BuyAbroad: React.FC = () => {
   const navigate = useNavigate();
   const { openModal } = useModal();
   const [activeTab, setActiveTab] = useState('High-Value Investors');
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const visibleReviews = 3;
+  const nextReview = () =>
+    setReviewIndex((i) => (i + visibleReviews) % buyAbroadReviews.length);
+  const prevReview = () =>
+    setReviewIndex(
+      (i) => (i - visibleReviews + buyAbroadReviews.length) % buyAbroadReviews.length,
+    );
+  const reviewsToShow = Array.from({ length: visibleReviews }, (_, k) =>
+    buyAbroadReviews[(reviewIndex + k) % buyAbroadReviews.length],
+  );
 
   const handleGetStarted = () => {
     navigate('/get-started');
@@ -62,21 +100,32 @@ export const BuyAbroad: React.FC = () => {
     { name: 'Oceania', countries: 'Australia', icon: '/6.png' },
   ];
 
-  const helpSteps = [
+  const helpSteps: Array<{
+    id: string;
+    title: string;
+    description: string;
+    cta?: { label: string; to: string };
+    showTeam?: boolean;
+  }> = [
     {
       id: '01',
-      title: 'Need help buying a property abroad? We can help.',
-      description: 'Need help buying a property abroad? We can help.',
+      title: 'Define Your Ideal Property Abroad',
+      description:
+        'Tell us your preferred country, budget, and whether you are buying for investment, relocation, or lifestyle. We assess your goals, explain the local buying process, and map out a clear, realistic path—so you know exactly what to expect before committing.',
     },
     {
       id: '02',
-      title: 'We do your legal work and survey too',
-      description: 'For a competitive price, we can help you with every aspect of buying a home abroad.',
+      title: 'Buy with Expert Guidance from Start to Finish',
+      description:
+        'We guide you through every stage of the purchase—from sourcing trusted agents and legal professionals to managing paperwork, due diligence, and timelines. You avoid costly mistakes, save time, and complete your property purchase abroad with total confidence.',
+      cta: { label: 'Learn More', to: '/buy-home' },
     },
     {
       id: '03',
-      title: 'A friendly team by your side',
-      description: 'A dedicated case manager assigned to guide you through the process from start to finish',
+      title: 'A Friendly Team by Your Side',
+      description:
+        'A dedicated case manager is assigned to guide you through the entire process from start to finish.',
+      showTeam: true,
     },
   ];
 
@@ -110,30 +159,31 @@ export const BuyAbroad: React.FC = () => {
           </div>
 
           <div className="relative flex flex-1 items-center gap-8">
-            <button className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors">
+            <button
+              type="button"
+              onClick={prevReview}
+              aria-label="Previous reviews"
+              className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors"
+            >
               <ChevronLeft className="h-6 w-6" />
             </button>
             <div className="flex flex-1 gap-8">
-              <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
-              />
-              <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
-              />
-              <ReviewCard
-                title="Outstanding support for first time buyer"
-                content="As a first-time buyer, the mortgage process felt really overwhelming at the start, but Tembo made everything so much easier. From day one,"
-                author="Freeborn"
-                time="50 minutes ago"
-              />
+              {reviewsToShow.map((review, idx) => (
+                <ReviewCard
+                  key={`${reviewIndex}-${idx}`}
+                  title={review.title}
+                  content={review.content}
+                  author={review.author}
+                  time={review.time}
+                />
+              ))}
             </div>
-            <button className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors">
+            <button
+              type="button"
+              onClick={nextReview}
+              aria-label="Next reviews"
+              className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors"
+            >
               <ChevronRight className="h-6 w-6" />
             </button>
           </div>
@@ -289,6 +339,34 @@ export const BuyAbroad: React.FC = () => {
                 <p className="font-body text-[15px] text-white/80 leading-relaxed">
                   {step.description}
                 </p>
+                {step.cta && (
+                  <Link
+                    to={step.cta.to}
+                    className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-2.5 font-body text-sm font-semibold text-[#A409D2] hover:bg-white/90 transition-colors"
+                  >
+                    {step.cta.label}
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                )}
+                {step.showTeam && (
+                  <div className="mt-4 flex items-center gap-3">
+                    <div className="flex -space-x-2">
+                      {teamAvatars.map((src, i) => (
+                        <img
+                          key={i}
+                          src={src}
+                          alt="Team member"
+                          referrerPolicy="no-referrer"
+                          className="h-9 w-9 rounded-full border-2 border-white object-cover"
+                        />
+                      ))}
+                    </div>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-[#16A34A] px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+                      <span className="h-2 w-2 rounded-full bg-white" />
+                      Online Now
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
