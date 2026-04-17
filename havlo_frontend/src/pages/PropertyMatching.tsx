@@ -183,8 +183,15 @@ export const PropertyMatching: React.FC = () => {
                   Property type<span className="text-[#FA4242]">*</span>
                 </label>
                 <div className="relative">
-                  <select className="w-full h-12 px-4 rounded-lg bg-[#EEF0F2] font-body text-xs text-[#676B80] appearance-none focus:outline-none">
-                    <option>Select type</option>
+                  <select
+                    name="propertyType"
+                    defaultValue=""
+                    className="w-full h-12 px-4 rounded-lg bg-[#EEF0F2] font-body text-xs text-[#676B80] appearance-none focus:outline-none"
+                  >
+                    <option value="" disabled>Select type</option>
+                    <option value="Residential">Residential</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Investment">Investment</option>
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                     <svg width="8" height="4" viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
