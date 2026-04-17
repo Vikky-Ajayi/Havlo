@@ -356,7 +356,7 @@ export const Home: React.FC = () => {
             className="inline-flex h-14 items-center justify-center gap-1 px-5 py-3 relative bg-[#000000] rounded-[48px] cursor-pointer hover:bg-black/90 transition-colors w-full lg:w-auto"
           >
             <div className="w-fit font-bold lg:font-semibold text-[#feffff] text-lg text-center tracking-[-0.36px] leading-[27px] whitespace-nowrap relative [font-family:'Inter',Helvetica]">
-              Get started Today
+              Get Started
             </div>
           </div>
         </div>

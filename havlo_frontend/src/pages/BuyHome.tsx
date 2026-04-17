@@ -31,7 +31,7 @@ export const BuyHome: React.FC = () => {
             onClick={() => openModal('create-account')}
             className="mt-10 rounded-full bg-black px-8 py-4 font-body text-lg font-semibold text-white transition-all hover:bg-black/90 active:scale-95"
           >
-            Get started Today
+            Get Started
           </button>
 
           {/* Floating Status Cards */}
@@ -254,7 +254,7 @@ export const BuyHome: React.FC = () => {
             onClick={() => openModal('create-account')}
             className="mt-20 rounded-full bg-black px-8 py-4 font-body text-lg font-semibold text-white transition-all hover:bg-black/90 active:scale-95"
           >
-            Get started Today
+            Get Started
           </button>
         </div>
       </section>

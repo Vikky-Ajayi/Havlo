@@ -22,7 +22,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   title,
   subtitle,
   imageSrc,
-  buttonText = "Get started Today",
+  buttonText = "Get Started",
   onButtonClick,
   secondaryButtonText,
   onSecondaryButtonClick,

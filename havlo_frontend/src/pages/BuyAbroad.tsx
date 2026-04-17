@@ -309,7 +309,7 @@ export const BuyAbroad: React.FC = () => {
           onClick={handleGetStarted}
           className="h-14 px-10 rounded-full bg-black text-white hover:bg-black/90 transition-colors text-lg font-semibold"
         >
-          Get started Today
+          Get Started
         </Button>
       </section>
     </div>
