@@ -10,6 +10,26 @@ interface CountryCodeSelectProps {
   buttonClassName?: string;
 }
 
+const FlagImg: React.FC<{ iso?: string; alt?: string; lazy?: boolean }> = ({
+  iso,
+  alt = '',
+  lazy = false,
+}) => {
+  if (!iso) return null;
+  const code = iso.toLowerCase();
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      srcSet={`https://flagcdn.com/w40/${code}.png 1x, https://flagcdn.com/w80/${code}.png 2x`}
+      width={20}
+      height={15}
+      alt={alt}
+      loading={lazy ? 'lazy' : undefined}
+      className="inline-block h-[15px] w-[20px] flex-shrink-0 rounded-[2px] object-cover"
+    />
+  );
+};
+
 const PRIMARY_FOR_CODE: Record<string, string> = {
   '+1': 'United States',
   '+44': 'United Kingdom',
@@ -78,7 +98,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
           buttonClassName,
         )}
       >
-        <span className="text-base leading-none">{selected?.flag}</span>
+        <FlagImg iso={selected?.iso} alt={selected?.country || ''} />
         <ChevronDown
           size={12}
           className={cn('text-black/50 transition-transform', isOpen && 'rotate-180')}
@@ -125,7 +145,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
                       isSelected && 'bg-gray-100 font-semibold',
                     )}
                   >
-                    <span className="text-base leading-none">{c.flag}</span>
+                    <FlagImg iso={c.iso} alt={c.country} lazy />
                     <span className="text-black/80">{c.country}</span>
                     <span className="ml-auto text-black/50">{c.code}</span>
                   </button>
