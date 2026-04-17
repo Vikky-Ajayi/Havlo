@@ -111,7 +111,7 @@ export const BuyerNetwork: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="font-display font-black tracking-[-1.6px] text-[#1F1F1E] mb-10 text-[88px] leading-[1.0]"
+            className="font-display font-black tracking-[-1.6px] text-[#1F1F1E] mb-10 text-[64px] md:text-[64px] lg:text-[88px] leading-[1.0]"
             style={{ marginTop: '-10px' }}
           >
             Estate Agents, Sell Properties Faster with Havlo's International Buyer Network

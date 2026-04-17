@@ -13,7 +13,7 @@ export const AboutUs: React.FC = () => {
           <span className="font-body text-[16.7px] font-medium uppercase tracking-[-0.054px] text-black">
             About Us
           </span>
-          <h1 className="max-w-[1046px] font-display text-[88px] font-black leading-[1.0] tracking-[-1.6px] text-[#1F1F1E]">
+          <h1 className="max-w-[1046px] font-display text-[52px] sm:text-[74.4px] lg:text-[88px] font-black leading-[1.1] lg:leading-[1.0] tracking-[-1.6px] text-[#1F1F1E]">
             Making property abroad simpler, safer, transparent
           </h1>
           <p className="max-w-[817px] font-body text-[16.7px] leading-[1.7] tracking-[-0.054px] text-black">

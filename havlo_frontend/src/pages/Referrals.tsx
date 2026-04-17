@@ -10,7 +10,7 @@ export const Referrals: React.FC = () => {
           <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-black">
             Strategic Referral Partnership
           </span>
-          <h1 className="font-display text-[88px] font-black leading-[1.0] tracking-[-1.76px] text-[#1F1F1E]">
+          <h1 className="font-display text-[64px] lg:text-[88px] font-black leading-[1.1] lg:leading-[1.0] tracking-[-1.76px] text-[#1F1F1E]">
             Refer Clients Investing in International Property
           </h1>
           <p className="max-w-[662px] font-body text-lg leading-[1.7] tracking-[-0.054px] text-black">
