@@ -7,8 +7,46 @@ import { ChevronLeft, ChevronRight, Users, Globe, ChartLine, Star, ArrowRight } 
 import { useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 
+const elitePropertyReviews = [
+  { title: 'Highly targeted and effective', content: 'Havlo’s Elite Property Introductions connected us with serious offshore buyers. The quality of interest was far better than anything we’d seen before.', author: 'James, London' },
+  { title: 'Reached the right buyers globally', content: 'The tailored campaigns brought our property directly to high-net-worth international buyers. We saw genuine enquiries within a short period.', author: 'Amira, Dubai' },
+  { title: 'Exceptional exposure to HNWI buyers', content: 'We were impressed by how precisely Havlo targeted the right audience. The enquires were high quality and aligned perfectly with our property.', author: 'Charles, London' },
+  { title: 'Premium service with real results', content: 'The Elite Property Introductions service delivered exactly what it promised—access to qualified offshore buyers ready to transact.', author: 'Oliver, Manchester' },
+  { title: 'A smarter way to market luxury property', content: 'Havlo’s approach is far more advanced than traditional methods. It put our property in front of the right global audience.', author: 'Sophie, London' },
+  { title: 'High-quality international enquiries', content: 'Instead of general interest, we received serious enquiries from buyers who were clearly financially capable and ready to proceed.', author: 'Ahmed, Doha' },
+  { title: 'Perfect for high-value properties', content: 'This service is ideal for premium listings. The targeting is precise, and the exposure to international investors is unmatched.', author: 'Emily, Cheshire' },
+  { title: 'Global reach beyond traditional portals', content: 'Havlo helped us go beyond property portals and reach a curated network of offshore buyers through strategic digital campaigns.', author: 'Michael, New York' },
+  { title: 'Efficient and results-driven', content: 'The process was seamless, and the results spoke for themselves. We connected with genuine high-net-worth buyers quickly.', author: 'Daniel, Leeds' },
+  { title: 'Professional and highly targeted approach', content: 'Havlo’s approach to digital marketing is clearly designed for high-end properties. The exposure and buyer quality exceeded expectations.', author: 'Robert, Edinburgh' },
+];
+
+const whoThisIsFor = [
+  'Sellers in Limited Local Demand Markets',
+  'Owners of High-Value or Luxury Properties (£500K+)',
+  'Vendors of Unique or One-of-a-Kind Assets',
+  'Property Owners Seeking a Faster Sale',
+  'Sellers Looking to Access International Buyers',
+  'Developers with Premium or High-End Inventory',
+  'Owners of Properties Stagnant on the Market (6+ months)',
+  'Vendors Not Getting Results from Property Portals',
+  'Sellers Targeting High-Net-Worth International Buyers',
+  'Owners of Investment-Grade Properties with Global Appeal',
+];
+
 export const EliteProperty: React.FC = () => {
   const { openModal } = useModal();
+  const [reviewIndex, setReviewIndex] = React.useState(0);
+  const [mobileReviewIndex, setMobileReviewIndex] = React.useState(0);
+
+  const visibleDesktopReviews = React.useMemo(
+    () => [0, 1, 2].map((o) => elitePropertyReviews[(reviewIndex + o) % elitePropertyReviews.length]),
+    [reviewIndex]
+  );
+  const nextReviews = () => setReviewIndex((i) => (i + 3) % elitePropertyReviews.length);
+  const prevReviews = () => setReviewIndex((i) => (i - 3 + elitePropertyReviews.length) % elitePropertyReviews.length);
+  const nextMobileReview = () => setMobileReviewIndex((i) => (i + 1) % elitePropertyReviews.length);
+  const prevMobileReview = () => setMobileReviewIndex((i) => (i - 1 + elitePropertyReviews.length) % elitePropertyReviews.length);
+
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">
       {/* 1. Hero Section */}
@@ -19,8 +57,6 @@ export const EliteProperty: React.FC = () => {
         imageSrc="/Mask group2.png"
         buttonText="Access Global Buyers"
         onButtonClick={() => openModal('create-account')}
-        secondaryButtonText="Submit Your Property"
-        onSecondaryButtonClick={() => openModal('create-account')}
         titleStyle={{ marginTop: '39px', fontSize: '68px' }}
         overlineStyle={{ marginTop: '-59px' }}
         subtitleStyle={{ marginTop: '-20px' }}
@@ -77,92 +113,65 @@ export const EliteProperty: React.FC = () => {
               <TrustpilotStars className="h-[45px]" />
             </div>
             <p className="font-body text-[22px] font-normal text-black">
-              Based on <span className="font-bold underline">4,359 reviews</span>
+              Based on <span className="font-bold underline">359 reviews</span>
             </p>
           </div>
 
           {/* Desktop Reviews */}
           <div className="hidden lg:flex relative flex-1 items-center gap-8">
-            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
+            <button
+              onClick={prevReviews}
+              aria-label="Previous reviews"
+              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0 hover:bg-black/5"
+            >
               <ChevronLeft size={20} />
             </button>
-            <div className="flex flex-1 gap-8 overflow-x-auto pb-4 no-scrollbar sm:overflow-visible">
-              <ReviewCard
-                title="Connected us to serious offshore buyers instantly"
-                content="Our property had been on the market for months with little interest locally. Havlo introduced it to their curated list of offshore buyers, and we started receiving serious enquiries immediately. The property sold much faster than expected."
-                author="James – Manchester"
-                time=""
-              />
-              <ReviewCard
-                title="Faster sale thanks to Havlo’s international network"
-                content="We had a slow-moving property, but Havlo connected us with buyers overseas who were ready to act. Within weeks, we had multiple serious offers — far quicker than relying on traditional channels."
-                author="Shah – London"
-                time=""
-              />
-              <ReviewCard
-                title="Havlo’s offshore buyers made all the difference"
-                content="I had been struggling to get viewings locally. Once Havlo introduced my property to their curated offshore list, we received high-quality enquiries almost immediately. The property sold within a fraction of the time I expected."
-                author="Jack – Birmingham"
-                time=""
-              />
+            <div className="grid flex-1 grid-cols-3 gap-8">
+              {visibleDesktopReviews.map((r, i) => (
+                <ReviewCard
+                  key={`${reviewIndex}-${i}`}
+                  title={r.title}
+                  content={r.content}
+                  author={r.author}
+                  time=""
+                />
+              ))}
             </div>
-            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
+            <button
+              onClick={nextReviews}
+              aria-label="Next reviews"
+              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0 hover:bg-black/5"
+            >
               <ChevronRight size={20} />
             </button>
           </div>
 
           {/* Mobile Reviews */}
-          <div className="flex lg:hidden flex-col items-center gap-8 w-full" style={{ marginTop: '80px' }}>
-            {/* Empty div to match nth-of-type(1) if needed, but usually the first child is the first card */}
-            <div className="hidden" /> 
-            
-            <div style={{ marginTop: '-53px', marginLeft: '-58px' }}>
-              <ReviewCard
-                title="Connected us to serious offshore buyers instantly"
-                content="Our property had been on the market for months with little interest locally. Havlo introduced it to their curated list of offshore buyers, and we started receiving serious enquiries immediately."
-                author="James – Manchester"
-                time=""
-              />
-            </div>
-            <div style={{ marginRight: '-57px', marginTop: '-50px' }}>
-              <ReviewCard
-                title="Faster sale thanks to Havlo’s network"
-                content="We had a slow-moving property, but Havlo connected us with buyers overseas who were ready to act. Within weeks, we had multiple serious offers."
-                author="Shah – London"
-                time=""
-              />
-            </div>
-            <div style={{ marginLeft: '-51px', marginTop: '-53px' }}>
-              <ReviewCard
-                title="Havlo’s offshore buyers made all the difference"
-                content="I had been struggling to get viewings locally. Once Havlo introduced my property to their curated offshore list, we received high-quality enquiries almost immediately."
-                author="Jack – Birmingham"
-                time=""
-              />
-            </div>
-            <div style={{ marginRight: '-57px', marginTop: '-50px' }}>
-              <ReviewCard
-                title="Incredible results"
-                content="The speed at which Havlo found buyers was impressive. We were skeptical at first but the results speak for themselves."
-                author="Sarah – Leeds"
-                time=""
-              />
-            </div>
-            <div style={{ marginLeft: '-55px', marginTop: '-59px' }}>
-              <ReviewCard
-                title="Global reach is real"
-                content="We reached buyers in Asia and the Middle East that our local agent simply couldn't access. Highly recommend."
-                author="Robert – Bristol"
-                time=""
-              />
-            </div>
-            <div style={{ marginRight: '-20px', marginTop: '-50px' }}>
-              <ReviewCard
-                title="Seamless process"
-                content="From submission to introduction, everything was handled professionally. A great addition to our sales strategy."
-                author="Emily – Oxford"
-                time=""
-              />
+          <div className="flex lg:hidden flex-col items-stretch gap-4 w-full">
+            <ReviewCard
+              title={elitePropertyReviews[mobileReviewIndex].title}
+              content={elitePropertyReviews[mobileReviewIndex].content}
+              author={elitePropertyReviews[mobileReviewIndex].author}
+              time=""
+            />
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <button
+                onClick={prevMobileReview}
+                aria-label="Previous review"
+                className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span className="font-body text-sm text-black/60">
+                {mobileReviewIndex + 1} / {elitePropertyReviews.length}
+              </span>
+              <button
+                onClick={nextMobileReview}
+                aria-label="Next review"
+                className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0"
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
           </div>
         </div>
@@ -292,7 +301,7 @@ export const EliteProperty: React.FC = () => {
             <div className="flex flex-col gap-6 p-8 lg:w-1/2 border-r border-black/5">
               <div className="flex flex-col gap-5 border-b border-black/5 pb-6">
                 <span className="font-body text-xl font-normal text-black uppercase">TOTAL ADVISORY INVESTMENT</span>
-                <span className="font-display text-[44px] font-medium text-havlo-purple">£20,000</span>
+                <span className="font-display text-[44px] font-medium text-havlo-purple">£35,000</span>
                 <p className="font-body text-xl font-normal text-black">Structured to align commitment and delivery:</p>
               </div>
 
@@ -302,7 +311,7 @@ export const EliteProperty: React.FC = () => {
                   <div className="flex flex-col gap-4 bg-white p-8 border-b border-black/5">
                     <span className="font-body text-lg font-bold uppercase text-black/40">STAGE 1 - ENGAGEMENT</span>
                     <div className="flex flex-col">
-                      <span className="font-body text-[32px] font-medium text-[#A409D3]">£5,000</span>
+                      <span className="font-body text-[32px] font-medium text-[#A409D3]">£15,000</span>
                       <span className="font-body text-xl font-normal text-black">Private Mandate Fee</span>
                     </div>
                   </div>
@@ -318,7 +327,7 @@ export const EliteProperty: React.FC = () => {
                   <div className="flex flex-col gap-4 bg-[#1E002A] p-8 border-b border-black/5">
                     <span className="font-body text-lg font-bold uppercase text-white/70">STAGE 2 - SUCCESS</span>
                     <div className="flex flex-col">
-                      <span className="font-body text-[32px] font-medium text-[#00BC67]">£15,000</span>
+                      <span className="font-body text-[32px] font-medium text-[#00BC67]">£20,000</span>
                       <span className="font-body text-xl font-normal text-white">Success Advisory Fee</span>
                     </div>
                   </div>
@@ -358,7 +367,7 @@ export const EliteProperty: React.FC = () => {
                     "Sellers seeking access to international capital",
                     "Those prioritising discretion, control, and strategic positioning",
                     "Sellers seeking faster sale of their property.",
-                    "Sellers who's property has been on the market for over 12 months."
+                    "Sellers whose property has been on the market for over 6 months."
                   ].map((item, idx) => (
                     <li key={idx} className="border-t border-black/10 py-6 font-body text-lg text-black flex items-center gap-3">
                       <div className="h-1.5 w-1.5 rounded-full bg-black shrink-0" />
@@ -370,23 +379,6 @@ export const EliteProperty: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-between gap-8 border-t border-black/10 pt-14 lg:flex-row">
-            <div className="flex flex-col gap-8 lg:w-2/3">
-              <h3 className="font-display text-[44px] font-black leading-[1.1] text-[#050405]">
-                Request a Private Consultation
-              </h3>
-              <p className="font-body text-lg leading-[1.5] text-black">
-                If your property meets our criteria, we’ll outline how it would be positioned and introduced to our international buyer network.
-              </p>
-            </div>
-            <button 
-              onClick={() => openModal('create-account')}
-              className="flex items-center gap-3 rounded-full bg-havlo-purple px-8 py-4 font-body text-lg font-medium uppercase text-white transition-all hover:bg-havlo-purple-dark"
-            >
-              BEGIN YOUR CONSULTATION
-              <ArrowRight size={18} />
-            </button>
-          </div>
         </div>
       </section>
 
@@ -431,37 +423,26 @@ export const EliteProperty: React.FC = () => {
         </div>
 
         <div className="flex w-full max-w-7xl flex-col gap-8 rounded-3xl bg-[#F7F9F6] p-8">
-          <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
-            <div className="flex flex-col gap-8">
-              <div className="flex items-center gap-3">
-                <div className="h-0.5 w-7 rounded-full bg-black" />
-                <span className="font-body text-2xl font-bold uppercase tracking-tight text-black">
-                  Who This Is For
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-4">
-                {[
-                  "Limited Local Demand Markets",
-                  "High-Value or Unique Assets",
-                  "Property Owners Seeking Faster Sales",
-                  "International Capital Seekers"
-                ].map((tag) => (
-                  <div key={tag} className="rounded-full border border-havlo-purple px-5 py-3 font-body text-lg font-medium text-havlo-purple">
-                    {tag}
-                  </div>
-                ))}
-              </div>
+          <div className="flex flex-col gap-8">
+            <div className="flex items-center gap-3">
+              <div className="h-0.5 w-7 rounded-full bg-black" />
+              <span className="font-body text-2xl font-bold uppercase tracking-tight text-black">
+                Who This Is For
+              </span>
             </div>
-            <button 
-              onClick={() => openModal('create-account')}
-              className="flex items-center gap-3 rounded-full bg-black px-8 py-4 font-body text-lg font-medium uppercase text-white transition-all hover:bg-black/90"
-            >
-              SUBMIT YOUR PROPERTY
-              <ArrowRight size={18} />
-            </button>
+            <ul className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
+              {whoThisIsFor.map((item) => (
+                <li key={item} className="flex items-start gap-3 font-body text-lg leading-[1.4] text-black">
+                  <div className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-havlo-purple" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="font-body text-lg leading-[1.2] text-black">
-            <span className="font-bold">Havlo</span> is not a <span className="font-bold">brokerage</span>. We are a global connector of property and capital, designed to bring your asset directly to buyers who are already looking beyond their borders. We complements your agent’s efforts by introducing your property to buyers beyond their reach, helping you sell faster and more strategically.”
+          <p className="font-body text-lg leading-[1.5] text-black">
+            <span className="font-bold">Havlo</span> is not a <span className="font-bold">brokerage</span>. We are a global property exposure platform—designed to position your asset directly in front of buyers actively seeking opportunities beyond their borders.
+            <br /><br />
+            We work alongside your existing agent, enhancing their efforts by presenting your property to a carefully curated international audience beyond their reach—helping you achieve a more strategic and efficient sale.
           </p>
         </div>
       </section>
@@ -478,7 +459,7 @@ export const EliteProperty: React.FC = () => {
           onClick={() => openModal('create-account')}
           className="flex items-center gap-3 rounded-full bg-black px-8 py-4 font-body text-lg font-medium uppercase text-white transition-all hover:bg-black/90"
         >
-          Reach Global Buyers
+          Access Global Buyers
           <ArrowRight size={18} />
         </button>
       </section>
