@@ -1,29 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import { Check, Quote } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
-import { ReviewCard } from '../components/shared/ReviewCard';
-import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
-import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
-
-const buyerNetworkReviews = [
-  { title: 'Opened up a completely new buyer market', content: 'Havlo helped us reach international buyers we simply couldn’t access through traditional portals. It added a powerful new dimension to our listings.', author: 'Oliver, London' },
-  { title: 'Stronger demand from global buyers', content: 'We started receiving enquiries from serious overseas investors almost immediately. The quality of leads was noticeably higher.', author: 'Samantha, Manchester' },
-  { title: 'A real boost beyond property portals', content: 'Using Havlo alongside Rightmove and Zoopla gave us a clear advantage. Our listings reached a much wider audience.', author: 'Daniel, Birmingham' },
-  { title: 'Helped us sell faster', content: 'Properties that were sitting for months started gaining traction once we used the International Buyer Network. It made a real difference to our timelines.', author: 'James, Leeds' },
-  { title: 'High-quality, ready-to-buy enquiries', content: 'The buyers introduced through Havlo were clearly qualified and serious. It saved us time filtering out low-intent leads.', author: 'Hannah, Bristol' },
-  { title: 'Gave our agency a competitive edge', content: 'Havlo allowed us to offer something other agents couldn’t—access to international buyers. It’s been a great addition to our service.', author: 'Marcus, Liverpool' },
-  { title: 'Perfect for high-value listings', content: 'For premium properties, this service is incredibly effective. It connects you with buyers who are actively looking to invest globally.', author: 'Charlotte, Oxford' },
-  { title: 'Expanded our reach instantly', content: 'We were able to showcase our listings to a global audience without changing how we operate. Very easy to integrate into our process.', author: 'Ryan, Nottingham' },
-  { title: 'More exposure, better results', content: 'The added international visibility helped generate more interest and ultimately led to quicker sales on several listings.', author: 'Amelia, Edinburgh' },
-  { title: 'A smart addition for modern agents', content: 'Relying only on property portals is no longer enough. Havlo gave us access to a targeted international audience that delivers results.', author: 'Khalid, Dubai' },
-];
 
 export const BuyerNetwork: React.FC = () => {
   const { openModal } = useModal();
-  const desktopReviews = useHorizontalScroll<HTMLDivElement>();
   const whyChooseItems = [
     {
       id: '01',
@@ -303,54 +286,6 @@ export const BuyerNetwork: React.FC = () => {
                 </span>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5b. Trustpilot reviews */}
-      <section className="flex flex-col w-full bg-white px-4 py-16 sm:px-10 lg:px-[100px]">
-        <div className="mx-auto flex w-full max-w-[1240px] flex-col lg:flex-row items-center gap-10">
-          {/* Rated Block */}
-          <div className="flex flex-col items-center lg:items-start gap-4 text-center lg:text-left max-w-[280px]">
-            <h2 className="font-body text-[32px] lg:text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-              Rated
-            </h2>
-            <TrustpilotStars className="h-[30px] lg:h-[36px]" />
-            <p className="font-body text-[16px] font-normal text-black/80">
-              Real stories from agents who grew their reach with Havlo.
-            </p>
-          </div>
-
-          {/* Swipeable carousel */}
-          <div className="relative flex flex-1 items-center gap-3 sm:gap-4 min-w-0 w-full">
-            <button
-              onClick={desktopReviews.scrollPrev}
-              aria-label="Previous reviews"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <div
-              ref={desktopReviews.containerRef}
-              {...desktopReviews.dragHandlers}
-              className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-            >
-              {buyerNetworkReviews.map((r, i) => (
-                <div
-                  key={i}
-                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] min-w-[240px] rounded-xl bg-[#F5F5F3] p-5"
-                >
-                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={desktopReviews.scrollNext}
-              aria-label="Next reviews"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
-            >
-              <ChevronRight size={18} />
-            </button>
           </div>
         </div>
       </section>
