@@ -6,6 +6,7 @@ import { X, Check, Globe, Phone, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { CountrySelect } from '../components/shared/CountrySelect';
 
 export const DashboardEliteProperty: React.FC = () => {
   const { token } = useAuth();
@@ -14,6 +15,7 @@ export const DashboardEliteProperty: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [phoneCode, setPhoneCode] = useState('+44');
+  const [country, setCountry] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -177,18 +179,13 @@ export const DashboardEliteProperty: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-4">
                         <label className="block font-display text-sm font-black text-black">Country</label>
-                        <div className="relative">
-                          <select className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
-                            <option>Select</option>
-                            <option>United Kingdom</option>
-                            <option>United States</option>
-                          </select>
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M1 1L5 5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                        </div>
+                        <CountrySelect
+                          name="country"
+                          value={country}
+                          onChange={setCountry}
+                          placeholder="Select"
+                          buttonClassName="bg-white border border-black/10 text-sm font-semibold text-black/70 focus:ring-1 focus:ring-black/10"
+                        />
                       </div>
                       <div className="space-y-4">
                         <label className="block font-display text-sm font-black text-[#001C47]">City</label>

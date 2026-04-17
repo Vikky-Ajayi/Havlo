@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Calendar, MessageCircle, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { CountrySelect } from '../components/shared/CountrySelect';
 import { cn } from '../lib/utils';
 
 export const Contact: React.FC = () => {
@@ -9,6 +10,7 @@ export const Contact: React.FC = () => {
   const [currency, setCurrency] = useState('GBP');
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencies = ['USD', 'GBP', 'EUR'];
+  const [countryOfResidence, setCountryOfResidence] = useState('');
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
@@ -148,7 +150,16 @@ export const Contact: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <FormSelect label="Country of residence" placeholder="Select" />
+                <div className="flex flex-col gap-4">
+                  <label className="font-body text-sm font-bold text-[#001C47]">
+                    Country of residence
+                  </label>
+                  <CountrySelect
+                    value={countryOfResidence}
+                    onChange={setCountryOfResidence}
+                    placeholder="Select"
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col gap-4">

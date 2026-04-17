@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Clock, Star, Plus, Check } from 'lucide-react';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { CountrySelect } from '../components/shared/CountrySelect';
 
 export const PropertyMatching: React.FC = () => {
   const [phoneCode, setPhoneCode] = useState('+44');
+  const [country, setCountry] = useState('');
   return (
     <div className="flex flex-col w-full bg-white">
       {/* Hero Section */}
@@ -146,16 +148,7 @@ export const PropertyMatching: React.FC = () => {
               <label className="font-body text-sm font-bold text-[#001C47]">
                 Country<span className="text-[#FA4242]">*</span>
               </label>
-              <div className="relative">
-                <select className="w-full h-12 px-4 rounded-lg bg-[#EEF0F2] font-body text-xs text-[#676B80] appearance-none focus:outline-none">
-                  <option>Select your country</option>
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg width="8" height="4" viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path opacity="0.8" d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
-                  </svg>
-                </div>
-              </div>
+              <CountrySelect value={country} onChange={setCountry} placeholder="Select your country" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

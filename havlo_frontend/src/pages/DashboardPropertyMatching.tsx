@@ -9,6 +9,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CountrySelect } from '../components/shared/CountrySelect';
 
 export const DashboardPropertyMatching: React.FC = () => {
   const { token } = useAuth();
@@ -16,6 +17,7 @@ export const DashboardPropertyMatching: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [country, setCountry] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,7 +28,7 @@ export const DashboardPropertyMatching: React.FC = () => {
       const fd = new FormData(e.currentTarget);
       await api.submitPropertyMatching(token, {
         property_type: (fd.get('propertyType') as string) || 'Residential',
-        location: (fd.get('country') as string) || '',
+        location: country || (fd.get('country') as string) || '',
         budget_amount: (fd.get('budget') as string) || undefined,
         budget_currency: 'GBP',
         additional_requirements: (fd.get('helpNeeded') as string) || undefined,
@@ -186,20 +188,13 @@ export const DashboardPropertyMatching: React.FC = () => {
                     <label className="block font-display text-sm font-black text-black">
                       Which country or location are you interested in?
                     </label>
-                    <div className="relative">
-                      <select name="country" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
-                        <option>Select your country</option>
-                        <option>United Kingdom</option>
-                        <option>United States</option>
-                        <option>Canada</option>
-                        <option>Australia</option>
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M1 1L5 5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
+                    <CountrySelect
+                      name="country"
+                      value={country}
+                      onChange={setCountry}
+                      placeholder="Select your country"
+                      buttonClassName="bg-white border border-black/10 text-sm font-semibold text-black/70 focus:ring-1 focus:ring-black/10"
+                    />
                   </div>
 
                   {/* Budget Range */}
