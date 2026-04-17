@@ -409,14 +409,6 @@ export const EliteProperty: React.FC = () => {
                 ))}
               </ul>
             </div>
-            <button
-              type="button"
-              onClick={() => openModal('create-account')}
-              className="flex shrink-0 items-center gap-3 self-start rounded-full bg-black px-7 py-4 font-body text-sm font-medium uppercase tracking-wide text-white transition-all hover:bg-black/90"
-            >
-              Access Global Buyers
-              <ArrowRight size={16} />
-            </button>
           </div>
           <p className="font-body text-base leading-[1.6] text-black">
             <span className="font-bold">Havlo</span> is not a <span className="font-bold">brokerage</span>. We are a global property exposure platform—designed to position your asset directly in front of buyers actively seeking opportunities beyond their borders. We work alongside your existing agent, enhancing their efforts by presenting your property to a carefully curated international audience beyond their reach—helping you achieve a more strategic and efficient sale.
