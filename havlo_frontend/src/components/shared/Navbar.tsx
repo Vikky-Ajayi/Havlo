@@ -56,37 +56,32 @@ export const Navbar: React.FC = () => {
   };
 
   const navLinks = [
-    { 
-      name: 'Services', 
+    {
+      name: 'For Buyers',
       href: '#',
       vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector.svg",
       dropdownItems: [
         { name: 'Buy Property Abroad', href: '/buy-abroad' },
-        { name: 'Property management', href: '#' },
-        { name: 'Sell your property', href: '/relaunch-assessment' },
-        { name: 'International Buyer Network', href: '/buyer-network' },
-        { name: 'Complete home-buying service', href: '/buy-home' },
+        { name: 'Property Matching', href: '/property-matching' },
       ]
     },
-    { 
-      name: 'Who we are', 
+    {
+      name: 'For Sellers',
       href: '#',
       vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector-1.svg",
       dropdownItems: [
-        { name: 'About', href: '/about' },
-        { name: 'FAQ', href: '/faq' },
-        { name: 'Contact Us', href: '/contact' },
-        { name: 'Press', href: '#' },
+        { name: 'Elite Property Introduction', href: '/elite-property' },
+        { name: 'Sell Faster', href: '/relaunch-assessment' },
+        { name: 'Property Sale Audit', href: '/relaunch-assessment' },
       ]
     },
-    { 
-      name: 'Havlo Exclusives', 
-      href: '/elite-property',
-      vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector-2.svg"
-    },
-    { 
-      name: 'Referrals', 
-      href: '/referrals'
+    {
+      name: 'For Agents',
+      href: '#',
+      vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector-2.svg",
+      dropdownItems: [
+        { name: 'International Buyer Network', href: '/buyer-network' },
+      ]
     },
   ];
 
