@@ -127,6 +127,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
                   >
                     <span className="text-base leading-none">{c.flag}</span>
                     <span className="text-black/80">{c.country}</span>
+                    <span className="ml-auto text-black/50">{c.code}</span>
                   </button>
                 );
               })}
