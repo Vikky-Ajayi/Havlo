@@ -52,7 +52,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const safeContainerStyle = isLg ? containerStyle : undefined;
   return (
     <section 
-      className="relative w-full bg-white overflow-hidden min-h-[640px] sm:min-h-[720px] h-auto lg:h-[856px]"
+      className="relative w-full bg-white overflow-hidden min-h-[720px] sm:min-h-[820px] md:min-h-[900px] h-auto lg:h-[856px]"
     >
       <div className="relative w-full h-full">
         {/* 1. Gradient Ellipse — outer, NOT clipped */}
@@ -67,13 +67,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <div
           className="absolute top-0 left-0 w-full h-full overflow-hidden z-1"
         >
-          {/* 2a. House Image */}
+          {/* 2a. House Image — anchored to bottom on mobile/tablet, top-positioned on desktop */}
           <img
             src={imageSrc}
             alt="Hero House"
-            className="absolute left-1/2 -translate-x-1/2 top-[340px] lg:top-[300px] w-full h-auto object-cover z-[5]"
+            className="absolute left-1/2 -translate-x-1/2 bottom-0 lg:bottom-auto lg:top-[300px] w-full max-w-none h-auto z-[5]"
             style={safeImageStyle}
             referrerPolicy="no-referrer"
+            loading="eager"
           />
 
 
