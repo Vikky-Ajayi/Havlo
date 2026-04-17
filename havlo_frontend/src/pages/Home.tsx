@@ -101,6 +101,7 @@ export const Home: React.FC = () => {
         subtitle="From first enquiry to final completion, we guide you through every step of buying property abroad—seamlessly and with confidence."
         imageSrc="/Mask group.png"
         onButtonClick={handleGetStarted}
+        titleStyle={{ fontSize: '88px', lineHeight: '1.0' }}
       />
 
       {/* 2. Marquee Strip */}

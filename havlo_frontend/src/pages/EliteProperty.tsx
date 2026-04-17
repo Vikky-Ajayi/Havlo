@@ -48,7 +48,7 @@ export const EliteProperty: React.FC = () => {
         imageSrc="/Mask group2.png"
         buttonText="Access Global Buyers"
         onButtonClick={() => openModal('create-account')}
-        titleStyle={{ marginTop: '39px', fontSize: '68px' }}
+        titleStyle={{ marginTop: '39px', fontSize: '88px', lineHeight: '1.0' }}
         overlineStyle={{ marginTop: '-59px' }}
         subtitleStyle={{ marginTop: '-20px' }}
         imageStyle={{ marginTop: '-50px' }}

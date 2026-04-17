@@ -129,6 +129,7 @@ export const BuyAbroad: React.FC = () => {
         subtitle="Your property search, survey, legal work and purchase - all done in one peaceful place."
         imageSrc="/Mask group2.png"
         onButtonClick={handleGetStarted}
+        titleStyle={{ fontSize: '88px', lineHeight: '1.0' }}
       />
 
       {/* 2. Marquee Strip */}
