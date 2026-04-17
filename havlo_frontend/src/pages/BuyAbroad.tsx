@@ -137,7 +137,7 @@ export const BuyAbroad: React.FC = () => {
 
       {/* 3. Reviews Section */}
       <section className="flex w-full items-center bg-white px-4 py-20 sm:px-10 lg:px-[100px]">
-        <div className="mx-auto flex w-full flex-col lg:flex-row items-center gap-10">
+        <div className="mx-auto flex w-full flex-col lg:flex-row items-stretch lg:items-center gap-10">
           {/* Excellent Block */}
           <div className="flex flex-col items-center lg:items-start gap-5 text-center lg:text-left min-w-[200px]">
             <div className="flex flex-col items-center lg:items-start gap-3">
