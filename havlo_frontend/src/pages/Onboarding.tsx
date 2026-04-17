@@ -33,7 +33,7 @@ const propertyTypes = [
   { id: 'Commercial', title: 'Commercial', description: 'Properties for business purposes' },
   { id: 'Vacation Home', title: 'Vacation Home', description: 'Holiday retreat and getaway property' },
   { id: 'Investment', title: 'Investment', description: 'Rental income and capital appreciation' },
-  { id: 'Other', title: 'Other', description: 'Something else — tell us more' },
+  { id: 'Other', title: 'Other', description: '' },
 ];
 
 const timeframes = [
@@ -202,7 +202,6 @@ export const Onboarding: React.FC = () => {
               <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="flex flex-col gap-8">
                 <div className="flex flex-col gap-5">
                   <h1 className="font-display text-[56px] font-black leading-none tracking-[-1.12px] text-black">How can we help you?</h1>
-                  <p className="font-body text-base font-medium text-black/90 tracking-[-0.32px]">Choose what best describes your situation.</p>
                 </div>
                 <div className="flex flex-col gap-6 max-w-[587px]">
                   {helpOptions.map(opt => (
@@ -293,9 +292,11 @@ export const Onboarding: React.FC = () => {
                     >
                       <div className="flex flex-col gap-2">
                         <span className="font-display text-xl font-black leading-none">{type.title}</span>
-                        <span className={`font-body text-base font-medium leading-[1.5] tracking-[-0.32px] ${selectedPropertyType === type.id ? 'text-white/80' : 'text-black/80'}`}>
-                          {type.description}
-                        </span>
+                        {type.description && (
+                          <span className={`font-body text-base font-medium leading-[1.5] tracking-[-0.32px] ${selectedPropertyType === type.id ? 'text-white/80' : 'text-black/80'}`}>
+                            {type.description}
+                          </span>
+                        )}
                       </div>
                       {selectedPropertyType === type.id ? (
                         <CheckCircle2 size={24} className="text-[#00BC67] shrink-0" />
