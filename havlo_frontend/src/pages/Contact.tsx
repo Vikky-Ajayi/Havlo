@@ -29,11 +29,6 @@ export const Contact: React.FC = () => {
               <span className="font-body text-[22px] font-normal text-white/70">AFRICA</span>
               <span className="font-body text-[28px] font-bold text-white">+44 7585 637752</span>
             </div>
-            <div className="hidden h-[74px] w-[1px] bg-white/10 sm:block" />
-            <div className="flex flex-col items-center gap-4 text-center">
-              <span className="font-body text-[22px] font-normal text-white/70 uppercase">Europe & America</span>
-              <span className="font-body text-[28px] font-bold text-white">+44 7585 637752</span>
-            </div>
           </div>
 
           {/* Contact Methods Grid */}
