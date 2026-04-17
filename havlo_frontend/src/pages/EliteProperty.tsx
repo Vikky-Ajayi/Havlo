@@ -157,7 +157,7 @@ export const EliteProperty: React.FC = () => {
             Precision Access to Global Property Buyers
           </h2>
           <p className="max-w-[440px] font-body text-lg leading-[1.2] text-black/80">
-            Four pillars that set our approach apart from conventional property marketing.
+            Four pillars that set our approach apart from conventional property listing platforms.
           </p>
         </div>
 
