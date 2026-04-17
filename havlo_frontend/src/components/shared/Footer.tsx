@@ -71,7 +71,7 @@ export const Footer: React.FC = () => {
               className="h-8 w-auto brightness-0 invert"
               referrerPolicy="no-referrer"
             />
-            <div className="flex flex-col items-center lg:items-start gap-4">
+            <div className="origin-top lg:origin-top-left scale-[0.7] flex flex-col items-center lg:items-start gap-4">
               <div className="flex items-center gap-1">
                 <StarIcon />
                 <span className="font-body text-[32px] font-medium tracking-[-0.64px] text-[#FEFFFF]">
