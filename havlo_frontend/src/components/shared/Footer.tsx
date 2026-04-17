@@ -99,7 +99,7 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-white/10 pt-10 text-center">
+        <div className="border-t border-white/10 text-center pt-[1px]">
           <span className="font-body text-base lg:text-xl font-extrabold tracking-[-0.4px] text-white/70 uppercase">
             Copyright © 2026 Havlo
           </span>
