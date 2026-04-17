@@ -111,15 +111,11 @@ export const EliteProperty: React.FC = () => {
             <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
               <ChevronLeft size={20} />
             </button>
-            <div className="flex flex-1 gap-8 overflow-x-auto pb-4 no-scrollbar sm:overflow-visible">
-              {elitePropertyReviews.slice(0, 3).map((r, i) => (
-                <ReviewCard
-                  key={i}
-                  title={r.title}
-                  content={r.content}
-                  author={r.author}
-                  time=""
-                />
+            <div className="flex flex-1 gap-8 overflow-x-auto pb-4 no-scrollbar">
+              {elitePropertyReviews.map((r, i) => (
+                <div key={i} className="min-w-[300px] flex-1 shrink-0">
+                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                </div>
               ))}
             </div>
             <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
@@ -130,17 +126,18 @@ export const EliteProperty: React.FC = () => {
           {/* Mobile Reviews */}
           <div className="flex lg:hidden flex-col items-center gap-8 w-full" style={{ marginTop: '80px' }}>
             <div className="hidden" />
-            {[
-              { mt: '-53px', ml: '-58px' },
-              { mr: '-57px', mt: '-50px' },
-              { ml: '-51px', mt: '-53px' },
-              { mr: '-57px', mt: '-50px' },
-              { ml: '-55px', mt: '-59px' },
-              { mr: '-20px', mt: '-50px' },
-            ].map((style, i) => {
-              const r = elitePropertyReviews[i];
+            {elitePropertyReviews.map((r, i) => {
+              const styles = [
+                { marginTop: '-53px', marginLeft: '-58px' },
+                { marginRight: '-57px', marginTop: '-50px' },
+                { marginLeft: '-51px', marginTop: '-53px' },
+                { marginRight: '-57px', marginTop: '-50px' },
+                { marginLeft: '-55px', marginTop: '-59px' },
+                { marginRight: '-20px', marginTop: '-50px' },
+              ];
+              const style = styles[i % styles.length];
               return (
-                <div key={i} style={{ marginTop: style.mt, marginLeft: style.ml, marginRight: style.mr }}>
+                <div key={i} style={style}>
                   <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
                 </div>
               );
