@@ -1,17 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, Quote } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
+import { ReviewCard } from '../components/shared/ReviewCard';
+import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
+
+const buyerNetworkReviews = [
+  { title: 'Opened up a completely new buyer market', content: 'Havlo helped us reach international buyers we simply couldn’t access through traditional portals. It added a powerful new dimension to our listings.', author: 'Oliver, London' },
+  { title: 'Stronger demand from global buyers', content: 'We started receiving enquiries from serious overseas investors almost immediately. The quality of leads was noticeably higher.', author: 'Samantha, Manchester' },
+  { title: 'A real boost beyond property portals', content: 'Using Havlo alongside Rightmove and Zoopla gave us a clear advantage. Our listings reached a much wider audience.', author: 'Daniel, Birmingham' },
+  { title: 'Helped us sell faster', content: 'Properties that were sitting for months started gaining traction once we used the International Buyer Network. It made a real difference to our timelines.', author: 'James, Leeds' },
+  { title: 'High-quality, ready-to-buy enquiries', content: 'The buyers introduced through Havlo were clearly qualified and serious. It saved us time filtering out low-intent leads.', author: 'Hannah, Bristol' },
+  { title: 'Gave our agency a competitive edge', content: 'Havlo allowed us to offer something other agents couldn’t—access to international buyers. It’s been a great addition to our service.', author: 'Marcus, Liverpool' },
+  { title: 'Perfect for high-value listings', content: 'For premium properties, this service is incredibly effective. It connects you with buyers who are actively looking to invest globally.', author: 'Charlotte, Oxford' },
+  { title: 'Expanded our reach instantly', content: 'We were able to showcase our listings to a global audience without changing how we operate. Very easy to integrate into our process.', author: 'Ryan, Nottingham' },
+  { title: 'More exposure, better results', content: 'The added international visibility helped generate more interest and ultimately led to quicker sales on several listings.', author: 'Amelia, Edinburgh' },
+  { title: 'A smart addition for modern agents', content: 'Relying only on property portals is no longer enough. Havlo gave us access to a targeted international audience that delivers results.', author: 'Khalid, Dubai' },
+];
 
 export const BuyerNetwork: React.FC = () => {
   const { openModal } = useModal();
+  const [reviewIndex, setReviewIndex] = useState(0);
+  const [mobileReviewIndex, setMobileReviewIndex] = useState(0);
+  const visibleDesktopReviews = [
+    buyerNetworkReviews[reviewIndex % buyerNetworkReviews.length],
+    buyerNetworkReviews[(reviewIndex + 1) % buyerNetworkReviews.length],
+    buyerNetworkReviews[(reviewIndex + 2) % buyerNetworkReviews.length],
+  ];
+  const nextReviews = () => setReviewIndex((i) => (i + 3) % buyerNetworkReviews.length);
+  const prevReviews = () => setReviewIndex((i) => (i - 3 + buyerNetworkReviews.length) % buyerNetworkReviews.length);
+  const nextMobileReview = () => setMobileReviewIndex((i) => (i + 1) % buyerNetworkReviews.length);
+  const prevMobileReview = () => setMobileReviewIndex((i) => (i - 1 + buyerNetworkReviews.length) % buyerNetworkReviews.length);
   const whyChooseItems = [
     {
       id: '01',
       title: 'Faster Sales',
-      description: 'Share your ideal property details — location, type, budget.',
+      description: 'Give us your property listings and we\u2019ll amplify their reach to drive faster sales.',
     },
     {
       id: '02',
@@ -94,12 +120,6 @@ export const BuyerNetwork: React.FC = () => {
     },
   ];
 
-  const campaignFees = [
-    { range: '£500k – £1M', label: 'Global — £2,500 setup' },
-    { range: '£1M – £1.5M', label: 'Global+ — £5,000 setup' },
-    { range: '£1.5M+', label: 'Private Client — custom pricing' },
-  ];
-
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero Section */}
@@ -120,7 +140,7 @@ export const BuyerNetwork: React.FC = () => {
             className="font-display font-black leading-[1] tracking-[-1.6px] text-[#1F1F1E] mb-10 text-[48px] md:text-[64px] lg:text-[77px]"
             style={{ marginTop: '-10px' }}
           >
-            Sell Properties Faster with Havlo's International Buyer Network
+            Estate Agents, Sell Properties Faster with Havlo's International Buyer Network
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -143,13 +163,6 @@ export const BuyerNetwork: React.FC = () => {
               style={{ marginTop: '-10px' }}
             >
               GET STARTED TODAY
-            </Button>
-            <Button 
-              variant="outline" 
-              className="h-[56px] px-8 border-black text-black rounded-[48px] font-body text-lg font-semibold tracking-[-0.36px] hover:bg-black/5 transition-colors"
-              style={{ marginTop: '-10px' }}
-            >
-              BOOK A STRATEGY CALL
             </Button>
           </motion.div>
         </div>
@@ -265,24 +278,6 @@ export const BuyerNetwork: React.FC = () => {
             ))}
           </div>
 
-          {/* Campaign Fees */}
-          <div className="p-6 rounded-[20px] bg-black/5 flex flex-col gap-6">
-            <h3 className="font-display text-lg font-medium uppercase tracking-[-0.36px] text-black">
-              PER-PROPERTY CAMPAIGN FEES
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {campaignFees.map((fee) => (
-                <div key={fee.range} className="flex flex-col gap-3">
-                  <div className="font-display text-xl font-semibold tracking-[-0.4px] text-[#1F1F1E]">
-                    {fee.range}
-                  </div>
-                  <div className="font-body text-sm font-medium tracking-[-0.28px] text-black/70">
-                    {fee.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -321,6 +316,84 @@ export const BuyerNetwork: React.FC = () => {
         </div>
       </section>
 
+      {/* 5b. Trustpilot reviews */}
+      <section className="flex flex-col w-full bg-white px-4 py-16 sm:px-10 lg:px-[100px]">
+        <div className="mx-auto w-full max-w-[1240px]">
+          {/* Desktop */}
+          <div className="hidden lg:flex w-full items-start gap-10">
+            <div className="flex shrink-0 flex-col items-start gap-4 text-left max-w-[280px]">
+              <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+                Rated
+              </h2>
+              <TrustpilotStars className="h-[36px]" />
+              <p className="font-body text-[16px] font-normal text-black/80">
+                Real stories from agents who grew their reach with Havlo.
+              </p>
+            </div>
+            <div className="flex flex-1 items-center gap-4">
+              <button
+                onClick={prevReviews}
+                aria-label="Previous reviews"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="grid flex-1 grid-cols-3 gap-4">
+                {visibleDesktopReviews.map((r, i) => (
+                  <div key={`${reviewIndex}-${i}`} className="rounded-xl bg-[#F5F5F3] p-5">
+                    <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={nextReviews}
+                aria-label="Next reviews"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile */}
+          <div className="flex w-full flex-col items-center gap-6 lg:hidden">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <h2 className="font-body text-[32px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+                Rated
+              </h2>
+              <TrustpilotStars className="h-[30px]" />
+            </div>
+            <div className="flex w-full items-center gap-3">
+              <button
+                onClick={prevMobileReview}
+                aria-label="Previous review"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
+                <ReviewCard
+                  title={buyerNetworkReviews[mobileReviewIndex].title}
+                  content={buyerNetworkReviews[mobileReviewIndex].content}
+                  author={buyerNetworkReviews[mobileReviewIndex].author}
+                  time=""
+                />
+              </div>
+              <button
+                onClick={nextMobileReview}
+                aria-label="Next review"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+            <p className="font-body text-base font-normal text-black/80 text-center">
+              Real stories from agents who grew their reach with Havlo.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* 6. Bottom CTA Section */}
       <section className="relative flex flex-col items-center py-24 px-6 lg:px-[150px] bg-white overflow-hidden min-h-[400px] justify-center">
         <div className="relative z-20 flex flex-col items-center text-center max-w-[700px] mx-auto gap-14">
@@ -338,9 +411,6 @@ export const BuyerNetwork: React.FC = () => {
               className="h-[56px] px-8 bg-[#A409D2] text-white rounded-[48px] font-body text-lg font-semibold tracking-[-0.36px] hover:bg-[#A409D2]/90 transition-colors"
             >
               GET STARTED TODAY
-            </Button>
-            <Button variant="outline" className="h-[56px] px-8 border-[#A409D2] text-[#A409D2] rounded-[48px] font-body text-lg font-semibold tracking-[-0.36px] hover:bg-[#A409D2]/5 transition-colors">
-              BOOK A CONSULTATION
             </Button>
           </div>
         </div>
