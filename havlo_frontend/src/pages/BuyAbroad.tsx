@@ -141,7 +141,7 @@ export const BuyAbroad: React.FC = () => {
           <div className="flex flex-col items-center lg:items-start gap-5 text-center lg:text-left min-w-[200px]">
             <div className="flex flex-col items-center lg:items-start gap-3">
               <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-                Excellent
+                Rated
               </h2>
               <TrustpilotStars className="h-[45px]" />
             </div>
