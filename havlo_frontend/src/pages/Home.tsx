@@ -337,7 +337,7 @@ export const Home: React.FC = () => {
           <DifferenceCard
             number="03"
             title="End-to-End Support"
-            description="From first inquiry to final handshake, our team navigates every legal, financial, and logistical detail alongside you."
+            description="From first inquiry to final handshake, our team stays with you throughout the process, ensuring everything moves smoothly from start to finish."
           />
         </div>
       </section>
