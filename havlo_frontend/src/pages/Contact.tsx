@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Mail, Calendar, MessageCircle, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { cn } from '../lib/utils';
 
 export const Contact: React.FC = () => {
+  const [phoneCode, setPhoneCode] = useState('+44');
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
@@ -67,10 +69,7 @@ export const Contact: React.FC = () => {
                     Phone<span className="text-[#FA4242]">*</span>
                   </label>
                   <div className="flex h-12 w-full items-center rounded-lg bg-[#EEF0F2] px-2">
-                    <div className="flex h-8 items-center gap-1 rounded-lg bg-[#DDD] px-2 cursor-pointer">
-                      <span className="font-body text-sm font-medium text-black/80">+44</span>
-                      <ChevronDown className="h-3 w-3 text-black/80" />
-                    </div>
+                    <CountryCodeSelect value={phoneCode} onChange={setPhoneCode} />
                     <input
                       type="tel"
                       placeholder="Enter your phone number"

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { X, Check, Users, ArrowRight, Globe, Zap, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 interface Package {
   id: string;
@@ -76,6 +77,7 @@ export const DashboardBuyerNetwork: React.FC = () => {
   const [listingUrl3, setListingUrl3] = useState('');
   const [contactEmailField, setContactEmailField] = useState('');
   const [contactPhoneField, setContactPhoneField] = useState('');
+  const [contactPhoneCode, setContactPhoneCode] = useState('+44');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -297,12 +299,9 @@ export const DashboardBuyerNetwork: React.FC = () => {
 
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-bold text-[#001C47]">Contact phone</label>
-                      <div className="flex gap-2">
-                        <div className="flex items-center gap-2 px-3 bg-[#DDD] rounded-lg h-12 cursor-pointer">
-                          <span className="text-sm font-medium text-black/80">+44</span>
-                          <svg width="8" height="4" viewBox="0 0 8 4" fill="none">
-                            <path opacity="0.8" d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
-                          </svg>
+                      <div className="flex gap-2 items-center">
+                        <div className="h-12 px-2 bg-[#DDD] rounded-lg flex items-center">
+                          <CountryCodeSelect value={contactPhoneCode} onChange={setContactPhoneCode} buttonClassName="bg-transparent hover:bg-black/5" />
                         </div>
                         <input 
                           type="tel"

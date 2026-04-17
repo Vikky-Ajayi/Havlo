@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { X, Check, Globe, Phone, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 export const DashboardEliteProperty: React.FC = () => {
   const { token } = useAuth();
@@ -12,6 +13,7 @@ export const DashboardEliteProperty: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [phoneCode, setPhoneCode] = useState('+44');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -443,14 +445,9 @@ export const DashboardEliteProperty: React.FC = () => {
 
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-[#001C47]">Phone / WhatsApp</label>
-                      <div className="flex gap-2">
-                        <div className="relative w-24">
-                          <div className="w-full h-12 px-3 rounded-lg bg-[#DDD] flex items-center justify-between">
-                            <span className="font-body text-sm font-medium text-black/80">+44</span>
-                            <svg width="8" height="4" viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path opacity="0.8" d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
-                            </svg>
-                          </div>
+                      <div className="flex gap-2 items-center">
+                        <div className="h-12 px-2 rounded-lg bg-[#DDD] flex items-center">
+                          <CountryCodeSelect value={phoneCode} onChange={setPhoneCode} buttonClassName="bg-transparent hover:bg-black/5" />
                         </div>
                         <input type="tel" placeholder="0000 0000 000" className="flex-1 h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                       </div>

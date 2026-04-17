@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 export const DashboardSettings: React.FC = () => {
   const { user, token, refreshUser } = useAuth();
@@ -141,12 +142,9 @@ export const DashboardSettings: React.FC = () => {
 
                 <div className="space-y-4">
                   <label className="block font-display text-sm font-bold text-[#001C47]">Contact phone</label>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-2 px-3 bg-[#DDD] rounded-lg h-12 cursor-pointer hover:bg-gray-300 transition-colors">
-                      <span className="text-sm font-medium text-black/80">{phoneCode}</span>
-                      <svg width="8" height="4" viewBox="0 0 8 4" fill="none">
-                        <path opacity="0.8" d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
-                      </svg>
+                  <div className="flex gap-2 items-center">
+                    <div className="h-12 px-2 bg-[#DDD] rounded-lg flex items-center">
+                      <CountryCodeSelect value={phoneCode} onChange={setPhoneCode} buttonClassName="bg-transparent hover:bg-black/5" />
                     </div>
                     <input 
                       type="tel" 

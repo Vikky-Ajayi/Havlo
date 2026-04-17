@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { X, Check, Globe, Zap, Shield, Star, ArrowRight, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 interface Plan {
   id: string;
@@ -105,6 +106,7 @@ export const DashboardSellFaster: React.FC = () => {
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [contactPhoneCode, setContactPhoneCode] = useState('+44');
 
   const handlePlanSelect = (plan: Plan) => {
     setSelectedPlan(plan);
@@ -369,14 +371,9 @@ export const DashboardSellFaster: React.FC = () => {
                       <label className="block text-sm font-bold text-[#001C47] font-body">
                         Contact phone number
                       </label>
-                      <div className="flex gap-2">
-                        <div className="flex items-center gap-2 px-3 bg-[#DDD] rounded-lg h-12 cursor-pointer">
-                          <span className="text-sm font-medium text-black/80">+44</span>
-                          <motion.div animate={{ rotate: 0 }}>
-                            <svg width="8" height="4" viewBox="0 0 8 4" fill="none">
-                              <path d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
-                            </svg>
-                          </motion.div>
+                      <div className="flex gap-2 items-center">
+                        <div className="h-12 px-2 bg-[#DDD] rounded-lg flex items-center">
+                          <CountryCodeSelect value={contactPhoneCode} onChange={setContactPhoneCode} buttonClassName="bg-transparent hover:bg-black/5" />
                         </div>
                         <input 
                           type="tel"

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Clock, Star, Plus, Check } from 'lucide-react';
 import { HeroBackground } from '../components/shared/HeroBackground';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 export const PropertyMatching: React.FC = () => {
+  const [phoneCode, setPhoneCode] = useState('+44');
   return (
     <div className="flex flex-col w-full bg-white">
       {/* Hero Section */}
@@ -171,13 +173,8 @@ export const PropertyMatching: React.FC = () => {
                 <label className="font-body text-sm font-bold text-[#001C47]">
                   Phone<span className="text-[#FA4242]">*</span>
                 </label>
-                <div className="flex h-12 rounded-lg bg-[#EEF0F2] overflow-hidden">
-                  <div className="flex items-center gap-1 px-3 bg-[#DDD] border-r border-[#EEF0F2]">
-                    <span className="font-body text-sm font-medium text-black/80">+44</span>
-                    <svg width="8" height="4" viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path opacity="0.8" d="M0 0L4 4L8 0" fill="black" fillOpacity="0.8"/>
-                    </svg>
-                  </div>
+                <div className="flex h-12 items-center rounded-lg bg-[#EEF0F2] px-2">
+                  <CountryCodeSelect value={phoneCode} onChange={setPhoneCode} />
                   <input 
                     type="text" 
                     placeholder="Enter your phone number"
