@@ -47,13 +47,15 @@ export const Footer: React.FC = () => {
 
           <div className="flex items-center gap-7">
             {[
-              { id: 'fb', icon: <FacebookIcon /> },
-              { id: 'ig', icon: <InstagramIcon /> },
-              { id: 'x', icon: <XIcon /> },
+              { id: 'fb', icon: <FacebookIcon />, href: 'https://www.facebook.com/profile.php?id=61586495581183' },
+              { id: 'ig', icon: <InstagramIcon />, href: '#' },
+              { id: 'x', icon: <XIcon />, href: '#' },
             ].map((social) => (
               <a
                 key={social.id}
-                href="#"
+                href={social.href}
+                target={social.href === '#' ? undefined : '_blank'}
+                rel={social.href === '#' ? undefined : 'noopener noreferrer'}
                 className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1F1F1E] transition-colors hover:bg-white/20"
               >
                 {social.icon}
