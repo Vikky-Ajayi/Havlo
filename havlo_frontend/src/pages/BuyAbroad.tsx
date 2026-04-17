@@ -309,11 +309,12 @@ export const BuyAbroad: React.FC = () => {
 
       {/* 6. Purple Help Section */}
       <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 pt-32 pb-48 sm:px-10 lg:px-[100px] overflow-hidden" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
-        {/* Top Jagged Edge — matches BuyerNetwork hero bottom */}
+        {/* Jagged edge appears as bottom of the "Who This Is For" black section */}
         <div className="absolute top-[-1px] left-0 right-0 h-[90px] z-20 pointer-events-none">
           <HeroBackground
             showTop={false}
             showBottom={true}
+            fillColor="#000000"
             className="h-full w-full"
           />
         </div>
