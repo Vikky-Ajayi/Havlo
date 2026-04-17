@@ -1,72 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpRight, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
+import { ArrowUpRight, Quote } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { ReviewCard } from '../components/shared/ReviewCard';
-import { TrustpilotStars } from '../components/ui/TrustpilotStars';
-import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
-
-const saleAuditReviews = [
-  { title: 'Gave us clarity we didn’t have before', content: 'We couldn’t understand why our property wasn’t selling. The Havlo assessment clearly identified the issues and gave us a solid plan to move forward.', author: 'Andrew, Guildford' },
-  { title: 'Eye-opening and extremely helpful', content: 'The audit highlighted pricing and presentation issues we had completely overlooked. It gave us a clear direction and renewed confidence.', author: 'Rachel, Cambridge' },
-  { title: 'Exactly what we needed', content: 'After months of no progress, the assessment showed us exactly what was holding the sale back. The recommendations were practical and easy to implement.', author: 'Tom, Brighton' },
-  { title: 'Clear, honest and actionable advice', content: 'Havlo didn’t just guess—they provided real insights backed by data. It helped us understand our position in the market properly.', author: 'Louise, York' },
-  { title: 'Helped us fix key issues quickly', content: 'We made a few key changes based on the audit, and the difference was immediate. Much more interest and better quality enquiries.', author: 'Chris, Milton Keynes' },
-  { title: 'Finally understood why it wasn’t selling', content: 'The assessment broke everything down clearly—pricing, photos, and positioning. It all made sense once we saw it laid out properly.', author: 'Nina, Reading' },
-  { title: 'Professional and insightful service', content: 'The level of detail in the report was impressive. It felt like a proper strategy rather than just general advice.', author: 'Hassan, Doha' },
-  { title: 'A smart first step before relaunching', content: 'Before switching agents, this audit helped us get everything right. It saved us time and avoided repeating mistakes.', author: 'Emma, Chelmsford' },
-  { title: 'Straightforward and effective', content: 'No fluff—just clear reasons why our property wasn’t selling and what to do next. Exactly what we needed.', author: 'Daniel, Southampton' },
-  { title: 'Worth it for the clarity alone', content: 'Even before relaunching, the audit gave us a completely new perspective on how our property was being seen by buyers.', author: 'Priya, Harrow' },
-];
-
-interface ReviewCarouselProps {
-  heading: string;
-  subheading: string;
-  reviews: { title: string; content: string; author: string }[];
-}
-
-const ReviewCarousel: React.FC<ReviewCarouselProps> = ({ heading, subheading, reviews }) => {
-  const desktop = useHorizontalScroll<HTMLDivElement>();
-
-  return (
-    <section className="flex flex-col w-full bg-white px-4 py-16 sm:px-10 lg:px-[100px]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col lg:flex-row items-center gap-10">
-        {/* Rated Block */}
-        <div className="flex flex-col items-center lg:items-start gap-4 text-center lg:text-left max-w-[280px]">
-          <h2 className="font-body text-[28px] lg:text-[32px] font-medium leading-tight tracking-[-0.8px] text-[#040504]">
-            {heading}
-          </h2>
-          <TrustpilotStars className="h-[26px] lg:h-[30px]" />
-          <p className="font-body text-[16px] font-normal text-black/80">{subheading}</p>
-        </div>
-
-        {/* Swipeable carousel */}
-        <div className="relative flex flex-1 items-center gap-3 sm:gap-4 min-w-0 w-full">
-          <button onClick={desktop.scrollPrev} aria-label="Previous reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
-            <ChevronLeft size={18} />
-          </button>
-          <div
-            ref={desktop.containerRef}
-            {...desktop.dragHandlers}
-            className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-          >
-            {reviews.map((r, i) => (
-              <div
-                key={i}
-                className="snap-start shrink-0 basis-full sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] min-w-[240px] rounded-xl bg-[#F5F5F3] p-5"
-              >
-                <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-              </div>
-            ))}
-          </div>
-          <button onClick={desktop.scrollNext} aria-label="Next reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-};
 
 const RelaunchHeroSection: React.FC = () => {
   return (
@@ -339,13 +274,6 @@ export const RelaunchAssessment: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* 6c. Property Sale Audit Reviews */}
-      <ReviewCarousel
-        heading="Property Sale Audit reviews"
-        subheading="What homeowners say after their independent Havlo audit."
-        reviews={saleAuditReviews}
-      />
 
       {/* 7. Final CTA Section */}
       <section className="relative flex flex-col items-center gap-8 bg-havlo-purple px-4 pb-24 pt-32 text-center">
