@@ -54,37 +54,31 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     <section 
       className="relative w-full bg-white overflow-hidden min-h-[720px] sm:min-h-[820px] md:min-h-[900px] h-auto lg:h-[856px]"
     >
-      <div className="relative w-full h-full">
-        {/* 1. Gradient Ellipse — outer, NOT clipped */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 top-[-50px] w-full lg:w-[120%] h-[180px] lg:h-[280px] opacity-40 blur-[100px] lg:blur-[120px] z-0"
-          style={{
-            background: 'linear-gradient(90deg, #E6ECA2 0%, #9BC3F0 25%, #FFB0E6 50%, #F2D0B2 75%, #D2F4B9 100%)',
-          }}
-        />
+      {/* 1. Gradient Ellipse — outer, NOT clipped */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 top-[-50px] w-full lg:w-[120%] h-[180px] lg:h-[280px] opacity-40 blur-[100px] lg:blur-[120px] z-0"
+        style={{
+          background: 'linear-gradient(90deg, #E6ECA2 0%, #9BC3F0 25%, #FFB0E6 50%, #F2D0B2 75%, #D2F4B9 100%)',
+        }}
+      />
 
-        {/* 2. Inner clipping div — overflow:hidden, clips image only */}
-        <div
-          className="absolute top-0 left-0 w-full h-full overflow-hidden z-1"
-        >
-          {/* 2a. House Image — anchored to bottom on mobile/tablet, top-positioned on desktop */}
-          <img
-            src={imageSrc}
-            alt="Hero House"
-            className="absolute left-1/2 -translate-x-1/2 bottom-0 lg:bottom-auto lg:top-[300px] w-full max-w-none h-auto z-[5]"
-            style={safeImageStyle}
-            referrerPolicy="no-referrer"
-            loading="eager"
-          />
+      {/* 2a. House Image — anchored to bottom on mobile/tablet, top-positioned on desktop.
+            NOTE: positioned directly on the section (which has min-h) so percentage heights
+            don't collapse on viewports without an explicit height (h-auto). */}
+      <img
+        src={imageSrc}
+        alt="Hero House"
+        className="absolute left-1/2 -translate-x-1/2 bottom-0 lg:bottom-auto lg:top-[300px] w-full max-w-none h-auto z-[5]"
+        style={safeImageStyle}
+        referrerPolicy="no-referrer"
+        loading="eager"
+      />
 
-
-        </div>
-
-        {/* 3. Text Block — outer, NOT clipped */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 top-[80px] sm:top-[100px] lg:top-[110px] w-full px-6 lg:px-0 text-center z-10 flex flex-col items-center gap-4 sm:gap-5 lg:gap-6"
-          style={safeContainerStyle}
-        >
+      {/* 3. Text Block — outer, NOT clipped */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 top-[80px] sm:top-[100px] lg:top-[110px] w-full px-6 lg:px-0 text-center z-10 flex flex-col items-center gap-4 sm:gap-5 lg:gap-6"
+        style={safeContainerStyle}
+      >
           {overline && (
             <span 
               className="font-body text-sm sm:text-base lg:text-lg font-medium uppercase tracking-wider text-black/60"
@@ -120,7 +114,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 {secondaryButtonText}
               </button>
             )}
-          </div>
         </div>
       </div>
     </section>
