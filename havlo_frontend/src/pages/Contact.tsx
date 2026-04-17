@@ -49,7 +49,7 @@ export const Contact: React.FC = () => {
               icon={<MessageCircle className="h-5 w-5 text-black" />}
               label="WHATSAPP"
               value="Start a whatsapp chat"
-              href="#"
+              href="https://wa.me/message/PPPAWIAXBS7YK1"
             />
           </div>
 
@@ -135,7 +135,12 @@ const ContactMethodCard = ({ icon, label, value, href }: { icon: React.ReactNode
     </div>
     <div className="flex flex-col">
       <span className="font-body text-[22px] font-normal text-[#A409D2]">{label}</span>
-      <a href={href} className="font-body text-[22px] font-normal text-black underline underline-offset-4">
+      <a
+        href={href}
+        target={href.startsWith('http') ? '_blank' : undefined}
+        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+        className="font-body text-[22px] font-normal text-black underline underline-offset-4"
+      >
         {value}
       </a>
     </div>
