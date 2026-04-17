@@ -361,7 +361,7 @@ export const BuyAbroad: React.FC = () => {
                         />
                       ))}
                     </div>
-                    <span className="inline-flex items-center gap-2 rounded-full bg-[#22C55E] px-4 py-2 font-body text-[13px] font-extrabold uppercase tracking-[0.14em] text-white shadow-sm rounded-tl-[0px] rounded-tr-[0px] rounded-br-[0px] rounded-bl-[0px]">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-[#22C55E] px-4 py-2 font-body text-[13px] font-extrabold uppercase tracking-[0.14em] text-white shadow-sm rounded-tl-[8px] rounded-tr-[8px] rounded-br-[8px] rounded-bl-[8px]">
                       <span className="h-2.5 w-2.5 rounded-full bg-white" />
                       ONLINE NOW
                     </span>
