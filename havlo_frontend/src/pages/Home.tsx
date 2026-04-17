@@ -90,7 +90,7 @@ export const Home: React.FC = () => {
             </h2>
             <TrustpilotStars className="h-[36px]" />
             <p className="font-body text-[18px] font-normal text-black">
-              Based on <span className="font-bold underline">4,359 reviews</span>
+              Based on <span className="font-bold underline">359 reviews</span>
             </p>
           </div>
 
@@ -146,7 +146,7 @@ export const Home: React.FC = () => {
           </div>
 
           <p className="font-body text-base font-normal text-black">
-            Based on <span className="font-bold underline">4,359 reviews</span>
+            Based on <span className="font-bold underline">359 reviews</span>
           </p>
         </div>
       </section>
