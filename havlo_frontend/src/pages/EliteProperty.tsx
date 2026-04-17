@@ -35,17 +35,6 @@ const whoThisIsFor = [
 
 export const EliteProperty: React.FC = () => {
   const { openModal } = useModal();
-  const [reviewIndex, setReviewIndex] = React.useState(0);
-  const [mobileReviewIndex, setMobileReviewIndex] = React.useState(0);
-
-  const visibleDesktopReviews = React.useMemo(
-    () => [0, 1, 2].map((o) => elitePropertyReviews[(reviewIndex + o) % elitePropertyReviews.length]),
-    [reviewIndex]
-  );
-  const nextReviews = () => setReviewIndex((i) => (i + 3) % elitePropertyReviews.length);
-  const prevReviews = () => setReviewIndex((i) => (i - 3 + elitePropertyReviews.length) % elitePropertyReviews.length);
-  const nextMobileReview = () => setMobileReviewIndex((i) => (i + 1) % elitePropertyReviews.length);
-  const prevMobileReview = () => setMobileReviewIndex((i) => (i - 1 + elitePropertyReviews.length) % elitePropertyReviews.length);
 
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">
@@ -119,17 +108,13 @@ export const EliteProperty: React.FC = () => {
 
           {/* Desktop Reviews */}
           <div className="hidden lg:flex relative flex-1 items-center gap-8">
-            <button
-              onClick={prevReviews}
-              aria-label="Previous reviews"
-              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0 hover:bg-black/5"
-            >
+            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
               <ChevronLeft size={20} />
             </button>
-            <div className="grid flex-1 grid-cols-3 gap-8">
-              {visibleDesktopReviews.map((r, i) => (
+            <div className="flex flex-1 gap-8 overflow-x-auto pb-4 no-scrollbar sm:overflow-visible">
+              {elitePropertyReviews.slice(0, 3).map((r, i) => (
                 <ReviewCard
-                  key={`${reviewIndex}-${i}`}
+                  key={i}
                   title={r.title}
                   content={r.content}
                   author={r.author}
@@ -137,42 +122,29 @@ export const EliteProperty: React.FC = () => {
                 />
               ))}
             </div>
-            <button
-              onClick={nextReviews}
-              aria-label="Next reviews"
-              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0 hover:bg-black/5"
-            >
+            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
               <ChevronRight size={20} />
             </button>
           </div>
 
           {/* Mobile Reviews */}
-          <div className="flex lg:hidden flex-col items-stretch gap-4 w-full">
-            <ReviewCard
-              title={elitePropertyReviews[mobileReviewIndex].title}
-              content={elitePropertyReviews[mobileReviewIndex].content}
-              author={elitePropertyReviews[mobileReviewIndex].author}
-              time=""
-            />
-            <div className="flex items-center justify-center gap-4 pt-2">
-              <button
-                onClick={prevMobileReview}
-                aria-label="Previous review"
-                className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <span className="font-body text-sm text-black/60">
-                {mobileReviewIndex + 1} / {elitePropertyReviews.length}
-              </span>
-              <button
-                onClick={nextMobileReview}
-                aria-label="Next review"
-                className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
+          <div className="flex lg:hidden flex-col items-center gap-8 w-full" style={{ marginTop: '80px' }}>
+            <div className="hidden" />
+            {[
+              { mt: '-53px', ml: '-58px' },
+              { mr: '-57px', mt: '-50px' },
+              { ml: '-51px', mt: '-53px' },
+              { mr: '-57px', mt: '-50px' },
+              { ml: '-55px', mt: '-59px' },
+              { mr: '-20px', mt: '-50px' },
+            ].map((style, i) => {
+              const r = elitePropertyReviews[i];
+              return (
+                <div key={i} style={{ marginTop: style.mt, marginLeft: style.ml, marginRight: style.mr }}>
+                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
