@@ -50,7 +50,7 @@ const RelaunchHeroSection: React.FC = () => {
         }}
       >
         <h1 
-          className="font-display"
+          className="font-display text-[88px] text-[#ffffff]"
           style={{
             fontWeight: 900,
             fontSize: '56px',
