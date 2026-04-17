@@ -80,7 +80,6 @@ export const Contact: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <FormSelect label="Finance type" placeholder="Select" />
                 <div className="flex flex-col gap-4">
                   <label className="font-body text-sm font-bold text-[#001C47]">
                     Currency<span className="text-[#FA4242]">*</span>
