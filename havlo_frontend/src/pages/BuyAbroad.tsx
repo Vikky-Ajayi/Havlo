@@ -10,6 +10,7 @@ import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { ChevronLeft, ChevronRight, Globe } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useModal } from '../hooks/useModal';
+import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
 
 const buyAbroadReviews = [
   { title: 'Simplifies international purchase', content: 'Havlo took all the stress out of buying property overseas. The step-by-step guidance and detailed info gave me confidence to make my first international purchase.', author: 'Tomiwa', time: 'Lagos' },
@@ -42,17 +43,7 @@ export const BuyAbroad: React.FC = () => {
   const navigate = useNavigate();
   const { openModal } = useModal();
   const [activeTab, setActiveTab] = useState('High-Value Investors');
-  const [reviewIndex, setReviewIndex] = useState(0);
-  const visibleReviews = 3;
-  const nextReview = () =>
-    setReviewIndex((i) => (i + visibleReviews) % buyAbroadReviews.length);
-  const prevReview = () =>
-    setReviewIndex(
-      (i) => (i - visibleReviews + buyAbroadReviews.length) % buyAbroadReviews.length,
-    );
-  const reviewsToShow = Array.from({ length: visibleReviews }, (_, k) =>
-    buyAbroadReviews[(reviewIndex + k) % buyAbroadReviews.length],
-  );
+  const reviewsScroll = useHorizontalScroll<HTMLDivElement>();
 
   const handleGetStarted = () => {
     navigate('/get-started');
@@ -159,31 +150,39 @@ export const BuyAbroad: React.FC = () => {
             </p>
           </div>
 
-          <div className="relative flex flex-1 items-center gap-8">
+          <div className="relative flex flex-1 items-center gap-4 sm:gap-8 min-w-0">
             <button
               type="button"
-              onClick={prevReview}
+              onClick={reviewsScroll.scrollPrev}
               aria-label="Previous reviews"
-              className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
-            <div className="flex flex-1 gap-8">
-              {reviewsToShow.map((review, idx) => (
-                <ReviewCard
-                  key={`${reviewIndex}-${idx}`}
-                  title={review.title}
-                  content={review.content}
-                  author={review.author}
-                  time={review.time}
-                />
+            <div
+              ref={reviewsScroll.containerRef}
+              {...reviewsScroll.dragHandlers}
+              className="flex flex-1 gap-6 sm:gap-8 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
+              {buyAbroadReviews.map((review, idx) => (
+                <div
+                  key={idx}
+                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-3rem)/2)] lg:basis-[calc((100%-4rem)/3)] min-w-[260px]"
+                >
+                  <ReviewCard
+                    title={review.title}
+                    content={review.content}
+                    author={review.author}
+                    time={review.time}
+                  />
+                </div>
               ))}
             </div>
             <button
               type="button"
-              onClick={nextReview}
+              onClick={reviewsScroll.scrollNext}
               aria-label="Next reviews"
-              className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-black/10 hover:bg-black/5 transition-colors"
             >
               <ChevronRight className="h-6 w-6" />
             </button>

@@ -5,6 +5,7 @@ import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { ReviewCard } from '../components/shared/ReviewCard';
 import { ChevronLeft, ChevronRight, Users, Globe, ChartLine, Star, ArrowRight } from 'lucide-react';
 import { useModal } from '../hooks/useModal';
+import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
 import { cn } from '../lib/utils';
 
 const elitePropertyReviews = [
@@ -35,6 +36,7 @@ const whoThisIsFor = [
 
 export const EliteProperty: React.FC = () => {
   const { openModal } = useModal();
+  const reviewsScroll = useHorizontalScroll<HTMLDivElement>();
 
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">
@@ -107,18 +109,32 @@ export const EliteProperty: React.FC = () => {
           </div>
 
           {/* Desktop Reviews */}
-          <div className="hidden lg:flex relative flex-1 items-center gap-8">
-            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
+          <div className="hidden lg:flex relative flex-1 items-center gap-8 min-w-0">
+            <button
+              type="button"
+              onClick={reviewsScroll.scrollPrev}
+              aria-label="Previous reviews"
+              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 hover:bg-black/5 flex shrink-0"
+            >
               <ChevronLeft size={20} />
             </button>
-            <div className="flex flex-1 gap-8 overflow-x-auto pb-4 no-scrollbar">
+            <div
+              ref={reviewsScroll.containerRef}
+              {...reviewsScroll.dragHandlers}
+              className="flex flex-1 gap-8 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
               {elitePropertyReviews.map((r, i) => (
-                <div key={i} className="min-w-[300px] flex-1 shrink-0">
+                <div key={i} className="snap-start shrink-0 min-w-[300px] basis-[calc((100%-4rem)/3)]">
                   <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
                 </div>
               ))}
             </div>
-            <button className="h-8 w-8 items-center justify-center rounded-full border border-black/20 flex shrink-0">
+            <button
+              type="button"
+              onClick={reviewsScroll.scrollNext}
+              aria-label="Next reviews"
+              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 hover:bg-black/5 flex shrink-0"
+            >
               <ChevronRight size={20} />
             </button>
           </div>

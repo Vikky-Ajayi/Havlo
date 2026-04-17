@@ -10,6 +10,7 @@ import { HeroSection } from '../components/shared/HeroSection';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
+import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -79,17 +80,9 @@ const homeReviews = [
 export const Home: React.FC = () => {
   const { openModal } = useModal();
   const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('BUYERS');
-  const [reviewIndex, setReviewIndex] = React.useState(0);
-  const [mobileReviewIndex, setMobileReviewIndex] = React.useState(0);
 
-  const visibleDesktopReviews = React.useMemo(() => {
-    return [0, 1, 2].map((offset) => homeReviews[(reviewIndex + offset) % homeReviews.length]);
-  }, [reviewIndex]);
-
-  const nextReviews = () => setReviewIndex((i) => (i + 3) % homeReviews.length);
-  const prevReviews = () => setReviewIndex((i) => (i - 3 + homeReviews.length) % homeReviews.length);
-  const nextMobileReview = () => setMobileReviewIndex((i) => (i + 1) % homeReviews.length);
-  const prevMobileReview = () => setMobileReviewIndex((i) => (i - 1 + homeReviews.length) % homeReviews.length);
+  const desktopReviews = useHorizontalScroll<HTMLDivElement>();
+  const mobileReviews = useHorizontalScroll<HTMLDivElement>();
 
   const handleGetStarted = () => {
     openModal('create-account');
@@ -168,19 +161,26 @@ export const Home: React.FC = () => {
             </p>
           </div>
 
-          {/* Right — carousel */}
-          <div className="flex flex-1 items-center gap-4">
+          {/* Right — swipeable carousel */}
+          <div className="flex flex-1 items-center gap-4 min-w-0">
             <button
-              onClick={prevReviews}
+              onClick={desktopReviews.scrollPrev}
               aria-label="Previous reviews"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
             >
               <ChevronLeft size={18} />
             </button>
 
-            <div className="grid flex-1 grid-cols-3 gap-4">
-              {visibleDesktopReviews.map((r, i) => (
-                <div key={`${reviewIndex}-${i}`} className="rounded-xl bg-[#F5F5F3] p-5">
+            <div
+              ref={desktopReviews.containerRef}
+              {...desktopReviews.dragHandlers}
+              className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
+              {homeReviews.map((r, i) => (
+                <div
+                  key={i}
+                  className="snap-start shrink-0 basis-[calc((100%-2rem)/3)] min-w-[260px] rounded-xl bg-[#F5F5F3] p-5"
+                >
                   <ReviewCard
                     title={r.title}
                     content={r.content}
@@ -192,7 +192,7 @@ export const Home: React.FC = () => {
             </div>
 
             <button
-              onClick={nextReviews}
+              onClick={desktopReviews.scrollNext}
               aria-label="Next reviews"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
             >
@@ -210,24 +210,32 @@ export const Home: React.FC = () => {
             <TrustpilotStars className="h-[30px]" />
           </div>
 
-          <div className="flex w-full items-center gap-3">
+          <div className="flex w-full items-center gap-3 min-w-0">
             <button
-              onClick={prevMobileReview}
+              onClick={mobileReviews.scrollPrev}
               aria-label="Previous review"
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
             >
               <ChevronLeft size={14} />
             </button>
-            <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
-              <ReviewCard
-                title={homeReviews[mobileReviewIndex].title}
-                content={homeReviews[mobileReviewIndex].content}
-                author={homeReviews[mobileReviewIndex].author}
-                time=""
-              />
+            <div
+              ref={mobileReviews.containerRef}
+              {...mobileReviews.dragHandlers}
+              className="flex flex-1 gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
+              {homeReviews.map((r, i) => (
+                <div key={i} className="snap-start shrink-0 basis-full rounded-xl bg-[#F5F5F3] p-5">
+                  <ReviewCard
+                    title={r.title}
+                    content={r.content}
+                    author={r.author}
+                    time=""
+                  />
+                </div>
+              ))}
             </div>
             <button
-              onClick={nextMobileReview}
+              onClick={mobileReviews.scrollNext}
               aria-label="Next review"
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
             >

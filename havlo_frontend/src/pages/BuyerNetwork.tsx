@@ -6,6 +6,7 @@ import { HeroBackground } from '../components/shared/HeroBackground';
 import { ReviewCard } from '../components/shared/ReviewCard';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
+import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
 
 const buyerNetworkReviews = [
   { title: 'Opened up a completely new buyer market', content: 'Havlo helped us reach international buyers we simply couldn’t access through traditional portals. It added a powerful new dimension to our listings.', author: 'Oliver, London' },
@@ -22,17 +23,8 @@ const buyerNetworkReviews = [
 
 export const BuyerNetwork: React.FC = () => {
   const { openModal } = useModal();
-  const [reviewIndex, setReviewIndex] = useState(0);
-  const [mobileReviewIndex, setMobileReviewIndex] = useState(0);
-  const visibleDesktopReviews = [
-    buyerNetworkReviews[reviewIndex % buyerNetworkReviews.length],
-    buyerNetworkReviews[(reviewIndex + 1) % buyerNetworkReviews.length],
-    buyerNetworkReviews[(reviewIndex + 2) % buyerNetworkReviews.length],
-  ];
-  const nextReviews = () => setReviewIndex((i) => (i + 3) % buyerNetworkReviews.length);
-  const prevReviews = () => setReviewIndex((i) => (i - 3 + buyerNetworkReviews.length) % buyerNetworkReviews.length);
-  const nextMobileReview = () => setMobileReviewIndex((i) => (i + 1) % buyerNetworkReviews.length);
-  const prevMobileReview = () => setMobileReviewIndex((i) => (i - 1 + buyerNetworkReviews.length) % buyerNetworkReviews.length);
+  const desktopReviews = useHorizontalScroll<HTMLDivElement>();
+  const mobileReviews = useHorizontalScroll<HTMLDivElement>();
   const whyChooseItems = [
     {
       id: '01',
@@ -330,23 +322,30 @@ export const BuyerNetwork: React.FC = () => {
                 Real stories from agents who grew their reach with Havlo.
               </p>
             </div>
-            <div className="flex flex-1 items-center gap-4">
+            <div className="flex flex-1 items-center gap-4 min-w-0">
               <button
-                onClick={prevReviews}
+                onClick={desktopReviews.scrollPrev}
                 aria-label="Previous reviews"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
               >
                 <ChevronLeft size={18} />
               </button>
-              <div className="grid flex-1 grid-cols-3 gap-4">
-                {visibleDesktopReviews.map((r, i) => (
-                  <div key={`${reviewIndex}-${i}`} className="rounded-xl bg-[#F5F5F3] p-5">
+              <div
+                ref={desktopReviews.containerRef}
+                {...desktopReviews.dragHandlers}
+                className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+              >
+                {buyerNetworkReviews.map((r, i) => (
+                  <div
+                    key={i}
+                    className="snap-start shrink-0 basis-[calc((100%-2rem)/3)] min-w-[260px] rounded-xl bg-[#F5F5F3] p-5"
+                  >
                     <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
                   </div>
                 ))}
               </div>
               <button
-                onClick={nextReviews}
+                onClick={desktopReviews.scrollNext}
                 aria-label="Next reviews"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
               >
@@ -363,24 +362,27 @@ export const BuyerNetwork: React.FC = () => {
               </h2>
               <TrustpilotStars className="h-[30px]" />
             </div>
-            <div className="flex w-full items-center gap-3">
+            <div className="flex w-full items-center gap-3 min-w-0">
               <button
-                onClick={prevMobileReview}
+                onClick={mobileReviews.scrollPrev}
                 aria-label="Previous review"
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
               >
                 <ChevronLeft size={14} />
               </button>
-              <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
-                <ReviewCard
-                  title={buyerNetworkReviews[mobileReviewIndex].title}
-                  content={buyerNetworkReviews[mobileReviewIndex].content}
-                  author={buyerNetworkReviews[mobileReviewIndex].author}
-                  time=""
-                />
+              <div
+                ref={mobileReviews.containerRef}
+                {...mobileReviews.dragHandlers}
+                className="flex flex-1 gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+              >
+                {buyerNetworkReviews.map((r, i) => (
+                  <div key={i} className="snap-start shrink-0 basis-full rounded-xl bg-[#F5F5F3] p-5">
+                    <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                  </div>
+                ))}
               </div>
               <button
-                onClick={nextMobileReview}
+                onClick={mobileReviews.scrollNext}
                 aria-label="Next review"
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
               >

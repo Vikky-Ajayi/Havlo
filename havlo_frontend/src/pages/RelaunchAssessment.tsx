@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
 import { ArrowUpRight, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { ReviewCard } from '../components/shared/ReviewCard';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
+import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
 
 const sellFasterReviews = [
   { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
@@ -38,17 +39,8 @@ interface ReviewCarouselProps {
 }
 
 const ReviewCarousel: React.FC<ReviewCarouselProps> = ({ heading, subheading, reviews }) => {
-  const [index, setIndex] = useState(0);
-  const [mobileIndex, setMobileIndex] = useState(0);
-  const visible = [
-    reviews[index % reviews.length],
-    reviews[(index + 1) % reviews.length],
-    reviews[(index + 2) % reviews.length],
-  ];
-  const next = () => setIndex((i) => (i + 3) % reviews.length);
-  const prev = () => setIndex((i) => (i - 3 + reviews.length) % reviews.length);
-  const nextMobile = () => setMobileIndex((i) => (i + 1) % reviews.length);
-  const prevMobile = () => setMobileIndex((i) => (i - 1 + reviews.length) % reviews.length);
+  const desktop = useHorizontalScroll<HTMLDivElement>();
+  const mobile = useHorizontalScroll<HTMLDivElement>();
 
   return (
     <section className="flex flex-col w-full bg-white px-4 py-16 sm:px-10 lg:px-[100px]">
@@ -62,18 +54,22 @@ const ReviewCarousel: React.FC<ReviewCarouselProps> = ({ heading, subheading, re
             <TrustpilotStars className="h-[30px]" />
             <p className="font-body text-[16px] font-normal text-black/80">{subheading}</p>
           </div>
-          <div className="flex flex-1 items-center gap-4">
-            <button onClick={prev} aria-label="Previous reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+          <div className="flex flex-1 items-center gap-4 min-w-0">
+            <button onClick={desktop.scrollPrev} aria-label="Previous reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
               <ChevronLeft size={18} />
             </button>
-            <div className="grid flex-1 grid-cols-3 gap-4">
-              {visible.map((r, i) => (
-                <div key={`${index}-${i}`} className="rounded-xl bg-[#F5F5F3] p-5">
+            <div
+              ref={desktop.containerRef}
+              {...desktop.dragHandlers}
+              className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
+              {reviews.map((r, i) => (
+                <div key={i} className="snap-start shrink-0 basis-[calc((100%-2rem)/3)] min-w-[260px] rounded-xl bg-[#F5F5F3] p-5">
                   <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
                 </div>
               ))}
             </div>
-            <button onClick={next} aria-label="Next reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+            <button onClick={desktop.scrollNext} aria-label="Next reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
               <ChevronRight size={18} />
             </button>
           </div>
@@ -87,19 +83,22 @@ const ReviewCarousel: React.FC<ReviewCarouselProps> = ({ heading, subheading, re
             </h2>
             <TrustpilotStars className="h-[26px]" />
           </div>
-          <div className="flex w-full items-center gap-3">
-            <button onClick={prevMobile} aria-label="Previous review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+          <div className="flex w-full items-center gap-3 min-w-0">
+            <button onClick={mobile.scrollPrev} aria-label="Previous review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
               <ChevronLeft size={14} />
             </button>
-            <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
-              <ReviewCard
-                title={reviews[mobileIndex].title}
-                content={reviews[mobileIndex].content}
-                author={reviews[mobileIndex].author}
-                time=""
-              />
+            <div
+              ref={mobile.containerRef}
+              {...mobile.dragHandlers}
+              className="flex flex-1 gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
+              {reviews.map((r, i) => (
+                <div key={i} className="snap-start shrink-0 basis-full rounded-xl bg-[#F5F5F3] p-5">
+                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                </div>
+              ))}
             </div>
-            <button onClick={nextMobile} aria-label="Next review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+            <button onClick={mobile.scrollNext} aria-label="Next review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
               <ChevronRight size={14} />
             </button>
           </div>
