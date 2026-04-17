@@ -24,8 +24,8 @@ export const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="w-full bg-[#040504] flex flex-col items-center pt-0 pb-6 lg:pb-10">
-      <div className="w-full max-w-[1600px] px-4 lg:px-14 pt-10 lg:pt-14 pb-8 lg:pb-10 rounded-[32px] bg-[#050505] flex flex-col gap-10 lg:gap-14 mx-2 lg:mx-auto">
+    <footer className="w-full bg-[#040504] flex flex-col items-center pt-0 pb-0">
+      <div className="w-full max-w-[1600px] px-4 lg:px-14 pt-10 lg:pt-14 pb-6 rounded-[32px] bg-[#050505] flex flex-col gap-10 lg:gap-14 mx-2 lg:mx-auto">
         {/* Top Row: Newsletter & Socials */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-10">
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
