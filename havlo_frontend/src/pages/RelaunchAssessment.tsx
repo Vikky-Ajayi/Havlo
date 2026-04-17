@@ -1,7 +1,114 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowUpRight, Quote } from 'lucide-react';
+import { ArrowUpRight, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { ReviewCard } from '../components/shared/ReviewCard';
+import { TrustpilotStars } from '../components/ui/TrustpilotStars';
+
+const sellFasterReviews = [
+  { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
+  { title: 'A real turnaround for our listing', content: 'We had almost given up after months of no offers. The relaunch strategy worked, and we finally secured a buyer.', author: 'Claire, Sheffield' },
+  { title: 'Exactly what we needed after 6+ months', content: 'Havlo helped reposition our property and attract a completely new audience. The difference was immediate.', author: 'Marcus, Liverpool' },
+  { title: 'Sold after being stuck for nearly a year', content: 'Our house had been listed for close to a year with no success. Havlo Relaunch gave it new life and helped us finally move forward.', author: 'Fiona, Oxford' },
+  { title: 'New strategy, real results', content: 'The relaunch approach made all the difference. Better marketing, better positioning, and much stronger enquiries.', author: 'Ryan, Newcastle' },
+  { title: 'From no interest to serious offers', content: 'We went from barely any viewings to genuine offers after using Havlo. The international exposure really worked.', author: 'Priya, Leicester' },
+  { title: 'Helped us break through a stagnant market', content: 'Our property had gone stale on the market. Havlo Relaunch brought in fresh demand and the right kind of buyers.', author: 'Gareth, Cardiff' },
+  { title: 'Professional and highly effective', content: 'The team clearly understood why our property wasn’t selling and fixed it. We saw results much faster than expected.', author: 'Nadia, Abu Dhabi' },
+  { title: 'Great solution for slow-moving properties', content: 'If your property has been sitting unsold, this service is exactly what you need. It helped us secure a buyer after months of frustration.', author: 'Lewis, Glasgow' },
+  { title: 'A fresh start that worked', content: 'Havlo gave our listing a proper relaunch with a clear strategy. It attracted new interest and ultimately led to a successful sale.', author: 'Sanjay, Slough' },
+];
+
+const saleAuditReviews = [
+  { title: 'Gave us clarity we didn’t have before', content: 'We couldn’t understand why our property wasn’t selling. The Havlo assessment clearly identified the issues and gave us a solid plan to move forward.', author: 'Andrew, Guildford' },
+  { title: 'Eye-opening and extremely helpful', content: 'The audit highlighted pricing and presentation issues we had completely overlooked. It gave us a clear direction and renewed confidence.', author: 'Rachel, Cambridge' },
+  { title: 'Exactly what we needed', content: 'After months of no progress, the assessment showed us exactly what was holding the sale back. The recommendations were practical and easy to implement.', author: 'Tom, Brighton' },
+  { title: 'Clear, honest and actionable advice', content: 'Havlo didn’t just guess—they provided real insights backed by data. It helped us understand our position in the market properly.', author: 'Louise, York' },
+  { title: 'Helped us fix key issues quickly', content: 'We made a few key changes based on the audit, and the difference was immediate. Much more interest and better quality enquiries.', author: 'Chris, Milton Keynes' },
+  { title: 'Finally understood why it wasn’t selling', content: 'The assessment broke everything down clearly—pricing, photos, and positioning. It all made sense once we saw it laid out properly.', author: 'Nina, Reading' },
+  { title: 'Professional and insightful service', content: 'The level of detail in the report was impressive. It felt like a proper strategy rather than just general advice.', author: 'Hassan, Doha' },
+  { title: 'A smart first step before relaunching', content: 'Before switching agents, this audit helped us get everything right. It saved us time and avoided repeating mistakes.', author: 'Emma, Chelmsford' },
+  { title: 'Straightforward and effective', content: 'No fluff—just clear reasons why our property wasn’t selling and what to do next. Exactly what we needed.', author: 'Daniel, Southampton' },
+  { title: 'Worth it for the clarity alone', content: 'Even before relaunching, the audit gave us a completely new perspective on how our property was being seen by buyers.', author: 'Priya, Harrow' },
+];
+
+interface ReviewCarouselProps {
+  heading: string;
+  subheading: string;
+  reviews: { title: string; content: string; author: string }[];
+}
+
+const ReviewCarousel: React.FC<ReviewCarouselProps> = ({ heading, subheading, reviews }) => {
+  const [index, setIndex] = useState(0);
+  const [mobileIndex, setMobileIndex] = useState(0);
+  const visible = [
+    reviews[index % reviews.length],
+    reviews[(index + 1) % reviews.length],
+    reviews[(index + 2) % reviews.length],
+  ];
+  const next = () => setIndex((i) => (i + 3) % reviews.length);
+  const prev = () => setIndex((i) => (i - 3 + reviews.length) % reviews.length);
+  const nextMobile = () => setMobileIndex((i) => (i + 1) % reviews.length);
+  const prevMobile = () => setMobileIndex((i) => (i - 1 + reviews.length) % reviews.length);
+
+  return (
+    <section className="flex flex-col w-full bg-white px-4 py-16 sm:px-10 lg:px-[100px]">
+      <div className="mx-auto w-full max-w-7xl">
+        {/* Desktop */}
+        <div className="hidden lg:flex w-full items-start gap-10">
+          <div className="flex shrink-0 flex-col items-start gap-4 text-left max-w-[280px]">
+            <h2 className="font-body text-[32px] font-medium leading-tight tracking-[-0.8px] text-[#040504]">
+              {heading}
+            </h2>
+            <TrustpilotStars className="h-[30px]" />
+            <p className="font-body text-[16px] font-normal text-black/80">{subheading}</p>
+          </div>
+          <div className="flex flex-1 items-center gap-4">
+            <button onClick={prev} aria-label="Previous reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+              <ChevronLeft size={18} />
+            </button>
+            <div className="grid flex-1 grid-cols-3 gap-4">
+              {visible.map((r, i) => (
+                <div key={`${index}-${i}`} className="rounded-xl bg-[#F5F5F3] p-5">
+                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                </div>
+              ))}
+            </div>
+            <button onClick={next} aria-label="Next reviews" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile */}
+        <div className="flex w-full flex-col items-center gap-6 lg:hidden">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <h2 className="font-body text-[28px] font-medium leading-tight tracking-[-0.8px] text-[#040504]">
+              {heading}
+            </h2>
+            <TrustpilotStars className="h-[26px]" />
+          </div>
+          <div className="flex w-full items-center gap-3">
+            <button onClick={prevMobile} aria-label="Previous review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+              <ChevronLeft size={14} />
+            </button>
+            <div className="flex-1 rounded-xl bg-[#F5F5F3] p-5">
+              <ReviewCard
+                title={reviews[mobileIndex].title}
+                content={reviews[mobileIndex].content}
+                author={reviews[mobileIndex].author}
+                time=""
+              />
+            </div>
+            <button onClick={nextMobile} aria-label="Next review" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          <p className="font-body text-base font-normal text-black/80 text-center">{subheading}</p>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 const RelaunchHeroSection: React.FC = () => {
   return (
@@ -89,7 +196,7 @@ const RelaunchHeroSection: React.FC = () => {
             gap: '8px',
           }}
         >
-          Book your relaunch assessment
+          Get Started
           <ArrowUpRight size={18} />
         </button>
       </div>
@@ -113,7 +220,7 @@ const RelaunchHeroSection: React.FC = () => {
         {[
           { value: "5×", label: "Areas of your listing we audit" },
           { value: "2wk", label: "Average time to first offers after relaunch" },
-          { value: "100%", label: "Remote — no disruption to your daily life" },
+          { value: "100", label: "No disruption to your current sale process" },
         ].map((stat, idx) => (
           <div key={idx} className="text-center">
             <span style={{ fontSize: '20px', fontWeight: 800, color: '#c084fc', display: 'block' }}>
@@ -187,7 +294,7 @@ export const RelaunchAssessment: React.FC = () => {
             { num: "02", title: "Listing quality audit", desc: "Professional evaluation of photos, descriptions, and virtual tours. Recommendations to improve online appeal and click-through. Suggestions your current agent can implement immediately." },
             { num: "03", title: "Marketing & exposure review", desc: "Audit of how your property is advertised across all channels. Strategies to maximise visibility to serious, qualified buyers." },
             { num: "04", title: "Actionable relaunch roadmap", desc: "Step-by-step plan covering pricing, listing, marketing, staging, and improvements. Designed for easy implementation by your current agent." },
-            { num: "05", title: "Professional report & consultation", desc: "Detailed PDF report with charts, scoring, and actionable steps. 30–60 minute call to walk you through every recommendation." },
+            { num: "05", title: "Professional report & consultation", desc: "Detailed PDF report with charts, scoring, and actionable steps. An optional 30–60 minute call to review and walk you through each recommendation." },
           ].map((item, idx) => (
             <div key={idx} className="flex flex-col gap-14 rounded-[20px] bg-white p-8 border border-[#F8F7F6]">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F5D8FD] text-[#A409D2] font-bold text-lg">
@@ -213,7 +320,7 @@ export const RelaunchAssessment: React.FC = () => {
               Simple four-step process
             </h2>
             <p className="max-w-[574px] font-body text-xl font-medium text-white/80">
-              Entirely remote — no disruption to your life or your current agent relationship.
+              Entirely remote — no disruption to your current sale process or your current agent relationship.
             </p>
           </div>
           <div className="flex flex-col w-full lg:w-1/2 border-t border-white/10">
@@ -275,6 +382,20 @@ export const RelaunchAssessment: React.FC = () => {
         </div>
       </section>
 
+      {/* 6b. Sell Faster Reviews */}
+      <ReviewCarousel
+        heading="Sell Faster reviews"
+        subheading="Real stories from sellers who relaunched their listings with Havlo."
+        reviews={sellFasterReviews}
+      />
+
+      {/* 6c. Property Sale Audit Reviews */}
+      <ReviewCarousel
+        heading="Property Sale Audit reviews"
+        subheading="What homeowners say after their independent Havlo audit."
+        reviews={saleAuditReviews}
+      />
+
       {/* 7. Final CTA Section */}
       <section className="relative flex flex-col items-center gap-8 bg-havlo-purple px-4 pb-24 pt-32 text-center">
         {/* Jagged Top Edge */}
@@ -289,7 +410,7 @@ export const RelaunchAssessment: React.FC = () => {
             Get your Relaunch Assessment today
           </h2>
           <p className="max-w-[678px] font-body text-xl font-medium text-white/80">
-            A complete roadmap and consultation to finally get your property sold.
+            A complete roadmap to finally get your property sold.
           </p>
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-baseline gap-2">
@@ -299,10 +420,10 @@ export const RelaunchAssessment: React.FC = () => {
           </div>
           <div className="flex flex-col items-center gap-4">
             <button className="rounded-full bg-white px-8 py-4 font-body text-lg font-semibold text-black transition-all hover:bg-white/90 active:scale-95">
-              Book your relaunch assessment
+              Get Started
             </button>
             <p className="font-body text-sm font-medium text-white/70">
-              Includes full PDF report + 30–60 min consultation call
+              Includes full PDF report + An optional 30–60 minute walkthrough call.
             </p>
           </div>
         </div>
