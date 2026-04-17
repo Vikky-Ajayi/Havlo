@@ -24,7 +24,7 @@ export const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="w-full bg-[#040504] overflow-hidden flex flex-col items-center py-10">
+    <footer className="w-full bg-[#040504] overflow-hidden flex flex-col items-center py-10 pt-[0px] pb-[0px]">
       <div className="w-full max-w-[1600px] px-4 lg:px-14 py-10 lg:py-14 rounded-[32px] bg-[#050505] flex flex-col gap-14 mx-2 lg:mx-auto pb-[0px] mb-[-20px]">
         {/* Top Row: Newsletter & Socials */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-10">
