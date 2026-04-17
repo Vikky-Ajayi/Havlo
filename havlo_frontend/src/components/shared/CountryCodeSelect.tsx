@@ -10,12 +10,41 @@ interface CountryCodeSelectProps {
   buttonClassName?: string;
 }
 
-const FlagImg: React.FC<{ iso?: string; alt?: string; lazy?: boolean }> = ({
-  iso,
+const FlagPlaceholder: React.FC<{ emoji?: string; alt?: string }> = ({
+  emoji,
   alt = '',
-  lazy = false,
 }) => {
-  if (!iso) return null;
+  if (emoji) {
+    return (
+      <span
+        role="img"
+        aria-label={alt}
+        className="inline-flex h-[15px] w-[20px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[2px] text-[14px] leading-none"
+      >
+        {emoji}
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-label={alt}
+      className="inline-block h-[15px] w-[20px] flex-shrink-0 rounded-[2px] bg-gray-300"
+    />
+  );
+};
+
+const FlagImg: React.FC<{
+  iso?: string;
+  emoji?: string;
+  alt?: string;
+  lazy?: boolean;
+}> = ({ iso, emoji, alt = '', lazy = false }) => {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [iso]);
+  if (!iso) return <FlagPlaceholder emoji={emoji} alt={alt} />;
+  if (failed) return <FlagPlaceholder emoji={emoji} alt={alt} />;
   const code = iso.toLowerCase();
   return (
     <img
@@ -25,6 +54,7 @@ const FlagImg: React.FC<{ iso?: string; alt?: string; lazy?: boolean }> = ({
       height={15}
       alt={alt}
       loading={lazy ? 'lazy' : undefined}
+      onError={() => setFailed(true)}
       className="inline-block h-[15px] w-[20px] flex-shrink-0 rounded-[2px] object-cover"
     />
   );
@@ -98,7 +128,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
           buttonClassName,
         )}
       >
-        <FlagImg iso={selected?.iso} />
+        <FlagImg iso={selected?.iso} emoji={selected?.flag} alt={selected?.country} />
         <ChevronDown
           size={12}
           className={cn('text-black/50 transition-transform', isOpen && 'rotate-180')}
@@ -145,7 +175,7 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
                       isSelected && 'bg-gray-100 font-semibold',
                     )}
                   >
-                    <FlagImg iso={c.iso} lazy />
+                    <FlagImg iso={c.iso} emoji={c.flag} alt={c.country} lazy />
                     <span className="text-black/80">{c.country}</span>
                     <span className="ml-auto text-black/50">{c.code}</span>
                   </button>
