@@ -75,7 +75,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </span>
           )}
           <h1 
-            className="font-display font-black lg:text-[80px] text-[#111] max-w-[900px] tracking-[-0.04em] text-[80px]"
+            className="font-display font-black lg:text-[80px] text-[#111] max-w-[900px] tracking-[-0.04em] text-[88px]"
             style={titleStyle}
           >
             {title}
