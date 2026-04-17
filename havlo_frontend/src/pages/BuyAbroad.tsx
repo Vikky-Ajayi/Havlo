@@ -30,11 +30,11 @@ const buyAbroadReviews = [
   { title: 'Professional and reliable', content: 'Havlo is extremely professional. They guide you through legal and financial details and make sure nothing is overlooked.', author: 'Chloe', time: 'Lyon' },
 ];
 
-const teamAvatars = [
-  'https://randomuser.me/api/portraits/women/68.jpg',
-  'https://randomuser.me/api/portraits/men/32.jpg',
-  'https://randomuser.me/api/portraits/women/44.jpg',
-  'https://randomuser.me/api/portraits/men/75.jpg',
+const teamAvatars: Array<{ initials: string; gradient: string }> = [
+  { initials: 'SA', gradient: 'from-pink-400 to-rose-500' },
+  { initials: 'MJ', gradient: 'from-amber-400 to-orange-500' },
+  { initials: 'LT', gradient: 'from-emerald-400 to-teal-500' },
+  { initials: 'DK', gradient: 'from-sky-400 to-indigo-500' },
 ];
 
 export const BuyAbroad: React.FC = () => {
@@ -351,14 +351,17 @@ export const BuyAbroad: React.FC = () => {
                 {step.showTeam && (
                   <div className="mt-4 flex items-center gap-3">
                     <div className="flex -space-x-2">
-                      {teamAvatars.map((src, i) => (
-                        <img
+                      {teamAvatars.map((avatar, i) => (
+                        <div
                           key={i}
-                          src={src}
-                          alt="Team member"
-                          referrerPolicy="no-referrer"
-                          className="h-9 w-9 rounded-full border-2 border-white object-cover"
-                        />
+                          aria-label="Team member"
+                          className={cn(
+                            'flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br font-body text-[11px] font-bold text-white',
+                            avatar.gradient,
+                          )}
+                        >
+                          {avatar.initials}
+                        </div>
                       ))}
                     </div>
                     <span className="inline-flex items-center gap-2 rounded-full bg-[#16A34A] px-3 py-1 font-body text-[11px] font-bold uppercase tracking-[0.12em] text-white">
