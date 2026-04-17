@@ -16,7 +16,7 @@ export const PropertyMatching: React.FC = () => {
             Havlo Property Matching
           </span>
           <h1 className="max-w-[730px] font-display lg:text-[78px] font-black tracking-[-1.76px] text-[#1F1F1E] text-center -mt-[23px] text-[88px]">
-            Find your ideal property, <span className="text-black">effortlessly</span>
+            Find your ideal property, <span className="text-[#1f1f1e] border-t-[#000000] border-r-[#000000] border-b-[#000000] border-l-[#000000]">effortlessly</span>
           </h1>
           <p className="max-w-[682px] font-body text-lg leading-[1.3] tracking-[-0.36px] text-black text-center -mt-[21px]">
             Tell us what you want, location, type, budget and we'll do the legwork. Your request goes straight to our trusted partner agents, who handpick properties that match your exact needs.
