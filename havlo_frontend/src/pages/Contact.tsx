@@ -96,11 +96,11 @@ export const Contact: React.FC = () => {
                     />
                   </div>
                 </div>
+                <FormSelect label="Are you an expat?" placeholder="Select" />
               </div>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <FormSelect label="Country of residence" placeholder="Select" />
-                <FormSelect label="Are you an expat?" placeholder="Select" />
               </div>
 
               <div className="flex flex-col gap-4">
