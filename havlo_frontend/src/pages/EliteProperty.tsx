@@ -108,8 +108,8 @@ export const EliteProperty: React.FC = () => {
             </p>
           </div>
 
-          {/* Desktop Reviews */}
-          <div className="hidden lg:flex relative flex-1 items-center gap-8 min-w-0">
+          {/* Reviews carousel */}
+          <div className="relative flex flex-1 items-center gap-3 sm:gap-8 min-w-0 w-full">
             <button
               type="button"
               onClick={reviewsScroll.scrollPrev}
@@ -121,10 +121,13 @@ export const EliteProperty: React.FC = () => {
             <div
               ref={reviewsScroll.containerRef}
               {...reviewsScroll.dragHandlers}
-              className="flex flex-1 gap-8 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+              className="flex flex-1 gap-4 sm:gap-8 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
             >
               {elitePropertyReviews.map((r, i) => (
-                <div key={i} className="snap-start shrink-0 min-w-[300px] basis-[calc((100%-4rem)/3)]">
+                <div
+                  key={i}
+                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-2rem)/2)] lg:basis-[calc((100%-4rem)/3)] min-w-[260px]"
+                >
                   <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
                 </div>
               ))}
@@ -137,27 +140,6 @@ export const EliteProperty: React.FC = () => {
             >
               <ChevronRight size={20} />
             </button>
-          </div>
-
-          {/* Mobile Reviews */}
-          <div className="flex lg:hidden flex-col items-center gap-8 w-full" style={{ marginTop: '80px' }}>
-            <div className="hidden" />
-            {elitePropertyReviews.map((r, i) => {
-              const styles = [
-                { marginTop: '-53px', marginLeft: '-58px' },
-                { marginRight: '-57px', marginTop: '-50px' },
-                { marginLeft: '-51px', marginTop: '-53px' },
-                { marginRight: '-57px', marginTop: '-50px' },
-                { marginLeft: '-55px', marginTop: '-59px' },
-                { marginRight: '-20px', marginTop: '-50px' },
-              ];
-              const style = styles[i % styles.length];
-              return (
-                <div key={i} style={style}>
-                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-                </div>
-              );
-            })}
           </div>
         </div>
       </section>

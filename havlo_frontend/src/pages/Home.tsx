@@ -82,7 +82,6 @@ export const Home: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('BUYERS');
 
   const desktopReviews = useHorizontalScroll<HTMLDivElement>();
-  const mobileReviews = useHorizontalScroll<HTMLDivElement>();
 
   const handleGetStarted = () => {
     openModal('create-account');
@@ -147,22 +146,21 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="flex w-full bg-white px-4 py-12 lg:py-20 sm:px-6 lg:px-10">
-        {/* Desktop: Rated on left, carousel on right */}
-        <div className="hidden w-full lg:flex items-center gap-10">
-          {/* Left — Rated block */}
-          <div className="flex shrink-0 flex-col items-start gap-4 text-left">
-            <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+      <section className="flex w-full items-center bg-white px-4 py-12 lg:py-20 sm:px-6 lg:px-10">
+        <div className="mx-auto flex w-full flex-col lg:flex-row items-center gap-10">
+          {/* Rated Block */}
+          <div className="flex flex-col items-center lg:items-start gap-4 text-center lg:text-left min-w-[200px]">
+            <h2 className="font-body text-[32px] lg:text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
               Rated
             </h2>
-            <TrustpilotStars className="h-[36px]" />
-            <p className="font-body text-[18px] font-normal text-black max-w-[260px]">
+            <TrustpilotStars className="h-[30px] lg:h-[36px]" />
+            <p className="font-body text-[16px] lg:text-[18px] font-normal text-black max-w-[260px]">
               Rated Excellent based on over <span className="font-bold underline">1,000 customer review.</span>
             </p>
           </div>
 
-          {/* Right — swipeable carousel */}
-          <div className="flex flex-1 items-center gap-4 min-w-0">
+          {/* Swipeable carousel */}
+          <div className="relative flex flex-1 items-center gap-3 sm:gap-4 min-w-0 w-full">
             <button
               onClick={desktopReviews.scrollPrev}
               aria-label="Previous reviews"
@@ -170,7 +168,6 @@ export const Home: React.FC = () => {
             >
               <ChevronLeft size={18} />
             </button>
-
             <div
               ref={desktopReviews.containerRef}
               {...desktopReviews.dragHandlers}
@@ -179,7 +176,7 @@ export const Home: React.FC = () => {
               {homeReviews.map((r, i) => (
                 <div
                   key={i}
-                  className="snap-start shrink-0 basis-[calc((100%-2rem)/3)] min-w-[260px] rounded-xl bg-[#F5F5F3] p-5"
+                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] min-w-[240px] rounded-xl bg-[#F5F5F3] p-5"
                 >
                   <ReviewCard
                     title={r.title}
@@ -190,7 +187,6 @@ export const Home: React.FC = () => {
                 </div>
               ))}
             </div>
-
             <button
               onClick={desktopReviews.scrollNext}
               aria-label="Next reviews"
@@ -199,53 +195,6 @@ export const Home: React.FC = () => {
               <ChevronRight size={18} />
             </button>
           </div>
-        </div>
-
-        {/* Mobile: stacked */}
-        <div className="flex w-full flex-col items-center gap-6 lg:hidden">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <h2 className="font-body text-[32px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-              Rated
-            </h2>
-            <TrustpilotStars className="h-[30px]" />
-          </div>
-
-          <div className="flex w-full items-center gap-3 min-w-0">
-            <button
-              onClick={mobileReviews.scrollPrev}
-              aria-label="Previous review"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <div
-              ref={mobileReviews.containerRef}
-              {...mobileReviews.dragHandlers}
-              className="flex flex-1 gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-            >
-              {homeReviews.map((r, i) => (
-                <div key={i} className="snap-start shrink-0 basis-full rounded-xl bg-[#F5F5F3] p-5">
-                  <ReviewCard
-                    title={r.title}
-                    content={r.content}
-                    author={r.author}
-                    time=""
-                  />
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={mobileReviews.scrollNext}
-              aria-label="Next review"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          <p className="font-body text-base font-normal text-black text-center">
-            Rated Excellent based on over <span className="font-bold underline">1,000 customer review.</span>
-          </p>
         </div>
       </section>
 

@@ -24,7 +24,6 @@ const buyerNetworkReviews = [
 export const BuyerNetwork: React.FC = () => {
   const { openModal } = useModal();
   const desktopReviews = useHorizontalScroll<HTMLDivElement>();
-  const mobileReviews = useHorizontalScroll<HTMLDivElement>();
   const whyChooseItems = [
     {
       id: '01',
@@ -310,88 +309,48 @@ export const BuyerNetwork: React.FC = () => {
 
       {/* 5b. Trustpilot reviews */}
       <section className="flex flex-col w-full bg-white px-4 py-16 sm:px-10 lg:px-[100px]">
-        <div className="mx-auto w-full max-w-[1240px]">
-          {/* Desktop */}
-          <div className="hidden lg:flex w-full items-start gap-10">
-            <div className="flex shrink-0 flex-col items-start gap-4 text-left max-w-[280px]">
-              <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-                Rated
-              </h2>
-              <TrustpilotStars className="h-[36px]" />
-              <p className="font-body text-[16px] font-normal text-black/80">
-                Real stories from agents who grew their reach with Havlo.
-              </p>
-            </div>
-            <div className="flex flex-1 items-center gap-4 min-w-0">
-              <button
-                onClick={desktopReviews.scrollPrev}
-                aria-label="Previous reviews"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <div
-                ref={desktopReviews.containerRef}
-                {...desktopReviews.dragHandlers}
-                className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-              >
-                {buyerNetworkReviews.map((r, i) => (
-                  <div
-                    key={i}
-                    className="snap-start shrink-0 basis-[calc((100%-2rem)/3)] min-w-[260px] rounded-xl bg-[#F5F5F3] p-5"
-                  >
-                    <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={desktopReviews.scrollNext}
-                aria-label="Next reviews"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile */}
-          <div className="flex w-full flex-col items-center gap-6 lg:hidden">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <h2 className="font-body text-[32px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-                Rated
-              </h2>
-              <TrustpilotStars className="h-[30px]" />
-            </div>
-            <div className="flex w-full items-center gap-3 min-w-0">
-              <button
-                onClick={mobileReviews.scrollPrev}
-                aria-label="Previous review"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <div
-                ref={mobileReviews.containerRef}
-                {...mobileReviews.dragHandlers}
-                className="flex flex-1 gap-3 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-              >
-                {buyerNetworkReviews.map((r, i) => (
-                  <div key={i} className="snap-start shrink-0 basis-full rounded-xl bg-[#F5F5F3] p-5">
-                    <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={mobileReviews.scrollNext}
-                aria-label="Next review"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/15"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-            <p className="font-body text-base font-normal text-black/80 text-center">
+        <div className="mx-auto flex w-full max-w-[1240px] flex-col lg:flex-row items-center gap-10">
+          {/* Rated Block */}
+          <div className="flex flex-col items-center lg:items-start gap-4 text-center lg:text-left max-w-[280px]">
+            <h2 className="font-body text-[32px] lg:text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+              Rated
+            </h2>
+            <TrustpilotStars className="h-[30px] lg:h-[36px]" />
+            <p className="font-body text-[16px] font-normal text-black/80">
               Real stories from agents who grew their reach with Havlo.
             </p>
+          </div>
+
+          {/* Swipeable carousel */}
+          <div className="relative flex flex-1 items-center gap-3 sm:gap-4 min-w-0 w-full">
+            <button
+              onClick={desktopReviews.scrollPrev}
+              aria-label="Previous reviews"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div
+              ref={desktopReviews.containerRef}
+              {...desktopReviews.dragHandlers}
+              className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
+            >
+              {buyerNetworkReviews.map((r, i) => (
+                <div
+                  key={i}
+                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] min-w-[240px] rounded-xl bg-[#F5F5F3] p-5"
+                >
+                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={desktopReviews.scrollNext}
+              aria-label="Next reviews"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
         </div>
       </section>
