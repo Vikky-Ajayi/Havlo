@@ -60,11 +60,7 @@ export const CreateAccountModal: React.FC = () => {
       await login(loginResp);
       closeModal();
 
-      if (!loginResp.onboarding_complete) {
-        navigate('/get-started');
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
     } finally {
