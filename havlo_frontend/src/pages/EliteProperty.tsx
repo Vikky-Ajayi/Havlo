@@ -390,26 +390,36 @@ export const EliteProperty: React.FC = () => {
         </div>
 
         <div className="flex w-full max-w-7xl flex-col gap-8 rounded-3xl bg-[#F7F9F6] p-8">
-          <div className="flex flex-col gap-8">
-            <div className="flex items-center gap-3">
-              <div className="h-0.5 w-7 rounded-full bg-black" />
-              <span className="font-body text-2xl font-bold uppercase tracking-tight text-black">
-                Who This Is For
-              </span>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+            <div className="flex flex-1 flex-col gap-6">
+              <div className="flex items-center gap-3">
+                <div className="h-0.5 w-7 rounded-full bg-black" />
+                <span className="font-body text-base font-bold uppercase tracking-tight text-black">
+                  Who This Is For
+                </span>
+              </div>
+              <ul className="flex flex-wrap gap-3">
+                {whoThisIsFor.map((item) => (
+                  <li
+                    key={item}
+                    className="rounded-full border border-havlo-purple px-5 py-2 font-body text-sm font-medium text-havlo-purple"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2">
-              {whoThisIsFor.map((item) => (
-                <li key={item} className="flex items-start gap-3 font-body text-lg leading-[1.4] text-black">
-                  <div className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-havlo-purple" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            <button
+              type="button"
+              onClick={() => openModal('create-account')}
+              className="flex shrink-0 items-center gap-3 self-start rounded-full bg-black px-7 py-4 font-body text-sm font-medium uppercase tracking-wide text-white transition-all hover:bg-black/90"
+            >
+              Submit Your Property
+              <ArrowRight size={16} />
+            </button>
           </div>
-          <p className="font-body text-lg leading-[1.5] text-black">
-            <span className="font-bold">Havlo</span> is not a <span className="font-bold">brokerage</span>. We are a global property exposure platform—designed to position your asset directly in front of buyers actively seeking opportunities beyond their borders.
-            <br /><br />
-            We work alongside your existing agent, enhancing their efforts by presenting your property to a carefully curated international audience beyond their reach—helping you achieve a more strategic and efficient sale.
+          <p className="font-body text-base leading-[1.6] text-black">
+            <span className="font-bold">Havlo</span> is not a <span className="font-bold">brokerage</span>. We are a global property exposure platform—designed to position your asset directly in front of buyers actively seeking opportunities beyond their borders. We work alongside your existing agent, enhancing their efforts by presenting your property to a carefully curated international audience beyond their reach—helping you achieve a more strategic and efficient sale.
           </p>
         </div>
       </section>
