@@ -152,6 +152,19 @@ async def startup() -> None:
                     END $$;
                 """))
                 await conn.execute(text("""
+                    DO $$ BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status_sale_audit') THEN
+                            CREATE TYPE payment_status_sale_audit AS ENUM ('pending','completed','failed');
+                        END IF;
+                    END $$;
+                """))
+                await conn.execute(text("""
+                    ALTER TABLE sale_audit_requests
+                        ADD COLUMN IF NOT EXISTS sumup_checkout_id VARCHAR(255),
+                        ADD COLUMN IF NOT EXISTS sumup_checkout_url TEXT,
+                        ADD COLUMN IF NOT EXISTS payment_status payment_status_sale_audit NOT NULL DEFAULT 'pending';
+                """))
+                await conn.execute(text("""
                     ALTER TABLE users
                         ADD COLUMN IF NOT EXISTS supabase_uid VARCHAR(255),
                         ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),

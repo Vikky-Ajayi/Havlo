@@ -10,7 +10,7 @@ from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.models import User
 from app.schemas.schemas import MessageResponse, UpdatePasswordRequest, UpdateProfileRequest, UserProfile
-from app.services.local_auth import hash_password, verify_password
+from app.services.local_auth import hash_password_async, verify_password_async
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -61,13 +61,13 @@ async def change_password(
             detail="Password change not available for this account.",
         )
 
-    if not verify_password(payload.current_password, current_user.password_hash):
+    if not await verify_password_async(payload.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect.",
         )
 
-    current_user.password_hash = hash_password(payload.new_password)
+    current_user.password_hash = await hash_password_async(payload.new_password)
     await db.commit()
 
     return MessageResponse(message="Password updated successfully.")

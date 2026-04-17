@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/property-matching",
     tags=["Property Matching"],
-    dependencies=[Depends(require_roles("buyer", "agent"))],
+    dependencies=[Depends(require_roles("buyer"))],
 )
 
 

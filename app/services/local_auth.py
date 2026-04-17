@@ -1,6 +1,7 @@
 """Local JWT authentication — used when Supabase is not configured."""
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,11 +12,23 @@ from app.config import get_settings
 
 
 def hash_password(password: str) -> str:
+    """Synchronous bcrypt hash — use `hash_password_async` from request handlers."""
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    """Synchronous bcrypt verify — use `verify_password_async` from request handlers."""
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+
+
+async def hash_password_async(password: str) -> str:
+    """Run bcrypt hashing in a worker thread so the event loop is not blocked."""
+    return await asyncio.to_thread(hash_password, password)
+
+
+async def verify_password_async(plain: str, hashed: str) -> bool:
+    """Run bcrypt verification in a worker thread so the event loop is not blocked."""
+    return await asyncio.to_thread(verify_password, plain, hashed)
 
 
 def create_access_token(user_id: str, expires_minutes: int = 60 * 24 * 7) -> str:

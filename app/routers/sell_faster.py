@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/sell-faster",
     tags=["Sell Faster"],
-    dependencies=[Depends(require_roles("seller", "agent"))],
+    dependencies=[Depends(require_roles("seller"))],
 )
 
 

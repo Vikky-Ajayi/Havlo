@@ -306,6 +306,10 @@ class SaleAuditRequest(BaseModel):
 
 class SaleAuditResponse(BaseModel):
     request_id: str
+    checkout_url: str
+    checkout_id: str
+    amount: float
+    currency: str
     message: str
 
 

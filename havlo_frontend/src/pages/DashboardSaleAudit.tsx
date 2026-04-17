@@ -21,13 +21,16 @@ export const DashboardSaleAudit: React.FC = () => {
     setSubmitError('');
     try {
       const fd = new FormData(e.currentTarget);
-      await api.submitSaleAudit(token, {
+      const result = await api.submitSaleAudit(token, {
         listing_url: (fd.get('listingUrl') as string) || undefined,
         number_of_viewings: (fd.get('viewings') as string) || undefined,
         number_of_offers: (fd.get('offers') as string) || undefined,
         price_currency: 'GBP',
       });
       setIsDrawerOpen(false);
+      if (result.checkout_url) {
+        window.open(result.checkout_url, '_blank');
+      }
       setIsSuccessModalOpen(true);
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');

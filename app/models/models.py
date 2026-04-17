@@ -331,6 +331,11 @@ class SaleAuditRequest(Base):
     estate_agent_name: Mapped[Optional[str]] = mapped_column(String(255))
     property_description: Mapped[Optional[str]] = mapped_column(Text)
     main_challenges: Mapped[Optional[str]] = mapped_column(Text)
+    sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
+    sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
+    payment_status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name="payment_status_sale_audit"), default=PaymentStatus.pending
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

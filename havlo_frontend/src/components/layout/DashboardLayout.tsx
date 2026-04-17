@@ -42,10 +42,6 @@ const ROLE_VISIBLE: Record<string, string[]> = {
   ],
   agent: [
     '/dashboard',
-    '/dashboard/property-matching',
-    '/dashboard/elite-property',
-    '/dashboard/sell-faster',
-    '/dashboard/sale-audit',
     '/dashboard/buyer-network',
     '/dashboard/inbox',
     '/dashboard/settings',

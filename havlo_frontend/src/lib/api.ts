@@ -276,7 +276,14 @@ export const api = {
     request<{ application_id: string; message: string }>('/elite-property/apply', { method: 'POST', token, body: payload }),
 
   submitSaleAudit: (token: string, payload: SaleAuditPayload) =>
-    request<{ request_id: string; message: string }>('/sale-audit', { method: 'POST', token, body: payload }),
+    request<{
+      request_id: string;
+      checkout_url: string;
+      checkout_id: string;
+      amount: number;
+      currency: string;
+      message: string;
+    }>('/sale-audit', { method: 'POST', token, body: payload }),
 
   submitSellFaster: (token: string, payload: SellFasterPayload) =>
     request<{ application_id: string; checkout_url: string; message: string }>('/sell-faster', { method: 'POST', token, body: payload }),

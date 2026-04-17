@@ -26,7 +26,7 @@ from app.schemas.schemas import (
     UserProfile,
 )
 from app.services import google_sheets
-from app.services.local_auth import create_access_token, hash_password, verify_password
+from app.services.local_auth import create_access_token, hash_password_async, verify_password_async
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -46,10 +46,11 @@ async def register(
             detail="An account with this email already exists.",
         )
 
+    hashed_password = await hash_password_async(payload.password)
     user = User(
         supabase_uid=str(uuid.uuid4()),
         email=payload.email,
-        password_hash=hash_password(payload.password),
+        password_hash=hashed_password,
         first_name=payload.first_name,
         last_name=payload.last_name,
         phone_country_code=payload.phone_country_code,
@@ -100,7 +101,7 @@ async def login(
             detail="Invalid email or password.",
         )
 
-    if not verify_password(payload.password, user.password_hash):
+    if not await verify_password_async(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/elite-property",
     tags=["Elite Property"],
-    dependencies=[Depends(require_roles("seller", "agent"))],
+    dependencies=[Depends(require_roles("seller"))],
 )
 
 
