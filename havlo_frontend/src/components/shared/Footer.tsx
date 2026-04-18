@@ -6,7 +6,6 @@ export const Footer: React.FC = () => {
   const serviceLinks = [
     { name: 'Elite Property Introduction', href: '/elite-property' },
     { name: 'Sell Faster', href: '/relaunch-assessment' },
-    { name: 'Property Sale Audit', href: '/relaunch-assessment' },
     { name: 'Property Matching', href: '/property-matching' },
   ];
 
