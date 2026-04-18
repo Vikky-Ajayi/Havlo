@@ -96,7 +96,7 @@ export const Onboarding: React.FC = () => {
   const goNext = () => {
     setSubmitError('');
     if (step === 1 && helpChoice === 'sell') {
-      navigate('/relaunch-assessment');
+      navigate('/sell-faster');
       return;
     }
     setStep(prev => Math.min(prev + 1, TOTAL_STEPS));

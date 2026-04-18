@@ -129,7 +129,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<AboutUs />} />
             <Route path="/buy-abroad" element={<BuyAbroad />} />
-            <Route path="/relaunch-assessment" element={<RelaunchAssessment />} />
+            <Route path="/sell-faster" element={<RelaunchAssessment />} />
             <Route path="/elite-property" element={<EliteProperty />} />
             <Route path="/buy-home" element={<BuyHome />} />
             <Route path="/complete-home-buying" element={<CompleteHomeBuying />} />
