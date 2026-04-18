@@ -268,13 +268,13 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Sell Faster (Havlo Relaunch™)"
                     description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                    href="/sell-faster"
+                    href="/relaunch-assessment"
                     className="bg-white"
                   />
                   <ServiceCard
                     title="Property Sale Audit ( Havlo Relaunch Assessment)"
                     description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                    href="/sell-faster"
+                    href="/relaunch-assessment"
                     className="bg-white"
                   />
                 </div>
@@ -336,13 +336,13 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Sell Faster (Havlo Relaunch™)"
                 description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                href="/sell-faster"
+                href="/relaunch-assessment"
                 className="bg-white h-[245px]"
               />
               <ServiceCard
                 title="Property Sale Audit ( Havlo Relaunch Assessment)"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                href="/sell-faster"
+                href="/relaunch-assessment"
                 className="flex-1 bg-white"
               />
             </div>
