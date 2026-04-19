@@ -6,6 +6,7 @@ import { X, Check, Globe, Zap, Shield, Star, ArrowRight, Phone } from 'lucide-re
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { usePaymentReturnPoller } from '../lib/paymentReturn';
 
 interface Plan {
   id: string;
@@ -116,6 +117,13 @@ export const DashboardSellFaster: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  usePaymentReturnPoller({
+    kind: 'sell_faster',
+    token,
+    fetchStatus: (id) => api.getSellFasterPaymentStatus(token!, id),
+    onPaid: () => setIsSuccessModalOpen(true),
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !selectedPlan) return;
@@ -137,7 +145,13 @@ export const DashboardSellFaster: React.FC = () => {
       });
       setIsDrawerOpen(false);
       if (result.checkout_url) {
-        window.open(result.checkout_url, '_blank');
+        const { redirectToCheckout } = await import('../lib/paymentReturn');
+        redirectToCheckout(result.checkout_url, {
+          kind: 'sell_faster',
+          recordId: result.application_id,
+          reference: result.checkout_id,
+        });
+        return;
       }
       setIsSuccessModalOpen(true);
     } catch (err: unknown) {

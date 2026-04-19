@@ -296,10 +296,28 @@ export const api = {
     }>('/sale-audit', { method: 'POST', token, body: payload }),
 
   submitSellFaster: (token: string, payload: SellFasterPayload) =>
-    request<{ application_id: string; checkout_url: string; message: string }>('/sell-faster', { method: 'POST', token, body: payload }),
+    request<{ application_id: string; checkout_url: string; checkout_id: string; total_amount: number; currency: string; message: string }>('/sell-faster', { method: 'POST', token, body: payload }),
 
   submitBuyerNetwork: (token: string, payload: BuyerNetworkPayload) =>
-    request<{ application_id: string; checkout_url: string; message: string }>('/buyer-network', { method: 'POST', token, body: payload }),
+    request<{ application_id: string; checkout_url: string; checkout_id: string; total_amount: number; currency: string; message: string }>('/buyer-network', { method: 'POST', token, body: payload }),
+
+  // ── Payment status polling ───────────────────────────────────────────────
+  getSessionPaymentStatus: (token: string, bookingId: string) =>
+    request<{ checkout_id: string; status: string; paid: boolean; redirect_url?: string | null }>(
+      `/bookings/session/${bookingId}/status`, { token }
+    ),
+  getSellFasterPaymentStatus: (token: string, applicationId: string) =>
+    request<{ checkout_id: string; status: string; paid: boolean; redirect_url?: string | null }>(
+      `/sell-faster/${applicationId}/status`, { token }
+    ),
+  getBuyerNetworkPaymentStatus: (token: string, applicationId: string) =>
+    request<{ checkout_id: string; status: string; paid: boolean; redirect_url?: string | null }>(
+      `/buyer-network/${applicationId}/status`, { token }
+    ),
+  getSaleAuditPaymentStatus: (token: string, requestId: string) =>
+    request<{ checkout_id: string; status: string; paid: boolean; redirect_url?: string | null }>(
+      `/sale-audit/${requestId}/status`, { token }
+    ),
 
   getConversations: (token: string) =>
     request<Conversation[]>('/messaging/conversations', { token }),

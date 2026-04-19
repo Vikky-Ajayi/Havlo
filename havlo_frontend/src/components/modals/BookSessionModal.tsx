@@ -67,7 +67,13 @@ export const BookSessionModal: React.FC = () => {
         preferred_time: preferredTime,
       });
       if (result.checkout_url) {
-        window.open(result.checkout_url, '_blank');
+        const { redirectToCheckout } = await import('../../lib/paymentReturn');
+        redirectToCheckout(result.checkout_url, {
+          kind: 'session',
+          recordId: result.booking_id,
+          reference: result.checkout_id,
+        });
+        return;
       }
       closeModal();
     } catch (err: unknown) {

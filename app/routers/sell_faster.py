@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     SellFasterResponse,
 )
 from app.services import google_sheets, sumup_service
+from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +57,14 @@ async def submit_sell_faster(
                 f"{settings.FRONTEND_URL}/dashboard/sell-faster?payment=success&ref={reference}"
             ),
         )
+    except SumUpError as exc:
+        logger.error("SumUp sell-faster failed: %s body=%s", exc, exc.body)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"SumUp error: {exc} {exc.body or ''}".strip(),
+        )
     except Exception as exc:
-        logger.error("SumUp checkout failed for sell-faster: %s", exc)
+        logger.exception("Unexpected error creating SumUp checkout: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Payment gateway unavailable. Please try again.",

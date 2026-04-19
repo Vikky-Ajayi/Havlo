@@ -7,11 +7,24 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useNavigate } from 'react-router-dom';
 import { useModal } from '../hooks/useModal';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
+import { usePaymentReturnPoller } from '../lib/paymentReturn';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { openModal } = useModal();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+
+  usePaymentReturnPoller({
+    kind: 'session',
+    token,
+    fetchStatus: (id) => api.getSessionPaymentStatus(token!, id),
+    onPaid: (res) => {
+      if (res.redirect_url) {
+        window.location.href = res.redirect_url;
+      }
+    },
+  });
 
   useEffect(() => {
     if (!user) return;

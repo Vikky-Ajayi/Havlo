@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { X, Check, FileText, Search, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { usePaymentReturnPoller } from '../lib/paymentReturn';
 
 export const DashboardSaleAudit: React.FC = () => {
   const { token } = useAuth();
@@ -13,6 +14,13 @@ export const DashboardSaleAudit: React.FC = () => {
   const [hasFeedback, setHasFeedback] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  usePaymentReturnPoller({
+    kind: 'sale_audit',
+    token,
+    fetchStatus: (id) => api.getSaleAuditPaymentStatus(token!, id),
+    onPaid: () => setIsSuccessModalOpen(true),
+  });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,7 +37,13 @@ export const DashboardSaleAudit: React.FC = () => {
       });
       setIsDrawerOpen(false);
       if (result.checkout_url) {
-        window.open(result.checkout_url, '_blank');
+        const { redirectToCheckout } = await import('../lib/paymentReturn');
+        redirectToCheckout(result.checkout_url, {
+          kind: 'sale_audit',
+          recordId: result.request_id,
+          reference: result.checkout_id,
+        });
+        return;
       }
       setIsSuccessModalOpen(true);
     } catch (err: unknown) {

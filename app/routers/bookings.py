@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     PaymentStatusResponse,
 )
 from app.services import google_sheets, sumup_service
+from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bookings", tags=["Session Bookings"])
@@ -48,8 +49,14 @@ async def book_session(
             reference=reference,
             redirect_url=f"{settings.FRONTEND_URL}/dashboard?payment=session&ref={reference}",
         )
+    except SumUpError as exc:
+        logger.error("SumUp checkout failed: %s body=%s", exc, exc.body)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"SumUp error: {exc} {exc.body or ''}".strip(),
+        )
     except Exception as exc:
-        logger.error("SumUp checkout failed: %s", exc)
+        logger.exception("Unexpected error creating SumUp checkout: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Payment gateway unavailable. Please try again.",

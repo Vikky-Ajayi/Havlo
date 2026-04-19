@@ -23,6 +23,7 @@ from app.schemas.schemas import (
     SaleAuditResponse,
 )
 from app.services import google_sheets, sumup_service
+from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,14 @@ async def submit_sale_audit(
                 f"{settings.FRONTEND_URL}/dashboard/sale-audit?payment=success&ref={reference}"
             ),
         )
+    except SumUpError as exc:
+        logger.error("SumUp sale-audit failed: %s body=%s", exc, exc.body)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"SumUp error: {exc} {exc.body or ''}".strip(),
+        )
     except Exception as exc:
-        logger.error("SumUp checkout failed for sale-audit: %s", exc)
+        logger.exception("Unexpected error creating SumUp checkout: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Payment gateway unavailable. Please try again.",

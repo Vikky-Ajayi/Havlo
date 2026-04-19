@@ -6,6 +6,7 @@ import { X, Check, Users, ArrowRight, Globe, Zap, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { usePaymentReturnPoller } from '../lib/paymentReturn';
 
 interface Package {
   id: string;
@@ -81,6 +82,13 @@ export const DashboardBuyerNetwork: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  usePaymentReturnPoller({
+    kind: 'buyer_network',
+    token,
+    fetchStatus: (id) => api.getBuyerNetworkPaymentStatus(token!, id),
+    onPaid: () => setIsSuccessModalOpen(true),
+  });
+
   const handlePackageSelect = (pkg: Package) => {
     setSelectedPackage(pkg);
     setIsDrawerOpen(true);
@@ -105,7 +113,13 @@ export const DashboardBuyerNetwork: React.FC = () => {
       });
       setIsDrawerOpen(false);
       if (result.checkout_url) {
-        window.open(result.checkout_url, '_blank');
+        const { redirectToCheckout } = await import('../lib/paymentReturn');
+        redirectToCheckout(result.checkout_url, {
+          kind: 'buyer_network',
+          recordId: result.application_id,
+          reference: result.checkout_id,
+        });
+        return;
       }
       setIsSuccessModalOpen(true);
     } catch (err: unknown) {
