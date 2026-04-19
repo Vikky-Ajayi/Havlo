@@ -22,6 +22,24 @@ from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
 
+# ── Server-side pricing — sole source of truth. NEVER trust client amounts. ──
+SELL_FASTER_PLANS: dict[str, dict] = {
+    "global":         {"name": "Global",         "setup": 2000.00, "monthly": 1500.00, "currency": "GBP"},
+    "global-plus":    {"name": "Global+",        "setup": 3500.00, "monthly": 2500.00, "currency": "GBP"},
+    "worldwide":      {"name": "Worldwide",      "setup": 5000.00, "monthly": 3500.00, "currency": "GBP"},
+    "private-client": {"name": "Private Client", "setup": 5000.00, "monthly": 3500.00, "currency": "GBP"},
+}
+
+# Public, no-auth router for price discovery.
+public_router = APIRouter(prefix="/sell-faster", tags=["Sell Faster"])
+
+
+@public_router.get("/plans")
+async def list_sell_faster_plans() -> dict:
+    """Return the public price list. Frontend MUST use these for display."""
+    return SELL_FASTER_PLANS
+
+
 router = APIRouter(
     prefix="/sell-faster",
     tags=["Sell Faster"],
@@ -41,21 +59,42 @@ async def submit_sell_faster(
     Charges setup fee + first month via SumUp (both in GBP).
     """
     settings = get_settings()
-    total_amount = payload.setup_price + payload.monthly_price
+
+    # SECURITY: pricing comes EXCLUSIVELY from the server-side map.
+    plan = SELL_FASTER_PLANS.get(payload.plan_id)
+    if not plan:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid plan selected",
+        )
+    setup_price = float(plan["setup"])
+    monthly_price = float(plan["monthly"])
+    currency = str(plan["currency"]).upper()
+    total_amount = round(setup_price + monthly_price, 2)
     reference = f"HAVLO-SF-{uuid.uuid4().hex[:12].upper()}"
+
+    redirect_url = None
+    if settings.FRONTEND_URL:
+        redirect_url = (
+            f"{settings.FRONTEND_URL.rstrip('/')}"
+            f"/dashboard/sell-faster?payment=success&ref={reference}"
+        )
+
+    logger.info(
+        "Sell Faster checkout requested ref=%s plan=%s amount=%.2f currency=%s",
+        reference, payload.plan_id, total_amount, currency,
+    )
 
     try:
         checkout = await sumup_service.create_checkout(
             amount=total_amount,
-            currency="GBP",
+            currency=currency,
             description=(
-                f"Havlo Sell Faster — {payload.plan_name} Plan "
-                f"(Setup £{payload.setup_price:.0f} + Month 1 £{payload.monthly_price:.0f})"
+                f"Havlo Sell Faster — {plan['name']} Plan "
+                f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f})"
             ),
             reference=reference,
-            redirect_url=(
-                f"{settings.FRONTEND_URL}/dashboard/sell-faster?payment=success&ref={reference}"
-            ),
+            redirect_url=redirect_url,
         )
     except SumUpError as exc:
         logger.error("SumUp sell-faster failed: %s body=%s", exc, exc.body)
@@ -76,7 +115,7 @@ async def submit_sell_faster(
     application = SellFasterApplication(
         user_id=current_user.id,
         plan_id=payload.plan_id,
-        plan_name=payload.plan_name,
+        plan_name=plan["name"],
         property_address=payload.property_address,
         property_type=payload.property_type,
         asking_price=payload.asking_price,
@@ -96,7 +135,7 @@ async def submit_sell_faster(
         user_id=current_user.id,
         checkout_id=checkout_id,
         amount=total_amount,
-        currency="GBP",
+        currency=currency,
         status=PaymentStatus.pending,
         reference_type="sell_faster",
     )
@@ -137,10 +176,10 @@ async def submit_sell_faster(
         checkout_url=checkout_url,
         checkout_id=checkout_id,
         total_amount=total_amount,
-        currency="GBP",
+        currency=currency,
         message=(
             f"Application created. Please complete payment of £{total_amount:.2f} "
-            f"(Setup £{payload.setup_price:.0f} + Month 1 £{payload.monthly_price:.0f}) to activate your campaign."
+            f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f}) to activate your campaign."
         ),
     )
 

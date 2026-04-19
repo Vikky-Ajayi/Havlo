@@ -104,8 +104,6 @@ export const DashboardBuyerNetwork: React.FC = () => {
       const result = await api.submitBuyerNetwork(token, {
         package_id: selectedPackage.id,
         package_name: selectedPackage.name,
-        setup_price: selectedPackage.setupAmount,
-        monthly_price: selectedPackage.monthlyAmount,
         contact_preference: contactPreference,
         property_types: ['Residential'],
         target_markets: ['International'],

@@ -40,14 +40,30 @@ async def book_session(
     settings = get_settings()
     reference = f"HAVLO-SESSION-{uuid.uuid4().hex[:12].upper()}"
 
+    # Read fee from settings — Railway may inject as string, so cast.
+    amount = float(settings.SESSION_FEE_AMOUNT)
+    currency = str(settings.SESSION_FEE_CURRENCY).upper()
+
+    redirect_url = None
+    if settings.FRONTEND_URL:
+        redirect_url = (
+            f"{settings.FRONTEND_URL.rstrip('/')}"
+            f"/dashboard?payment=success&ref={reference}"
+        )
+
+    logger.info(
+        "Session checkout requested ref=%s amount=%.2f currency=%s",
+        reference, amount, currency,
+    )
+
     # Create SumUp checkout
     try:
         checkout = await sumup_service.create_checkout(
-            amount=settings.SESSION_FEE_AMOUNT,
-            currency=settings.SESSION_FEE_CURRENCY,
+            amount=amount,
+            currency=currency,
             description=f"Havlo Advisory Session — {payload.first_name} {payload.last_name}",
             reference=reference,
-            redirect_url=f"{settings.FRONTEND_URL}/dashboard?payment=session&ref={reference}",
+            redirect_url=redirect_url,
         )
     except SumUpError as exc:
         logger.error("SumUp checkout failed: %s body=%s", exc, exc.body)
@@ -86,8 +102,8 @@ async def book_session(
     payment = Payment(
         user_id=current_user.id,
         checkout_id=checkout_id,
-        amount=settings.SESSION_FEE_AMOUNT,
-        currency=settings.SESSION_FEE_CURRENCY,
+        amount=amount,
+        currency=currency,
         status=PaymentStatus.pending,
         reference_type="session_booking",
         reference_id=str(booking.id) if booking.id else reference,
@@ -125,8 +141,8 @@ async def book_session(
         booking_id=str(booking.id),
         checkout_url=checkout_url,
         checkout_id=checkout_id,
-        amount=settings.SESSION_FEE_AMOUNT,
-        currency=settings.SESSION_FEE_CURRENCY,
+        amount=amount,
+        currency=currency,
         message="Session booking created. Complete payment to confirm.",
     )
 

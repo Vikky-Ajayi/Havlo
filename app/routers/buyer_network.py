@@ -22,6 +22,23 @@ from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
 
+# ── Server-side pricing — sole source of truth. NEVER trust client amounts. ──
+BUYER_NETWORK_PACKAGES: dict[str, dict] = {
+    "partner": {"name": "Partner",                "setup": 2000.00, "monthly": 2000.00, "currency": "GBP"},
+    "growth":  {"name": "Growth Partner",         "setup": 4000.00, "monthly": 4000.00, "currency": "GBP"},
+    "private": {"name": "Private Client Partner", "setup": 7500.00, "monthly": 7500.00, "currency": "GBP"},
+}
+
+# Public, no-auth router for price discovery.
+public_router = APIRouter(prefix="/buyer-network", tags=["Buyer Network"])
+
+
+@public_router.get("/packages")
+async def list_buyer_network_packages() -> dict:
+    """Return the public price list. Frontend MUST use these for display."""
+    return BUYER_NETWORK_PACKAGES
+
+
 router = APIRouter(
     prefix="/buyer-network",
     tags=["Buyer Network"],
@@ -41,21 +58,42 @@ async def submit_buyer_network(
     Charges setup fee + first month payment via SumUp (GBP).
     """
     settings = get_settings()
-    total_amount = payload.setup_price + payload.monthly_price
+
+    # SECURITY: pricing comes EXCLUSIVELY from the server-side map.
+    package = BUYER_NETWORK_PACKAGES.get(payload.package_id)
+    if not package:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid plan selected",
+        )
+    setup_price = float(package["setup"])
+    monthly_price = float(package["monthly"])
+    currency = str(package["currency"]).upper()
+    total_amount = round(setup_price + monthly_price, 2)
     reference = f"HAVLO-BN-{uuid.uuid4().hex[:12].upper()}"
+
+    redirect_url = None
+    if settings.FRONTEND_URL:
+        redirect_url = (
+            f"{settings.FRONTEND_URL.rstrip('/')}"
+            f"/dashboard/buyer-network?payment=success&ref={reference}"
+        )
+
+    logger.info(
+        "Buyer Network checkout requested ref=%s package=%s amount=%.2f currency=%s",
+        reference, payload.package_id, total_amount, currency,
+    )
 
     try:
         checkout = await sumup_service.create_checkout(
             amount=total_amount,
-            currency="GBP",
+            currency=currency,
             description=(
-                f"Havlo Buyer Network — {payload.package_name} Package "
-                f"(Setup £{payload.setup_price:.0f} + Month 1 £{payload.monthly_price:.0f})"
+                f"Havlo Buyer Network — {package['name']} Package "
+                f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f})"
             ),
             reference=reference,
-            redirect_url=(
-                f"{settings.FRONTEND_URL}/dashboard/buyer-network?payment=success&ref={reference}"
-            ),
+            redirect_url=redirect_url,
         )
     except SumUpError as exc:
         logger.error("SumUp buyer-network failed: %s body=%s", exc, exc.body)
@@ -76,7 +114,7 @@ async def submit_buyer_network(
     application = BuyerNetworkApplication(
         user_id=current_user.id,
         package_id=payload.package_id,
-        package_name=payload.package_name,
+        package_name=package["name"],
         company_name=payload.company_name,
         number_of_properties=payload.number_of_properties,
         property_types=payload.property_types,
@@ -90,7 +128,7 @@ async def submit_buyer_network(
         user_id=current_user.id,
         checkout_id=checkout_id,
         amount=total_amount,
-        currency="GBP",
+        currency=currency,
         status=PaymentStatus.pending,
         reference_type="buyer_network",
     )
@@ -126,10 +164,10 @@ async def submit_buyer_network(
         checkout_url=checkout_url,
         checkout_id=checkout_id,
         total_amount=total_amount,
-        currency="GBP",
+        currency=currency,
         message=(
             f"Application created. Please complete payment of £{total_amount:.2f} "
-            f"(Setup £{payload.setup_price:.0f} + Month 1 £{payload.monthly_price:.0f}) to activate."
+            f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f}) to activate."
         ),
     )
 

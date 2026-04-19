@@ -380,8 +380,10 @@ app.include_router(bookings.router, prefix=API_PREFIX)
 app.include_router(property_matching.router, prefix=API_PREFIX)
 app.include_router(elite_property.router, prefix=API_PREFIX)
 app.include_router(sell_faster.router, prefix=API_PREFIX)
+app.include_router(sell_faster.public_router, prefix=API_PREFIX)
 app.include_router(sale_audit.router, prefix=API_PREFIX)
 app.include_router(buyer_network.router, prefix=API_PREFIX)
+app.include_router(buyer_network.public_router, prefix=API_PREFIX)
 
 from app.routers import admin_debug  # noqa: E402
 app.include_router(admin_debug.router, prefix=API_PREFIX)

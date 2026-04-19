@@ -171,8 +171,6 @@ export interface SaleAuditPayload {
 export interface SellFasterPayload {
   plan_id: string;
   plan_name: string;
-  setup_price: number;
-  monthly_price: number;
   property_address: string;
   property_type: string;
   asking_price?: string;
@@ -187,8 +185,6 @@ export interface SellFasterPayload {
 export interface BuyerNetworkPayload {
   package_id: string;
   package_name: string;
-  setup_price: number;
-  monthly_price: number;
   company_name?: string;
   number_of_properties?: string;
   property_types: string[];
@@ -300,6 +296,12 @@ export const api = {
 
   submitBuyerNetwork: (token: string, payload: BuyerNetworkPayload) =>
     request<{ application_id: string; checkout_url: string; checkout_id: string; total_amount: number; currency: string; message: string }>('/buyer-network', { method: 'POST', token, body: payload }),
+
+  // ── Public pricing (no auth) ─────────────────────────────────────────────
+  getSellFasterPlans: () =>
+    request<Record<string, { name: string; setup: number; monthly: number; currency: string }>>('/sell-faster/plans'),
+  getBuyerNetworkPackages: () =>
+    request<Record<string, { name: string; setup: number; monthly: number; currency: string }>>('/buyer-network/packages'),
 
   // ── Payment status polling ───────────────────────────────────────────────
   getSessionPaymentStatus: (token: string, bookingId: string) =>

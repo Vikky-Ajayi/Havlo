@@ -133,8 +133,6 @@ export const DashboardSellFaster: React.FC = () => {
       const result = await api.submitSellFaster(token, {
         plan_id: selectedPlan.id,
         plan_name: selectedPlan.name,
-        setup_price: selectedPlan.setupAmount,
-        monthly_price: selectedPlan.monthlyAmount,
         property_address: listingUrl || 'Not provided',
         property_type: 'Residential',
         contact_preference: contactPreference,

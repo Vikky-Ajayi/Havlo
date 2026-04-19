@@ -57,11 +57,13 @@ export function usePaymentReturnPoller(args: {
   fetchStatus: (recordId: string) => Promise<{ paid: boolean; status: string; redirect_url?: string | null }>;
   onPaid: (result: { paid: boolean; status: string; redirect_url?: string | null }) => void;
   onError?: (err: unknown) => void;
+  onTimeout?: () => void;
 }) {
-  const { kind, token, fetchStatus, onPaid, onError } = args;
+  const { kind, token, fetchStatus, onPaid, onError, onTimeout } = args;
   const location = useLocation();
   const navigate = useNavigate();
   const [polling, setPolling] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const stopped = useRef(false);
 
   useEffect(() => {
@@ -96,6 +98,8 @@ export function usePaymentReturnPoller(args: {
       if (attempts >= MAX) {
         stopped.current = true;
         setPolling(false);
+        setTimedOut(true);
+        if (onTimeout) onTimeout();
         return;
       }
       setTimeout(tick, INTERVAL);
@@ -107,5 +111,8 @@ export function usePaymentReturnPoller(args: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, token]);
 
-  return { polling };
+  return { polling, timedOut };
 }
+
+export const PAYMENT_TIMEOUT_MESSAGE =
+  'Payment is taking longer than expected. Please check your email for confirmation or contact support.';

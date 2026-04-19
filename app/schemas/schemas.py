@@ -267,8 +267,6 @@ class ElitePropertyResponse(BaseModel):
 class SellFasterRequest(BaseModel):
     plan_id: str = Field(..., pattern="^(global|global-plus|worldwide|private-client)$")
     plan_name: str
-    setup_price: float  # In GBP
-    monthly_price: float  # In GBP
     property_address: str = Field(..., min_length=1)
     property_type: str = Field(..., min_length=1)
     asking_price: Optional[str] = None
@@ -318,8 +316,6 @@ class SaleAuditResponse(BaseModel):
 class BuyerNetworkRequest(BaseModel):
     package_id: str = Field(..., pattern="^(partner|growth|private)$")
     package_name: str
-    setup_price: float  # First month / setup cost
-    monthly_price: float
     company_name: Optional[str] = None
     number_of_properties: Optional[str] = None
     property_types: list[str] = Field(..., min_length=1)
