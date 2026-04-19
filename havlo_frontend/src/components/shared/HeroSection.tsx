@@ -22,6 +22,7 @@ interface HeroSectionProps {
   onButtonClick?: () => void;
   secondaryButtonText?: string;
   onSecondaryButtonClick?: () => void;
+  customActions?: React.ReactNode;
   titleStyle?: React.CSSProperties;
   subtitleStyle?: React.CSSProperties;
   overlineStyle?: React.CSSProperties;
@@ -38,6 +39,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onButtonClick,
   secondaryButtonText,
   onSecondaryButtonClick,
+  customActions,
   titleStyle,
   subtitleStyle,
   overlineStyle,
@@ -99,22 +101,28 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           >
             {subtitle}
           </p>
-          <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 mt-6 lg:mt-8 w-full lg:w-auto">
-            <button
-              onClick={onButtonClick}
-              className="w-full lg:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-10 lg:px-14 py-4 lg:py-5 rounded-full text-lg font-bold border-none cursor-pointer h-14 lg:h-auto"
-            >
-              {buttonText}
-            </button>
-            {secondaryButtonText && (
+          {customActions ? (
+            <div className="mt-6 lg:mt-8 w-full flex justify-center">
+              {customActions}
+            </div>
+          ) : (
+            <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 mt-6 lg:mt-8 w-full lg:w-auto">
               <button
-                onClick={onSecondaryButtonClick}
-                className="w-full lg:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-transparent text-black px-5 lg:px-10 py-3 lg:py-4 rounded-full text-lg font-semibold border border-black cursor-pointer h-14 lg:h-auto"
+                onClick={onButtonClick}
+                className="w-full lg:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-10 lg:px-14 py-4 lg:py-5 rounded-full text-lg font-bold border-none cursor-pointer h-14 lg:h-auto"
               >
-                {secondaryButtonText}
+                {buttonText}
               </button>
-            )}
-        </div>
+              {secondaryButtonText && (
+                <button
+                  onClick={onSecondaryButtonClick}
+                  className="w-full lg:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-transparent text-black px-5 lg:px-10 py-3 lg:py-4 rounded-full text-lg font-semibold border border-black cursor-pointer h-14 lg:h-auto"
+                >
+                  {secondaryButtonText}
+                </button>
+              )}
+            </div>
+          )}
       </div>
     </section>
   );

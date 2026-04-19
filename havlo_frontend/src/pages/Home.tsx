@@ -79,6 +79,7 @@ const homeReviews = [
 
 export const Home: React.FC = () => {
   const { openModal } = useModal();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('SELLERS');
 
   const desktopReviews = useHorizontalScroll<HTMLDivElement>();
@@ -97,11 +98,32 @@ export const Home: React.FC = () => {
     <div className="flex flex-col w-full overflow-hidden bg-white">
       {/* 1. Hero Section */}
       <HeroSection 
-        title="Property Done Smarter"
-        subtitle="From first enquiry to final completion, we guide you through every step of buying property abroad—seamlessly and with confidence."
+        title="A Smarter Way to Sell, Buy, and Market Property Globally."
+        subtitle="Combining data-driven strategy, strategic exposure, and international buyer access to help you achieve better outcomes, faster."
         imageSrc="/Mask group.png"
-        onButtonClick={handleGetStarted}
-        titleStyle={{ fontSize: '88px', lineHeight: '1.0' }}
+        titleStyle={{ fontSize: '72px', lineHeight: '1.0' }}
+        customActions={
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px]">
+            <button
+              onClick={() => navigate('/relaunch-assessment')}
+              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+            >
+              Sell My Property Faster
+            </button>
+            <button
+              onClick={() => navigate('/buy-abroad')}
+              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+            >
+              Buy Property Abroad
+            </button>
+            <button
+              onClick={() => navigate('/buyer-network')}
+              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+            >
+              For Estate Agents
+            </button>
+          </div>
+        }
       />
 
       {/* 2. Marquee Strip */}
