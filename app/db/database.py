@@ -1,8 +1,25 @@
-"""Async SQLAlchemy engine and session factory."""
+"""
+Async SQLAlchemy engine and session factory.
+
+Connection pooling notes:
+  We deliberately use a real pool (AsyncAdaptedQueuePool) instead of NullPool.
+  With NullPool, every request opens & closes a fresh PG connection — over a
+  Supabase pooler with SSL handshake that costs 200-800ms per request and was
+  the dominant bottleneck for /auth/login, /auth/me, and every authed request.
+
+  asyncpg + Supabase pooler (pgbouncer) require:
+    statement_cache_size=0          → disable client-side prepared cache
+    prepared_statement_cache_size=0 → disable server-side prepared statements
+"""
 import ssl as _ssl
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.pool import NullPool
+
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 
@@ -10,6 +27,11 @@ settings = get_settings()
 DATABASE_URL = settings.DATABASE_URL
 
 HAS_DATABASE = bool(DATABASE_URL)
+
+
+def _is_supabase_pooler(url: str) -> bool:
+    return "pooler.supabase.com" in url or "pgbouncer" in url
+
 
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
@@ -22,23 +44,37 @@ if DATABASE_URL:
     qs = parse_qs(parsed.query)
     sslmode_val = qs.get("sslmode", [""])[0].lower()
     ssl_val = qs.get("ssl", [""])[0].lower()
-    needs_ssl = ssl_val in ("require", "true", "1") or sslmode_val in ("require", "verify-ca", "verify-full", "prefer")
+    needs_ssl = ssl_val in ("require", "true", "1") or sslmode_val in (
+        "require",
+        "verify-ca",
+        "verify-full",
+        "prefer",
+    )
     qs.pop("sslmode", None)
     qs.pop("ssl", None)
     clean_query = urlencode(qs, doseq=True)
     DATABASE_URL = urlunparse(parsed._replace(query=clean_query))
 
-    connect_args = {}
+    connect_args: dict = {}
     if needs_ssl:
         ssl_ctx = _ssl.create_default_context()
         ssl_ctx.check_hostname = False
         ssl_ctx.verify_mode = _ssl.CERT_NONE
         connect_args["ssl"] = ssl_ctx
 
+    # Disable prepared statements entirely — required for pgbouncer/Supabase pooler.
+    if _is_supabase_pooler(DATABASE_URL):
+        connect_args["statement_cache_size"] = 0
+        connect_args["prepared_statement_cache_size"] = 0
+
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
-        poolclass=NullPool,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+        pool_recycle=1800,           # recycle conns every 30 min
+        pool_timeout=10,             # wait up to 10s for a free connection
         connect_args=connect_args,
     )
 else:

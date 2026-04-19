@@ -9,6 +9,8 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
+    Integer,
     String,
     Text,
     func,
@@ -147,12 +149,17 @@ class Conversation(Base):
         DateTime(timezone=True), server_default=func.now()
     )
     last_message_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), server_default=func.now(), index=True
     )
+    unread_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     user: Mapped["User"] = relationship("User", back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(
         "Message", back_populates="conversation", order_by="Message.created_at"
+    )
+
+    __table_args__ = (
+        Index("ix_conversations_user_lastmsg", "user_id", "last_message_at"),
     )
 
 
@@ -163,20 +170,32 @@ class Message(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     conversation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("conversations.id"), nullable=False, index=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     sender_type: Mapped[MessageSenderType] = mapped_column(
         Enum(MessageSenderType, name="message_sender_type"), nullable=False
     )
     sender_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sender_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sms_sent: Mapped[bool] = mapped_column(Boolean, default=False)
+    sms_notification_sent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     conversation: Mapped["Conversation"] = relationship(
         "Conversation", back_populates="messages"
+    )
+
+    __table_args__ = (
+        Index("ix_messages_convo_created", "conversation_id", "created_at"),
+        Index("ix_messages_isread_sender", "is_read", "sender_type"),
     )
 
 

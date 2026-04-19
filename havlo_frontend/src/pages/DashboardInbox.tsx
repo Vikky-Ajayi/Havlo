@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { ChevronLeft, SendHorizontal, Mail, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api, type Conversation, type ConversationDetail } from '../lib/api';
+import { api, buildWsUrl, type Conversation, type ConversationDetail } from '../lib/api';
 
 export const DashboardInbox: React.FC = () => {
   const { token } = useAuth();
@@ -51,6 +51,88 @@ export const DashboardInbox: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [detail?.messages]);
+
+  // ── Live updates via WebSocket (auto-reconnect with backoff) ────────────
+  const selectedIdRef = useRef<string | null>(null);
+  const detailRef = useRef<ConversationDetail | null>(null);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+  useEffect(() => { detailRef.current = detail; }, [detail]);
+
+  useEffect(() => {
+    if (!token) return;
+    let ws: WebSocket | null = null;
+    let pingTimer: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+    let cancelled = false;
+
+    const connect = () => {
+      if (cancelled) return;
+      try {
+        ws = new WebSocket(`${buildWsUrl('/messaging/ws/inbox')}?token=${encodeURIComponent(token)}`);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = () => {
+        attempts = 0;
+        pingTimer = setInterval(() => {
+          try { ws?.send(JSON.stringify({ type: 'ping' })); } catch { /* noop */ }
+        }, 20000);
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.event !== 'new_message') return;
+          const incoming = data.message;
+          // refresh sidebar list (snippet + ordering)
+          api.getConversations(token).then(setConversations).catch(() => {});
+          // append to open thread if it matches
+          if (selectedIdRef.current === data.conversation_id && detailRef.current) {
+            const exists = detailRef.current.messages.some((m) => m.id === incoming.id);
+            if (!exists) {
+              setDetail({
+                ...detailRef.current,
+                messages: [
+                  ...detailRef.current.messages,
+                  {
+                    id: incoming.id,
+                    content: incoming.content,
+                    sender_type: incoming.sender_type,
+                    sender_name: incoming.sender_name,
+                    created_at: incoming.created_at,
+                    is_me: incoming.sender_type === 'user',
+                  },
+                ],
+              });
+            }
+          }
+        } catch { /* ignore malformed */ }
+      };
+
+      ws.onclose = () => {
+        if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+        scheduleReconnect();
+      };
+      ws.onerror = () => { try { ws?.close(); } catch { /* noop */ } };
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      const delay = Math.min(30000, 1000 * Math.pow(2, attempts++));
+      reconnectTimer = setTimeout(connect, delay);
+    };
+
+    connect();
+    return () => {
+      cancelled = true;
+      if (pingTimer) clearInterval(pingTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      try { ws?.close(); } catch { /* noop */ }
+    };
+  }, [token]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

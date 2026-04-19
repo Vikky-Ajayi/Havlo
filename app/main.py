@@ -167,6 +167,28 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS payment_status payment_status_sale_audit NOT NULL DEFAULT 'pending';
                     """))
                     await conn.execute(text("""
+                        ALTER TABLE conversations
+                            ADD COLUMN IF NOT EXISTS unread_count INTEGER NOT NULL DEFAULT 0;
+                    """))
+                    await conn.execute(text("""
+                        ALTER TABLE messages
+                            ADD COLUMN IF NOT EXISTS sender_id UUID,
+                            ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS sms_notification_sent BOOLEAN NOT NULL DEFAULT FALSE;
+                    """))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_messages_convo_created "
+                        "ON messages (conversation_id, created_at);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_messages_isread_sender "
+                        "ON messages (is_read, sender_type);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_conversations_user_lastmsg "
+                        "ON conversations (user_id, last_message_at);"
+                    ))
+                    await conn.execute(text("""
                         ALTER TABLE users
                             ADD COLUMN IF NOT EXISTS supabase_uid VARCHAR(255),
                             ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),

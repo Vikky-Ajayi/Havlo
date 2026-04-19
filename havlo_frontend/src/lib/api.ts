@@ -1,5 +1,15 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
+/** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
+export function buildWsUrl(path: string): string {
+  const base = API_BASE.startsWith('http')
+    ? API_BASE
+    : `${window.location.origin}${API_BASE}`;
+  const u = new URL(path.replace(/^\//, ''), base.endsWith('/') ? base : `${base}/`);
+  u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return u.toString();
+}
+
 interface RequestOptions {
   method?: string;
   body?: unknown;

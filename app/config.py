@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     # ── Calendly ─────────────────────────────────────────────────────────
     CALENDLY_LINK: str = ""
 
+    # ── Admin (used for X-Admin-Secret on messaging admin endpoints) ─────
+    ADMIN_SECRET: str = ""
+
     # ── Session fee ──────────────────────────────────────────────────────
     SESSION_FEE_AMOUNT: float = 200.0
     SESSION_FEE_CURRENCY: str = "USD"
