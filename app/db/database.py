@@ -70,10 +70,13 @@ if DATABASE_URL:
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
+        # NOTE: peak DB connections = (pool_size + max_overflow) * uvicorn workers.
+        # With 4 workers this is (5+10)*4 = 60 — a safe ceiling for the
+        # Supabase transaction pooler (which fronts the real Postgres).
         pool_size=5,
         max_overflow=10,
         pool_pre_ping=True,
-        pool_recycle=1800,           # recycle conns every 30 min
+        pool_recycle=300,            # recycle conns every 5 min (Supabase pooler friendly)
         pool_timeout=10,             # wait up to 10s for a free connection
         connect_args=connect_args,
     )
