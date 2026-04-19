@@ -31,11 +31,7 @@ export const LoginModal: React.FC = () => {
       await login(resp);
       closeModal();
 
-      if (resp.is_admin) {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Invalid email or password.');
     } finally {

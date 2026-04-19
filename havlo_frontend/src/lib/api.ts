@@ -213,6 +213,16 @@ export interface Message {
   is_me: boolean;
 }
 
+export interface AdminConversation extends Conversation {
+  user: {
+    id: string;
+    full_name: string;
+    email: string;
+    phone: string;
+    role: string;
+  };
+}
+
 export interface ConversationDetail {
   id: string;
   team_member_name: string;
@@ -357,6 +367,12 @@ export const api = {
 
   adminListUserConversations: (token: string, userId: string) =>
     request<Conversation[]>(`/messaging/admin/users/${userId}/conversations`, { token }),
+
+  adminListAllConversations: (token: string, limit = 200) =>
+    request<AdminConversation[]>('/messaging/admin/conversations', {
+      token,
+      queryParams: { limit: String(limit) },
+    }),
 
   adminGetConversation: (token: string, conversationId: string) =>
     request<ConversationDetail>(`/messaging/admin/conversations/${conversationId}`, { token }),
