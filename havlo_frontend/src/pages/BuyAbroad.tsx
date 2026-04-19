@@ -256,7 +256,11 @@ export const BuyAbroad: React.FC = () => {
             <p className="font-body text-base text-white/70">
               Not sure if you qualify? Let's have a private conversation.
             </p>
-            <button className="flex items-center gap-2 font-body text-sm font-bold uppercase tracking-[0.1em] text-[#A409D2] hover:opacity-80 transition-opacity">
+            <button
+              type="button"
+              onClick={() => openModal('book-session')}
+              className="flex items-center gap-2 font-body text-sm font-bold uppercase tracking-[0.1em] text-[#A409D2] hover:opacity-80 transition-opacity"
+            >
               SCHEDULE A CONSULTATION <ChevronRight className="h-4 w-4" />
             </button>
           </div>
