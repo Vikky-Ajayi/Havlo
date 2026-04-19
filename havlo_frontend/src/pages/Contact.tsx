@@ -33,8 +33,8 @@ export const Contact: React.FC = () => {
           {/* Phone Numbers Card */}
           <div className="flex w-full flex-col items-center justify-center gap-6 lg:gap-10 rounded-[24px] bg-[#081B2A] px-6 py-8 sm:flex-row sm:gap-20">
             <div className="flex flex-col items-center gap-3 lg:gap-4 text-center">
-              <span className="font-body text-xl lg:text-[28px] font-bold text-white break-all">+44 7919 483480</span>
-              <span className="font-body text-xl lg:text-[28px] font-bold text-white break-all">+44 7919 483480</span>
+              <a href="tel:+443333390423" className="font-body text-xl lg:text-[28px] font-bold text-white break-all hover:underline">0333 339 0423</a>
+              <a href="tel:+447919483480" className="font-body text-xl lg:text-[28px] font-bold text-white break-all hover:underline">0791 948 3480</a>
             </div>
           </div>
 
@@ -43,14 +43,14 @@ export const Contact: React.FC = () => {
             <ContactMethodCard
               icon={<Mail className="h-5 w-5 text-black" />}
               label="EMAIL"
-              value="hello@havlo.co"
-              href="mailto:hello@havlo.co"
+              value="hello@heyhavlo.com"
+              href="mailto:hello@heyhavlo.com"
             />
             <ContactMethodCard
               icon={<Calendar className="h-5 w-5 text-black" />}
               label="BOOK A CALL"
-              value="link.caledly.com"
-              href="#"
+              value="calendly.com/hello-heyhavlo"
+              href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call"
             />
             <ContactMethodCard
               icon={<MessageCircle className="h-5 w-5 text-black" />}

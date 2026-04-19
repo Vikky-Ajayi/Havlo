@@ -21,7 +21,7 @@ import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 const TOTAL_STEPS = 9;
 
 const WHATSAPP_URL = 'https://wa.me/message/PPPAWIAXBS7YK1';
-const CALENDLY_URL = 'https://calendly.com/heyhavlo';
+const CALENDLY_URL = 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
 const helpOptions = [
   { id: 'buy', label: 'I want to buy a property abroad' },
