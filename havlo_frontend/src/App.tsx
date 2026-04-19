@@ -47,6 +47,7 @@ import { OTPModal } from './components/modals/OTPModal';
 import { NewPasswordModal } from './components/modals/NewPasswordModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { BookSessionModal } from './components/modals/BookSessionModal';
+import { ConsultationModal } from './components/modals/ConsultationModal';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -68,6 +69,7 @@ const ModalRenderer = () => {
     case 'settings-profile':
     case 'settings-password': return <SettingsModal />;
     case 'book-session': return <BookSessionModal />;
+    case 'consultation': return <ConsultationModal />;
     default: return null;
   }
 };

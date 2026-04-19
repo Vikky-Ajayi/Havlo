@@ -7,6 +7,7 @@ export type ModalType =
   | 'settings-profile'
   | 'settings-password'
   | 'book-session' 
+  | 'consultation'
   | null;
 
 export interface ModalContextType {
