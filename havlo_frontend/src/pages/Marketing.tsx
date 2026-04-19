@@ -10,7 +10,6 @@ import { cn } from '../lib/utils';
 const heroStats = [
   { value: '30+', label: 'countries reached' },
   { value: '£1B+', label: 'in commission deals' },
-  { value: '500+', label: 'agents partnered' },
 ];
 
 const problemPoints = [
@@ -156,7 +155,6 @@ export const Marketing: React.FC = () => {
             src="/Mask group2.png"
             alt=""
             className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
             loading="eager"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/70" />
