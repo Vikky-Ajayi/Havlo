@@ -3,10 +3,10 @@ import React from 'react';
 export const PrivacyPolicy: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
-      <div className="max-w-[1440px] w-full px-0 pt-16 pb-16 ml-[98px] mr-[98px]">
+      <div className="max-w-[1440px] w-full px-4 sm:px-8 lg:px-[98px] pt-10 sm:pt-16 pb-16 mx-auto">
         {/* Header Section */}
         <div className="flex flex-col items-start gap-6 mb-12">
-          <h1 className="font-display text-[64px] lg:text-[80px] font-black leading-none tracking-[-1.6px] text-black">
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[80px] font-black leading-none tracking-[-1.6px] text-black break-words">
             Privacy Policy
           </h1>
           <div className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-black/10 bg-[#E9E8E8]">
