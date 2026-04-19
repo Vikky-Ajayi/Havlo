@@ -270,10 +270,10 @@ export const BuyAbroad: React.FC = () => {
 
       {/* 5. Where We Operate Section */}
       <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 py-24 sm:px-10 lg:px-[100px]">
-        <div className="absolute top-0 left-0 right-0 h-[200px] lg:h-[400px] z-10 pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 h-[60px] lg:h-[80px] z-0 pointer-events-none overflow-hidden">
           <HeroBackground showTop={true} showBottom={false} fillColor="#F9F9F8" className="h-full w-full bg-black" />
         </div>
-        <div className="flex flex-col items-center gap-6 text-center">
+        <div className="relative z-10 flex flex-col items-center gap-6 text-center">
           <h2 className="font-display text-[48px] font-black leading-[1.1] text-black sm:text-[56px]">
             Where We Operate
           </h2>
