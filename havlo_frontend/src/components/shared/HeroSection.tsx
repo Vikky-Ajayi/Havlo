@@ -52,7 +52,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const safeContainerStyle = isLg ? containerStyle : undefined;
   return (
     <section 
-      className="relative w-full bg-white overflow-hidden min-h-[720px] sm:min-h-[820px] md:min-h-[900px] h-auto lg:h-[856px]"
+      className="relative w-full bg-white overflow-hidden min-h-[504px] sm:min-h-[820px] md:min-h-[900px] h-auto lg:h-[856px]"
     >
       {/* 1. Gradient Ellipse — outer, NOT clipped */}
       <div
