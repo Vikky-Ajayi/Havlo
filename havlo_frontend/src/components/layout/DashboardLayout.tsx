@@ -331,7 +331,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
             </h1>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full hover:bg-gray-50 cursor-pointer">
+            <Link
+              to="/dashboard/settings"
+              aria-label="Open profile settings"
+              className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full hover:bg-gray-50 cursor-pointer"
+            >
               <div className="h-8 w-8 rounded-full bg-black flex items-center justify-center flex-shrink-0">
                 <User size={16} className="text-white" />
               </div>
@@ -339,7 +343,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
                 {userName}
               </span>
               <ChevronDown size={16} className="text-black hidden sm:inline" />
-            </div>
+            </Link>
           </div>
         </header>
 
