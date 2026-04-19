@@ -79,7 +79,7 @@ const homeReviews = [
 
 export const Home: React.FC = () => {
   const { openModal } = useModal();
-  const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('BUYERS');
+  const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('SELLERS');
 
   const desktopReviews = useHorizontalScroll<HTMLDivElement>();
 
@@ -88,8 +88,8 @@ export const Home: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'BUYERS', label: 'BUYERS' },
     { id: 'SELLERS', label: 'SELLERS' },
+    { id: 'BUYERS', label: 'BUYERS' },
     { id: 'AGENTS', label: 'AGENTS' },
   ] as const;
 
