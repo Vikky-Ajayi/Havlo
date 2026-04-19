@@ -36,7 +36,6 @@ export const TermsOfUse: React.FC = () => {
               <p>Havlo operates under different registered entities:</p>
               <ul className="list-disc pl-8 flex flex-col gap-1">
                 <li>Registered in England and Wales as Sprint Technologies</li>
-                <li>Registered in Nigeria as Cecigene Ltd</li>
               </ul>
               <p>References to “Havlo,” “we,” “us,” or “our” refer to the Havlo platform and its operating entities, as applicable.</p>
             </div>
