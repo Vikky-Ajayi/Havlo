@@ -100,6 +100,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { token, user, loading } = useAuth();
+  const { openModal } = useModal();
+
+  useEffect(() => {
+    if (!loading && !token) {
+      openModal('login');
+    }
+  }, [loading, token, openModal]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-lg text-black/50">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!user?.is_admin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname } = useLocation();
   const isOnboarding = pathname.startsWith('/get-started');
@@ -157,7 +186,7 @@ export default function App() {
             <Route path="/dashboard/sale-audit" element={<ProtectedRoute><DashboardSaleAudit /></ProtectedRoute>} />
             <Route path="/dashboard/buyer-network" element={<ProtectedRoute><DashboardBuyerNetwork /></ProtectedRoute>} />
             <Route path="/dashboard/inbox" element={<ProtectedRoute><DashboardInbox /></ProtectedRoute>} />
-            <Route path="/dashboard/users" element={<ProtectedRoute><DashboardUsers /></ProtectedRoute>} />
+            <Route path="/dashboard/users" element={<AdminRoute><DashboardUsers /></AdminRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
           </Routes>
