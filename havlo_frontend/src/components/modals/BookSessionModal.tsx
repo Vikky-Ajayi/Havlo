@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../ui/Button';
-import { X, ChevronDown } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { CountryCodeSelect } from '../shared/CountryCodeSelect';
