@@ -93,7 +93,7 @@ export const DashboardSettings: React.FC = () => {
 
   return (
     <DashboardLayout title="Settings">
-      <div className="max-w-[1162px] mx-auto px-6 lg:px-0 pb-20">
+      <div className="max-w-[1162px] mx-auto px-4 sm:px-6 lg:px-0 py-6 lg:py-10 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -101,7 +101,7 @@ export const DashboardSettings: React.FC = () => {
             className="bg-white rounded-2xl p-6 lg:p-10 space-y-8 shadow-sm border border-[#F1F1F0]"
           >
             <div className="space-y-4">
-              <h2 className="font-display text-[32px] font-black text-black tracking-[-0.64px]">Profile</h2>
+              <h2 className="font-display text-2xl sm:text-[32px] font-black text-black tracking-[-0.64px]">Profile</h2>
               <div className="h-[1px] bg-black/10 w-full" />
             </div>
 
@@ -179,7 +179,7 @@ export const DashboardSettings: React.FC = () => {
             className="bg-white rounded-2xl p-6 lg:p-10 space-y-8 shadow-sm border border-[#F1F1F0]"
           >
             <div className="space-y-4">
-              <h2 className="font-display text-[32px] font-black text-black tracking-[-0.64px]">Change password</h2>
+              <h2 className="font-display text-2xl sm:text-[32px] font-black text-black tracking-[-0.64px]">Change password</h2>
               <div className="h-[1px] bg-black/10 w-full" />
             </div>
 

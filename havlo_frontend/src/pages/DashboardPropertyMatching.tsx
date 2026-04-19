@@ -45,9 +45,9 @@ export const DashboardPropertyMatching: React.FC = () => {
 
   return (
     <DashboardLayout title="Property Matching">
-      <div className="max-w-[1162px] mx-auto space-y-10 px-4 lg:px-0">
+      <div className="max-w-[1162px] mx-auto space-y-6 lg:space-y-10 px-4 sm:px-6 lg:px-0 py-6 lg:py-10">
         {/* Hero Section */}
-        <section className="relative rounded-[20px] bg-black p-8 lg:p-10 overflow-hidden min-h-[107px] flex flex-col justify-center gap-4">
+        <section className="relative rounded-[20px] bg-black p-6 sm:p-8 lg:p-10 overflow-hidden lg:min-h-[107px] flex flex-col justify-center gap-4">
           <div className="relative z-10 space-y-2">
             <h2 className="font-display text-2xl lg:text-[32px] font-black leading-tight tracking-[-0.01em] text-white">
               Get matched to the right property
@@ -68,7 +68,7 @@ export const DashboardPropertyMatching: React.FC = () => {
         {/* Action Cards Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
           {/* Find Match Card */}
-          <div className="flex flex-col p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white min-h-[450px] lg:min-h-[502px]">
+          <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px]">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
                 <img src="/Frame 1410106637.png" alt="House" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
@@ -98,7 +98,7 @@ export const DashboardPropertyMatching: React.FC = () => {
           </div>
 
           {/* View Matches Card */}
-          <div className="flex flex-col p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white min-h-[450px] lg:min-h-[502px]">
+          <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px]">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
                 <img src="/Frame 2.png" alt="Heart" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />

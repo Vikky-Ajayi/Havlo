@@ -41,9 +41,9 @@ export const DashboardSaleAudit: React.FC = () => {
 
   return (
     <DashboardLayout title="Property Sale Audit">
-      <div className="max-w-[1162px] mx-auto px-6 lg:px-0 space-y-10 pb-20">
+      <div className="max-w-[1162px] mx-auto px-4 sm:px-6 lg:px-0 space-y-6 lg:space-y-10 py-6 lg:py-10 pb-20">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-[20px] bg-black p-10 lg:p-14 min-h-[250px] flex flex-col justify-center">
+        <div className="relative overflow-hidden rounded-[20px] bg-black p-6 sm:p-10 lg:p-14 lg:min-h-[250px] flex flex-col justify-center">
           <div className="relative z-10 space-y-6 max-w-[919px]">
             <h2 className="font-display text-3xl lg:text-[40px] font-black leading-tight tracking-[-0.4px] text-white">
               Find out why your property isn't selling — and how to fix it
@@ -65,7 +65,7 @@ export const DashboardSaleAudit: React.FC = () => {
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
           {/* Card 1: Request Property Assessment */}
-          <div className="flex flex-col p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white min-h-[450px] lg:min-h-[502px] justify-between">
+          <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px] justify-between gap-8">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
                 <Search size={24} className="text-black" />
@@ -89,7 +89,7 @@ export const DashboardSaleAudit: React.FC = () => {
           </div>
 
           {/* Card 2: View Assessment Feedback */}
-          <div className="flex flex-col p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white min-h-[450px] lg:min-h-[502px] justify-between">
+          <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px] justify-between gap-8">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
                 <FileText size={24} className="text-black" />

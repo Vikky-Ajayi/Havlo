@@ -317,33 +317,34 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-[#F1F1F0]">
-          <div className="flex items-center gap-4">
+        <header className="h-16 flex items-center justify-between px-3 sm:px-6 bg-white border-b border-[#F1F1F0] gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
+              aria-label="Open menu"
             >
               <Menu size={24} />
             </button>
-            <h1 className="font-display text-[32px] font-black tracking-[-0.48px] text-black pl-[7px]">
+            <h1 className="font-display text-lg sm:text-2xl lg:text-[32px] font-black tracking-[-0.48px] text-black truncate">
               {title}
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-gray-50 cursor-pointer">
-              <div className="h-8 w-8 rounded-full bg-black flex items-center justify-center">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full hover:bg-gray-50 cursor-pointer">
+              <div className="h-8 w-8 rounded-full bg-black flex items-center justify-center flex-shrink-0">
                 <User size={16} className="text-white" />
               </div>
-              <span className="hidden sm:inline font-libre text-sm font-medium tracking-[-0.42px] text-[#020202]">
+              <span className="hidden sm:inline font-libre text-sm font-medium tracking-[-0.42px] text-[#020202] truncate max-w-[140px]">
                 {userName}
               </span>
-              <ChevronDown size={16} className="text-black" />
+              <ChevronDown size={16} className="text-black hidden sm:inline" />
             </div>
           </div>
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-0 lg:px-0 lg:py-10">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
       </div>

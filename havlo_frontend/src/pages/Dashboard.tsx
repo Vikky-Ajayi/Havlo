@@ -21,9 +21,9 @@ export const Dashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Buy Property Abroad">
-      <div className="max-w-[1162px] mx-auto space-y-10">
+      <div className="max-w-[1162px] mx-auto space-y-6 lg:space-y-10 px-4 sm:px-6 lg:px-0 py-6 lg:py-10">
         {/* Hero Section */}
-        <section className="relative rounded-[20px] bg-black p-10 overflow-hidden min-h-[240px] flex flex-col justify-center gap-6">
+        <section className="relative rounded-[20px] bg-black p-6 sm:p-8 lg:p-10 overflow-hidden lg:min-h-[240px] flex flex-col justify-center gap-6">
           <div className="relative z-10 max-w-[739px] space-y-6">
             <h2 className="font-display text-[40px] font-black leading-[1] tracking-[-0.4px] text-white">
               Buy residential and commercial property worldwide
@@ -46,7 +46,7 @@ export const Dashboard: React.FC = () => {
         {/* Action Cards Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Property Needs Card */}
-          <div className="flex flex-col p-10 rounded-[20px] border border-[#F1F1F0] bg-white min-h-[502px]">
+          <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px]">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -79,7 +79,7 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* Advisory Team Card */}
-          <div className="flex flex-col p-10 rounded-[20px] border border-[#F1F1F0] bg-white min-h-[502px]">
+          <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px]">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -142,7 +142,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Info Banner */}
-        <div className="flex items-center gap-6 p-[40px_24px] rounded-none border-l-2 border-[#0052B4] bg-[#D6E9FF] overflow-hidden">
+        <div className="flex items-center gap-4 sm:gap-6 px-5 py-6 sm:px-6 sm:py-10 rounded-lg border-l-2 border-[#0052B4] bg-[#D6E9FF] overflow-hidden">
           <div className="h-6 w-6 rounded-full bg-[#0052B4] flex items-center justify-center flex-shrink-0">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#0052B4"/>

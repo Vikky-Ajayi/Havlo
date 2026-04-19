@@ -117,9 +117,9 @@ export const DashboardBuyerNetwork: React.FC = () => {
 
   return (
     <DashboardLayout title="International Buyer Network">
-      <div className="max-w-[1162px] mx-auto px-6 lg:px-0 space-y-10 pb-20">
+      <div className="max-w-[1162px] mx-auto px-4 sm:px-6 lg:px-0 space-y-6 lg:space-y-10 py-6 lg:py-10 pb-20">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-[20px] bg-black p-10 lg:p-14 min-h-[250px] flex flex-col justify-center">
+        <div className="relative overflow-hidden rounded-[20px] bg-black p-6 sm:p-10 lg:p-14 lg:min-h-[250px] flex flex-col justify-center">
           <div className="relative z-10 space-y-6 max-w-[739px]">
             <h2 className="font-display text-3xl lg:text-[40px] font-black leading-tight tracking-[-0.4px] text-white">
               Faster Sales Through Better Exposure
@@ -140,11 +140,11 @@ export const DashboardBuyerNetwork: React.FC = () => {
 
         {/* Packages Section */}
         <div className="space-y-8">
-          <h3 className="font-display text-[32px] font-black text-black tracking-[-0.64px]">
+          <h3 className="font-display text-2xl sm:text-[32px] font-black text-black tracking-[-0.64px]">
             Choose a Package
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {packages.map((pkg) => (
               <div 
                 key={pkg.id}

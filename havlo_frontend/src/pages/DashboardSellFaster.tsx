@@ -149,11 +149,11 @@ export const DashboardSellFaster: React.FC = () => {
 
   return (
     <DashboardLayout title="Sell faster — Relaunch">
-      <div className="max-w-[1200px] mx-auto px-6 pb-20">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 lg:py-10 pb-20">
         {/* Hero Section */}
-        <div className="relative bg-black rounded-[20px] p-10 overflow-hidden mb-12">
+        <div className="relative bg-black rounded-[20px] p-6 sm:p-10 overflow-hidden mb-8 lg:mb-12">
           <div className="relative z-10 max-w-[800px]">
-            <h2 className="font-display text-[40px] font-black text-white leading-none tracking-tight mb-6">
+            <h2 className="font-display text-3xl sm:text-[40px] font-black text-white leading-none tracking-tight mb-6">
               Property on the market for 6+ months?
             </h2>
             <p className="font-body text-base font-medium text-white/80 leading-relaxed max-w-[740px]">
@@ -174,15 +174,15 @@ export const DashboardSellFaster: React.FC = () => {
 
         {/* Plans Section */}
         <div>
-          <h3 className="font-display text-[32px] font-black text-black tracking-tight mb-8">
+          <h3 className="font-display text-2xl sm:text-[32px] font-black text-black tracking-tight mb-6 sm:mb-8">
             Choose a relaunch plan
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border border-black/10 rounded-xl overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-0 border border-black/10 rounded-xl overflow-hidden">
             {plans.map((plan) => (
               <div 
                 key={plan.id}
-                className={`flex flex-col p-6 min-h-[585px] border-r last:border-r-0 border-black/10 transition-all duration-300 ${
+                className={`flex flex-col p-6 lg:min-h-[585px] border-b lg:border-b-0 lg:border-r last:border-b-0 lg:last:border-r-0 border-black/10 transition-all duration-300 ${
                   plan.isPopular ? 'bg-[#A409D2] text-white' : 
                   plan.isDark ? 'bg-black text-white' : 'bg-white text-black'
                 }`}
