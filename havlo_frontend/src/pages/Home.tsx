@@ -316,13 +316,13 @@ export const Home: React.FC = () => {
                 title="Property Sale Audit ( Havlo Relaunch Assessment)"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                 href="/relaunch-assessment"
-                className="flex-1 bg-white"
+                className="flex-[2] bg-white"
               />
               <ServiceCard
                 title="Elite Property Introductions"
                 description="Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking."
                 href="/elite-property"
-                className="flex-1 bg-white"
+                className="bg-white"
               />
             </div>
           </div>
