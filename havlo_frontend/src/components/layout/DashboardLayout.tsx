@@ -32,7 +32,20 @@ const ROLE_VISIBLE: Record<string, string[]> = {
     '/dashboard/settings',
   ],
   seller: [
+    '/dashboard/elite-property',
+    '/dashboard/sell-faster',
+    '/dashboard/sale-audit',
+    '/dashboard/inbox',
+    '/dashboard/settings',
+  ],
+  agent: [
+    '/dashboard/buyer-network',
+    '/dashboard/inbox',
+    '/dashboard/settings',
+  ],
+  admin: [
     '/dashboard',
+    '/dashboard/property-matching',
     '/dashboard/elite-property',
     '/dashboard/sell-faster',
     '/dashboard/sale-audit',
@@ -40,12 +53,13 @@ const ROLE_VISIBLE: Record<string, string[]> = {
     '/dashboard/inbox',
     '/dashboard/settings',
   ],
-  agent: [
-    '/dashboard',
-    '/dashboard/buyer-network',
-    '/dashboard/inbox',
-    '/dashboard/settings',
-  ],
+};
+
+export const ROLE_LANDING: Record<string, string> = {
+  buyer: '/dashboard',
+  seller: '/dashboard/sell-faster',
+  agent: '/dashboard/buyer-network',
+  admin: '/dashboard',
 };
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title }) => {
@@ -55,9 +69,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const userRole = user?.role || 'buyer';
+  const userRole = user?.is_admin ? 'admin' : (user?.role || 'buyer');
   const userName = user ? `${user.first_name} ${user.last_name}` : 'User';
   const allowedPaths = ROLE_VISIBLE[userRole] || ROLE_VISIBLE.buyer;
+  const landingPath = ROLE_LANDING[userRole] || '/dashboard';
+
+  React.useEffect(() => {
+    if (!user) return;
+    if (!allowedPaths.includes(location.pathname)) {
+      navigate(landingPath, { replace: true });
+    }
+  }, [user, location.pathname, allowedPaths, landingPath, navigate]);
 
   const handleLogout = () => {
     logout();

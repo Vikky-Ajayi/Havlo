@@ -14,10 +14,14 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user?.role === 'agent') {
+    if (!user) return;
+    if (user.is_admin) return;
+    if (user.role === 'agent') {
       navigate('/dashboard/buyer-network', { replace: true });
+    } else if (user.role === 'seller') {
+      navigate('/dashboard/sell-faster', { replace: true });
     }
-  }, [user?.role, navigate]);
+  }, [user, navigate]);
 
   return (
     <DashboardLayout title="Buy Property Abroad">
