@@ -300,6 +300,33 @@ export const Home: React.FC = () => {
 
         {/* Desktop Grid */}
         <div className="hidden lg:grid w-full grid-cols-3 gap-5">
+          {/* For Sellers */}
+          <div className="flex flex-col gap-5 rounded-[24px] bg-[#9FD4E3] p-4 pt-6">
+            <div className="border-b-[1.5px] border-black pb-3 text-center">
+              <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Sellers</h3>
+            </div>
+            <div className="flex flex-1 flex-col gap-5">
+              <ServiceCard
+                title="Sell Faster (Havlo Relaunch™)"
+                description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
+                href="/sell-faster"
+                className="flex-1 bg-white"
+              />
+              <ServiceCard
+                title="Property Sale Audit ( Havlo Relaunch Assessment)"
+                description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
+                href="/relaunch-assessment"
+                className="flex-1 bg-white"
+              />
+              <ServiceCard
+                title="Elite Property Introductions"
+                description="Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking."
+                href="/elite-property"
+                className="flex-1 bg-white"
+              />
+            </div>
+          </div>
+
           {/* For Buyers */}
           <div className="flex flex-col gap-5 rounded-[24px] bg-[#FFB0E8] p-4 pt-6">
             <div className="border-b-[1.5px] border-black pb-3 text-center">
@@ -316,33 +343,6 @@ export const Home: React.FC = () => {
                 title="Property Matching"
                 description="Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent."
                 href="/property-matching"
-                className="flex-1 bg-white"
-              />
-            </div>
-          </div>
-
-          {/* For Sellers */}
-          <div className="flex flex-col gap-5 rounded-[24px] bg-[#9FD4E3] p-4 pt-6">
-            <div className="border-b-[1.5px] border-black pb-3 text-center">
-              <h3 className="font-display text-[32px] font-black leading-none text-black text-left">For Sellers</h3>
-            </div>
-            <div className="flex flex-1 flex-col gap-5">
-              <ServiceCard
-                title="Sell Faster (Havlo Relaunch™)"
-                description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                href="/sell-faster"
-                className="bg-white h-[245px]"
-              />
-              <ServiceCard
-                title="Property Sale Audit ( Havlo Relaunch Assessment)"
-                description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                href="/relaunch-assessment"
-                className="bg-white h-[245px]"
-              />
-              <ServiceCard
-                title="Elite Property Introductions"
-                description="Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking."
-                href="/elite-property"
                 className="flex-1 bg-white"
               />
             </div>
