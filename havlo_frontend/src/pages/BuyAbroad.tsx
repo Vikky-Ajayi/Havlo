@@ -266,12 +266,13 @@ export const BuyAbroad: React.FC = () => {
           </div>
         </div>
 
-        {/* Wavy Bottom Edge */}
-        <div className="absolute bottom-0 left-0 w-full h-16 bg-[#F4E8F9]" style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0, 95% 40%, 90% 10%, 85% 50%, 80% 20%, 75% 60%, 70% 30%, 65% 70%, 60% 40%, 55% 80%, 50% 50%, 45% 90%, 40% 60%, 35% 100%, 30% 70%, 25% 90%, 20% 60%, 15% 80%, 10% 50%, 5% 70%, 0 40%)' }} />
       </section>
 
       {/* 5. Where We Operate Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 py-24 sm:px-10 lg:px-[100px]">
+      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 py-24 sm:px-10 lg:px-[100px]">
+        <div className="absolute top-0 left-0 right-0 h-[200px] lg:h-[400px] z-10 pointer-events-none">
+          <HeroBackground showTop={true} showBottom={false} fillColor="#F9F9F8" className="h-full w-full bg-black" />
+        </div>
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="font-display text-[48px] font-black leading-[1.1] text-black sm:text-[56px]">
             Where We Operate
