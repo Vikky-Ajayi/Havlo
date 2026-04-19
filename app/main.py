@@ -388,6 +388,9 @@ app.include_router(buyer_network.public_router, prefix=API_PREFIX)
 from app.routers import admin_debug  # noqa: E402
 app.include_router(admin_debug.router, prefix=API_PREFIX)
 
+from app.routers import admin_users  # noqa: E402
+app.include_router(admin_users.router, prefix=API_PREFIX)
+
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 
 if FRONTEND_DIST.is_dir():

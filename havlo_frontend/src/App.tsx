@@ -32,6 +32,7 @@ import { DashboardSaleAudit } from './pages/DashboardSaleAudit';
 import { DashboardBuyerNetwork } from './pages/DashboardBuyerNetwork';
 import { DashboardInbox } from './pages/DashboardInbox';
 import { DashboardSettings } from './pages/DashboardSettings';
+import { DashboardUsers } from './pages/DashboardUsers';
 import { Dashboard } from './pages/Dashboard';
 import { AdminPanel } from './pages/AdminPanel';
 
@@ -156,6 +157,7 @@ export default function App() {
             <Route path="/dashboard/sale-audit" element={<ProtectedRoute><DashboardSaleAudit /></ProtectedRoute>} />
             <Route path="/dashboard/buyer-network" element={<ProtectedRoute><DashboardBuyerNetwork /></ProtectedRoute>} />
             <Route path="/dashboard/inbox" element={<ProtectedRoute><DashboardInbox /></ProtectedRoute>} />
+            <Route path="/dashboard/users" element={<ProtectedRoute><DashboardUsers /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
           </Routes>

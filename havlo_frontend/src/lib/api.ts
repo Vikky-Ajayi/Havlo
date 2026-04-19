@@ -106,6 +106,18 @@ export interface AdminUser {
   unread_count: number;
 }
 
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  role: string;
+  is_admin: boolean;
+  phone: string;
+  created_at: string;
+}
+
 export interface AdminStartConversationPayload {
   user_id: string;
   subject: string;
@@ -396,5 +408,15 @@ export const api = {
         token,
         body: { content, sender_name: senderName || 'Havlo Advisory' },
       },
+    ),
+
+  // ── Admin user management ────────────────────────────────────────────────
+  adminListAllUsers: (token: string) =>
+    request<AdminUserRow[]>('/admin/users', { token }),
+
+  adminDeleteUser: (token: string, userId: string) =>
+    request<{ deleted: boolean; email: string; id: string }>(
+      `/admin/users/${userId}`,
+      { method: 'DELETE', token },
     ),
 };

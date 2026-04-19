@@ -51,6 +51,7 @@ const ROLE_VISIBLE: Record<string, string[]> = {
     '/dashboard/sale-audit',
     '/dashboard/buyer-network',
     '/dashboard/inbox',
+    '/dashboard/users',
     '/dashboard/settings',
   ],
 };
@@ -147,6 +148,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           badge: 0, 
           path: '/dashboard/inbox',
           active: location.pathname === '/dashboard/inbox'
+        },
+        {
+          icon: <Users size={20} />,
+          label: 'Users',
+          path: '/dashboard/users',
+          active: location.pathname === '/dashboard/users',
         },
       ]
     },
