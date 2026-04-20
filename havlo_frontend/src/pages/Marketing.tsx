@@ -119,7 +119,7 @@ export const Marketing: React.FC = () => {
 
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
-      <section className="relative min-h-[560px] overflow-hidden px-4 pb-24 pt-24 sm:min-h-[676px] sm:px-6 lg:min-h-[810px] lg:px-[100px] lg:pb-36 lg:pt-32">
+      <section className="relative min-h-[420px] overflow-hidden px-4 pb-24 pt-24 sm:min-h-[507px] sm:px-6 lg:min-h-[608px] lg:px-[100px] lg:pb-36 lg:pt-32">
         <div className="absolute inset-0">
           <img src={heroImage} alt="Modern property skyline" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-[#07131b]/70" />
