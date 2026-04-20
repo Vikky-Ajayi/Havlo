@@ -56,7 +56,7 @@ async def submit_sale_audit(
             description="Havlo Property Sale Audit — full assessment & consultation",
             reference=reference,
             redirect_url=(
-                f"{settings.FRONTEND_URL}/dashboard/sale-audit?payment=success&ref={reference}"
+                f"{settings.FRONTEND_URL.rstrip('/')}/dashboard/sale-audit?payment=success&ref={reference}"
             ),
         )
     except SumUpError as exc:

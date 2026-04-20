@@ -85,6 +85,7 @@ export interface AuthResponse {
   role: string;
   onboarding_complete: boolean;
   is_admin?: boolean;
+  profile?: UserProfile;
 }
 
 export interface RegisterResponse {

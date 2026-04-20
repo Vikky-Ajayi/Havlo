@@ -10,6 +10,7 @@ export const Contact: React.FC = () => {
   const [phoneCode, setPhoneCode] = useState('+44');
   const config = useConfig();
   const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
+  const calendlyLabel = calendlyLink.replace(/^https?:\/\//, '').replace(/\/$/, '');
   const [currency, setCurrency] = useState('GBP');
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencies = ['USD', 'GBP', 'EUR'];
@@ -52,7 +53,7 @@ export const Contact: React.FC = () => {
             <ContactMethodCard
               icon={<Calendar className="h-5 w-5 text-black" />}
               label="BOOK A CALL"
-              value="calendly.com/hello-heyhavlo"
+              value={calendlyLabel}
               href={calendlyLink}
             />
             <ContactMethodCard

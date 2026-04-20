@@ -167,6 +167,12 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS payment_status payment_status_sale_audit NOT NULL DEFAULT 'pending';
                     """))
                     await conn.execute(text("""
+                        ALTER TABLE buyer_network_applications
+                            ADD COLUMN IF NOT EXISTS sumup_checkout_id VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS sumup_checkout_url TEXT,
+                            ADD COLUMN IF NOT EXISTS payment_status payment_status NOT NULL DEFAULT 'pending';
+                    """))
+                    await conn.execute(text("""
                         ALTER TABLE conversations
                             ADD COLUMN IF NOT EXISTS unread_count INTEGER NOT NULL DEFAULT 0;
                     """))

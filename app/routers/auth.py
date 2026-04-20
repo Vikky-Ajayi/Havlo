@@ -18,6 +18,7 @@ from app.schemas.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
     LoginResponse,
+    LoginUserProfile,
     MessageResponse,
     RegisterRequest,
     RegisterResponse,
@@ -115,6 +116,17 @@ async def login(
         role=user.role.value,
         onboarding_complete=user.onboarding_complete,
         is_admin=bool(user.is_admin),
+        profile=LoginUserProfile(
+            id=str(user.id),
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            phone_country_code=user.phone_country_code,
+            phone_number=user.phone_number,
+            role=user.role.value,
+            onboarding_complete=user.onboarding_complete,
+            is_admin=bool(user.is_admin),
+        ),
     )
 
 

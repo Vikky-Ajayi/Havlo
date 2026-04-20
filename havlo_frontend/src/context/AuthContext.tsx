@@ -45,6 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (resp: AuthResponse) => {
     localStorage.setItem(TOKEN_KEY, resp.access_token);
     bootstrapped.current = true;
+    if (resp.profile) {
+      setState({ token: resp.access_token, user: resp.profile, loading: false });
+      return;
+    }
     try {
       await fetchUser(resp.access_token);
     } catch {

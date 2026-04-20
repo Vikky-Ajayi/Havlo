@@ -379,6 +379,11 @@ class BuyerNetworkApplication(Base):
     target_markets: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
     contact_preference: Mapped[str] = mapped_column(String(50), default="email")
     additional_info: Mapped[Optional[str]] = mapped_column(Text)
+    sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
+    sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
+    payment_status: Mapped[PaymentStatus] = mapped_column(
+        Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.pending
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

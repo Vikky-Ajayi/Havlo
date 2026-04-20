@@ -121,6 +121,9 @@ async def submit_buyer_network(
         target_markets=payload.target_markets,
         contact_preference=payload.contact_preference,
         additional_info=payload.additional_info,
+        sumup_checkout_id=checkout_id,
+        sumup_checkout_url=checkout_url,
+        payment_status=PaymentStatus.pending,
     )
     db.add(application)
 
@@ -194,34 +197,43 @@ async def get_buyer_network_payment_status(
     if not application:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found.")
 
-    # No checkout stored on BuyerNetworkApplication yet — look up via Payment table
-    payment_result = await db.execute(
-        select(Payment).where(
-            Payment.reference_type == "buyer_network",
-            Payment.reference_id == str(application.id),
-        )
-    )
-    payment = payment_result.scalar_one_or_none()
-
-    if payment and payment.status == PaymentStatus.completed:
+    if application.payment_status == PaymentStatus.completed:
         return PaymentStatusResponse(
-            checkout_id=payment.checkout_id,
+            checkout_id=application.sumup_checkout_id or "",
             status="PAID",
             paid=True,
         )
 
-    if payment and payment.checkout_id:
+    checkout_id = application.sumup_checkout_id
+    if not checkout_id:
+        # Backward compatibility for legacy rows created before checkout fields existed.
+        payment_result = await db.execute(
+            select(Payment).where(
+                Payment.reference_type == "buyer_network",
+                Payment.reference_id == str(application.id),
+            )
+        )
+        payment = payment_result.scalar_one_or_none()
+        checkout_id = payment.checkout_id if payment else ""
+
+    if checkout_id:
         try:
-            checkout_data = await sumup_service.get_checkout_status(payment.checkout_id)
+            checkout_data = await sumup_service.get_checkout_status(checkout_id)
             sumup_status = checkout_data.get("status", "PENDING").upper()
             paid = sumup_status == "PAID"
 
             if paid:
-                payment.status = PaymentStatus.completed
+                application.payment_status = PaymentStatus.completed
+                payment_result = await db.execute(
+                    select(Payment).where(Payment.checkout_id == checkout_id)
+                )
+                payment = payment_result.scalar_one_or_none()
+                if payment:
+                    payment.status = PaymentStatus.completed
                 await db.commit()
 
             return PaymentStatusResponse(
-                checkout_id=payment.checkout_id,
+                checkout_id=checkout_id,
                 status=sumup_status,
                 paid=paid,
             )
@@ -229,7 +241,7 @@ async def get_buyer_network_payment_status(
             logger.error("SumUp poll failed for buyer-network %s: %s", application_id, exc)
 
     return PaymentStatusResponse(
-        checkout_id=payment.checkout_id if payment else "",
+        checkout_id=checkout_id or "",
         status="PENDING",
         paid=False,
     )

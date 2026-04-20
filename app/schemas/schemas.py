@@ -44,6 +44,18 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class LoginUserProfile(BaseModel):
+    id: str
+    email: str
+    first_name: str
+    last_name: str
+    phone_country_code: str
+    phone_number: str
+    role: str
+    onboarding_complete: bool
+    is_admin: bool = False
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -51,6 +63,7 @@ class LoginResponse(BaseModel):
     role: str
     onboarding_complete: bool
     is_admin: bool = False
+    profile: LoginUserProfile
 
 
 class ForgotPasswordRequest(BaseModel):
