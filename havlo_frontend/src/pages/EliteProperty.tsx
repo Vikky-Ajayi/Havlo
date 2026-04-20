@@ -2,10 +2,9 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { HeroSection } from '../components/shared/HeroSection';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
-import { ReviewCard } from '../components/shared/ReviewCard';
-import { ChevronLeft, ChevronRight, Users, Globe, ChartLine, Star, ArrowRight } from 'lucide-react';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
+import { Users, Globe, ChartLine, Star, ArrowRight } from 'lucide-react';
 import { useModal } from '../hooks/useModal';
-import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
 import { cn } from '../lib/utils';
 
 const elitePropertyReviews = [
@@ -36,7 +35,6 @@ const whoThisIsFor = [
 
 export const EliteProperty: React.FC = () => {
   const { openModal } = useModal();
-  const reviewsScroll = useHorizontalScroll<HTMLDivElement>();
 
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">
@@ -93,55 +91,17 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 3. Reviews Section */}
-      <section className="flex w-full items-center bg-white px-4 py-20 sm:px-10 lg:px-[100px]">
-        <div className="mx-auto flex w-full flex-col lg:flex-row items-center gap-10 lg:gap-8">
-          {/* Excellent Block */}
-          <div className="flex flex-col items-center lg:items-start gap-5 text-center lg:text-left min-w-[200px]">
-            <div className="flex flex-col items-center lg:items-start gap-3">
-              <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-                Excellent
-              </h2>
-              <TrustpilotStars className="h-[45px]" />
-            </div>
-            <p className="font-body text-[22px] font-normal text-black">
-              Based on <span className="font-bold underline">359 reviews</span>
-            </p>
-          </div>
-
-          {/* Reviews carousel */}
-          <div className="relative flex flex-1 items-center gap-3 sm:gap-8 min-w-0 w-full">
-            <button
-              type="button"
-              onClick={reviewsScroll.scrollPrev}
-              aria-label="Previous reviews"
-              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 hover:bg-black/5 flex shrink-0"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <div
-              ref={reviewsScroll.containerRef}
-              {...reviewsScroll.dragHandlers}
-              className="flex flex-1 gap-4 sm:gap-8 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-            >
-              {elitePropertyReviews.map((r, i) => (
-                <div
-                  key={i}
-                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-2rem)/2)] lg:basis-[calc((100%-4rem)/3)] min-w-[260px]"
-                >
-                  <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={reviewsScroll.scrollNext}
-              aria-label="Next reviews"
-              className="h-8 w-8 items-center justify-center rounded-full border border-black/20 hover:bg-black/5 flex shrink-0"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
+      <section className="flex w-full flex-col items-center bg-white px-4 pt-20 sm:px-10 lg:px-[100px]">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+            Excellent
+          </h2>
+          <TrustpilotStars className="h-[45px]" />
+          <p className="font-body text-[22px] font-normal text-black">
+            Based on <span className="font-bold underline">359 reviews</span>
+          </p>
         </div>
+        <AutoScrollReviews reviews={elitePropertyReviews} bgColor="#F5F5F3" />
       </section>
 
       {/* 4. What We Do */}

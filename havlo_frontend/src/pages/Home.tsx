@@ -3,15 +3,13 @@ import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { MarqueeStrip } from '../components/shared/MarqueeStrip';
-import { ReviewCard } from '../components/shared/ReviewCard';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { ServiceCard } from '../components/shared/ServiceCard';
 import { DifferenceCard } from '../components/shared/DifferenceCard';
 import { HeroSection } from '../components/shared/HeroSection';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
-import { useHorizontalScroll } from '../hooks/useHorizontalScroll';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const homeReviews = [
@@ -81,8 +79,6 @@ export const Home: React.FC = () => {
   const { openModal } = useModal();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('SELLERS');
-
-  const desktopReviews = useHorizontalScroll<HTMLDivElement>();
 
   const handleGetStarted = () => {
     openModal('create-account');
@@ -169,56 +165,17 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="flex w-full items-center bg-white px-4 py-12 lg:py-20 sm:px-6 lg:px-10">
-        <div className="mx-auto flex w-full flex-col lg:flex-row items-center gap-10">
-          {/* Rated Block */}
-          <div className="flex flex-col items-center lg:items-start gap-4 text-center lg:text-left min-w-[200px]">
-            <h2 className="font-body text-[32px] lg:text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-              Rated
-            </h2>
-            <TrustpilotStars className="h-[30px] lg:h-[36px]" />
-            <p className="font-body text-[16px] lg:text-[18px] font-normal text-black max-w-[260px]">
-              Rated Excellent based on over <span className="font-bold underline">1,000 customer review.</span>
-            </p>
-          </div>
-
-          {/* Swipeable carousel */}
-          <div className="relative flex flex-1 items-center gap-3 sm:gap-4 min-w-0 w-full">
-            <button
-              onClick={desktopReviews.scrollPrev}
-              aria-label="Previous reviews"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <div
-              ref={desktopReviews.containerRef}
-              {...desktopReviews.dragHandlers}
-              className="flex flex-1 gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar select-none cursor-grab active:cursor-grabbing"
-            >
-              {homeReviews.map((r, i) => (
-                <div
-                  key={i}
-                  className="snap-start shrink-0 basis-full sm:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)] min-w-[240px] rounded-xl bg-[#F5F5F3] p-5"
-                >
-                  <ReviewCard
-                    title={r.title}
-                    content={r.content}
-                    author={r.author}
-                    time=""
-                  />
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={desktopReviews.scrollNext}
-              aria-label="Next reviews"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/15 bg-white text-black/70 hover:bg-black/5"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+      <section className="flex w-full flex-col items-center bg-white px-4 pt-12 lg:pt-20 sm:px-6 lg:px-10">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <h2 className="font-body text-[32px] lg:text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+            Rated
+          </h2>
+          <TrustpilotStars className="h-[30px] lg:h-[36px]" />
+          <p className="font-body text-[16px] lg:text-[18px] font-normal text-black max-w-[320px]">
+            Rated Excellent based on over <span className="font-bold underline">1,000 customer reviews.</span>
+          </p>
         </div>
+        <AutoScrollReviews reviews={homeReviews} bgColor="#F5F5F3" />
       </section>
 
       {/* 5. Services Section */}
