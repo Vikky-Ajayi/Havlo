@@ -4,9 +4,12 @@ import { Button } from '../components/ui/Button';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { CountrySelect } from '../components/shared/CountrySelect';
 import { cn } from '../lib/utils';
+import { useConfig } from '../hooks/useConfig';
 
 export const Contact: React.FC = () => {
   const [phoneCode, setPhoneCode] = useState('+44');
+  const config = useConfig();
+  const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
   const [currency, setCurrency] = useState('GBP');
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencies = ['USD', 'GBP', 'EUR'];
@@ -50,7 +53,7 @@ export const Contact: React.FC = () => {
               icon={<Calendar className="h-5 w-5 text-black" />}
               label="BOOK A CALL"
               value="calendly.com/hello-heyhavlo"
-              href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call"
+              href={calendlyLink}
             />
             <ContactMethodCard
               icon={<MessageCircle className="h-5 w-5 text-black" />}

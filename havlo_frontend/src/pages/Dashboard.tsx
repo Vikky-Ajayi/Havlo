@@ -131,6 +131,7 @@ export const Dashboard: React.FC = () => {
               <Button 
                 variant="primary" 
                 className="h-[72px] flex-1 min-w-[180px] rounded-full bg-[#60D769] text-white px-5 flex items-center justify-center gap-3 border border-black/5"
+                onClick={() => window.open('https://wa.me/message/PPPAWIAXBS7YK1', '_blank', 'noopener,noreferrer')}
               >
                 <svg width="40" height="41" viewBox="0 0 40 41" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <g clipPath="url(#clip0_5770_1992)">

@@ -2,12 +2,14 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, MessageCircle, CalendarCheck } from 'lucide-react';
 import { useModal } from '../../hooks/useModal';
+import { useConfig } from '../../hooks/useConfig';
 
 const WHATSAPP_URL = 'https://wa.me/message/PPPAWIAXBS7YK1';
-const CALENDLY_URL = 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
 export const ConsultationModal: React.FC = () => {
   const { closeModal } = useModal();
+  const config = useConfig();
+  const CALENDLY_URL = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
   React.useEffect(() => {
     document.body.style.overflow = 'hidden';

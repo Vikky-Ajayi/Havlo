@@ -7,14 +7,14 @@ Flow (used by bookings, sell_faster, sale_audit, buyer_network routers):
         Authorization: Bearer <SUMUP_API_KEY>     (personal access token, e.g. sup_sk_...)
         body: { checkout_reference, amount, currency, merchant_code, description, redirect_url }
   3. SumUp returns a JSON object with TWO different identifiers:
-       * `id`                 — internal UUID. Used ONLY for status polling
-                                via GET /v0.1/checkouts/{id}.
-       * `checkout_reference` — the string we sent in the request. Used to
-                                build the hosted payment page URL:
-                                https://pay.sumup.com/b2c/{checkout_reference}
-     Mixing these up causes a 404 on the hosted page (the b2c URL does NOT
-     accept the UUID). We always synthesise `checkout_url` from the
-     reference if SumUp didn't include one in the response.
+       * `id`                 — internal UUID. Used to build the hosted payment
+                                page URL: https://pay.sumup.com/b2c/{id}
+                                AND for status polling via GET /v0.1/checkouts/{id}.
+       * `checkout_reference` — the string we sent in the request. Used only
+                                for our own tracking and deduplication.
+     Using the checkout_reference in the b2c URL causes a 404. The `id` UUID
+     is the correct value for the hosted payment page. We always synthesise
+     `checkout_url` from the UUID if SumUp didn't include one in the response.
   4. After the user pays, the frontend polls the relevant /status endpoint, which
      calls `get_checkout_status(checkout_id)` -> GET /v0.1/checkouts/<id>. When
      `status == "PAID"` we mark the local DB record + Payment row as completed.
@@ -24,10 +24,10 @@ Common SumUp gotchas this module guards against:
   * Currency case (we `.upper()`).
   * Amount must be float w/ 2dp (we `round(amount, 2)`).
   * `id` vs `checkout_id` in response (we always read `id` for polling).
-  * `id` (UUID) vs `checkout_reference` (string) — only the reference works
-    in the b2c hosted-page URL.
+  * `id` (UUID) vs `checkout_reference` (string) — only the UUID works
+    in the b2c hosted-page URL; using the reference causes a 404.
   * Missing checkout_url in response (we synthesise the b2c URL from the
-    reference, never the UUID).
+    UUID, never the reference).
 
 We deliberately raise a custom `SumUpError` containing the upstream status code +
 response body so routers can surface a meaningful error to the user instead of a
@@ -142,14 +142,14 @@ async def create_checkout(
             body=response.text,
         )
 
-    # `checkout_reference` is what the hosted payment page URL uses.
-    # If SumUp didn't echo it back (it should), fall back to the reference
-    # we sent in the request — never use the UUID, that returns 404.
+    # `checkout_reference` is echoed back in the response for our own tracking.
     checkout_reference = data.get("checkout_reference") or reference
     data["checkout_reference"] = checkout_reference
 
+    # The hosted payment page URL uses the internal UUID (`id`), NOT the
+    # checkout_reference. Using the reference causes a 404 on pay.sumup.com/b2c/.
     if not data.get("checkout_url"):
-        data["checkout_url"] = f"{SUMUP_HOSTED_CHECKOUT}/{checkout_reference}"
+        data["checkout_url"] = f"{SUMUP_HOSTED_CHECKOUT}/{checkout_id}"
 
     logger.info(
         "SumUp checkout created reference=%s checkout_id=%s url=%s status=%s",

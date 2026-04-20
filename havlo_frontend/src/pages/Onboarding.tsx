@@ -17,11 +17,11 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CountrySelect } from '../components/shared/CountrySelect';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { useConfig } from '../hooks/useConfig';
 
 const TOTAL_STEPS = 9;
 
 const WHATSAPP_URL = 'https://wa.me/message/PPPAWIAXBS7YK1';
-const CALENDLY_URL = 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
 const helpOptions = [
   { id: 'buy', label: 'I want to buy a property abroad' },
@@ -58,6 +58,8 @@ const marqueeItems = [
 export const Onboarding: React.FC = () => {
   const navigate = useNavigate();
   const { token, refreshUser } = useAuth();
+  const config = useConfig();
+  const CALENDLY_URL = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);

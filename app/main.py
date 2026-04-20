@@ -295,6 +295,14 @@ async def diag_sheets_test(request: Request) -> JSONResponse:
         return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
 
 
+@app.get("/api/v1/config", tags=["Config"])
+async def public_config() -> JSONResponse:
+    """Return public frontend configuration values (no secrets)."""
+    return JSONResponse({
+        "calendly_link": settings.CALENDLY_LINK or "",
+    })
+
+
 @app.options("/{full_path:path}", include_in_schema=False)
 async def options_catch_all(full_path: str) -> JSONResponse:
     return JSONResponse({"ok": True})
