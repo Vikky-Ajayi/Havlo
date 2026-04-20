@@ -134,17 +134,20 @@ export const BuyAbroad: React.FC = () => {
       <MarqueeStrip />
 
       {/* 3. Reviews Section */}
-      <section className="flex w-full flex-col items-center bg-white px-4 pt-20 sm:px-10 lg:px-[100px]">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-            Rated
-          </h2>
-          <TrustpilotStars className="h-[45px]" />
-          <p className="font-body text-[22px] font-normal text-black">
-            Based on <span className="font-bold underline">4,359 reviews</span>
-          </p>
-        </div>
-        <AutoScrollReviews reviews={buyAbroadReviews} bgColor="#F5F5F3" />
+      <section className="w-full bg-white px-4 pt-20 sm:px-10 lg:px-[100px]">
+        <AutoScrollReviews
+          reviews={buyAbroadReviews}
+          bgColor="#F5F5F3"
+          header={
+            <>
+              <h2 className="font-body text-[36px] font-medium leading-none tracking-[-0.8px] text-[#040504]">Rated</h2>
+              <TrustpilotStars className="h-[40px]" />
+              <p className="font-body text-[18px] font-normal text-black">
+                Based on <span className="font-bold underline">4,359 reviews</span>
+              </p>
+            </>
+          }
+        />
       </section>
 
       {/* 4. Who This Is For Section */}

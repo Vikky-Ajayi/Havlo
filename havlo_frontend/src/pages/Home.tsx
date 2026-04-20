@@ -167,17 +167,20 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="flex w-full flex-col items-center bg-white px-4 pt-12 lg:pt-20 sm:px-6 lg:px-10">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <h2 className="font-body text-[32px] lg:text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-            Rated
-          </h2>
-          <TrustpilotStars className="h-[30px] lg:h-[36px]" />
-          <p className="font-body text-[16px] lg:text-[18px] font-normal text-black max-w-[320px]">
-            Rated Excellent based on over <span className="font-bold underline">1,000 customer reviews.</span>
-          </p>
-        </div>
-        <AutoScrollReviews reviews={homeReviews} bgColor="#F5F5F3" />
+      <section className="w-full bg-white px-4 pt-12 lg:pt-20 sm:px-6 lg:px-10">
+        <AutoScrollReviews
+          reviews={homeReviews}
+          bgColor="#F5F5F3"
+          header={
+            <>
+              <h2 className="font-body text-[28px] lg:text-[36px] font-medium leading-none tracking-[-0.8px] text-[#040504]">Rated</h2>
+              <TrustpilotStars className="h-[28px] lg:h-[32px]" />
+              <p className="font-body text-[14px] lg:text-[16px] font-normal text-black">
+                Rated Excellent based on over <span className="font-bold underline">1,000 customer reviews.</span>
+              </p>
+            </>
+          }
+        />
       </section>
 
       {/* 5. Services Section */}

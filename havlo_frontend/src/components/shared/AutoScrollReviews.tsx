@@ -10,11 +10,13 @@ interface Review {
 interface AutoScrollReviewsProps {
   reviews: Review[];
   bgColor?: string;
+  header?: React.ReactNode;
 }
 
 export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
   reviews,
   bgColor = '#F5F5F3',
+  header,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const doubled = [...reviews, ...reviews];
@@ -53,17 +55,24 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
   }, []);
 
   return (
-    <div className="w-full overflow-hidden py-10">
-      <div ref={trackRef} className="flex gap-4 will-change-transform" style={{ width: 'max-content' }}>
-        {doubled.map((r, i) => (
-          <div
-            key={i}
-            className="shrink-0 w-[300px] lg:w-[340px] rounded-xl p-5"
-            style={{ backgroundColor: bgColor }}
-          >
-            <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
-          </div>
-        ))}
+    <div className="w-full flex flex-row items-center overflow-hidden py-10">
+      {header && (
+        <div className="shrink-0 w-[180px] lg:w-[220px] flex flex-col gap-3 px-4 lg:px-8 items-start">
+          {header}
+        </div>
+      )}
+      <div className={header ? 'flex-1 overflow-hidden' : 'w-full overflow-hidden'}>
+        <div ref={trackRef} className="flex gap-4 will-change-transform" style={{ width: 'max-content' }}>
+          {doubled.map((r, i) => (
+            <div
+              key={i}
+              className="shrink-0 w-[300px] lg:w-[340px] rounded-xl p-5"
+              style={{ backgroundColor: bgColor }}
+            >
+              <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
