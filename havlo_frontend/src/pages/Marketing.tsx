@@ -119,23 +119,17 @@ export const Marketing: React.FC = () => {
 
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
-      <section className="relative min-h-[560px] overflow-hidden px-4 pb-24 pt-24 sm:min-h-[676px] sm:px-6 lg:min-h-[810px] lg:px-[100px] lg:pb-36 lg:pt-32">
-        <div className="absolute inset-0">
-          <img src={heroImage} alt="Modern property skyline" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-[#07131b]/70" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
-        </div>
-
+      <section className="relative min-h-[430px] overflow-hidden bg-white px-4 pb-24 pt-24 sm:min-h-[520px] sm:px-6 lg:min-h-[620px] lg:px-[100px] lg:pb-36 lg:pt-32">
         <div className="relative z-10 mx-auto flex max-w-[920px] flex-col items-center text-center">
-          <span className="font-body text-[10px] font-extrabold uppercase tracking-[0.28em] text-white/80 sm:text-xs">
+          <span className="font-body text-[10px] font-extrabold uppercase tracking-[0.28em] text-black/60 sm:text-xs">
             International Property Marketing
           </span>
-          <h1 className="mt-4 font-display text-[44px] font-black leading-[0.92] tracking-[-1px] text-white sm:text-[70px] lg:text-[94px] lg:tracking-[-2px]">
+          <h1 className="mt-4 font-display text-[44px] font-black leading-[0.92] tracking-[-1px] text-black sm:text-[70px] lg:text-[94px] lg:tracking-[-2px]">
             Your property.
             <br />
             The world's buyers.
           </h1>
-          <p className="mt-5 max-w-[620px] font-body text-sm font-medium leading-[1.55] text-white/85 sm:text-base lg:text-lg">
+          <p className="mt-5 max-w-[620px] font-body text-sm font-medium leading-[1.55] text-black/70 sm:text-base lg:text-lg">
             Havlo puts slow-to-sell UK properties in front of qualified international and offshore buyers across 30+ countries — using precision Meta advertising your local agent cannot replicate.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -146,7 +140,7 @@ export const Marketing: React.FC = () => {
             ].map((badge) => (
               <span
                 key={badge}
-                className="rounded-full border border-white/40 bg-white/10 px-5 py-2 font-body text-[11px] font-extrabold uppercase tracking-[0.18em] text-white backdrop-blur-sm sm:text-xs"
+                className="rounded-full border border-black/20 bg-white px-5 py-2 font-body text-[11px] font-extrabold uppercase tracking-[0.18em] text-black sm:text-xs"
               >
                 {badge}
               </span>
