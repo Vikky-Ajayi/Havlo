@@ -99,22 +99,22 @@ export const Home: React.FC = () => {
         imageSrc="/Mask group.png"
         titleStyle={{ fontSize: '72px', lineHeight: '1.0' }}
         customActions={
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px]">
+          <div className="flex flex-wrap items-center justify-center gap-3 w-full max-w-[700px]">
             <button
               onClick={() => navigate('/relaunch-assessment')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="flex-1 sm:flex-none sm:w-auto min-w-0 transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14"
             >
               Sell My Property Faster
             </button>
             <button
               onClick={() => navigate('/buy-abroad')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="flex-1 sm:flex-none sm:w-auto min-w-0 transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14"
             >
               Buy Property Abroad
             </button>
             <button
               onClick={() => navigate('/buyer-network')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-auto sm:flex-none transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
             >
               For Estate Agents
             </button>
