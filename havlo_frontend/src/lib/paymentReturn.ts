@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const PAYMENT_KEY = 'havlo:pending_payment';
+const LEGACY_BOOKING_ID_KEY = 'havlo_pending_booking_id';
+const LEGACY_CHECKOUT_ID_KEY = 'havlo_pending_checkout_id';
+const LEGACY_PAYMENT_TYPE_KEY = 'havlo_pending_payment_type';
 
 export type PaymentKind =
   | 'session'
@@ -18,6 +21,11 @@ export interface PendingPayment {
 export function persistPendingPayment(p: PendingPayment) {
   try {
     localStorage.setItem(PAYMENT_KEY, JSON.stringify(p));
+    if (p.kind === 'session') {
+      localStorage.setItem(LEGACY_BOOKING_ID_KEY, p.recordId);
+      localStorage.setItem(LEGACY_CHECKOUT_ID_KEY, p.reference);
+      localStorage.setItem(LEGACY_PAYMENT_TYPE_KEY, 'session');
+    }
   } catch {
     /* ignore */
   }
@@ -26,7 +34,18 @@ export function persistPendingPayment(p: PendingPayment) {
 export function readPendingPayment(): PendingPayment | null {
   try {
     const raw = localStorage.getItem(PAYMENT_KEY);
-    return raw ? (JSON.parse(raw) as PendingPayment) : null;
+    if (raw) return JSON.parse(raw) as PendingPayment;
+    const legacyType = localStorage.getItem(LEGACY_PAYMENT_TYPE_KEY);
+    const legacyBookingId = localStorage.getItem(LEGACY_BOOKING_ID_KEY);
+    const legacyCheckoutId = localStorage.getItem(LEGACY_CHECKOUT_ID_KEY);
+    if (legacyType === 'session' && legacyBookingId && legacyCheckoutId) {
+      return {
+        kind: 'session',
+        recordId: legacyBookingId,
+        reference: legacyCheckoutId,
+      };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -35,6 +54,9 @@ export function readPendingPayment(): PendingPayment | null {
 export function clearPendingPayment() {
   try {
     localStorage.removeItem(PAYMENT_KEY);
+    localStorage.removeItem(LEGACY_BOOKING_ID_KEY);
+    localStorage.removeItem(LEGACY_CHECKOUT_ID_KEY);
+    localStorage.removeItem(LEGACY_PAYMENT_TYPE_KEY);
   } catch {
     /* ignore */
   }

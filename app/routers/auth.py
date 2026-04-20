@@ -7,13 +7,14 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
-from app.models.models import User, UserRole
+from app.models.models import Conversation, User, UserRole
 from app.schemas.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -32,6 +33,51 @@ from app.services.local_auth import create_access_token, hash_password_async, ve
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer()
+
+
+async def _create_admin_conversation(user_id: uuid.UUID, db: AsyncSession) -> None:
+    """Create default Havlo advisory thread with idempotent upsert semantics."""
+    if db.bind and db.bind.dialect.name == "postgresql":
+        stmt = (
+            pg_insert(Conversation)
+            .values(
+                user_id=user_id,
+                team_member_name="Havlo Advisory",
+                team_member_initials="HA",
+                team_member_color="#0052B4",
+                subject="Welcome to Havlo — we're here to help",
+                is_admin_conversation=True,
+                unread_count=0,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["user_id"],
+                index_where=Conversation.is_admin_conversation.is_(True),
+            )
+        )
+        await db.execute(stmt)
+        await db.commit()
+        return
+
+    existing = await db.execute(
+        select(Conversation).where(
+            Conversation.user_id == user_id,
+            Conversation.is_admin_conversation.is_(True),
+        )
+    )
+    if existing.scalar_one_or_none():
+        return
+    db.add(
+        Conversation(
+            user_id=user_id,
+            team_member_name="Havlo Advisory",
+            team_member_initials="HA",
+            team_member_color="#0052B4",
+            subject="Welcome to Havlo — we're here to help",
+            is_admin_conversation=True,
+            unread_count=0,
+        )
+    )
+    await db.commit()
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -69,6 +115,7 @@ async def register(
             detail="An account with this email already exists.",
         )
     await db.refresh(user)
+    await _create_admin_conversation(user.id, db)
 
     user_dict = {
         "id": str(user.id),

@@ -151,6 +151,9 @@ class Conversation(Base):
     last_message_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
+    is_admin_conversation: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     unread_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     user: Mapped["User"] = relationship("User", back_populates="conversations")
@@ -160,6 +163,12 @@ class Conversation(Base):
 
     __table_args__ = (
         Index("ix_conversations_user_lastmsg", "user_id", "last_message_at"),
+        Index(
+            "uq_one_admin_convo_per_user",
+            "user_id",
+            unique=True,
+            postgresql_where=(is_admin_conversation.is_(True)),
+        ),
     )
 
 
@@ -196,6 +205,8 @@ class Message(Base):
     __table_args__ = (
         Index("ix_messages_convo_created", "conversation_id", "created_at"),
         Index("ix_messages_isread_sender", "is_read", "sender_type"),
+        Index("ix_messages_conversation_id_created", "conversation_id", "created_at"),
+        Index("ix_messages_unread", "conversation_id", "is_read", "sender_type"),
     )
 
 

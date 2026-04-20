@@ -174,8 +174,13 @@ async def startup() -> None:
                     """))
                     await conn.execute(text("""
                         ALTER TABLE conversations
+                            ADD COLUMN IF NOT EXISTS is_admin_conversation BOOLEAN NOT NULL DEFAULT FALSE,
                             ADD COLUMN IF NOT EXISTS unread_count INTEGER NOT NULL DEFAULT 0;
                     """))
+                    await conn.execute(text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_one_admin_convo_per_user "
+                        "ON conversations (user_id) WHERE is_admin_conversation = TRUE;"
+                    ))
                     await conn.execute(text("""
                         ALTER TABLE messages
                             ADD COLUMN IF NOT EXISTS sender_id UUID,
@@ -187,8 +192,16 @@ async def startup() -> None:
                         "ON messages (conversation_id, created_at);"
                     ))
                     await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_messages_conversation_id_created "
+                        "ON messages (conversation_id, created_at ASC);"
+                    ))
+                    await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_messages_isread_sender "
                         "ON messages (is_read, sender_type);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_messages_unread "
+                        "ON messages (conversation_id, is_read, sender_type);"
                     ))
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_conversations_user_lastmsg "

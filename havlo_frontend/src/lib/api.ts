@@ -364,13 +364,6 @@ export const api = {
   getConversation: (token: string, id: string) =>
     request<ConversationDetail>(`/messaging/conversations/${id}`, { token }),
 
-  createConversation: (token: string, subject: string) =>
-    request<{ id: string; subject: string }>('/messaging/conversations', {
-      method: 'POST',
-      token,
-      queryParams: { subject },
-    }),
-
   sendMessage: (token: string, conversationId: string, content: string) =>
     request<{ message: Message }>(`/messaging/conversations/${conversationId}/messages`, {
       method: 'POST',
@@ -417,11 +410,15 @@ export const api = {
     senderName?: string,
   ) =>
     request<{ message: Message }>(
-      `/messaging/admin/conversations/${conversationId}/send`,
+      '/messaging/admin/send',
       {
         method: 'POST',
         token,
-        body: { content, sender_name: senderName || 'Havlo Advisory' },
+        body: {
+          conversation_id: conversationId,
+          content,
+          sender_name: senderName || 'Havlo Advisory',
+        },
       },
     ),
 

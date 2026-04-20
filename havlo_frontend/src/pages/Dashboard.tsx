@@ -5,15 +5,16 @@ import {
 import { Button } from '../components/ui/Button';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useNavigate } from 'react-router-dom';
-import { useModal } from '../hooks/useModal';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { usePaymentReturnPoller } from '../lib/paymentReturn';
+import { useConfig } from '../hooks/useConfig';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { openModal } = useModal();
   const { user, token } = useAuth();
+  const config = useConfig();
+  const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
   usePaymentReturnPoller({
     kind: 'session',
@@ -117,7 +118,7 @@ export const Dashboard: React.FC = () => {
               <Button 
                 variant="primary" 
                 className="h-[72px] flex-1 min-w-[180px] rounded-full bg-[#006AFE] text-white px-5 flex items-center justify-center gap-3 border border-black/5"
-                onClick={() => openModal('book-session')}
+                onClick={() => window.open(calendlyLink, '_blank', 'noopener,noreferrer')}
               >
                 <div className="h-10 w-10 flex items-center justify-center">
                   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">

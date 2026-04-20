@@ -109,7 +109,9 @@ async def diagnose_sumup(
             "ok": True,
             "reference": test_ref,
             "checkout_id": checkout.get("id"),
+            "checkout_reference": checkout.get("checkout_reference"),
             "checkout_url": checkout.get("checkout_url"),
+            "checkout_url_correct": test_ref in str(checkout.get("checkout_url", "")),
             "raw": checkout,
         }
     except SumUpError as exc:

@@ -7,9 +7,12 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { CountrySelect } from '../components/shared/CountrySelect';
+import { useConfig } from '../hooks/useConfig';
 
 export const DashboardEliteProperty: React.FC = () => {
   const { token } = useAuth();
+  const config = useConfig();
+  const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -107,6 +110,7 @@ export const DashboardEliteProperty: React.FC = () => {
               </div>
             </div>
             <Button 
+              onClick={() => window.open(calendlyLink, '_blank', 'noopener,noreferrer')}
               className="h-[72px] w-full rounded-full bg-[#006AFE] text-white flex items-center justify-center gap-3 group border-none"
             >
               <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -29,7 +29,6 @@ def send_new_message_sms(
     to_phone: str,
     sender_name: str,
     app_url: str,
-    snippet: str = "",
 ) -> bool:
     """Send an SMS notifying a user of a new inbox message.
 
@@ -46,10 +45,9 @@ def send_new_message_sms(
         logger.warning("Skipping SMS — Twilio is not configured.")
         return False
 
-    snippet_part = f' "{snippet[:80].strip()}"' if snippet else ""
     body = (
-        f"New message from {sender_name} on Havlo:{snippet_part} "
-        f"Reply at {app_url.rstrip('/')}/dashboard/inbox"
+        f"You have a new message from {sender_name} on Havlo. "
+        f"Log in to reply: {app_url.rstrip('/')}/dashboard/inbox"
     )
 
     try:

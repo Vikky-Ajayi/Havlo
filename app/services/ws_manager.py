@@ -23,31 +23,32 @@ logger = logging.getLogger(__name__)
 
 class ConnectionManager:
     def __init__(self) -> None:
-        self._user_conns: dict[str, set[WebSocket]] = defaultdict(set)
-        self._admin_conns: set[WebSocket] = set()
+        self.user_connections: dict[str, list[WebSocket]] = defaultdict(list)
+        self.admin_connections: set[WebSocket] = set()
         self._lock = asyncio.Lock()
 
     # ── User connections ──────────────────────────────────────────────────
     async def connect_user(self, websocket: WebSocket, user_id: str) -> None:
         await websocket.accept()
         async with self._lock:
-            self._user_conns[user_id].add(websocket)
-        logger.info("WS user connected: user=%s total=%d", user_id, len(self._user_conns[user_id]))
+            self.user_connections[user_id].append(websocket)
+        logger.info("WS user connected: user=%s total=%d", user_id, len(self.user_connections[user_id]))
 
     async def disconnect_user(self, websocket: WebSocket, user_id: str) -> None:
         async with self._lock:
-            conns = self._user_conns.get(user_id)
+            conns = self.user_connections.get(user_id)
             if conns:
-                conns.discard(websocket)
+                self.user_connections[user_id] = [ws for ws in conns if ws is not websocket]
+                conns = self.user_connections[user_id]
                 if not conns:
-                    self._user_conns.pop(user_id, None)
+                    self.user_connections.pop(user_id, None)
         logger.info("WS user disconnected: user=%s", user_id)
 
-    def is_user_online(self, user_id: str) -> bool:
-        return bool(self._user_conns.get(user_id))
+    def user_is_online(self, user_id: str) -> bool:
+        return len(self.user_connections.get(user_id, [])) > 0
 
     async def send_to_user(self, user_id: str, data: dict[str, Any]) -> None:
-        for ws in list(self._user_conns.get(user_id, [])):
+        for ws in list(self.user_connections.get(user_id, [])):
             try:
                 await ws.send_text(json.dumps(data, default=str))
             except Exception as exc:
@@ -58,16 +59,16 @@ class ConnectionManager:
     async def connect_admin(self, websocket: WebSocket) -> None:
         await websocket.accept()
         async with self._lock:
-            self._admin_conns.add(websocket)
-        logger.info("WS admin connected: total=%d", len(self._admin_conns))
+            self.admin_connections.add(websocket)
+        logger.info("WS admin connected: total=%d", len(self.admin_connections))
 
     async def disconnect_admin(self, websocket: WebSocket) -> None:
         async with self._lock:
-            self._admin_conns.discard(websocket)
-        logger.info("WS admin disconnected: total=%d", len(self._admin_conns))
+            self.admin_connections.discard(websocket)
+        logger.info("WS admin disconnected: total=%d", len(self.admin_connections))
 
-    async def send_to_admins(self, data: dict[str, Any]) -> None:
-        for ws in list(self._admin_conns):
+    async def broadcast_to_admins(self, data: dict[str, Any]) -> None:
+        for ws in list(self.admin_connections):
             try:
                 await ws.send_text(json.dumps(data, default=str))
             except Exception as exc:

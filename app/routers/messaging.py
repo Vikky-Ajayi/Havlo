@@ -1,38 +1,4 @@
-"""
-Messaging system — REST + WebSocket.
-
-Architecture
-============
-Two parties exchange messages inside a `Conversation`:
-  • the end user (sender_type = "user")
-  • the Havlo team / admin (sender_type = "team")
-
-Real-time channels:
-  • /messaging/ws/inbox?token=<jwt>          — a single user's stream
-  • /messaging/ws/admin?secret=<ADMIN_SECRET> — admin firehose: every new
-    message from every user shows up here in real time
-
-Admin REST endpoints accept *either* a valid bearer token from a user with
-`is_admin = True` (so the existing AdminPanel keeps working) *or* the
-`X-Admin-Secret` header matching `ADMIN_SECRET` env var (for service-to-service
-or external automation use).
-
-Read-state model
-----------------
-`conversations.unread_count` holds the unread team-message count from the
-**user's** perspective. It is incremented when the team sends a message and
-reset to 0 when the user opens the conversation (GET …/conversations/{id}).
-
-`messages.is_read` becomes True once the recipient has opened the conversation.
-
-SMS notification
-----------------
-A team-sent message triggers an SMS only when:
-  1. the user has no active WebSocket connection, AND
-  2. the message has not yet been notified (sms_notification_sent = False), AND
-  3. the user's `full_phone` is in valid E.164 format
-SMS sending always runs as a background task and never blocks the response.
-"""
+"""Messaging REST + WebSocket endpoints."""
 from __future__ import annotations
 
 import asyncio
@@ -63,7 +29,6 @@ from app.db.database import AsyncSessionLocal, get_db
 from app.dependencies import get_current_user
 from app.models.models import Conversation, Message, MessageSenderType, User
 from app.schemas.schemas import (
-    AdminSendRequest,
     AdminStartConversationRequest,
     AdminUserOut,
     ConversationDetailOut,
@@ -80,15 +45,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/messaging", tags=["Messaging"])
 
 
-# ── Admin auth (bearer-admin OR X-Admin-Secret) ────────────────────────────────
-
 async def require_admin_or_secret(
     request: Request,
     x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
     db: AsyncSession = Depends(get_db),
 ) -> Optional[User]:
-    """Allow either a valid `X-Admin-Secret` header, or a bearer token belonging
-    to an `is_admin = True` user. Returns the User when bearer-authed, else None."""
+    """Allow admin bearer auth or X-Admin-Secret auth."""
     settings = get_settings()
     if x_admin_secret and settings.ADMIN_SECRET and x_admin_secret == settings.ADMIN_SECRET:
         return None
@@ -96,35 +58,36 @@ async def require_admin_or_secret(
     auth_header = request.headers.get("authorization", "")
     if not auth_header.lower().startswith("bearer "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Admin authentication required.")
+
     token = auth_header.split(" ", 1)[1].strip()
-    payload = decode_access_token(token)
+    payload = await asyncio.to_thread(decode_access_token, token)
     if not payload or not payload.get("sub"):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid admin token.")
     try:
         uid = uuid.UUID(payload["sub"])
-    except ValueError:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid admin token.")
-    res = await db.execute(select(User).where(User.id == uid))
-    user = res.scalar_one_or_none()
-    if not user or not bool(user.is_admin):
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid admin token.") from exc
+
+    user = (
+        await db.execute(select(User).where(User.id == uid))
+    ).scalar_one_or_none()
+    if not user or not user.is_admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required.")
     return user
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _msg_to_out(msg: Message, viewer_type: str) -> MessageOut:
+def _to_message_out(msg: Message, viewer: MessageSenderType) -> MessageOut:
     return MessageOut(
         id=str(msg.id),
         content=msg.content,
         sender_type=msg.sender_type.value,
         sender_name=msg.sender_name,
         created_at=msg.created_at,
-        is_me=(msg.sender_type.value == viewer_type),
+        is_me=(msg.sender_type == viewer),
     )
 
 
-def _serialize_message_for_ws(msg: Message, conversation_id: str) -> dict:
+def _serialize_ws_message(msg: Message, conversation_id: str) -> dict:
     return {
         "event": "new_message",
         "conversation_id": conversation_id,
@@ -138,48 +101,50 @@ def _serialize_message_for_ws(msg: Message, conversation_id: str) -> dict:
     }
 
 
-async def _maybe_send_sms(message_id: uuid.UUID, user_id: str) -> None:
-    """Background task: send SMS if user is offline and we haven't already sent one.
-    Uses its own DB session (BackgroundTasks runs after the request closes)."""
-    if manager.is_user_online(user_id):
+async def _maybe_send_team_sms(message_id: uuid.UUID, user_id: str) -> None:
+    """Send offline SMS notification for a team message."""
+    if manager.user_is_online(user_id):
         return
+
     async with AsyncSessionLocal() as db:
-        res = await db.execute(
-            select(Message).where(Message.id == message_id).options(
-                selectinload(Message.conversation).selectinload(Conversation.user)
+        msg = (
+            await db.execute(
+                select(Message)
+                .where(Message.id == message_id)
+                .options(selectinload(Message.conversation).selectinload(Conversation.user))
             )
-        )
-        msg = res.scalar_one_or_none()
-        if not msg or msg.sms_notification_sent:
+        ).scalar_one_or_none()
+        if not msg:
             return
+        if msg.sender_type != MessageSenderType.team or msg.sms_notification_sent:
+            return
+
         user = msg.conversation.user
-        if not user or not user.full_phone:
+        if not user:
+            return
+        phone = (user.full_phone or "").strip()
+        if not twilio_service.is_valid_e164(phone):
             return
 
         settings = get_settings()
-        ok = await asyncio.to_thread(
+        # SMS failure should never break the API flow.
+        sent_ok = await asyncio.to_thread(
             twilio_service.send_new_message_sms,
-            user.full_phone,
+            phone,
             msg.sender_name,
             settings.FRONTEND_URL or "",
-            msg.content,
         )
-        if ok:
+        if sent_ok:
             msg.sms_notification_sent = True
-            msg.sms_sent = True
             await db.commit()
 
-
-# ── User REST endpoints ───────────────────────────────────────────────────────
 
 @router.get("/conversations", response_model=list[ConversationOut])
 async def list_conversations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationOut]:
-    """List the current user's conversations with snippet & unread badge."""
-    # Single query: convo + last message snippet via correlated subquery
-    last_msg_subq = (
+    last_message_subq = (
         select(Message.content)
         .where(Message.conversation_id == Conversation.id)
         .order_by(desc(Message.created_at))
@@ -188,47 +153,27 @@ async def list_conversations(
         .scalar_subquery()
     )
 
-    rows = (await db.execute(
-        select(Conversation, last_msg_subq.label("last_snippet"))
-        .where(Conversation.user_id == current_user.id)
-        .order_by(desc(Conversation.last_message_at))
-    )).all()
+    rows = (
+        await db.execute(
+            select(Conversation, last_message_subq.label("last_snippet"))
+            .where(Conversation.user_id == current_user.id)
+            .order_by(desc(Conversation.last_message_at))
+        )
+    ).all()
 
     return [
         ConversationOut(
-            id=str(c.id),
-            team_member_name=c.team_member_name,
-            team_member_initials=c.team_member_initials,
-            team_member_color=c.team_member_color,
-            subject=c.subject,
-            last_message_at=c.last_message_at,
-            last_message_snippet=(snip[:80] if snip else None),
-            unread_count=int(c.unread_count or 0),
+            id=str(conv.id),
+            team_member_name=conv.team_member_name,
+            team_member_initials=conv.team_member_initials,
+            team_member_color=conv.team_member_color,
+            subject=conv.subject,
+            last_message_at=conv.last_message_at,
+            unread_count=int(conv.unread_count or 0),
+            last_message_snippet=(snippet[:60] if snippet else None),
         )
-        for c, snip in rows
+        for conv, snippet in rows
     ]
-
-
-@router.post("/conversations", status_code=status.HTTP_201_CREATED)
-async def create_conversation(
-    subject: str = Query(..., min_length=1, max_length=500),
-    team_member_name: str = Query(default="Havlo Advisory"),
-    team_member_initials: str = Query(default="HA"),
-    team_member_color: str = Query(default="#0052B4"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    conv = Conversation(
-        user_id=current_user.id,
-        team_member_name=team_member_name,
-        team_member_initials=team_member_initials,
-        team_member_color=team_member_color,
-        subject=subject,
-    )
-    db.add(conv)
-    await db.commit()
-    await db.refresh(conv)
-    return {"id": str(conv.id), "subject": conv.subject}
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetailOut)
@@ -237,40 +182,40 @@ async def get_conversation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ConversationDetailOut:
-    """Fetch full thread; resets the user's unread badge."""
     try:
-        cid = uuid.UUID(conversation_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.")
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
 
-    res = await db.execute(
-        select(Conversation)
-        .where(Conversation.id == cid, Conversation.user_id == current_user.id)
-        .options(selectinload(Conversation.messages))
-    )
-    conv = res.scalar_one_or_none()
+    conv = (
+        await db.execute(
+            select(Conversation)
+            .where(
+                Conversation.id == conv_id,
+                Conversation.user_id == current_user.id,
+            )
+            .options(selectinload(Conversation.messages))
+        )
+    ).scalar_one_or_none()
     if not conv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
 
-    # Atomic reset (avoids races with concurrent admin sends)
-    if conv.unread_count or any(
-        m.sender_type == MessageSenderType.team and not m.is_read for m in conv.messages
-    ):
-        await db.execute(
-            update(Message)
-            .where(
-                Message.conversation_id == cid,
-                Message.sender_type == MessageSenderType.team,
-                Message.is_read.is_(False),
-            )
-            .values(is_read=True)
+    await db.execute(
+        update(Message)
+        .where(
+            Message.conversation_id == conv_id,
+            Message.sender_type == MessageSenderType.team,
+            Message.is_read.is_(False),
         )
-        await db.execute(
-            update(Conversation)
-            .where(Conversation.id == cid)
-            .values(unread_count=0)
-        )
-        await db.commit()
+        .values(is_read=True)
+    )
+    await db.execute(
+        update(Conversation)
+        .where(Conversation.id == conv_id)
+        .values(unread_count=0)
+    )
+    await db.commit()
+    await db.refresh(conv)
 
     return ConversationDetailOut(
         id=str(conv.id),
@@ -278,36 +223,36 @@ async def get_conversation(
         team_member_initials=conv.team_member_initials,
         team_member_color=conv.team_member_color,
         subject=conv.subject,
-        messages=[_msg_to_out(m, "user") for m in conv.messages],
+        messages=[_to_message_out(m, MessageSenderType.user) for m in conv.messages],
     )
 
 
-@router.post(
-    "/conversations/{conversation_id}/messages",
-    response_model=SendMessageResponse,
-)
-async def user_send_message(
+@router.post("/conversations/{conversation_id}/messages", response_model=SendMessageResponse)
+async def send_user_message(
     conversation_id: str,
     payload: SendMessageRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SendMessageResponse:
     try:
-        cid = uuid.UUID(conversation_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.")
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
 
-    res = await db.execute(
-        select(Conversation).where(
-            Conversation.id == cid, Conversation.user_id == current_user.id
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == current_user.id,
+            )
         )
-    )
-    conv = res.scalar_one_or_none()
+    ).scalar_one_or_none()
     if not conv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
 
     msg = Message(
-        conversation_id=cid,
+        conversation_id=conv_id,
         content=payload.content,
         sender_type=MessageSenderType.user,
         sender_name=current_user.full_name,
@@ -319,36 +264,98 @@ async def user_send_message(
     await db.commit()
     await db.refresh(msg)
 
-    # Fan out to admin firehose (best-effort, never block).
+    ws_payload = _serialize_ws_message(msg, str(conv.id))
+    ws_payload["user"] = {
+        "id": str(current_user.id),
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+    }
+    background_tasks.add_task(manager.broadcast_to_admins, ws_payload)
+
+    return SendMessageResponse(message=_to_message_out(msg, MessageSenderType.user))
+
+
+class AdminSendPayload(SendMessageRequest):
+    conversation_id: str
+    sender_name: str = "Havlo Advisory"
+
+
+@router.post("/admin/send", response_model=SendMessageResponse)
+async def admin_send_message(
+    payload: AdminSendPayload,
+    background_tasks: BackgroundTasks,
+    admin_user: Optional[User] = Depends(require_admin_or_secret),
+    db: AsyncSession = Depends(get_db),
+) -> SendMessageResponse:
     try:
-        await manager.send_to_admins({
-            **_serialize_message_for_ws(msg, str(cid)),
-            "user": {
-                "id": str(current_user.id),
-                "full_name": current_user.full_name,
-                "email": current_user.email,
-            },
-            "subject": conv.subject,
-        })
-    except Exception as exc:
-        logger.warning("Admin WS fan-out failed: %s", exc)
+        conv_id = uuid.UUID(payload.conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
 
-    return SendMessageResponse(message=_msg_to_out(msg, "user"))
+    conv = (
+        await db.execute(
+            select(Conversation)
+            .where(Conversation.id == conv_id)
+            .options(selectinload(Conversation.user))
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
+
+    msg = Message(
+        conversation_id=conv_id,
+        content=payload.content,
+        sender_type=MessageSenderType.team,
+        sender_name=payload.sender_name,
+        sender_id=admin_user.id if admin_user else None,
+        is_read=False,
+        sms_notification_sent=False,
+    )
+    db.add(msg)
+    await db.execute(
+        update(Conversation)
+        .where(Conversation.id == conv_id)
+        .values(
+            unread_count=Conversation.unread_count + 1,
+            last_message_at=datetime.utcnow(),
+        )
+    )
+    await db.commit()
+    await db.refresh(msg)
+
+    user_id = str(conv.user_id)
+    background_tasks.add_task(manager.send_to_user, user_id, _serialize_ws_message(msg, str(conv.id)))
+    background_tasks.add_task(_maybe_send_team_sms, msg.id, user_id)
+
+    return SendMessageResponse(message=_to_message_out(msg, MessageSenderType.team))
 
 
-# ── Admin REST endpoints ──────────────────────────────────────────────────────
+@router.post("/admin/conversations/{conversation_id}/send", response_model=SendMessageResponse)
+async def admin_send_message_compat(
+    conversation_id: str,
+    payload: SendMessageRequest,
+    background_tasks: BackgroundTasks,
+    admin_user: Optional[User] = Depends(require_admin_or_secret),
+    db: AsyncSession = Depends(get_db),
+) -> SendMessageResponse:
+    return await admin_send_message(
+        payload=AdminSendPayload(
+            conversation_id=conversation_id,
+            content=payload.content,
+            sender_name="Havlo Advisory",
+        ),
+        background_tasks=background_tasks,
+        admin_user=admin_user,
+        db=db,
+    )
 
-@router.get(
-    "/admin/conversations",
-    response_model=list[dict],
-    summary="Admin: list ALL conversations across ALL users",
-)
-async def admin_list_all_conversations(
-    limit: int = Query(200, ge=1, le=500),
+
+@router.get("/admin/conversations")
+async def admin_list_conversations(
     _admin: Optional[User] = Depends(require_admin_or_secret),
     db: AsyncSession = Depends(get_db),
 ) -> list[dict]:
-    last_msg_subq = (
+    last_message_subq = (
         select(Message.content)
         .where(Message.conversation_id == Conversation.id)
         .order_by(desc(Message.created_at))
@@ -356,278 +363,40 @@ async def admin_list_all_conversations(
         .correlate(Conversation)
         .scalar_subquery()
     )
-    admin_unread_subq = (
-        select(func.count(Message.id))
-        .where(
-            Message.conversation_id == Conversation.id,
-            Message.sender_type == MessageSenderType.user,
-            Message.is_read.is_(False),
+    rows = (
+        await db.execute(
+            select(Conversation, User, last_message_subq.label("last_snippet"))
+            .join(User, User.id == Conversation.user_id)
+            .order_by(desc(Conversation.last_message_at))
         )
-        .correlate(Conversation)
-        .scalar_subquery()
-    )
-
-    rows = (await db.execute(
-        select(
-            Conversation,
-            User,
-            last_msg_subq.label("snippet"),
-            admin_unread_subq.label("admin_unread"),
-        )
-        .join(User, User.id == Conversation.user_id)
-        .order_by(desc(Conversation.last_message_at))
-        .limit(limit)
-    )).all()
+    ).all()
 
     return [
         {
-            "id": str(c.id),
-            "subject": c.subject,
-            "team_member_name": c.team_member_name,
-            "team_member_initials": c.team_member_initials,
-            "team_member_color": c.team_member_color,
-            "last_message_at": c.last_message_at.isoformat() if c.last_message_at else None,
-            "last_message_snippet": (snippet[:80] if snippet else None),
-            "unread_count": int(unread or 0),  # admin's unread (user msgs)
+            "id": str(conv.id),
+            "team_member_name": conv.team_member_name,
+            "team_member_initials": conv.team_member_initials,
+            "team_member_color": conv.team_member_color,
+            "subject": conv.subject,
+            "last_message_at": conv.last_message_at,
+            "last_message_snippet": snippet[:60] if snippet else None,
+            "unread_count": int(conv.unread_count or 0),
             "user": {
-                "id": str(u.id),
-                "full_name": u.full_name,
-                "email": u.email,
-                "phone": u.full_phone,
-                "role": u.role.value,
+                "id": str(user.id),
+                "full_name": user.full_name,
+                "email": user.email,
+                "phone": user.full_phone,
+                "role": user.role.value,
             },
         }
-        for c, u, snippet, unread in rows
+        for conv, user, snippet in rows
     ]
 
-
-@router.get(
-    "/admin/conversations/{conversation_id}",
-    response_model=ConversationDetailOut,
-)
-async def admin_get_conversation(
-    conversation_id: str,
-    _admin: Optional[User] = Depends(require_admin_or_secret),
-    db: AsyncSession = Depends(get_db),
-) -> ConversationDetailOut:
-    try:
-        cid = uuid.UUID(conversation_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.")
-
-    res = await db.execute(
-        select(Conversation)
-        .where(Conversation.id == cid)
-        .options(selectinload(Conversation.messages))
-    )
-    conv = res.scalar_one_or_none()
-    if not conv:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
-
-    # Admin opening the thread → mark user messages as read
-    await db.execute(
-        update(Message)
-        .where(
-            Message.conversation_id == cid,
-            Message.sender_type == MessageSenderType.user,
-            Message.is_read.is_(False),
-        )
-        .values(is_read=True)
-    )
-    await db.commit()
-
-    return ConversationDetailOut(
-        id=str(conv.id),
-        team_member_name=conv.team_member_name,
-        team_member_initials=conv.team_member_initials,
-        team_member_color=conv.team_member_color,
-        subject=conv.subject,
-        messages=[_msg_to_out(m, "team") for m in conv.messages],
-    )
-
-
-class _AdminSendBody(AdminSendRequest):
-    conversation_id: str
-
-
-@router.post(
-    "/admin/send",
-    response_model=SendMessageResponse,
-    summary="Admin: send a message into any conversation (X-Admin-Secret or admin bearer)",
-)
-async def admin_send(
-    payload: _AdminSendBody,
-    background_tasks: BackgroundTasks,
-    _admin: Optional[User] = Depends(require_admin_or_secret),
-    db: AsyncSession = Depends(get_db),
-) -> SendMessageResponse:
-    return await _admin_post_message(
-        conversation_id=payload.conversation_id,
-        content=payload.content,
-        sender_name=payload.sender_name,
-        admin_user=_admin,
-        background_tasks=background_tasks,
-        db=db,
-    )
-
-
-@router.post(
-    "/admin/conversations/{conversation_id}/send",
-    response_model=SendMessageResponse,
-    summary="Admin: send a message in a specific conversation",
-)
-async def admin_send_in_conversation(
-    conversation_id: str,
-    payload: AdminSendRequest,
-    background_tasks: BackgroundTasks,
-    _admin: Optional[User] = Depends(require_admin_or_secret),
-    db: AsyncSession = Depends(get_db),
-) -> SendMessageResponse:
-    return await _admin_post_message(
-        conversation_id=conversation_id,
-        content=payload.content,
-        sender_name=payload.sender_name,
-        admin_user=_admin,
-        background_tasks=background_tasks,
-        db=db,
-    )
-
-
-async def _admin_post_message(
-    *,
-    conversation_id: str,
-    content: str,
-    sender_name: str,
-    admin_user: Optional[User],
-    background_tasks: BackgroundTasks,
-    db: AsyncSession,
-) -> SendMessageResponse:
-    try:
-        cid = uuid.UUID(conversation_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.")
-
-    res = await db.execute(
-        select(Conversation)
-        .where(Conversation.id == cid)
-        .options(selectinload(Conversation.user))
-    )
-    conv = res.scalar_one_or_none()
-    if not conv:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
-
-    msg = Message(
-        conversation_id=cid,
-        content=content,
-        sender_type=MessageSenderType.team,
-        sender_name=sender_name,
-        sender_id=admin_user.id if admin_user else None,
-        is_read=False,
-    )
-    db.add(msg)
-    now = datetime.utcnow()
-    # Atomic increment — survives concurrent admin sends.
-    await db.execute(
-        update(Conversation)
-        .where(Conversation.id == cid)
-        .values(
-            last_message_at=now,
-            unread_count=Conversation.unread_count + 1,
-        )
-    )
-    await db.commit()
-    await db.refresh(msg)
-
-    user_id = str(conv.user_id)
-
-    # Push live to user (best-effort)
-    try:
-        await manager.send_to_user(user_id, _serialize_message_for_ws(msg, str(cid)))
-    except Exception as exc:
-        logger.warning("User WS push failed (user=%s): %s", user_id, exc)
-
-    # SMS only if offline; runs after response is sent.
-    background_tasks.add_task(_maybe_send_sms, msg.id, user_id)
-
-    return SendMessageResponse(message=_msg_to_out(msg, "team"))
-
-
-@router.post(
-    "/admin/conversations",
-    status_code=status.HTTP_201_CREATED,
-    summary="Admin: start a new conversation with a user",
-)
-async def admin_create_conversation(
-    payload: AdminStartConversationRequest,
-    background_tasks: BackgroundTasks,
-    _admin: Optional[User] = Depends(require_admin_or_secret),
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    try:
-        target_uuid = uuid.UUID(payload.user_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid user ID.")
-
-    user_res = await db.execute(select(User).where(User.id == target_uuid))
-    target_user = user_res.scalar_one_or_none()
-    if not target_user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
-
-    conv = Conversation(
-        user_id=target_uuid,
-        team_member_name=payload.sender_name,
-        team_member_initials=payload.team_member_initials,
-        team_member_color=payload.team_member_color,
-        subject=payload.subject,
-    )
-    db.add(conv)
-    await db.commit()
-    await db.refresh(conv)
-
-    initial_msg_id: Optional[str] = None
-    if payload.initial_message and payload.initial_message.strip():
-        msg = Message(
-            conversation_id=conv.id,
-            content=payload.initial_message.strip(),
-            sender_type=MessageSenderType.team,
-            sender_name=payload.sender_name,
-            sender_id=_admin.id if _admin else None,
-            is_read=False,
-        )
-        db.add(msg)
-        await db.execute(
-            update(Conversation)
-            .where(Conversation.id == conv.id)
-            .values(last_message_at=datetime.utcnow(), unread_count=1)
-        )
-        await db.commit()
-        await db.refresh(msg)
-        initial_msg_id = str(msg.id)
-
-        try:
-            await manager.send_to_user(
-                str(target_user.id),
-                _serialize_message_for_ws(msg, str(conv.id)),
-            )
-        except Exception as exc:
-            logger.warning("User WS push failed: %s", exc)
-        background_tasks.add_task(_maybe_send_sms, msg.id, str(target_user.id))
-
-    return {
-        "id": str(conv.id),
-        "subject": conv.subject,
-        "user_id": str(target_user.id),
-        "initial_message_id": initial_msg_id,
-    }
-
-
-# ── Backward-compat admin user-list endpoints (used by AdminPanel) ─────────────
 
 @router.get("/admin/users", response_model=list[AdminUserOut])
 async def admin_list_users(
     q: Optional[str] = Query(None),
     only_with_threads: bool = Query(False),
-    limit: int = Query(200, ge=1, le=500),
     _admin: Optional[User] = Depends(require_admin_or_secret),
     db: AsyncSession = Depends(get_db),
 ) -> list[AdminUserOut]:
@@ -641,36 +410,17 @@ async def admin_list_users(
         .group_by(Conversation.user_id)
         .subquery()
     )
-
-    # Admin-side unread = user messages with is_read=false
-    admin_unread_subq = (
-        select(
-            Conversation.user_id.label("uid"),
-            func.count(Message.id).label("admin_unread"),
-        )
-        .join(Message, Message.conversation_id == Conversation.id)
-        .where(
-            Message.sender_type == MessageSenderType.user,
-            Message.is_read.is_(False),
-        )
-        .group_by(Conversation.user_id)
-        .subquery()
-    )
-
     stmt = (
         select(
             User,
             func.coalesce(convo_count_subq.c.convo_count, 0).label("cc"),
             convo_count_subq.c.last_msg,
-            func.coalesce(admin_unread_subq.c.admin_unread, 0).label("ucnt"),
+            func.coalesce(convo_count_subq.c.unread, 0).label("ucnt"),
         )
         .outerjoin(convo_count_subq, convo_count_subq.c.uid == User.id)
-        .outerjoin(admin_unread_subq, admin_unread_subq.c.uid == User.id)
         .where(User.is_admin == False)  # noqa: E712
     )
-    if _admin is not None:
-        stmt = stmt.where(User.id != _admin.id)
-    if q:
+    if q and q.strip():
         like = f"%{q.strip().lower()}%"
         stmt = stmt.where(
             (func.lower(User.email).like(like))
@@ -679,13 +429,7 @@ async def admin_list_users(
         )
     if only_with_threads:
         stmt = stmt.where(convo_count_subq.c.convo_count > 0)
-
-    stmt = stmt.order_by(
-        desc(convo_count_subq.c.last_msg).nulls_last(),
-        User.first_name.asc(),
-    ).limit(limit)
-
-    rows = (await db.execute(stmt)).all()
+    rows = (await db.execute(stmt.order_by(desc(convo_count_subq.c.last_msg).nulls_last()))).all()
     return [
         AdminUserOut(
             id=str(u.id),
@@ -705,21 +449,17 @@ async def admin_list_users(
     ]
 
 
-@router.get(
-    "/admin/users/{user_id}/conversations",
-    response_model=list[ConversationOut],
-)
-async def admin_list_user_conversations(
+@router.get("/admin/users/{user_id}/conversations", response_model=list[ConversationOut])
+async def admin_user_conversations(
     user_id: str,
     _admin: Optional[User] = Depends(require_admin_or_secret),
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationOut]:
     try:
         uid = uuid.UUID(user_id)
-    except ValueError:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid user ID.")
-
-    last_msg_subq = (
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid user ID.") from exc
+    last_message_subq = (
         select(Message.content)
         .where(Message.conversation_id == Conversation.id)
         .order_by(desc(Message.created_at))
@@ -727,66 +467,147 @@ async def admin_list_user_conversations(
         .correlate(Conversation)
         .scalar_subquery()
     )
-    admin_unread_subq = (
-        select(func.count(Message.id))
-        .where(
-            Message.conversation_id == Conversation.id,
-            Message.sender_type == MessageSenderType.user,
-            Message.is_read.is_(False),
+    rows = (
+        await db.execute(
+            select(Conversation, last_message_subq.label("last_snippet"))
+            .where(Conversation.user_id == uid)
+            .order_by(desc(Conversation.last_message_at))
         )
-        .correlate(Conversation)
-        .scalar_subquery()
-    )
-
-    rows = (await db.execute(
-        select(
-            Conversation,
-            last_msg_subq.label("snippet"),
-            admin_unread_subq.label("unread"),
-        )
-        .where(Conversation.user_id == uid)
-        .order_by(desc(Conversation.last_message_at))
-    )).all()
-
+    ).all()
     return [
         ConversationOut(
-            id=str(c.id),
-            team_member_name=c.team_member_name,
-            team_member_initials=c.team_member_initials,
-            team_member_color=c.team_member_color,
-            subject=c.subject,
-            last_message_at=c.last_message_at,
-            last_message_snippet=(snip[:80] if snip else None),
-            unread_count=int(unread or 0),
+            id=str(conv.id),
+            team_member_name=conv.team_member_name,
+            team_member_initials=conv.team_member_initials,
+            team_member_color=conv.team_member_color,
+            subject=conv.subject,
+            last_message_at=conv.last_message_at,
+            unread_count=int(conv.unread_count or 0),
+            last_message_snippet=(snippet[:60] if snippet else None),
         )
-        for c, snip, unread in rows
+        for conv, snippet in rows
     ]
 
 
-# ── WebSocket endpoints ───────────────────────────────────────────────────────
+@router.post("/admin/conversations", status_code=status.HTTP_201_CREATED)
+async def admin_start_conversation(
+    payload: AdminStartConversationRequest,
+    background_tasks: BackgroundTasks,
+    admin_user: Optional[User] = Depends(require_admin_or_secret),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Compatibility endpoint: upsert the one allowed admin conversation."""
+    try:
+        uid = uuid.UUID(payload.user_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid user ID.") from exc
 
-async def _ws_authed_user(token: str) -> Optional[uuid.UUID]:
-    """Decode JWT off the event loop (jose's HMAC verify is fast but still sync)."""
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.user_id == uid,
+                Conversation.is_admin_conversation.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        conv = Conversation(
+            user_id=uid,
+            team_member_name=payload.sender_name,
+            team_member_initials=payload.team_member_initials,
+            team_member_color=payload.team_member_color,
+            subject=payload.subject,
+            is_admin_conversation=True,
+            unread_count=0,
+        )
+        db.add(conv)
+        await db.commit()
+        await db.refresh(conv)
+
+    initial_message_id = None
+    if payload.initial_message and payload.initial_message.strip():
+        msg = Message(
+            conversation_id=conv.id,
+            content=payload.initial_message.strip(),
+            sender_type=MessageSenderType.team,
+            sender_name=payload.sender_name,
+            sender_id=admin_user.id if admin_user else None,
+            is_read=False,
+            sms_notification_sent=False,
+        )
+        db.add(msg)
+        await db.execute(
+            update(Conversation)
+            .where(Conversation.id == conv.id)
+            .values(
+                unread_count=Conversation.unread_count + 1,
+                last_message_at=datetime.utcnow(),
+            )
+        )
+        await db.commit()
+        await db.refresh(msg)
+        initial_message_id = str(msg.id)
+        background_tasks.add_task(
+            manager.send_to_user, str(uid), _serialize_ws_message(msg, str(conv.id))
+        )
+        background_tasks.add_task(_maybe_send_team_sms, msg.id, str(uid))
+
+    return {
+        "id": str(conv.id),
+        "subject": conv.subject,
+        "user_id": str(uid),
+        "initial_message_id": initial_message_id,
+    }
+
+
+@router.get("/admin/conversations/{conversation_id}", response_model=ConversationDetailOut)
+async def admin_get_conversation(
+    conversation_id: str,
+    _admin: Optional[User] = Depends(require_admin_or_secret),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationDetailOut:
+    try:
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
+
+    conv = (
+        await db.execute(
+            select(Conversation)
+            .where(Conversation.id == conv_id)
+            .options(selectinload(Conversation.messages))
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
+
+    return ConversationDetailOut(
+        id=str(conv.id),
+        team_member_name=conv.team_member_name,
+        team_member_initials=conv.team_member_initials,
+        team_member_color=conv.team_member_color,
+        subject=conv.subject,
+        messages=[_to_message_out(m, MessageSenderType.team) for m in conv.messages],
+    )
+
+
+async def _ws_authenticated_user(token: str) -> Optional[uuid.UUID]:
     payload = await asyncio.to_thread(decode_access_token, token)
-    if not payload:
-        return None
-    sub = payload.get("sub")
-    if not sub:
+    if not payload or not payload.get("sub"):
         return None
     try:
-        return uuid.UUID(sub)
+        return uuid.UUID(payload["sub"])
     except ValueError:
         return None
 
 
 @router.websocket("/ws/inbox")
-async def websocket_user_inbox(
+async def user_inbox_ws(
     websocket: WebSocket,
     token: str = Query(...),
 ) -> None:
-    """User WebSocket: receives `new_message` events for their conversations."""
-    user_uuid = await _ws_authed_user(token)
-    if user_uuid is None:
+    user_uuid = await _ws_authenticated_user(token)
+    if not user_uuid:
         await websocket.close(code=4001, reason="Unauthorized")
         return
 
@@ -795,56 +616,35 @@ async def websocket_user_inbox(
     try:
         await websocket.send_text(json.dumps({"event": "connected", "user_id": user_id}))
         while True:
-            try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=20.0)
-                try:
-                    parsed = json.loads(data)
-                except json.JSONDecodeError:
-                    parsed = {}
-                if parsed.get("type") == "ping":
-                    await websocket.send_text(json.dumps({"event": "pong"}))
-            except asyncio.TimeoutError:
-                await websocket.send_text(json.dumps({"event": "ping"}))
-            except WebSocketDisconnect:
-                break
+            raw = await websocket.receive_text()
+            parsed = json.loads(raw) if raw else {}
+            if parsed.get("type") == "ping":
+                await websocket.send_text(json.dumps({"event": "pong"}))
     except WebSocketDisconnect:
         pass
-    except Exception as exc:
-        logger.warning("User WS error (user=%s): %s", user_id, exc)
     finally:
         await manager.disconnect_user(websocket, user_id)
 
 
 @router.websocket("/ws/admin")
-async def websocket_admin_firehose(
+async def admin_inbox_ws(
     websocket: WebSocket,
     secret: str = Query(...),
 ) -> None:
-    """Admin firehose: receives every `new_message` from every user, real-time."""
     settings = get_settings()
     if not settings.ADMIN_SECRET or secret != settings.ADMIN_SECRET:
-        await websocket.close(code=4003, reason="Forbidden")
+        await websocket.close(code=4001, reason="Forbidden")
         return
 
     await manager.connect_admin(websocket)
     try:
         await websocket.send_text(json.dumps({"event": "admin_connected"}))
         while True:
-            try:
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=20.0)
-                try:
-                    parsed = json.loads(data)
-                except json.JSONDecodeError:
-                    parsed = {}
-                if parsed.get("type") == "ping":
-                    await websocket.send_text(json.dumps({"event": "pong"}))
-            except asyncio.TimeoutError:
-                await websocket.send_text(json.dumps({"event": "ping"}))
-            except WebSocketDisconnect:
-                break
+            raw = await websocket.receive_text()
+            parsed = json.loads(raw) if raw else {}
+            if parsed.get("type") == "ping":
+                await websocket.send_text(json.dumps({"event": "pong"}))
     except WebSocketDisconnect:
         pass
-    except Exception as exc:
-        logger.warning("Admin WS error: %s", exc)
     finally:
         await manager.disconnect_admin(websocket)
