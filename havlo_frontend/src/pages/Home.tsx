@@ -106,7 +106,7 @@ export const Home: React.FC = () => {
             >
               Sell My Property Faster
             </button>
-            <div className="flex flex-row items-center justify-center gap-3">
+            <div className="flex flex-row items-center justify-center gap-3 px-4">
               <button
                 onClick={() => navigate('/buy-abroad')}
                 className="w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
