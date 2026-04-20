@@ -40,20 +40,29 @@ export const EliteProperty: React.FC = () => {
     <div className="flex flex-col w-full overflow-hidden bg-white">
       {/* 1. Hero Section */}
       <HeroSection 
-        overline="Global Property Advisory"
         title="Sell Your Property to the World, Not Just Your Local Market"
         subtitle="Havlo connects your property directly with vetted foreign buyers actively looking to acquire real estate abroad—helping you achieve faster, more strategic sales."
         imageSrc="/Mask group2.png"
         buttonText="Access Global Buyers"
         onButtonClick={() => openModal('create-account')}
-        titleStyle={{ marginTop: '39px', fontSize: '88px', lineHeight: '1.0' }}
-        overlineStyle={{ marginTop: '-59px' }}
-        subtitleStyle={{ marginTop: '-20px' }}
-        imageStyle={{ marginTop: '-50px' }}
-        containerStyle={{ marginTop: '-25px' }}
+        titleStyle={{ fontSize: '88px', lineHeight: '1.0' }}
       />
 
-      {/* 2. What Makes Havlo Different */}
+      {/* 2. Reviews Section */}
+      <section className="flex w-full flex-col items-center bg-white px-4 pt-12 sm:px-10 lg:px-[100px]">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
+            Excellent
+          </h2>
+          <TrustpilotStars className="h-[45px]" />
+          <p className="font-body text-[22px] font-normal text-black">
+            Based on <span className="font-bold underline">359 reviews</span>
+          </p>
+        </div>
+        <AutoScrollReviews reviews={elitePropertyReviews} bgColor="#F5F5F3" />
+      </section>
+
+      {/* 3. What Makes Havlo Different */}
       <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] px-4 py-20 sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col items-center justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
@@ -88,20 +97,6 @@ export const EliteProperty: React.FC = () => {
             />
           </div>
         </div>
-      </section>
-
-      {/* 3. Reviews Section */}
-      <section className="flex w-full flex-col items-center bg-white px-4 pt-20 sm:px-10 lg:px-[100px]">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <h2 className="font-body text-[40px] font-medium leading-none tracking-[-0.8px] text-[#040504]">
-            Excellent
-          </h2>
-          <TrustpilotStars className="h-[45px]" />
-          <p className="font-body text-[22px] font-normal text-black">
-            Based on <span className="font-bold underline">359 reviews</span>
-          </p>
-        </div>
-        <AutoScrollReviews reviews={elitePropertyReviews} bgColor="#F5F5F3" />
       </section>
 
       {/* 4. What We Do */}
@@ -144,7 +139,7 @@ export const EliteProperty: React.FC = () => {
               icon: <Star className="text-havlo-purple" size={24} />,
             },
           ].map((item, idx) => (
-            <div key={idx} className="flex flex-col gap-14 rounded-xl bg-[#F7F9F6] p-8">
+            <div key={idx} className="flex flex-col gap-3 rounded-xl bg-[#F7F9F6] p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F7DEFC]">
                 {item.icon}
               </div>
@@ -162,7 +157,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 5. Why Sellers Choose Havlo (Purple Section) */}
-      <section className="relative flex flex-col items-center gap-14 bg-[#A409D2] px-4 pt-32 pb-48 sm:px-10 lg:px-[100px] overflow-hidden">
+      <section className="relative flex flex-col items-center gap-6 bg-[#A409D2] px-4 pt-8 pb-16 sm:px-10 lg:px-[100px] overflow-hidden">
         <div className="flex flex-col items-center gap-8 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-white" />
@@ -184,7 +179,7 @@ export const EliteProperty: React.FC = () => {
             { num: "05", title: "Speed Through Targeting", desc: "More relevant exposure means fewer delays and a higher probability of serious offers." },
             { num: "06", title: "Discreet & Professional", desc: "We operate with confidentiality and precision, ideal for high-value or sensitive transactions." },
           ].map((item, idx) => (
-            <div key={idx} className="flex flex-col gap-14 border-l-2 border-white p-5">
+            <div key={idx} className="flex flex-col gap-3 border-l-2 border-white p-5">
               <span className="font-body text-2xl font-bold text-white">{item.num}</span>
               <div className="flex flex-col gap-6">
                 <h3 className="font-body text-2xl font-bold leading-[1.2] text-white">
@@ -206,7 +201,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 6. Private International Buyer Advisory */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-40 pb-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-16 pb-20 sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col gap-14">
           <div className="flex flex-col gap-8">
             <div className="flex items-center gap-3">
@@ -371,7 +366,7 @@ export const EliteProperty: React.FC = () => {
             </div>
           </div>
           <p className="font-body text-base leading-[1.6] text-black">
-            <span className="font-bold">Havlo</span> is not a <span className="font-bold">brokerage</span>. We are a global property exposure platform—designed to position your asset directly in front of buyers actively seeking opportunities beyond their borders. We work alongside your existing agent, enhancing their efforts by presenting your property to a carefully curated international audience beyond their reach—helping you achieve a more strategic and efficient sale.
+            <span className="font-bold">Havlo</span> is not a brokerage. We are a global property exposure platform—designed to position your asset directly in front of buyers actively seeking opportunities beyond their borders. We work alongside your existing agent, enhancing their efforts by presenting your property to a carefully curated international audience beyond their reach—helping you achieve a more strategic and efficient sale.
           </p>
         </div>
       </section>
