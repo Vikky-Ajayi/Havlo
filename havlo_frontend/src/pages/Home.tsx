@@ -167,7 +167,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="w-full bg-white px-4 pt-2.5 lg:pt-4 sm:px-6 lg:px-10">
+      <section className="w-full bg-white px-4 lg:pt-4 sm:px-6 lg:px-10 pt-[0px]">
         <AutoScrollReviews
           reviews={homeReviews}
           bgColor="#F5F5F3"
