@@ -1,12 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../lib/api';
 import { Button } from '../ui/Button';
-import { ChevronDown } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { CountryCodeSelect } from '../shared/CountryCodeSelect';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
@@ -26,7 +24,6 @@ export const CreateAccountModal: React.FC = () => {
   const [repeatPassword, setRepeatPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRepeatPassword, setShowRepeatPassword] = useState(false);
-  const [isRoleOpen, setIsRoleOpen] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -173,47 +170,18 @@ export const CreateAccountModal: React.FC = () => {
               />
             </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsRoleOpen(!isRoleOpen)}
-                className="flex w-full items-center justify-between rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4 font-body text-base font-medium tracking-[-0.32px] text-black outline-none transition-all hover:border-black/20"
+            <div className="flex flex-col gap-2">
+              <label className="font-body text-sm font-medium text-black/80">Select your role</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4 font-body text-base font-medium tracking-[-0.32px] text-black outline-none"
               >
-                <span className={role ? 'text-black' : 'text-black/50'}>
-                  {role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Select your role'}
-                </span>
-                <ChevronDown 
-                  size={20} 
-                  className={cn("text-black/50 transition-transform duration-200", isRoleOpen && "rotate-180")} 
-                />
-              </button>
-              
-              {isRoleOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-[60]" 
-                    onClick={() => setIsRoleOpen(false)} 
-                  />
-                  <div className="absolute top-full left-0 z-[70] mt-2 w-full overflow-hidden rounded-xl border border-[rgba(58,60,62,0.10)] bg-white shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
-                    {['buyer', 'seller', 'agent'].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => {
-                          setRole(option);
-                          setIsRoleOpen(false);
-                        }}
-                        className={cn(
-                          "w-full px-4 py-3 text-left font-body text-base font-medium transition-colors hover:bg-[rgba(36,38,40,0.05)]",
-                          role === option ? "bg-[rgba(36,38,40,0.10)] text-black" : "text-black/70"
-                        )}
-                      >
-                        {option.charAt(0).toUpperCase() + option.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+                <option value="" disabled>Select your role</option>
+                <option value="seller">Seller / Homeowner</option>
+                <option value="agent">Agent</option>
+                <option value="buyer">Buyer</option>
+              </select>
             </div>
 
             <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">

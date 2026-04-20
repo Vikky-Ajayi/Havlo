@@ -4,12 +4,20 @@ import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
 
 const auditReviews = [
-  { title: 'Clarity we needed', content: 'After following the Property Sale Audit recommendations, our property attracted multiple offers in just 2 weeks. The process was clear, actionable, and saved us months of frustration.', author: 'Homeowner, Surrey' },
-  { title: 'Finally understood why it wasn\'t selling', content: 'We\'d been on the market for 9 months with barely any viewings. The audit identified three clear issues we hadn\'t considered. Once we fixed them, we had an offer within 3 weeks.', author: 'Seller, Bristol' },
-  { title: 'Independent and honest', content: 'Unlike our agent, Havlo gave us completely independent advice. No agenda, just clear recommendations. Worth every penny.', author: 'Homeowner, Manchester' },
   { title: 'Saved us from another price reduction', content: 'We were about to drop our price again. The audit showed pricing wasn\'t actually the core issue — it was the listing quality and lack of international exposure. Game changer.', author: 'Seller, London' },
   { title: 'Professional and detailed', content: 'The report was incredibly thorough. We had a clear action plan and our agent was happy to implement the changes. Sold within a month of relaunching.', author: 'Homeowner, Leeds' },
   { title: 'Worth it for the peace of mind alone', content: 'After 6 months of nothing, this audit gave us real confidence that we were doing the right things. The recommendations were specific, not generic.', author: 'Seller, Edinburgh' },
+  { title: 'Clarity we needed', content: 'After following the Property Sale Audit recommendations, our property attracted multiple offers in just 2 weeks. The process was clear, actionable, and saved us months of frustration.', author: 'Homeowner, Surrey' },
+  { title: 'Finally understood why it wasn\'t selling', content: 'We\'d been listed 2 years with barely any viewings. The audit identified three clear issues we hadn\'t considered. Once we fixed them, we had an offer within 3 weeks.', author: 'Seller, Bristol' },
+  { title: 'Gave us clarity we didn\'t have before', content: 'We couldn\'t understand why our property wasn\'t selling. The Havlo assessment clearly identified the issues and gave us a solid plan to move forward.', author: 'Andrew, Guildford' },
+  { title: 'Eye-opening and extremely helpful', content: 'The audit highlighted pricing and presentation issues we had completely overlooked. It gave us a clear direction and renewed confidence.', author: 'Rachel, Cambridge' },
+  { title: 'Exactly what we needed', content: 'After months of no progress, the assessment showed us exactly what was holding the sale back. The recommendations were practical and easy to implement.', author: 'Tom, Brighton' },
+  { title: 'Clear, honest and actionable advice', content: 'Havlo didn\'t just guess-they provided real insights backed by data. It helped us understand our position in the market properly.', author: 'Louise, York' },
+  { title: 'Helped us fix key issues quickly', content: 'We made a few key changes based on the audit, and the difference was immediate. Much more interest and better quality enquiries.', author: 'Chris, Milton Keynes' },
+  { title: 'Professional and insightful service', content: 'The level of detail in the report was impressive. It felt like a proper strategy rather than just general advice.', author: 'Hassan, Doha' },
+  { title: 'A smart first step before relaunching', content: 'Before switching agents, this audit helped us get everything right. It saved us time and avoided repeating mistakes.', author: 'Emma, Chelmsford' },
+  { title: 'Straightforward and effective', content: 'No fluff-just clear reasons why our property wasn\'t selling and what to do next. Exactly what we needed.', author: 'Daniel, Southampton' },
+  { title: 'Worth it for the clarity alone', content: 'Even before relaunching, the audit gave us a completely new perspective on how our property was being seen by buyers.', author: 'Priya, Harrow' },
 ];
 
 const RelaunchHeroSection: React.FC = () => {
@@ -86,7 +94,7 @@ export const RelaunchAssessment: React.FC = () => {
       </div>
 
       {/* 2. The Problem Section */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
             THE PROBLEM
@@ -123,7 +131,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 3. What You Get Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#F9F8F9] px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#F9F8F9] px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
             WHAT YOU GET
@@ -162,7 +170,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 4. How It Works Section */}
-      <section className="flex w-full flex-col items-center justify-center bg-black px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex w-full flex-col items-center justify-center bg-black px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col items-start justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
             <span className="font-body text-lg font-medium uppercase tracking-tight text-havlo-purple">
@@ -194,7 +202,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 5. Why Us Section */}
-      <section className="flex flex-col items-center gap-14 bg-black px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-black px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-white">
             WHY US
@@ -213,7 +221,7 @@ export const RelaunchAssessment: React.FC = () => {
             { title: "Saves time, stress, and money", sub: "Helps you avoid prolonged time on the market, price reductions, and missed buyer demand.", italic: false },
             { title: "Premium, actionable insights", sub: "Clear, specific recommendations tailored to your property — not generic advice.", italic: false },
             { title: "Conducted by agents", sub: "Reviewed by professionals actively selling in your market, with real-time local insight.", italic: false },
-            { title: "Works alongside your current agent", sub: "Designed to complement your current agent — no switching or disruption required.", italic: true },
+            { title: "Works alongside your current agent", sub: "Designed to complement your current agent — no switching or disruption required.", italic: false },
           ].map((item, idx) => (
             <div key={idx} className="flex items-start gap-4 rounded-[20px] bg-white/10 p-8">
               <div className="h-3 w-3 rounded-full bg-havlo-purple mt-2 shrink-0" />

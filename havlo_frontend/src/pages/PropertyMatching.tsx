@@ -82,7 +82,7 @@ export const PropertyMatching: React.FC = () => {
       </section>
 
       {/* Why Havlo Property Matching? Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#F9F9F9] px-6 lg:px-[100px] py-20 lg:py-32">
+      <section className="flex flex-col items-center gap-14 bg-[#F9F9F9] px-6 lg:px-[100px] py-1 md:py-20">
         <h2 className="font-display text-[48px] lg:text-[56px] font-black leading-[1.1] text-[#040504]">
           Why Havlo Property Matching?
         </h2>
@@ -121,7 +121,7 @@ export const PropertyMatching: React.FC = () => {
       </section>
 
       {/* Form Section */}
-      <section className="flex flex-col items-center gap-10 py-20 lg:py-32 px-6 lg:px-[100px] bg-white">
+      <section className="flex flex-col items-center gap-10 py-1 md:py-20 px-6 lg:px-[100px] bg-white">
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="max-w-[482px] font-display text-[44px] font-black leading-[1.1] text-[#050405]">
             Find your perfect property
@@ -222,7 +222,7 @@ export const PropertyMatching: React.FC = () => {
               />
             </div>
 
-            <button className="w-full md:w-[258px] h-14 rounded-[48px] bg-black text-white font-body text-base font-semibold tracking-[-0.16px] hover:bg-black/90 transition-colors self-center">
+            <button className="w-full md:w-[258px] h-10 sm:h-14 rounded-[48px] bg-black text-white font-body text-sm sm:text-base font-semibold tracking-[-0.16px] hover:bg-black/90 transition-colors self-center">
               Start my property match
             </button>
           </form>

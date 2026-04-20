@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 const elitePropertyReviews = [
   { title: 'Highly targeted and effective', content: 'Havlo’s Elite Property Introductions connected us with serious offshore buyers. The quality of interest was far better than anything we’d seen before.', author: 'James, London' },
   { title: 'Reached the right buyers globally', content: 'The tailored campaigns brought our property directly to high-net-worth international buyers. We saw genuine enquiries within a short period.', author: 'Amira, Dubai' },
-  { title: 'Exceptional exposure to HNWI buyers', content: 'We were impressed by how precisely Havlo targeted the right audience. The enquires were high quality and aligned perfectly with our property.', author: 'Charles, London' },
+  { title: 'Exceptional exposure to HNWI buyers', content: 'We were impressed by how precisely Havlo targeted the right audience. The enquiries were high quality and aligned perfectly with our property.', author: 'Charles, London' },
   { title: 'Premium service with real results', content: 'The Elite Property Introductions service delivered exactly what it promised—access to qualified offshore buyers ready to transact.', author: 'Oliver, Manchester' },
   { title: 'A smarter way to market luxury property', content: 'Havlo’s approach is far more advanced than traditional methods. It put our property in front of the right global audience.', author: 'Sophie, London' },
   { title: 'High-quality international enquiries', content: 'Instead of general interest, we received serious enquiries from buyers who were clearly financially capable and ready to proceed.', author: 'Ahmed, Doha' },
@@ -66,7 +66,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 3. What Makes Havlo Different */}
-      <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col items-center justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
             <div className="flex items-center gap-3">
@@ -103,7 +103,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 4. What We Do */}
-      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-black" />
@@ -160,7 +160,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 5. Why Sellers Choose Havlo (Purple Section) */}
-      <section className="relative flex flex-col items-center gap-5 bg-[#A409D2] px-4 pt-7 pb-14 sm:px-10 lg:px-[100px] overflow-hidden">
+      <section className="relative flex flex-col items-center gap-5 bg-[#A409D2] px-4 pt-1 md:pt-7 pb-1 md:pb-14 sm:px-10 lg:px-[100px] overflow-hidden">
         <div className="flex flex-col items-center gap-8 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-white" />
@@ -204,7 +204,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 6. Private International Buyer Advisory */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-14 pb-[72px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-1 md:pt-14 pb-1 md:pb-[72px] sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col gap-14">
           <div className="flex flex-col gap-8">
             <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 7. How It Works */}
-      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-black" />
@@ -360,7 +360,7 @@ export const EliteProperty: React.FC = () => {
                 {whoThisIsFor.map((item) => (
                   <li
                     key={item}
-                    className="inline-flex w-fit items-center rounded-full border border-havlo-purple px-5 py-2 font-body text-sm font-medium text-havlo-purple whitespace-nowrap"
+                    className="inline-flex max-w-full items-center rounded-full border border-havlo-purple px-5 py-2 font-body text-sm font-medium text-havlo-purple whitespace-normal"
                   >
                     {item}
                   </li>
@@ -375,7 +375,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 8. Tap Into Global Demand */}
-      <section className="flex flex-col items-center gap-8 bg-white px-4 py-20 text-center">
+      <section className="flex flex-col items-center gap-8 bg-white px-4 py-1 md:py-20 text-center">
         <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] sm:text-[56px]">
           Tap Into Global Demand
         </h2>
@@ -384,7 +384,7 @@ export const EliteProperty: React.FC = () => {
         </p>
         <button 
           onClick={() => openModal('create-account')}
-          className="flex items-center gap-3 rounded-full bg-black px-8 py-4 font-body text-lg font-medium uppercase text-white transition-all hover:bg-black/90"
+          className="flex h-10 sm:h-14 w-full sm:w-auto items-center justify-center gap-3 rounded-full bg-black px-8 py-4 font-body text-sm sm:text-lg font-medium uppercase text-white transition-all hover:bg-black/90"
         >
           Access Global Buyers
           <ArrowRight size={18} />

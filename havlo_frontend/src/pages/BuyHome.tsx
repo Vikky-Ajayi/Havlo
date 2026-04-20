@@ -85,7 +85,7 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* 2. What we offer Section */}
-      <section className="w-full bg-[#FFFFFE] py-20 px-4 sm:px-10 lg:px-[100px]">
+      <section className="w-full bg-[#FFFFFE] py-1 md:py-20 px-4 sm:px-10 lg:px-[100px]">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-12 items-start">
           <div className="lg:w-1/3 flex flex-col gap-10">
             <h2 className="font-display text-[64px] md:text-[80px] font-medium leading-[1] tracking-[-1.6px] text-black">
@@ -153,7 +153,7 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* 3. How it works Section */}
-      <section className="w-full py-24 px-4 sm:px-10 lg:px-[100px] bg-gradient-to-b from-[#9BD9FF] via-[#FFB0E8] to-[#FFB0E8]/50 overflow-hidden">
+      <section className="w-full py-1 md:py-24 px-4 sm:px-10 lg:px-[100px] bg-gradient-to-b from-[#9BD9FF] via-[#FFB0E8] to-[#FFB0E8]/50 overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-col items-center text-center gap-12">
           <div className="flex flex-col gap-4">
             <h2 className="font-display text-[64px] md:text-[80px] font-black leading-[1] tracking-[-1.6px] text-black">
@@ -260,7 +260,7 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* 4. Let's talk fees Section */}
-      <section className="w-full bg-[#FFFFFE] py-24 px-4 sm:px-10 lg:px-[100px]">
+      <section className="w-full bg-[#FFFFFE] py-1 md:py-24 px-4 sm:px-10 lg:px-[100px]">
         <div className="max-w-7xl mx-auto rounded-[32px] bg-[#040504] p-10 lg:p-20 flex flex-col lg:flex-row gap-16 items-center">
           <div className="lg:w-1/2 flex flex-col gap-10">
             <h2 className="font-display text-[64px] md:text-[88px] font-medium leading-[1] tracking-[-1.76px] text-white">

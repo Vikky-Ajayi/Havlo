@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { usePaymentReturnPoller } from '../lib/paymentReturn';
+import { useConfig } from '../hooks/useConfig';
 
 interface Plan {
   id: string;
@@ -81,7 +82,7 @@ const plans: Plan[] = [
     id: 'private-client',
     name: 'Private Client',
     tag: 'BESPOKE',
-    description: 'For high-value properties that demand a campaign built entirely around them. Pricing tailored to scope - discussed privately.',
+    description: 'For high-value properties that demand a campaign built entirely around them. Pricing tailored to scope — discussed privately.',
     setupPrice: '£5,000',
     monthlyPrice: '£3,500',
     setupAmount: 5000,
@@ -98,10 +99,13 @@ const plans: Plan[] = [
 ];
 
 export const DashboardSellFaster: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const config = useConfig();
+  const calendlyLink = config.calendly_link || 'https://calendly.com/havlo';
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [isPrivateClientModalOpen, setIsPrivateClientModalOpen] = useState(false);
   const [contactPreference, setContactPreference] = useState<'you' | 'agent'>('you');
   const [listingUrl, setListingUrl] = useState('');
   const [contactName, setContactName] = useState('');
@@ -110,6 +114,10 @@ export const DashboardSellFaster: React.FC = () => {
   const [contactPhoneCode, setContactPhoneCode] = useState('+44');
 
   const handlePlanSelect = (plan: Plan) => {
+    if (plan.id === 'private-client') {
+      setIsPrivateClientModalOpen(true);
+      return;
+    }
     setSelectedPlan(plan);
     setIsDrawerOpen(true);
   };
@@ -257,7 +265,7 @@ export const DashboardSellFaster: React.FC = () => {
                     plan.isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-[#E0E1E4] text-[#1F1F1E] hover:bg-gray-50'
                   }`}
                 >
-                  CONTINUE TO PAYMENT
+                  {plan.id === 'private-client' ? 'Talk to our Team' : 'CONTINUE TO PAYMENT'}
                 </button>
               </div>
             ))}
@@ -413,6 +421,57 @@ export const DashboardSellFaster: React.FC = () => {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isPrivateClientModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPrivateClientModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-[560px] rounded-[20px] bg-white p-8 shadow-2xl"
+            >
+              <button
+                onClick={() => setIsPrivateClientModalOpen(false)}
+                className="absolute right-4 top-4 h-8 w-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10"
+              >
+                <X size={16} />
+              </button>
+              <h3 className="font-display text-[32px] font-black leading-[1.1] text-black pr-8">
+                {user?.first_name ? `${user.first_name}! We've got your details.` : `We've got your details.`}
+              </h3>
+              <p className="mt-4 font-body text-base text-black/70">
+                A dedicated advisor will be in touch shortly. Want to speak with us right away? Choose how you'd like to connect:
+              </p>
+              <div className="mt-6 flex flex-col gap-3">
+                <a
+                  href="https://wa.me/message/PPPAWIAXBS7YK1"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-12 rounded-full bg-[#60D769] text-white px-6 flex items-center justify-center font-body text-base font-semibold"
+                >
+                  Chat with us on WhatsApp
+                </a>
+                <a
+                  href={calendlyLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-12 rounded-full bg-black text-white px-6 flex items-center justify-center font-body text-base font-semibold"
+                >
+                  Book a Calendly call
+                </a>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

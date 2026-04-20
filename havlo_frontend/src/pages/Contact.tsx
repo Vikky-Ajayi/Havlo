@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Calendar, MessageCircle, ChevronDown } from 'lucide-react';
+import { Mail, Calendar, MessageCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { CountrySelect } from '../components/shared/CountrySelect';
-import { cn } from '../lib/utils';
 import { useConfig } from '../hooks/useConfig';
 
 export const Contact: React.FC = () => {
@@ -11,9 +10,6 @@ export const Contact: React.FC = () => {
   const config = useConfig();
   const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
   const calendlyLabel = calendlyLink.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const [currency, setCurrency] = useState('GBP');
-  const [currencyOpen, setCurrencyOpen] = useState(false);
-  const currencies = ['USD', 'GBP', 'EUR'];
   const [countryOfResidence, setCountryOfResidence] = useState('');
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
@@ -91,70 +87,6 @@ export const Contact: React.FC = () => {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="flex flex-col gap-4">
                   <label className="font-body text-sm font-bold text-[#001C47]">
-                    Currency<span className="text-[#FA4242]">*</span>
-                  </label>
-                  <div className="flex h-12 w-full items-center rounded-lg bg-[#EEF0F2] px-2">
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setCurrencyOpen(o => !o)}
-                        aria-haspopup="listbox"
-                        aria-expanded={currencyOpen}
-                        className="flex h-8 items-center gap-1 rounded-lg bg-[#DDD] px-2 cursor-pointer hover:bg-[#CCC] transition-colors"
-                      >
-                        <span className="font-body text-sm font-medium text-black/80">{currency}</span>
-                        <ChevronDown
-                          className={cn(
-                            'h-3 w-3 text-black/80 transition-transform',
-                            currencyOpen && 'rotate-180',
-                          )}
-                        />
-                      </button>
-                      {currencyOpen && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-[60]"
-                            onClick={() => setCurrencyOpen(false)}
-                          />
-                          <ul
-                            role="listbox"
-                            className="absolute top-full left-0 z-[70] mt-1 w-28 overflow-hidden rounded-xl border border-[rgba(58,60,62,0.10)] bg-white shadow-xl"
-                          >
-                            {currencies.map(c => (
-                              <li key={c}>
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={currency === c}
-                                  onClick={() => {
-                                    setCurrency(c);
-                                    setCurrencyOpen(false);
-                                  }}
-                                  className={cn(
-                                    'w-full px-3 py-2 text-left font-body text-sm text-black/80 transition-colors hover:bg-gray-50',
-                                    currency === c && 'bg-gray-100 font-semibold',
-                                  )}
-                                >
-                                  {c}
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Amount"
-                      className="flex-1 bg-transparent px-3 font-body text-xs text-[#676B80] placeholder:text-[#676B80]/50 focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="flex flex-col gap-4">
-                  <label className="font-body text-sm font-bold text-[#001C47]">
                     Country of residence
                   </label>
                   <CountrySelect
@@ -176,7 +108,7 @@ export const Contact: React.FC = () => {
               </div>
 
               <div className="flex justify-center pt-4">
-                <Button className="h-14 w-full max-w-[258px] rounded-[48px] bg-black text-base font-semibold text-white hover:bg-black/90">
+                <Button className="h-10 sm:h-14 w-full max-w-[258px] rounded-[48px] bg-black text-sm sm:text-base font-semibold text-white hover:bg-black/90">
                   Submit
                 </Button>
               </div>

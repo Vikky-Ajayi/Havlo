@@ -78,7 +78,7 @@ export const DashboardSaleAudit: React.FC = () => {
 
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
-          {/* Card 1: Request Property Assessment */}
+          {/* Card 1: Request Property Sale Audit */}
           <div className="flex flex-col p-6 sm:p-8 lg:p-10 rounded-[20px] border border-[#F1F1F0] bg-white lg:min-h-[502px] justify-between gap-8">
             <div className="space-y-10">
               <div className="h-14 w-14 rounded-full bg-[#F0F0F0] flex items-center justify-center">
@@ -86,7 +86,7 @@ export const DashboardSaleAudit: React.FC = () => {
               </div>
               <div className="space-y-6">
                 <h3 className="font-display text-2xl lg:text-[32px] font-black leading-none tracking-[-0.64px] text-black">
-                  Request Property Assessment
+                  Request Property Sale Audit
                 </h3>
                 <p className="font-body text-base font-medium leading-[1.25] tracking-[-0.32px] text-black/70">
                   Get a professional evaluation of your property’s value, potential, and market fit. Our experts provide clear insights to help you make informed decisions.
@@ -218,7 +218,7 @@ export const DashboardSaleAudit: React.FC = () => {
 
                     <div className="p-4 rounded-xl border border-[#CCE3FF] bg-[#D6E9FF]">
                       <p className="font-body text-base leading-relaxed tracking-[-0.32px] text-black">
-                        <span className="font-bold">Total fee: £1,999.99</span>, payable as a one-time relaunch assessment fee upfront. Includes a full PDF report and a <span className="font-bold">30–60 minute consultation call.</span>
+                        Total fee: £1,999.99, payable as a one-time property sale audit fee. Includes a full comprehensive report and an optional walkthrough call.
                       </p>
                     </div>
                   </div>

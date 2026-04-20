@@ -18,7 +18,7 @@ const buyAbroadReviews = [
   { title: 'Perfect for commercial property', content: 'I used Havlo to purchase a commercial space abroad. The whole process was smooth, and I could track everything online.', author: 'Al-Fahad', time: 'Dubai' },
   { title: 'Hassle-free overseas property buying', content: "I've tried a few platforms before, but Havlo made buying my apartment abroad so straightforward. Clear listings, easy communication, and really helpful support. Highly recommend!", author: 'Daniel', time: 'London' },
   { title: 'Easy and stress-free', content: 'The platform made what I thought would be complicated very simple. From property search to legal documentation, everything was clearly explained.', author: 'Mark', time: 'Toronto' },
-  { title: 'Perfect for first-time international buyers', content: "As someone new to buying abroad, I felt supported at every stage. Havlo's guidance is top-notch.", author: 'Wei', time: 'Shanghai' },
+  { title: 'Perfect for first-time international buyers', content: "As someone new to buying abroad, I felt supported at every stage. Havlo's guidance is top notch.", author: 'Wei', time: 'Shanghai' },
   { title: 'Smooth commercial property purchase', content: 'Everything was straightforward. The advisory team kept me informed and I was able to close my investment without any stress.', author: 'George', time: 'Monte Carlo' },
   { title: 'Fantastic overseas property options', content: 'I used Havlo to diversify my property portfolio. Excellent support to buy abroad and a really supportive team.', author: 'Rajesh', time: 'Delhi' },
   { title: 'Trustworthy and reliable', content: 'I felt completely safe using Havlo. The service is transparent, and the advisory team is always available to help.', author: 'Garcia', time: 'Milan' },
@@ -143,7 +143,7 @@ export const BuyAbroad: React.FC = () => {
               <h2 className="font-body text-[36px] font-medium leading-none tracking-[-0.8px] text-[#040504]">Rated</h2>
               <TrustpilotStars className="h-[40px]" />
               <p className="font-body text-[18px] font-normal text-black">
-                Based on <span className="font-bold underline">4,359 reviews</span>
+                Based on <span className="font-bold underline">over 1,000 reviews</span>
               </p>
             </>
           }
@@ -151,7 +151,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 4. Who This Is For Section */}
-      <section className="relative flex flex-col items-start gap-14 bg-black px-4 py-24 sm:px-10 lg:px-[100px]">
+      <section className="relative flex flex-col items-start gap-14 bg-black px-4 py-1 md:py-24 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-start gap-6 text-left w-full mx-auto">
           <h2 className="font-display text-[48px] font-black leading-[1.1] text-white sm:text-[64px]">
             Who This Is For
@@ -228,7 +228,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 5. Where We Operate Section */}
-      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 py-24 sm:px-10 lg:px-[100px]">
+      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 py-1 md:py-24 sm:px-10 lg:px-[100px]">
         <div className="absolute top-0 left-0 right-0 h-[60px] lg:h-[80px] z-0 pointer-events-none overflow-hidden">
           <HeroBackground showTop={true} showBottom={false} fillColor="#F9F9F8" className="h-full w-full bg-black" />
         </div>
@@ -264,15 +264,15 @@ export const BuyAbroad: React.FC = () => {
           ))}
         </div>
 
-        <Link to="/countries">
-          <Button className="h-14 px-10 rounded-full bg-black text-white hover:bg-black/90 transition-colors text-lg font-semibold">
+        <Link to="/countries" className="w-full md:w-auto">
+          <Button className="h-10 sm:h-14 w-full md:w-auto px-10 rounded-full bg-black text-white hover:bg-black/90 transition-colors text-sm sm:text-lg font-semibold">
             View All
           </Button>
         </Link>
       </section>
 
       {/* 6. Purple Help Section */}
-      <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 pt-32 pb-48 sm:px-10 lg:px-[100px] overflow-hidden" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
+      <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 pt-1 md:pt-32 pb-1 md:pb-48 sm:px-10 lg:px-[100px] overflow-hidden" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
         {/* Top Jagged Edge — purple bumps point UP into the #F9F9F8 section above */}
         <div className="absolute top-[-1px] left-0 right-0 h-[90px] z-20 pointer-events-none overflow-hidden bg-[#F9F9F8]">
           <HeroBackground
@@ -346,7 +346,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 7. CTA Section */}
-      <section className="flex flex-col items-center gap-10 bg-white px-4 py-24 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-10 bg-white px-4 py-1 md:py-24 sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="max-w-[800px] font-display text-[48px] font-black leading-[1.1] text-black sm:text-[64px]">
             Ready to Start Your Property Journey?
@@ -357,7 +357,7 @@ export const BuyAbroad: React.FC = () => {
         </div>
         <Button 
           onClick={handleGetStarted}
-          className="h-14 px-10 rounded-full bg-black text-white hover:bg-black/90 transition-colors text-lg font-semibold"
+          className="h-10 sm:h-14 w-full md:w-auto px-10 rounded-full bg-black text-white hover:bg-black/90 transition-colors text-sm sm:text-lg font-semibold"
         >
           Get Started
         </Button>

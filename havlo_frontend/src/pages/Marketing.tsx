@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 import heroImage from '../../Rectangle 5.png';
 
 const problemPoints = [
   {
-    title: 'Your buyer may not be local',
+    title: 'Your ideal buyer may already be overseas—and never sees your listing',
     text: 'The right buyer could be an expat, investor, relocator, or international purchaser searching from another country.',
   },
   {
@@ -31,22 +31,22 @@ const problemStats = [
 const processSteps = [
   {
     step: '01',
-    title: 'Discover call',
+    title: 'Listing Analysis & Strategy',
     text: 'We review your property, current listing, price position, buyer profile, and the reason your campaign has slowed down.',
   },
   {
     step: '02',
-    title: 'Campaign setup',
+    title: 'Reposition & Creative Upgrade',
     text: 'We rebuild the marketing angle, sharpen the message, and prepare your property for international buyer attention.',
   },
   {
     step: '03',
-    title: 'Relaunch & reach',
+    title: 'International Distribution',
     text: 'Your home is promoted beyond local portals through targeted exposure, partner routes, and international buyer channels.',
   },
   {
     step: '04',
-    title: 'Enquiries & report',
+    title: 'Buyer Enquiries & Optimisation',
     text: 'You receive clearer insight into performance, buyer response, and the next actions needed to keep momentum alive.',
   },
 ];
@@ -54,32 +54,40 @@ const processSteps = [
 const tiers = [
   {
     name: 'Global',
-    price: '£2,000',
-    description: 'For homes that need a sharper international relaunch.',
-    features: ['Audit of current listing', 'International positioning review', 'Campaign copy refresh', 'Buyer-market targeting', 'Monthly report'],
+    price: '£2,000 setup',
+    monthlyPrice: 'then £1,500 / month',
+    description: 'Targeted exposure in three key international markets most likely to convert for your property.',
+    features: ['3 regions of your choice', 'Static + carousel ads', 'Lead capture form', 'Bi-weekly performance report', '3-month minimum'],
     accent: 'white',
+    tag: '3 REGIONS',
   },
   {
     name: 'Global+',
-    price: '£3,000',
-    description: 'For sellers who want stronger reach and more active promotion.',
-    features: ['Everything in Global', 'Priority international targeting', 'Buyer network exposure', 'Enhanced campaign assets', 'Fortnightly review call'],
+    price: '£3,500 setup',
+    monthlyPrice: 'then £2,500 / month',
+    description: 'Broader reach with richer creative and a dedicated landing page for serious international buyers.',
+    features: ['5 regions of your choice', 'Static, carousel + short-form video', 'Dedicated property landing page', 'Weekly performance report', '3-month minimum'],
     accent: 'purple',
-    badge: 'Most popular',
+    badge: 'MOST POPULAR',
+    tag: '5 REGIONS',
   },
   {
     name: 'Worldwide',
-    price: '£5,000',
-    description: 'For high-value properties needing broader global exposure.',
-    features: ['Everything in Global+', 'Multi-market distribution', 'Partner agency outreach', 'Advanced campaign reporting', 'Dedicated strategist'],
+    price: '£5,000 setup',
+    monthlyPrice: 'then £3,500 / month',
+    description: 'Maximum global exposure for properties that need the widest possible international audience.',
+    features: ['30+ countries worldwide', 'Full creative suite - static, carousel + video', 'Dedicated property landing page', 'Weekly report + monthly strategy call', 'Rolling monthly after 3 months'],
     accent: 'white',
+    tag: '30+ COUNTRIES',
   },
   {
     name: 'Private Client',
-    price: '£8,000',
-    description: 'For prime homes requiring a discreet, senior-led campaign.',
-    features: ['Everything in Worldwide', 'Discreet buyer introductions', 'Private client positioning', 'Senior advisory support', 'Bespoke relaunch plan'],
+    price: '£5,000 setup',
+    monthlyPrice: 'then £3,500 / month',
+    description: 'For high-value properties that demand a campaign built entirely around them. Pricing tailored to scope - discussed privately.',
+    features: ['Bespoke worldwide targeting strategy', 'Premium creative production', 'Dedicated account manager', 'Weekly strategy calls', 'Pricing discussed privately'],
     accent: 'black',
+    tag: 'BESPOKE',
   },
 ];
 
@@ -90,29 +98,73 @@ const faqs = [
   },
   {
     q: 'Will this replace my estate agent?',
-    a: 'No. Havlo works alongside your existing agent by adding international reach, strategic positioning, and buyer-market exposure.',
+    a: 'No - and you keep them. Havlo works alongside your existing agent, not instead of them. We open up international buyer markets your agent cannot reach through portals alone. Viewings, negotiations, and the sale itself are handled through your agent and solicitor as normal.',
   },
   {
     q: 'What type of property is suitable?',
-    a: 'We support a range of homes, but the service is strongest where the property needs better positioning, wider reach, or a more targeted buyer strategy.',
+    a: 'We work with properties from £500,000. Residential, commercial, and investment properties are all eligible.',
   },
   {
     q: 'Why is international exposure important?',
-    a: 'Many motivated buyers are not searching locally. Expats, investors, and relocators may be the right match but never see a UK-only listing campaign.',
+    a: 'Most property campaigns are built around local portals, local databases, and the same audience everyone else is targeting. International buyers - expats, investors, relocators - are often the most motivated purchasers, and most sellers never reach them.',
   },
   {
     q: 'Can I continue to use my current agent?',
-    a: 'Yes. You can keep your current agent while Havlo adds an additional strategic layer to support the sale.',
+    a: 'Yes. We work in parallel with your existing agent. There is no conflict and no disruption to your current sale process.',
   },
   {
     q: 'Do you charge commission after the property sells?',
-    a: 'No. Packages are structured as campaign fees, so you know the cost before work begins.',
+    a: 'No. Havlo charges fixed management fees only. We are a marketing service, not an estate agent. There is no commission, no referral fee, and no percentage of the sale price - ever.',
   },
+  {
+    q: 'Do I still need my estate agent?',
+    a: 'Yes - and you keep them. Havlo works alongside your existing agent, not instead of them. We open up international buyer markets your agent cannot reach through portals alone. Viewings, negotiations, and the sale itself are handled through your agent and solicitor as normal.',
+  },
+  {
+    q: 'What does month 1 look like financially?',
+    a: 'Month 1 includes the one-time setup fee alongside your first monthly management fee - it is the most investment-heavy month. From month 2 onwards you only pay the monthly management fee, plus your ad spend directly to Meta.',
+  },
+  {
+    q: 'Which plan is right for my property?',
+    a: 'Choose based on the reach you want, not the value of your property. Not sure? We will recommend the right plan on your free strategy call - there is no obligation to proceed and no pressure to commit.',
+  },
+  {
+    q: 'Why is ad spend separate from your fees?',
+    a: 'Your advertising budget goes directly from your account to Meta. Havlo never touches that money. This means full transparency - you can see every pound spent in real time - and we take no margin on your ad spend whatsoever.',
+  },
+  {
+    q: 'Can I continue beyond the minimum term?',
+    a: 'Yes. All plans roll monthly after the minimum term. You can pause or stop with 30 days notice once the minimum period is complete.',
+  },
+  {
+    q: 'How quickly can I expect buyer interest?',
+    a: 'In many cases, sellers begin seeing qualified enquiries within the first few weeks of relaunch. By targeting active international buyers from day one, we accelerate exposure and reduce the time your property sits unnoticed.',
+  },
+  {
+    q: 'What results have other sellers seen?',
+    a: 'We\'ve helped sellers revive listings that had stalled for months-generating fresh enquiries, attracting international buyers, and creating renewed momentum toward a sale. Results vary by property, but the goal is always the same: more qualified buyers, faster.',
+  },
+  {
+    q: 'What makes this different from my agent?',
+    a: 'We don\'t replace your agent-we enhance their reach. Most agents rely on local portals and databases, which limits exposure to a domestic audience. Havlo adds a targeted international layer, putting your property in front of qualified buyers your current marketing isn\'t reaching.',
+  },
+];
+
+const relaunchReviews = [
+  { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
+  { title: 'A real turnaround for our listing', content: 'We had almost given up after months of no offers. The relaunch strategy worked, and we finally secured a buyer.', author: 'Claire, Sheffield' },
+  { title: 'Exactly what we needed after 6+ months', content: 'Havlo helped reposition our property and attract a completely new audience. The difference was immediate.', author: 'Marcus, Liverpool' },
+  { title: 'Sold after being stuck for nearly a year', content: 'Our house had been listed for close to a year with no success. Havlo Relaunch gave it new life and helped us finally move forward.', author: 'Fiona, Oxford' },
+  { title: 'New strategy, real results', content: 'The relaunch approach made all the difference. Better marketing, better positioning, and much stronger enquiries.', author: 'Ryan, Newcastle' },
+  { title: 'From no interest to serious offers', content: 'We went from barely any viewings to genuine offers after using Havlo. The international exposure really worked.', author: 'Priya, Leicester' },
+  { title: 'Helped us break through a stagnant market', content: 'Our property had gone stale on the market. Havlo Relaunch brought in fresh demand and the right kind of buyers.', author: 'Gareth, Cardiff' },
+  { title: 'Professional and highly effective', content: 'The team clearly understood why our property wasn\'t selling and fixed it. We saw results much faster than expected.', author: 'Nadia, Abu Dhabi' },
+  { title: 'Great solution for slow-moving properties', content: 'If your property has been sitting unsold, this service is exactly what you need. It helped us secure a buyer after months of frustration.', author: 'Lewis, Glasgow' },
+  { title: 'A fresh start that worked', content: 'Havlo gave our listing a proper relaunch with a clear strategy. It attracted new interest and ultimately led to a successful sale.', author: 'Sanjay, Slough' },
 ];
 
 export const Marketing: React.FC = () => {
   const { openModal } = useModal();
-  const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const handleGetStarted = () => openModal('create-account');
@@ -127,16 +179,11 @@ export const Marketing: React.FC = () => {
         </div>
 
         <div className="relative z-10 mx-auto flex max-w-[920px] flex-col items-center text-center">
-          <span className="font-body text-[10px] font-extrabold uppercase tracking-[0.28em] text-white/80 sm:text-xs">
-            International Property Marketing
-          </span>
-          <h1 className="mt-4 font-display text-[44px] font-black leading-[0.92] tracking-[-1px] text-white sm:text-[70px] lg:text-[94px] lg:tracking-[-2px]">
-            Your property.
-            <br />
-            The world's buyers.
+          <h1 className="mt-4 font-display text-[38px] font-black leading-[0.95] tracking-[-1px] text-white sm:text-[58px] lg:text-[72px] lg:tracking-[-2px]">
+            Property Isn't Selling. The Right Buyers Haven't Seen It.
           </h1>
           <p className="mt-5 max-w-[620px] font-body text-sm font-medium leading-[1.55] text-white/85 sm:text-base lg:text-lg">
-            Havlo puts slow-to-sell UK properties in front of qualified international and offshore buyers across 30+ countries — using precision Meta advertising your local agent cannot replicate.
+            We relaunch slow-to-sell properties using targeted international exposure and high-performance campaigns—so you attract serious buyers and close faster.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             {[
@@ -157,9 +204,12 @@ export const Marketing: React.FC = () => {
               onClick={handleGetStarted}
               className="h-12 w-full rounded-full bg-[#ff8ce7] px-9 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-black transition hover:bg-[#ff78df] sm:w-auto"
             >
-              Get Started
+              Start My Relaunch Plan
             </button>
           </div>
+          <p className="mt-2 font-body text-xs font-medium text-white/85">
+            No agent switch required • Works with your current listing
+          </p>
         </div>
 
         <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-[74px] pointer-events-none lg:h-[98px]">
@@ -175,7 +225,7 @@ export const Marketing: React.FC = () => {
               <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/70">The problem</span>
             </div>
             <h2 className="max-w-[720px] font-display text-[34px] font-black leading-[0.98] tracking-[-0.8px] text-black sm:text-[48px] lg:text-[58px]">
-              Your agent is only speaking to local buyers.
+              Your agent is only reaching a fraction of the market.
             </h2>
             <p className="mt-5 max-w-[640px] font-body text-sm font-semibold leading-[1.6] text-black/65 sm:text-base">
               Most property campaigns are built around local portals, local databases, and the same audience everyone else is targeting.
@@ -202,6 +252,10 @@ export const Marketing: React.FC = () => {
             ))}
           </div>
         </div>
+      </section>
+
+      <section className="w-full bg-white px-4 pt-2.5 sm:px-6 lg:px-[100px]">
+        <AutoScrollReviews reviews={relaunchReviews} bgColor="#F5F5F3" />
       </section>
 
       <section className="relative bg-[#a409d2] px-4 py-16 text-white sm:px-6 lg:px-[100px] lg:py-20">
@@ -262,7 +316,7 @@ export const Marketing: React.FC = () => {
                     </div>
                   )}
                   <span className={cn('font-body text-[11px] font-extrabold uppercase tracking-[0.2em]', isPurple || isBlack ? 'text-white/70' : 'text-black/55')}>
-                    Havlo Relaunch™
+                    {tier.tag}
                   </span>
                   <h3 className="mt-3 font-display text-[30px] font-black leading-none tracking-[-0.6px]">{tier.name}</h3>
                   <p className={cn('mt-4 min-h-[62px] font-body text-sm font-semibold leading-[1.5]', isPurple || isBlack ? 'text-white/75' : 'text-black/62')}>
@@ -270,7 +324,7 @@ export const Marketing: React.FC = () => {
                   </p>
                   <div className="mt-7 border-t border-current/15 pt-6">
                     <div className="font-display text-[42px] font-black leading-none tracking-[-1px]">{tier.price}</div>
-                    <p className={cn('mt-2 font-body text-xs font-bold', isPurple || isBlack ? 'text-white/60' : 'text-black/55')}>one-off campaign fee</p>
+                    <p className={cn('mt-2 font-body text-xs font-bold', isPurple || isBlack ? 'text-white/60' : 'text-black/55')}>{tier.monthlyPrice}</p>
                   </div>
                   <div className="mt-7 flex flex-1 flex-col gap-3">
                     {tier.features.map((feature) => (
@@ -287,7 +341,7 @@ export const Marketing: React.FC = () => {
                       isPurple || isBlack ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'
                     )}
                   >
-                    Get started
+                    GET STARTED
                   </Button>
                 </div>
               );
@@ -334,16 +388,13 @@ export const Marketing: React.FC = () => {
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full bg-[#ffe79a]" />
         </div>
         <div className="relative z-10 mx-auto mt-10 flex max-w-[760px] flex-col items-center">
-          <h2 className="font-display text-[34px] font-black leading-[0.98] tracking-[-0.8px] text-black sm:text-[48px] lg:text-[64px]">Your buyer may not be in the UK.</h2>
+          <h2 className="font-display text-[34px] font-black leading-[0.98] tracking-[-0.8px] text-black sm:text-[48px] lg:text-[64px]">Stop Waiting for Buyers. Start Reaching Them.</h2>
           <p className="mt-4 max-w-[600px] font-body text-sm font-semibold leading-[1.6] text-black/65 sm:text-base">
-            Build a relaunch campaign that reaches the buyer your current listing may never find.
+            Relaunch your property with targeted exposure designed to attract serious, qualified buyers.
           </p>
           <div className="mt-7 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
             <button onClick={handleGetStarted} className="h-12 rounded-full bg-[#a409d2] px-7 font-body text-sm font-extrabold uppercase text-white hover:bg-[#9408bd]">
-              Get started today
-            </button>
-            <button onClick={() => navigate('/contact')} className="h-12 rounded-full border border-black/25 bg-white px-7 font-body text-sm font-extrabold uppercase text-black hover:bg-black/5">
-              Book a strategy call
+              Start My Relaunch Plan
             </button>
           </div>
         </div>

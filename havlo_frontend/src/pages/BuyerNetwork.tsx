@@ -7,12 +7,16 @@ import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
 
 const agentReviews = [
-  { title: 'Faster sales with international reach', content: 'Since partnering with Havlo, our premium listings have sold faster and attracted international buyers we couldn\'t reach before.', author: 'Top Estate Agent, London' },
-  { title: 'A genuine competitive edge', content: 'Havlo makes us look like a global agency. Our vendors love it and it\'s helped us win more instructions.', author: 'High-End Property Specialist, Dubai' },
-  { title: 'Quality enquiries, not just volume', content: 'The quality of international enquiries we receive through Havlo is far above anything we\'ve seen from portal advertising alone.', author: 'Senior Agent, Edinburgh' },
-  { title: 'Impressed our vendors', content: 'We presented Havlo\'s international exposure to a vendor and won the instruction on the spot. It\'s become a key part of our pitch.', author: 'Estate Agent, Manchester' },
-  { title: 'Real results in under 6 weeks', content: 'We had two listings that had been sitting for months. Within 6 weeks of Havlo\'s campaign, both had serious international interest.', author: 'Agency Director, Bristol' },
-  { title: 'Worth every penny', content: 'One completed sale from international exposure more than covered the cost of the campaign. The ROI speaks for itself.', author: 'Property Agent, Surrey' },
+  { title: 'Opened up a completely new buyer market', content: 'Havlo helped us reach international buyers we simply couldn\'t access through traditional portals. It added a powerful new dimension to our listings.', author: 'Oliver, London' },
+  { title: 'Stronger demand from global buyers', content: 'We started receiving enquiries from serious overseas investors almost immediately. The quality of leads was noticeably higher.', author: 'Samantha, Manchester' },
+  { title: 'A real boost beyond property portals', content: 'Using Havlo alongside Rightmove and Zoopla gave us a clear advantage. Our listings reached a much wider audience.', author: 'Daniel, Birmingham' },
+  { title: 'Helped us sell faster', content: 'Properties that were sitting for months started gaining traction once we used the International Buyer Network. It made a real difference to our timelines.', author: 'James, Leeds' },
+  { title: 'High-quality, ready-to-buy enquiries', content: 'The buyers introduced through Havlo were clearly qualified and serious. It saved us time filtering out low-intent leads.', author: 'Hannah, Bristol' },
+  { title: 'Gave our agency a competitive edge', content: 'Havlo allowed us to offer something other agents couldn\'t-access to international buyers. It\'s been a great addition to our service.', author: 'Marcus, Liverpool' },
+  { title: 'Perfect for high-value listings', content: 'For premium properties, this service is incredibly effective. It connects you with buyers who are actively looking to invest globally.', author: 'Charlotte, Oxford' },
+  { title: 'Expanded our reach instantly', content: 'We were able to showcase our listings to a global audience without changing how we operate. Very easy to integrate into our process.', author: 'Ryan, Nottingham' },
+  { title: 'More exposure, better results', content: 'The added international visibility helped generate more interest and ultimately led to quicker sales on several listings.', author: 'Amelia, Edinburgh' },
+  { title: 'A smart addition for modern agents', content: 'Relying only on property portals is no longer enough. Havlo gave us access to a targeted international audience that delivers results.', author: 'Khalid, Dubai' },
 ];
 
 export const BuyerNetwork: React.FC = () => {
@@ -107,7 +111,7 @@ export const BuyerNetwork: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero Section */}
-      <section className="relative flex flex-col items-center pt-24 pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FFB0E8] 50% to-[#FEEAA0] 100% overflow-hidden min-h-[630px]">
+      <section className="relative flex flex-col items-center pt-24 pb-1 md:pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FFB0E8] 50% to-[#FEEAA0] 100% overflow-hidden md:min-h-[630px]">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[1144px] mx-auto">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -133,7 +137,7 @@ export const BuyerNetwork: React.FC = () => {
           >
             <Button 
               onClick={() => openModal('create-account')}
-              className="h-[56px] px-8 bg-black text-white rounded-[48px] font-body text-lg font-semibold tracking-[-0.36px] hover:bg-black/90 transition-colors"
+              className="h-10 sm:h-[56px] w-full sm:w-auto px-8 bg-black text-white rounded-[48px] font-body text-sm sm:text-lg font-semibold tracking-[-0.36px] hover:bg-black/90 transition-colors"
             >
               Join the International Buyer Network
             </Button>
@@ -159,7 +163,7 @@ export const BuyerNetwork: React.FC = () => {
       </div>
 
       {/* 2. Why estate agents choose Havlo */}
-      <section className="flex flex-col items-center bg-white py-24 lg:py-32 px-6 lg:px-[100px]">
+      <section className="flex flex-col items-center bg-white py-1 md:py-24 lg:py-32 px-6 lg:px-[100px]">
         <h2 className="font-display text-[48px] lg:text-[56px] font-black leading-[1.1] text-[#040504] text-center mb-16">
           Why estate agents choose Havlo
         </h2>
@@ -188,7 +192,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 3. How it works */}
-      <section className="flex flex-col py-24 px-6 lg:px-[100px] bg-[#F9F8F9] overflow-hidden">
+      <section className="flex flex-col py-1 md:py-24 px-6 lg:px-[100px] bg-[#F9F8F9] overflow-hidden">
         <div className="max-w-[1040px] mx-auto w-full">
           <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] mb-12">
             How it works
@@ -214,7 +218,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 4. Packages for estate agents */}
-      <section className="flex flex-col py-24 px-6 lg:px-[100px] bg-white">
+      <section className="flex flex-col py-1 md:py-24 px-6 lg:px-[100px] bg-white">
         <div className="max-w-[1240px] mx-auto w-full">
           <p className="font-display text-[22px] font-bold text-[#1F1F1E] mb-2">
             One Additional Sale Typically Covers Your Investment
@@ -268,7 +272,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 5. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center py-24 px-6 lg:px-[150px] bg-white overflow-hidden min-h-[400px] justify-center">
+      <section className="relative flex flex-col items-center py-1 md:py-24 px-6 lg:px-[150px] bg-white overflow-hidden md:min-h-[400px] justify-center">
         <div className="relative z-20 flex flex-col items-center text-center max-w-[700px] mx-auto gap-14">
           <div className="flex flex-col items-center gap-8">
             <h2 className="font-display text-[44px] font-black leading-[1.1] text-black">
@@ -281,7 +285,7 @@ export const BuyerNetwork: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center gap-6">
             <Button 
               onClick={() => openModal('create-account')}
-              className="h-[56px] px-8 bg-[#A409D2] text-white rounded-[48px] font-body text-lg font-semibold tracking-[-0.36px] hover:bg-[#A409D2]/90 transition-colors"
+              className="h-10 sm:h-[56px] w-full sm:w-auto px-8 bg-[#A409D2] text-white rounded-[48px] font-body text-sm sm:text-lg font-semibold tracking-[-0.36px] hover:bg-[#A409D2]/90 transition-colors"
             >
               GET STARTED TODAY
             </Button>

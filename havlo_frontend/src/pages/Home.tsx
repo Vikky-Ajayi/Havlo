@@ -102,20 +102,20 @@ export const Home: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px]">
             <button
               onClick={() => navigate('/relaunch-assessment')}
-              className="w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
             >
               Sell My Property Faster
             </button>
             <div className="flex flex-row items-center justify-center gap-3 px-8 sm:px-0">
               <button
                 onClick={() => navigate('/buy-abroad')}
-                className="w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+                className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
               >
                 Buy Property Abroad
               </button>
               <button
                 onClick={() => navigate('/buyer-network')}
-                className="w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+                className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
               >
                 For Estate Agents
               </button>
@@ -184,7 +184,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 5. Services Section */}
-      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] py-10 lg:py-20">
+      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] py-1 md:py-20">
         <div className="flex flex-col items-center gap-10 text-center">
           <div className="flex flex-col items-center gap-10 lg:gap-10">
             <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-[#3A3C3E]">
@@ -351,7 +351,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 6. The Havlo Difference */}
-      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] py-10 lg:py-20">
+      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] py-1 md:py-20">
         <h2 className="w-full text-center font-display text-[32px] lg:text-[48px] font-black leading-[1.1] text-white sm:text-[56px]">
           The Havlo Difference
         </h2>
@@ -385,7 +385,7 @@ export const Home: React.FC = () => {
           </p>
           <div 
             onClick={handleGetStarted}
-            className="inline-flex h-14 items-center justify-center gap-1 px-5 py-3 relative bg-[#000000] rounded-[48px] cursor-pointer hover:bg-black/90 transition-colors w-full lg:w-auto"
+            className="inline-flex h-10 sm:h-14 items-center justify-center gap-1 px-5 py-3 relative bg-[#000000] rounded-[48px] cursor-pointer hover:bg-black/90 transition-colors w-full lg:w-auto"
           >
             <div className="w-fit font-bold lg:font-semibold text-[#feffff] text-lg text-center tracking-[-0.36px] leading-[27px] whitespace-nowrap relative [font-family:'Inter',Helvetica]">
               Explore Our Services

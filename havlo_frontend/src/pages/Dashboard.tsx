@@ -85,7 +85,7 @@ export const Dashboard: React.FC = () => {
               <Button 
                 variant="primary" 
                 className="h-[72px] w-full lg:w-fit rounded-full bg-black text-white px-8 flex items-center justify-center gap-3 group border border-black/5"
-                onClick={() => navigate('/dashboard/property-matching')}
+                onClick={() => window.open('https://www.heyhavlo.com/get-started', '_blank', 'noopener,noreferrer')}
               >
                 <span className="font-body text-xl font-semibold tracking-[-0.4px]">GET STARTED</span>
                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="transition-transform group-hover:translate-x-1">

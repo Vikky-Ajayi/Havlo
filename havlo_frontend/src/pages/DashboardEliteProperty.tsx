@@ -199,7 +199,7 @@ export const DashboardEliteProperty: React.FC = () => {
 
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-[#001C47]">Estimated value range</label>
-                      <input type="text" name="estimatedValue" placeholder="e.g £200,000 - £500,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
+                      <input type="text" name="estimatedValue" placeholder="e.g £500,000 - £100,000,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                     </div>
 
                     <div className="space-y-4">
@@ -356,21 +356,7 @@ export const DashboardEliteProperty: React.FC = () => {
                     
                     <div className="space-y-4">
                       <label className="block font-display text-sm font-black text-[#001C47]">Expected sale price range</label>
-                      <input type="text" name="expectedPrice" placeholder="e.g £200,000 - £500,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
-                    </div>
-
-                    <div className="space-y-4">
-                      <label className="block font-display text-sm font-black text-black">Pricing structure</label>
-                      <div className="relative">
-                        <select className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black/70 appearance-none focus:outline-none focus:ring-1 focus:ring-black/10">
-                          <option>Select</option>
-                        </select>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M1 1L5 5L9 1" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                      </div>
+                      <input type="text" name="expectedPrice" placeholder="e.g £500,000 - £100,000,000" className="w-full h-12 px-4 rounded-lg border border-black/10 bg-white font-body text-sm font-semibold text-black placeholder:text-black/30 focus:outline-none focus:ring-1 focus:ring-black/10" />
                     </div>
                   </div>
 
@@ -478,7 +464,7 @@ export const DashboardEliteProperty: React.FC = () => {
                     
                     <div className="p-4 rounded-xl border border-[#CCE3FF] bg-[#D6E9FF]">
                       <p className="font-body text-base leading-relaxed tracking-[-0.32px] text-black">
-                        <span className="font-bold">Total fee: £20,000</span>, payable as a <span className="font-bold">£5,000 private mandate fee</span> upfront and a <span className="font-bold">£15,000 success advisory fee</span> upon buyer commitment or successful sale completion.
+                        Total fee: £35,000, payable as a £15,000 private mandate fee upfront and a £20,000 success advisory fee upon buyer commitment or successful sale completion.
                       </p>
                     </div>
 

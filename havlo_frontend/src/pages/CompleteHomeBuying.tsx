@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
@@ -37,6 +37,19 @@ const howItWorks = [
 
 export const CompleteHomeBuying: React.FC = () => {
   const { openModal } = useModal();
+  const [propertyPrice, setPropertyPrice] = useState('');
+  const calculatedPrice = useMemo(() => {
+    const cleaned = propertyPrice.replace(/,/g, '').trim();
+    if (!cleaned) return '—';
+    const num = Number(cleaned);
+    if (Number.isNaN(num)) return '—';
+    const val = num * 0.05;
+    const hasPence = Math.abs(val - Math.trunc(val)) > 0;
+    return val.toLocaleString('en-GB', {
+      minimumFractionDigits: hasPence ? 2 : 0,
+      maximumFractionDigits: hasPence ? 2 : 0,
+    });
+  }, [propertyPrice]);
 
   return (
     <div className="flex flex-col w-full bg-white">
@@ -135,11 +148,21 @@ export const CompleteHomeBuying: React.FC = () => {
           <h2 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-black leading-[1.1] text-[#040504]">
             Let's talk fees
           </h2>
-          <p className="font-body text-base lg:text-lg text-black/80 leading-[1.6]">
-            From £4,500 covering bespoke consultation, valuation, in-country representation, marketing and completion. Pricing scales with property value and complexity.
-          </p>
-          <div className="font-display text-[40px] lg:text-[56px] font-medium text-[#A409D2]">
-            From £4,500
+          <div className="w-full max-w-[520px] space-y-4 text-left">
+            <label className="block font-body text-base font-semibold text-black">Your property price</label>
+            <div className="flex items-center gap-3 rounded-lg border border-black/10 bg-white px-4 py-3">
+              <span className="font-display text-2xl text-black">£</span>
+              <input
+                type="text"
+                value={propertyPrice}
+                onChange={(e) => setPropertyPrice(e.target.value)}
+                className="w-full bg-transparent font-body text-base text-black outline-none"
+                placeholder="Enter price"
+              />
+            </div>
+            <div className="rounded-lg bg-[#00FF8C] px-4 py-3 font-body text-base font-semibold text-[#040405]">
+              Your price: {calculatedPrice === '—' ? '—' : `£${calculatedPrice}`}
+            </div>
           </div>
           <Button
             onClick={() => openModal('create-account')}
