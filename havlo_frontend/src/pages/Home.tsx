@@ -226,10 +226,10 @@ export const Home: React.FC = () => {
         <div className="flex flex-col items-center gap-10 text-center">
           <div className="flex flex-col items-center gap-10 lg:gap-10">
             <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-[#3A3C3E]">
-              WHAT WE OFFER
+              OUR PROPERTY SOLUTIONS
             </span>
             <h2 className="max-w-[630px] font-display text-[32px] lg:text-[48px] font-black leading-[1.1] text-[#040504] sm:text-[56px]">
-              Simplifying every step of your property journey
+              How We Help You Move Property Faster.
             </h2>
           </div>
         </div>
@@ -288,7 +288,7 @@ export const Home: React.FC = () => {
                     className="bg-white"
                   />
                   <ServiceCard
-                    title="Property Sale Audit ( Havlo Relaunch Assessment)"
+                    title="Property Sale Audit"
                     description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                     href="/relaunch-assessment"
                     className="bg-white"
@@ -335,7 +335,7 @@ export const Home: React.FC = () => {
                 className="flex-1 bg-white"
               />
               <ServiceCard
-                title="Property Sale Audit ( Havlo Relaunch Assessment)"
+                title="Property Sale Audit"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                 href="/relaunch-assessment"
                 className="flex-[2] bg-white"
@@ -416,17 +416,17 @@ export const Home: React.FC = () => {
       <section className="relative flex flex-col items-center bg-white pt-20 lg:pt-60 pb-10 lg:pb-24 overflow-hidden">
         <div className="relative z-20 flex max-w-[903px] flex-col items-center gap-8 px-4 text-center">
           <h2 className="font-display text-[36px] sm:text-[56px] md:text-[64px] lg:text-[80px] font-black leading-tight lg:leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black">
-            Ready to Start Your Property Journey?
+            Ready to Take the Next Step?
           </h2>
           <p className="max-w-[678px] font-body text-base lg:text-xl font-medium leading-[1.5] tracking-[-0.32px] lg:tracking-[-0.4px] text-black/80">
-            Are you a buyer, seller, or property agent? We deliver bespoke, tailored solutions designed to elevate your experience and help you achieve your property goals with confidence and ease. Explore our premium suite of services and experience a seamless, refined approach to property.
+            Whether you're selling, buying, or expanding your reach, Havlo connects you with the strategy and exposure to achieve better results.
           </p>
           <div 
             onClick={handleGetStarted}
             className="inline-flex h-14 items-center justify-center gap-1 px-5 py-3 relative bg-[#000000] rounded-[48px] cursor-pointer hover:bg-black/90 transition-colors w-full lg:w-auto"
           >
             <div className="w-fit font-bold lg:font-semibold text-[#feffff] text-lg text-center tracking-[-0.36px] leading-[27px] whitespace-nowrap relative [font-family:'Inter',Helvetica]">
-              Get Started
+              Explore Our Services
             </div>
           </div>
         </div>

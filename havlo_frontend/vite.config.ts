@@ -28,5 +28,20 @@ export default defineConfig(({mode}) => {
         },
       },
     },
+    build: {
+      target: 'es2015',
+      minify: 'esbuild',
+      cssMinify: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'router': ['react-router-dom'],
+            'motion': ['motion'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 600,
+    },
   };
 });

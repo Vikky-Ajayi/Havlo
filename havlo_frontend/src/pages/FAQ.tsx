@@ -263,7 +263,7 @@ const sellerFaqs: FAQItemProps[] = [
           <p>A dedicated programme designed to help properties that have been on the market for over 6 months secure a buyer through a strategic relaunch.</p>
         </div>
         <div>
-          <p className="font-semibold">Property Sale Audit (Havlo Relaunch Assessment)</p>
+          <p className="font-semibold">Property Sale Audit</p>
           <p>A detailed review to uncover why your property hasn’t sold, with a clear, actionable plan. This includes analysis of pricing, presentation, and market positioning to identify obstacles and recommend the best next steps.</p>
         </div>
       </div>
@@ -337,7 +337,7 @@ const sellerFaqs: FAQItemProps[] = [
     question: 'How do I get started?',
     answer: (
       <div className="flex flex-col gap-2">
-        <p>Create an account, select the service you require—Elite Property Introductions, Sell Faster (Havlo Relaunch™), or Property Sale Audit (Havlo Relaunch Assessment)—then complete payment and provide your property details.</p>
+        <p>Create an account, select the service you require—Elite Property Introductions, Sell Faster (Havlo Relaunch™), or Property Sale Audit—then complete payment and provide your property details.</p>
         <p>Once submitted, Havlo will handle the rest, assessing and marketing your property to the right audience and helping facilitate a successful sale.</p>
       </div>
     ),

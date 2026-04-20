@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
-import { Check, Quote } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
+
+const agentReviews = [
+  { title: 'Faster sales with international reach', content: 'Since partnering with Havlo, our premium listings have sold faster and attracted international buyers we couldn\'t reach before.', author: 'Top Estate Agent, London' },
+  { title: 'A genuine competitive edge', content: 'Havlo makes us look like a global agency. Our vendors love it and it\'s helped us win more instructions.', author: 'High-End Property Specialist, Dubai' },
+  { title: 'Quality enquiries, not just volume', content: 'The quality of international enquiries we receive through Havlo is far above anything we\'ve seen from portal advertising alone.', author: 'Senior Agent, Edinburgh' },
+  { title: 'Impressed our vendors', content: 'We presented Havlo\'s international exposure to a vendor and won the instruction on the spot. It\'s become a key part of our pitch.', author: 'Estate Agent, Manchester' },
+  { title: 'Real results in under 6 weeks', content: 'We had two listings that had been sitting for months. Within 6 weeks of Havlo\'s campaign, both had serious international interest.', author: 'Agency Director, Bristol' },
+  { title: 'Worth every penny', content: 'One completed sale from international exposure more than covered the cost of the campaign. The ROI speaks for itself.', author: 'Property Agent, Surrey' },
+];
 
 export const BuyerNetwork: React.FC = () => {
   const { openModal } = useModal();
@@ -11,22 +21,22 @@ export const BuyerNetwork: React.FC = () => {
     {
       id: '01',
       title: 'Faster Sales',
-      description: 'Give us your property listings and we\u2019ll amplify their reach to drive faster sales.',
+      description: 'Close listings up to 30–50% faster by reaching buyers beyond UK portals.',
     },
     {
       id: '02',
       title: 'Exclusive Network',
-      description: 'Curated offshore buyers actively looking for premium properties.',
+      description: 'Access vetted buyers across 30+ countries actively searching for UK property.',
     },
     {
       id: '03',
       title: 'Premium Positioning',
-      description: 'Offer clients a global marketing advantage and impress vendors.',
+      description: 'Attract higher-value buyers and win more instructions with global exposure.',
     },
     {
       id: '04',
       title: 'Data-Driven',
-      description: 'Campaigns optimised for high-intent buyers with weekly reporting.',
+      description: 'Track performance with weekly reporting and real buyer engagement data.',
     },
   ];
 
@@ -44,7 +54,7 @@ export const BuyerNetwork: React.FC = () => {
     {
       id: 3,
       title: 'Connect with ready-to-buy buyers',
-      description: 'Your listing is promoted to our vetted network of offshore buyers actively looking to purchase in your region.',
+      description: 'Your listing is placed directly in front of vetted international buyers actively searching in your price range.',
     },
     {
       id: 4,
@@ -99,45 +109,37 @@ export const BuyerNetwork: React.FC = () => {
       {/* 1. Hero Section */}
       <section className="relative flex flex-col items-center pt-24 pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FFB0E8] 50% to-[#FEEAA0] 100% overflow-hidden min-h-[630px]">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[1144px] mx-auto">
-          <motion.span 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="font-body text-lg font-normal uppercase tracking-[-0.36px] text-black mb-10"
-            style={{ marginTop: '-18px' }}
-          >
-            INTERNATIONAL BUYER NETWORK
-          </motion.span>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="font-display font-black tracking-[-1.2px] lg:tracking-[-1.6px] text-[#1F1F1E] mb-6 lg:mb-10 text-[40px] sm:text-[56px] md:text-[64px] lg:text-[88px] leading-[1.05] lg:leading-[1.0]"
-            style={{ marginTop: '-10px' }}
+            className="font-display font-black tracking-[-1.2px] lg:tracking-[-1.6px] text-[#1F1F1E] mb-6 lg:mb-10 text-[40px] sm:text-[56px] md:text-[64px] lg:text-[80px] leading-[1.05] lg:leading-[1.0]"
           >
-            Estate Agents, Sell Properties Faster with Havlo's International Buyer Network
+            Your Listings Aren't Reaching the Right Buyers. We Fix That.
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="font-body text-lg lg:text-xl font-normal leading-[1.3] tracking-[-0.36px] text-black max-w-[682px] mb-12"
-            style={{ marginTop: '-14px' }}
+            className="font-body text-lg lg:text-xl font-normal leading-[1.3] tracking-[-0.36px] text-black max-w-[682px] mb-8"
           >
-            Go beyond property portals. Connect your listings with a curated network of ready-to-buy offshore buyers and close deals faster.
+            Access a curated network of vetted international buyers actively looking for UK property — so you can sell faster and win more instructions.
           </motion.p>
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-wrap items-center justify-center gap-6"
+            className="flex flex-col items-center gap-3"
           >
             <Button 
               onClick={() => openModal('create-account')}
               className="h-[56px] px-8 bg-black text-white rounded-[48px] font-body text-lg font-semibold tracking-[-0.36px] hover:bg-black/90 transition-colors"
-              style={{ marginTop: '-10px' }}
             >
-              GET STARTED TODAY
+              Join the International Buyer Network
             </Button>
+            <p className="font-body text-sm text-black/60">
+              Built for agents who want more than portal exposure.
+            </p>
           </motion.div>
         </div>
 
@@ -150,6 +152,11 @@ export const BuyerNetwork: React.FC = () => {
           />
         </div>
       </section>
+
+      {/* Auto-scrolling reviews */}
+      <div className="bg-white px-0 pt-2 pb-0">
+        <AutoScrollReviews reviews={agentReviews} bgColor="#F5F5F3" />
+      </div>
 
       {/* 2. Why estate agents choose Havlo */}
       <section className="flex flex-col items-center bg-white py-24 lg:py-32 px-6 lg:px-[100px]">
@@ -209,6 +216,12 @@ export const BuyerNetwork: React.FC = () => {
       {/* 4. Packages for estate agents */}
       <section className="flex flex-col py-24 px-6 lg:px-[100px] bg-white">
         <div className="max-w-[1240px] mx-auto w-full">
+          <p className="font-display text-[22px] font-bold text-[#1F1F1E] mb-2">
+            One Additional Sale Typically Covers Your Investment
+          </p>
+          <p className="font-body text-base text-black/60 mb-10 max-w-[680px]">
+            Designed to deliver qualified international buyers — not just more exposure. For most agents, a single completed deal offsets the cost of the campaign.
+          </p>
           <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] mb-14">
             Packages for estate agents
           </h2>
@@ -251,51 +264,15 @@ export const BuyerNetwork: React.FC = () => {
               </div>
             ))}
           </div>
-
         </div>
       </section>
 
-      {/* 5. What agents say */}
-      <section className="flex flex-col py-24 px-6 lg:px-[100px] bg-[#F9F8F9] overflow-hidden">
-        <div className="max-w-[1240px] mx-auto w-full flex flex-col items-center gap-14">
-          <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] text-center">
-            What agents say
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
-            <div className="bg-white p-8 rounded-2xl flex flex-col gap-6">
-              <Quote className="w-6 h-5 text-[#A409D2] fill-[#A409D2]" />
-              <p className="font-display text-2xl font-medium leading-[1] tracking-[-0.48px] text-[#1F1F1E]">
-                Since partnering with Havlo, our premium listings have sold faster and attracted international buyers we couldn't reach before.
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="font-display text-[40px] font-medium tracking-[-0.8px] text-[#1F1F1E]">-</span>
-                <span className="font-body text-lg font-normal tracking-[-0.36px] text-[#1F1F1E]">
-                  Top Estate Agent, London
-                </span>
-              </div>
-            </div>
-            <div className="bg-white p-8 rounded-2xl flex flex-col gap-6">
-              <Quote className="w-6 h-5 text-[#A409D2] fill-[#A409D2]" />
-              <p className="font-display text-2xl font-medium leading-[1] tracking-[-0.48px] text-[#1F1F1E]">
-                "Havlo makes us look like a global agency. Our vendors love it."
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="font-display text-[40px] font-medium tracking-[-0.8px] text-[#1F1F1E]">-</span>
-                <span className="font-body text-lg font-normal tracking-[-0.36px] text-[#1F1F1E]">
-                  High-End Property Specialist, Dubai
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Bottom CTA Section */}
+      {/* 5. Bottom CTA Section */}
       <section className="relative flex flex-col items-center py-24 px-6 lg:px-[150px] bg-white overflow-hidden min-h-[400px] justify-center">
         <div className="relative z-20 flex flex-col items-center text-center max-w-[700px] mx-auto gap-14">
           <div className="flex flex-col items-center gap-8">
             <h2 className="font-display text-[44px] font-black leading-[1.1] text-black">
-              Ready to Accelerate Your Property Sales?
+              Start Reaching Buyers Your Listings Are Missing
             </h2>
             <p className="font-body text-lg font-normal leading-[1.5] tracking-[-0.054px] text-black">
               Join Havlo's International Buyer Network and offer your clients unmatched global exposure.
