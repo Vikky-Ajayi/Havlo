@@ -142,16 +142,16 @@ export const DashboardSellFaster: React.FC = () => {
         agent_phone: contactPreference === 'agent' ? contactPhone : undefined,
       });
       setIsDrawerOpen(false);
-      if (result.checkout_url) {
-        const { redirectToCheckout } = await import('../lib/paymentReturn');
-        redirectToCheckout(result.checkout_url, {
-          kind: 'sell_faster',
-          recordId: result.application_id,
-          reference: result.checkout_id,
-        });
-        return;
+      if (!result.checkout_id) {
+        throw new Error('Missing checkout ID from payment gateway.');
       }
-      setIsSuccessModalOpen(true);
+      const { redirectToCheckout } = await import('../lib/paymentReturn');
+      redirectToCheckout(result.checkout_id, {
+        kind: 'sell_faster',
+        recordId: result.application_id,
+        reference: result.checkout_id,
+      });
+      return;
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
     } finally {

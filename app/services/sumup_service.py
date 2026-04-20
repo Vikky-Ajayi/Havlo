@@ -12,7 +12,6 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 SUMUP_API_BASE = "https://api.sumup.com/v0.1"
-SUMUP_HOSTED_CHECKOUT = "https://pay.sumup.com/b2c"
 
 
 class SumUpError(Exception):
@@ -32,7 +31,6 @@ def _auth_headers() -> dict:
     return {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "Accept": "application/json",
     }
 
 
@@ -43,7 +41,7 @@ async def create_checkout(
     reference: Optional[str] = None,
     redirect_url: Optional[str] = None,
 ) -> dict:
-    """Create SumUp checkout and return polling id + hosted checkout URL."""
+    """Create SumUp checkout and return id plus any returned hosted URL fields."""
     settings = get_settings()
     merchant_code = (settings.SUMUP_MERCHANT_CODE or "").strip()
     if not merchant_code:
@@ -99,7 +97,8 @@ async def create_checkout(
         )
 
     data = response.json()
-    logger.info("SumUp create_checkout response body=%s", data)
+    logger.info("SumUp create_checkout response full_body=%s", data)
+    logger.info("SumUp create_checkout response keys=%s", list(data.keys()))
 
     internal_id = data.get("id") or ""
     if not internal_id:
@@ -109,22 +108,28 @@ async def create_checkout(
             body=response.text,
         )
     checkout_reference = data.get("checkout_reference") or reference
-    checkout_url = f"{SUMUP_HOSTED_CHECKOUT}/{checkout_reference}"
+    hosted_checkout_url = (
+        data.get("hosted_page_url")
+        or data.get("checkout_url")
+        or data.get("redirect_url")
+    )
 
     logger.info(
-        "SumUp checkout created id=%s ref=%s url=%s status=%s",
+        "SumUp checkout created id=%s ref=%s hosted_url=%s status=%s",
         internal_id,
         checkout_reference,
-        checkout_url,
+        hosted_checkout_url,
         data.get("status"),
     )
     return {
         "id": internal_id,
         "checkout_reference": checkout_reference,
-        "checkout_url": checkout_url,
+        "checkout_url": hosted_checkout_url or "",
+        "hosted_checkout_url": hosted_checkout_url,
         "amount": data.get("amount", amount_num),
         "currency": data.get("currency", currency_code),
         "status": data.get("status", "PENDING"),
+        "raw_response": data,
     }
 
 

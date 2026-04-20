@@ -110,16 +110,16 @@ export const DashboardBuyerNetwork: React.FC = () => {
         additional_info: listings.length > 0 ? `Listings: ${listings.join(', ')}` : undefined,
       });
       setIsDrawerOpen(false);
-      if (result.checkout_url) {
-        const { redirectToCheckout } = await import('../lib/paymentReturn');
-        redirectToCheckout(result.checkout_url, {
-          kind: 'buyer_network',
-          recordId: result.application_id,
-          reference: result.checkout_id,
-        });
-        return;
+      if (!result.checkout_id) {
+        throw new Error('Missing checkout ID from payment gateway.');
       }
-      setIsSuccessModalOpen(true);
+      const { redirectToCheckout } = await import('../lib/paymentReturn');
+      redirectToCheckout(result.checkout_id, {
+        kind: 'buyer_network',
+        recordId: result.application_id,
+        reference: result.checkout_id,
+      });
+      return;
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
     } finally {

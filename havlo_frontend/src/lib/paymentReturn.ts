@@ -62,10 +62,15 @@ export function clearPendingPayment() {
   }
 }
 
-/** Redirect the user to the SumUp hosted checkout in the SAME tab. */
-export function redirectToCheckout(checkoutUrl: string, p: PendingPayment) {
+/** Redirect the user to Havlo checkout page (SumUp widget mount). */
+export function redirectToCheckout(checkoutId: string, p: PendingPayment) {
   persistPendingPayment(p);
-  window.location.href = checkoutUrl;
+  const params = new URLSearchParams({
+    checkout_id: checkoutId,
+    record_id: p.recordId,
+    type: p.kind,
+  });
+  window.location.href = `/checkout?${params.toString()}`;
 }
 
 /**

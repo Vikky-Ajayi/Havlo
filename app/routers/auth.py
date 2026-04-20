@@ -1,6 +1,7 @@
 """Authentication endpoints — register, login, forgot/reset password."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.database import get_db
+from app.db.database import AsyncSessionLocal
 from app.dependencies import get_current_user
 from app.models.models import Conversation, User, UserRole
 from app.schemas.schemas import (
@@ -29,6 +31,7 @@ from app.schemas.schemas import (
 )
 from app.services import google_sheets
 from app.services.local_auth import create_access_token, hash_password_async, verify_password_async
+from app.services.supabase_client import get_supabase_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -80,6 +83,21 @@ async def _create_admin_conversation(user_id: uuid.UUID, db: AsyncSession) -> No
     await db.commit()
 
 
+async def _create_admin_conversation_background(user_id: str) -> None:
+    """Background-safe admin conversation creation using a fresh session."""
+    try:
+        parsed_user_id = uuid.UUID(user_id)
+    except ValueError:
+        logger.error("Invalid user_id passed to background admin conversation task: %s", user_id)
+        return
+    async with AsyncSessionLocal() as session:
+        try:
+            await _create_admin_conversation(parsed_user_id, session)
+        except Exception as exc:
+            await session.rollback()
+            logger.error("Failed creating admin conversation in background: %s", exc)
+
+
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     payload: RegisterRequest,
@@ -93,11 +111,12 @@ async def register(
             detail="An account with this email already exists.",
         )
 
-    hashed_password = await hash_password_async(payload.password)
+    # Step 1: create auth account first (external system)
+    loop = asyncio.get_running_loop()
     user = User(
-        supabase_uid=str(uuid.uuid4()),
+        supabase_uid="",
         email=payload.email,
-        password_hash=hashed_password,
+        password_hash="",
         first_name=payload.first_name,
         last_name=payload.last_name,
         phone_country_code=payload.phone_country_code,
@@ -105,18 +124,57 @@ async def register(
         role=UserRole(payload.role),
         onboarding_complete=False,
     )
+
+    try:
+        auth_response = await loop.run_in_executor(
+            None,
+            lambda: get_supabase_admin().auth.admin.create_user(
+                {
+                    "email": payload.email,
+                    "password": payload.password,
+                    "email_confirm": True,
+                }
+            ),
+        )
+        auth_user = getattr(auth_response, "user", None)
+        if not auth_user or not getattr(auth_user, "id", None):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to create account. Please try again.",
+            )
+        user.supabase_uid = str(auth_user.id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        error_msg = str(exc).lower()
+        if "already" in error_msg or "exists" in error_msg or "registered" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email already exists.",
+            )
+        logger.error("Supabase register failed for %s: %s", payload.email, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to create account. Please try again.",
+        )
+
+    # Step 2: commit local DB immediately after auth account creation
+    hashed_password = await hash_password_async(payload.password)
+    user.password_hash = hashed_password
     db.add(user)
     try:
         await db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
+        logger.error("DB register integrity error for %s: %s", payload.email, exc)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists.",
         )
     await db.refresh(user)
-    await _create_admin_conversation(user.id, db)
 
+    # Step 3: post-commit side effects only in background tasks
+    background_tasks.add_task(_create_admin_conversation_background, str(user.id))
     user_dict = {
         "id": str(user.id),
         "first_name": user.first_name,

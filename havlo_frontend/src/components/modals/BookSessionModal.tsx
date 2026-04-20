@@ -66,16 +66,16 @@ export const BookSessionModal: React.FC = () => {
         preferred_date: preferredDate,
         preferred_time: preferredTime,
       });
-      if (result.checkout_url) {
-        const { redirectToCheckout } = await import('../../lib/paymentReturn');
-        redirectToCheckout(result.checkout_url, {
-          kind: 'session',
-          recordId: result.booking_id,
-          reference: result.checkout_id,
-        });
-        return;
+      if (!result.checkout_id) {
+        throw new Error('Missing checkout ID from payment gateway.');
       }
-      closeModal();
+      const { redirectToCheckout } = await import('../../lib/paymentReturn');
+      redirectToCheckout(result.checkout_id, {
+        kind: 'session',
+        recordId: result.booking_id,
+        reference: result.checkout_id,
+      });
+      return;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to book session. Please try again.');
     } finally {

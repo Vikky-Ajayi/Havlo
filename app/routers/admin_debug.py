@@ -17,6 +17,7 @@ import os
 import uuid
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Header, HTTPException, status
 
 from app.config import get_settings
@@ -121,5 +122,71 @@ async def diagnose_sumup(
             "status_code": exc.status_code,
             "body": exc.body or str(exc),
         }
+
+    return report
+
+
+@router.get("/sumup-full")
+async def diagnose_sumup_full(
+    x_admin_secret: Optional[str] = Header(default=None, alias="X-Admin-Secret"),
+) -> dict:
+    """Deep SumUp diagnostic with /me check and full checkout response payload."""
+    _require_admin(x_admin_secret)
+    settings = get_settings()
+    api_key = (settings.SUMUP_API_KEY or "").strip()
+    merchant_code = (settings.SUMUP_MERCHANT_CODE or "").strip()
+
+    report: dict = {
+        "merchant_code": merchant_code,
+        "api_key_length": len(api_key),
+        "me_status": None,
+        "me_body": None,
+        "checkout_status": None,
+        "checkout_full_response": None,
+        "checkout_response_keys": [],
+    }
+
+    if not api_key or not merchant_code:
+        report["error"] = "Missing SUMUP_API_KEY and/or SUMUP_MERCHANT_CODE."
+        return report
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        me_response = await client.get("https://api.sumup.com/v0.1/me", headers=headers)
+    report["me_status"] = me_response.status_code
+    report["me_body"] = (
+        me_response.json()
+        if me_response.headers.get("content-type", "").startswith("application/json")
+        else me_response.text
+    )
+
+    if me_response.status_code != 200:
+        return report
+
+    test_ref = f"HAVLO-TEST-{uuid.uuid4().hex[:8].upper()}"
+    payload = {
+        "checkout_reference": test_ref,
+        "amount": 1.00,
+        "currency": "GBP",
+        "merchant_code": merchant_code,
+        "description": "Diagnostic test",
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        checkout_response = await client.post(
+            "https://api.sumup.com/v0.1/checkouts",
+            json=payload,
+            headers=headers,
+        )
+    report["checkout_status"] = checkout_response.status_code
+    if checkout_response.status_code in (200, 201):
+        checkout_json = checkout_response.json()
+        report["checkout_full_response"] = checkout_json
+        report["checkout_response_keys"] = list(checkout_json.keys())
+    else:
+        report["checkout_full_response"] = checkout_response.text
 
     return report

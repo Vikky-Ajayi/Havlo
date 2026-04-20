@@ -35,6 +35,7 @@ const DashboardSettings = React.lazy(() => import('./pages/DashboardSettings').t
 const DashboardUsers = React.lazy(() => import('./pages/DashboardUsers').then(m => ({ default: m.DashboardUsers })));
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const AdminPanel = React.lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const CheckoutPage = React.lazy(() => import('./pages/Checkout').then(m => ({ default: m.CheckoutPage })));
 
 // Shared Components
 import { Navbar } from './components/shared/Navbar';
@@ -196,6 +197,7 @@ export default function App() {
               <Route path="/dashboard/users" element={<AdminRoute><DashboardUsers /></AdminRoute>} />
               <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+              <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             </Routes>
           </Suspense>
         </Layout>

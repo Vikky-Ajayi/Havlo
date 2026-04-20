@@ -31,7 +31,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   let res: Response;
   try {

@@ -61,10 +61,14 @@ if replit_domains:
         if domain:
             allowed_origins.append(f"https://{domain}")
 
+resolved_origins = list(dict.fromkeys([o.strip() for o in allowed_origins if o.strip()]))
+if not resolved_origins:
+    resolved_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=resolved_origins,
+    allow_credentials=resolved_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

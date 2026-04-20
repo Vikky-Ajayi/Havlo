@@ -9,6 +9,8 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { CountryCodeSelect } from '../shared/CountryCodeSelect';
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+
 export const CreateAccountModal: React.FC = () => {
   const { closeModal, switchModal } = useModal();
   const { login } = useAuth();
@@ -46,15 +48,40 @@ export const CreateAccountModal: React.FC = () => {
 
     setLoading(true);
     try {
-      await api.register({
-        email,
-        password,
-        first_name: firstName,
-        last_name: lastName,
-        phone_country_code: phoneCountryCode,
-        phone_number: phoneNumber,
-        role,
-      });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+      let response: Response;
+      try {
+        response = await fetch(`${API_BASE}/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            first_name: firstName,
+            last_name: lastName,
+            phone_country_code: phoneCountryCode,
+            phone_number: phoneNumber,
+            role,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      const data = await response.json().catch(() => ({} as any));
+      if (response.status === 409) {
+        setError('An account with this email already exists. Please log in instead.');
+        return;
+      }
+      if (!response.ok) {
+        setError(data?.detail || 'Registration failed. Please try again.');
+        return;
+      }
 
       const loginResp = await api.login({ email, password });
       await login(loginResp);
@@ -62,7 +89,13 @@ export const CreateAccountModal: React.FC = () => {
 
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      if (err?.name === 'AbortError') {
+        setError('This is taking longer than expected. If you already registered, please try logging in. Otherwise try again.');
+      } else if (err instanceof TypeError) {
+        setError('Network error. Please check your connection and try again.');
+      } else {
+        setError(err?.message || 'Registration failed. If this persists, try logging in with the same email.');
+      }
     } finally {
       setLoading(false);
     }

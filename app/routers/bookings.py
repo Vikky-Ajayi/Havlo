@@ -213,3 +213,33 @@ async def get_session_payment_status(
         status="PENDING",
         paid=False,
     )
+
+
+@router.get("/session/{booking_id}/checkout-page")
+async def get_session_checkout_page(
+    booking_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Return checkout widget payload for a session booking."""
+    try:
+        booking_uuid = uuid.UUID(booking_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid booking ID.")
+
+    result = await db.execute(
+        select(SessionBooking).where(
+            SessionBooking.id == booking_uuid,
+            SessionBooking.user_id == current_user.id,
+        )
+    )
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found.")
+
+    return {
+        "checkout_id": booking.sumup_checkout_id,
+        "amount": float(get_settings().SESSION_FEE_AMOUNT),
+        "currency": str(get_settings().SESSION_FEE_CURRENCY).upper(),
+        "description": f"Havlo Advisory Session - {current_user.first_name} {current_user.last_name}",
+    }
