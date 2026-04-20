@@ -108,13 +108,13 @@ export const Home: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/buy-abroad')}
-              className="w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
             >
               Buy Property Abroad
             </button>
             <button
               onClick={() => navigate('/buyer-network')}
-              className="w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
             >
               For Estate Agents
             </button>
