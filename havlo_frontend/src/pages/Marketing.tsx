@@ -146,7 +146,7 @@ export const Marketing: React.FC = () => {
             ].map((badge) => (
               <span
                 key={badge}
-                className="rounded-full border border-white/40 bg-white/10 px-5 py-2 font-body text-[11px] font-extrabold uppercase tracking-[0.18em] text-white backdrop-blur-sm sm:text-xs"
+                className="rounded-full border border-white/40 bg-white/10 px-5 py-2 font-body text-[11px] font-extrabold uppercase tracking-[0.18em] backdrop-blur-sm sm:text-xs text-[#000000]"
               >
                 {badge}
               </span>
