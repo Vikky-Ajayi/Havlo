@@ -36,7 +36,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           to={href}
           className="mt-8 inline-flex items-center gap-1 font-body text-lg font-semibold tracking-[-0.36px] text-havlo-purple uppercase hover:opacity-80 transition-opacity"
         >
-          LEARN MORE →
+          SEE HOW IT WORKS →
         </Link>
       )}
     </div>
