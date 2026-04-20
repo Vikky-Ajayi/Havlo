@@ -139,7 +139,7 @@ export const EliteProperty: React.FC = () => {
               icon: <Star className="text-havlo-purple" size={24} />,
             },
           ].map((item, idx) => (
-            <div key={idx} className="flex flex-col gap-3 rounded-xl bg-[#F7F9F6] p-8">
+            <div key={idx} className="flex flex-col gap-2.5 rounded-xl bg-[#F7F9F6] p-8">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F7DEFC]">
                 {item.icon}
               </div>
@@ -157,7 +157,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 5. Why Sellers Choose Havlo (Purple Section) */}
-      <section className="relative flex flex-col items-center gap-6 bg-[#A409D2] px-4 pt-8 pb-16 sm:px-10 lg:px-[100px] overflow-hidden">
+      <section className="relative flex flex-col items-center gap-5 bg-[#A409D2] px-4 pt-7 pb-14 sm:px-10 lg:px-[100px] overflow-hidden">
         <div className="flex flex-col items-center gap-8 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-white" />
@@ -179,7 +179,7 @@ export const EliteProperty: React.FC = () => {
             { num: "05", title: "Speed Through Targeting", desc: "More relevant exposure means fewer delays and a higher probability of serious offers." },
             { num: "06", title: "Discreet & Professional", desc: "We operate with confidentiality and precision, ideal for high-value or sensitive transactions." },
           ].map((item, idx) => (
-            <div key={idx} className="flex flex-col gap-3 border-l-2 border-white p-5">
+            <div key={idx} className="flex flex-col gap-2.5 border-l-2 border-white p-5">
               <span className="font-body text-2xl font-bold text-white">{item.num}</span>
               <div className="flex flex-col gap-6">
                 <h3 className="font-body text-2xl font-bold leading-[1.2] text-white">
@@ -201,7 +201,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 6. Private International Buyer Advisory */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-16 pb-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-14 pb-[72px] sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col gap-14">
           <div className="flex flex-col gap-8">
             <div className="flex items-center gap-3">
