@@ -4,10 +4,14 @@ import { ChevronLeft, Mail, SendHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation } from '../lib/api';
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+
 type InboxConversation = Conversation & {
   user_full_name?: string;
   user_email?: string;
 };
+
+type LoadState = 'idle' | 'loading' | 'ready' | 'empty' | 'unauthorized' | 'server' | 'network' | 'timeout';
 
 const adminToInbox = (c: AdminConversation): InboxConversation => ({
   ...c,
@@ -25,9 +29,11 @@ export const DashboardInbox: React.FC = () => {
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [loadState, setLoadState] = useState<LoadState>('idle');
   const [sendError, setSendError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedIdRef = useRef<string | null>(null);
+  const loadTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -35,17 +41,89 @@ export const DashboardInbox: React.FC = () => {
 
   const loadConversations = async () => {
     if (!token) return;
+    const controller = new AbortController();
+    const requestTimeout = window.setTimeout(() => controller.abort(), 10000);
     try {
       if (isAdmin) {
-        const rows = await api.adminListAllConversations(token);
+        const res = await fetch(`${API_BASE}/messaging/admin/conversations`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+        const data = await res.json().catch(() => null);
+        if (res.status === 401 || res.status === 403) {
+          setLoadState('unauthorized');
+          setLoadError('Your session has expired. Please log in again.');
+          setConversations([]);
+          return;
+        }
+        if (!res.ok) {
+          setLoadState('server');
+          setLoadError((data && (data.detail || data.message)) || 'Server error while loading conversations.');
+          setConversations([]);
+          return;
+        }
+        const rows = (Array.isArray(data) ? data : []) as AdminConversation[];
         setConversations(rows.map(adminToInbox));
+        if (rows.length === 0) {
+          setLoadState('empty');
+          setLoadError('');
+        } else {
+          setLoadState('ready');
+          setLoadError('');
+        }
       } else {
-        const rows = await api.getConversations(token);
+        const res = await fetch(`${API_BASE}/messaging/conversations`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+        const data = await res.json().catch(() => null);
+        if (res.status === 401 || res.status === 403) {
+          setLoadState('unauthorized');
+          setLoadError('Your session has expired. Please log in again.');
+          setConversations([]);
+          return;
+        }
+        if (res.status >= 500) {
+          setLoadState('server');
+          setLoadError((data && (data.detail || data.message)) || 'Server error while loading conversations.');
+          setConversations([]);
+          return;
+        }
+        if (!res.ok) {
+          setLoadState('network');
+          setLoadError((data && (data.detail || data.message)) || 'Could not load conversations.');
+          setConversations([]);
+          return;
+        }
+        const rows = (Array.isArray(data) ? data : []) as Conversation[];
         setConversations(rows);
+        if (rows.length === 0) {
+          setLoadState('empty');
+          setLoadError('');
+        } else {
+          setLoadState('ready');
+          setLoadError('');
+        }
       }
-      setLoadError('');
     } catch (err: unknown) {
-      setLoadError(err instanceof Error ? err.message : 'Failed to load conversations.');
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setLoadState('timeout');
+        setLoadError('Loading took too long. Please refresh.');
+      } else {
+        setLoadState('network');
+        setLoadError(err instanceof Error ? err.message : 'Network error while loading conversations.');
+      }
+      setConversations([]);
+    } finally {
+      clearTimeout(requestTimeout);
     }
   };
 
@@ -60,10 +138,29 @@ export const DashboardInbox: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setLoadState('loading');
+    if (loadTimeoutRef.current) {
+      window.clearTimeout(loadTimeoutRef.current);
+    }
+    loadTimeoutRef.current = window.setTimeout(() => {
+      setLoading(false);
+      setLoadState((prev) => (prev === 'loading' ? 'timeout' : prev));
+      setLoadError((prev) => prev || 'Loading took too long. Please refresh.');
+    }, 10000);
     (async () => {
       await loadConversations();
       setLoading(false);
+      if (loadTimeoutRef.current) {
+        window.clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
     })();
+    return () => {
+      if (loadTimeoutRef.current) {
+        window.clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, isAdmin]);
 
@@ -216,9 +313,24 @@ export const DashboardInbox: React.FC = () => {
             {loading ? (
               <div className="p-6 text-center text-sm text-black/50">Loading...</div>
             ) : loadError ? (
-              <div className="p-6 text-center text-sm text-red-500">{loadError}</div>
+              <div className="p-6 text-center space-y-3">
+                <div className={`text-sm ${loadState === 'unauthorized' ? 'text-amber-600' : 'text-red-500'}`}>{loadError}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoading(true);
+                    setLoadState('loading');
+                    loadConversations().finally(() => setLoading(false));
+                  }}
+                  className="inline-flex items-center rounded-full border border-black/20 px-4 py-2 text-xs font-semibold text-black hover:bg-black/5"
+                >
+                  Refresh
+                </button>
+              </div>
             ) : conversations.length === 0 ? (
-              <div className="p-6 text-center text-sm text-black/50">No conversations yet</div>
+              <div className="p-6 text-center text-sm text-black/50">
+                {loadState === 'empty' ? 'No conversations yet.' : 'No conversations available.'}
+              </div>
             ) : (
               conversations.map((conv) => (
                 <button

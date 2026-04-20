@@ -21,6 +21,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy import desc, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -139,11 +140,74 @@ async def _maybe_send_team_sms(message_id: uuid.UUID, user_id: str) -> None:
             await db.commit()
 
 
+async def _ensure_admin_conversation_for_user(
+    user_id: uuid.UUID,
+    db: AsyncSession,
+) -> Conversation:
+    """Guarantee the default Havlo Advisory admin conversation exists."""
+    if db.bind and db.bind.dialect.name == "postgresql":
+        stmt = (
+            pg_insert(Conversation)
+            .values(
+                user_id=user_id,
+                team_member_name="Havlo Advisory",
+                team_member_initials="HA",
+                team_member_color="#0052B4",
+                subject="Welcome to Havlo - we're here to help",
+                is_admin_conversation=True,
+                unread_count=0,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["user_id"],
+                index_where=Conversation.is_admin_conversation.is_(True),
+            )
+        )
+        await db.execute(stmt)
+    else:
+        existing = (
+            await db.execute(
+                select(Conversation).where(
+                    Conversation.user_id == user_id,
+                    Conversation.is_admin_conversation.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        if not existing:
+            db.add(
+                Conversation(
+                    user_id=user_id,
+                    team_member_name="Havlo Advisory",
+                    team_member_initials="HA",
+                    team_member_color="#0052B4",
+                    subject="Welcome to Havlo - we're here to help",
+                    is_admin_conversation=True,
+                    unread_count=0,
+                )
+            )
+    await db.commit()
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.user_id == user_id,
+                Conversation.is_admin_conversation.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not initialize inbox conversation.",
+        )
+    return conv
+
+
 @router.get("/conversations", response_model=list[ConversationOut])
 async def list_conversations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationOut]:
+    await _ensure_admin_conversation_for_user(current_user.id, db)
+
     last_message_subq = (
         select(Message.content)
         .where(Message.conversation_id == Conversation.id)
@@ -160,6 +224,10 @@ async def list_conversations(
             .order_by(desc(Conversation.last_message_at))
         )
     ).all()
+
+    if not rows:
+        conv = await _ensure_admin_conversation_for_user(current_user.id, db)
+        rows = [(conv, None)]
 
     return [
         ConversationOut(
