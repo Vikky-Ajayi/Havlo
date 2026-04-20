@@ -134,7 +134,7 @@ export const BuyAbroad: React.FC = () => {
       <MarqueeStrip />
 
       {/* 3. Reviews Section */}
-      <section className="w-full bg-white px-4 pt-20 sm:px-10 lg:px-[100px]">
+      <section className="w-full bg-white px-4 pt-4 sm:px-10 lg:px-[100px]">
         <AutoScrollReviews
           reviews={buyAbroadReviews}
           bgColor="#F5F5F3"

@@ -81,7 +81,7 @@ export const RelaunchAssessment: React.FC = () => {
       <RelaunchHeroSection />
 
       {/* Auto-scrolling reviews */}
-      <div className="bg-white px-0 pt-2 pb-0">
+      <div className="bg-white px-0 pt-0 pb-0">
         <AutoScrollReviews reviews={auditReviews} bgColor="#F5F5F3" />
       </div>
 

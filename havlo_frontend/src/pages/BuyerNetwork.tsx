@@ -154,7 +154,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* Auto-scrolling reviews */}
-      <div className="bg-white px-0 pt-2 pb-0">
+      <div className="bg-white px-0 pt-0 pb-0">
         <AutoScrollReviews reviews={agentReviews} bgColor="#F5F5F3" />
       </div>
 
