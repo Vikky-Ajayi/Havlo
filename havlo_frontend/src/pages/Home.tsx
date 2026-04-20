@@ -102,19 +102,19 @@ export const Home: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px]">
             <button
               onClick={() => navigate('/relaunch-assessment')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
             >
               Sell My Property Faster
             </button>
             <button
               onClick={() => navigate('/buy-abroad')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
             >
               Buy Property Abroad
             </button>
             <button
               onClick={() => navigate('/buyer-network')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
+              className="w-auto transition-all duration-200 hover:bg-black/5 active:scale-95 bg-white text-black px-6 py-4 rounded-full text-base font-semibold border border-black cursor-pointer h-14 whitespace-nowrap"
             >
               For Estate Agents
             </button>
