@@ -217,6 +217,10 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
+      <section className="w-full bg-white px-4 pt-2.5 sm:px-6 lg:px-[100px]">
+        <AutoScrollReviews reviews={relaunchReviews} bgColor="#F5F5F3" />
+      </section>
+
       <section className="bg-white px-4 py-14 sm:px-6 lg:px-[100px] lg:py-20">
         <div className="mx-auto grid max-w-[1240px] gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <div>
@@ -252,10 +256,6 @@ export const Marketing: React.FC = () => {
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="w-full bg-white px-4 pt-2.5 sm:px-6 lg:px-[100px]">
-        <AutoScrollReviews reviews={relaunchReviews} bgColor="#F5F5F3" />
       </section>
 
       <section className="relative bg-[#a409d2] px-4 py-16 text-white sm:px-6 lg:px-[100px] lg:py-20">
