@@ -114,9 +114,9 @@ export const CompleteHomeBuying: React.FC = () => {
       </section>
 
       {/* 3. How it works */}
-      <section className="flex flex-col bg-[#F9F8F9] py-20 lg:py-32 px-6 lg:px-[100px]">
-        <div className="max-w-[1100px] mx-auto w-full flex flex-col gap-10 lg:gap-14">
-          <h2 className="font-display text-[36px] sm:text-[44px] lg:text-[56px] font-black leading-[1.1] text-[#040504]">
+      <section className="flex flex-col bg-[#A409D2] py-16 lg:py-32 px-6 lg:px-[100px]">
+        <div className="max-w-[1100px] mx-auto w-full flex flex-col gap-8 lg:gap-14">
+          <h2 className="font-display text-[36px] sm:text-[44px] lg:text-[56px] font-black leading-[1.1] text-white">
             How it works
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
