@@ -20,7 +20,21 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    return os.environ["DATABASE_URL"]
+    url = os.environ.get("DATABASE_URL", "").strip()
+    if url:
+        return url
+
+    # Build from SUPABASE_DB_* / SUPABASE_DATABASE_URL via app Settings resolver.
+    from app.config import get_settings
+
+    resolved = (get_settings().DATABASE_URL or "").strip()
+    if not resolved:
+        raise RuntimeError(
+            "DATABASE_URL is not set and could not be resolved from SUPABASE_DB_* variables."
+        )
+
+    os.environ["DATABASE_URL"] = resolved
+    return resolved
 
 
 def run_migrations_offline() -> None:
