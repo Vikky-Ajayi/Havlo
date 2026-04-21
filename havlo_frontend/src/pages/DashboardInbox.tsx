@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { ChevronLeft, Mail, SendHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation } from '../lib/api';
+import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation, type AdminUser } from '../lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -22,6 +22,11 @@ const adminToInbox = (c: AdminConversation): InboxConversation => ({
 export const DashboardInbox: React.FC = () => {
   const { token, user } = useAuth();
   const isAdmin = !!user?.is_admin;
+  const [adminTab, setAdminTab] = useState<'recent' | 'users'>('recent');
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [adminUsersError, setAdminUsersError] = useState('');
+  const [adminSearch, setAdminSearch] = useState('');
   const [conversations, setConversations] = useState<InboxConversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
@@ -135,6 +140,35 @@ export const DashboardInbox: React.FC = () => {
     setDetail(payload);
   };
 
+  const loadAdminUsers = async (q?: string) => {
+    if (!token || !isAdmin) return;
+    setAdminUsersLoading(true);
+    setAdminUsersError('');
+    try {
+      const rows = await api.adminListUsers(token, { q: q?.trim() || undefined, only_with_threads: false });
+      setAdminUsers(rows);
+    } catch (err: unknown) {
+      setAdminUsersError(err instanceof Error ? err.message : 'Failed to load users.');
+      setAdminUsers([]);
+    } finally {
+      setAdminUsersLoading(false);
+    }
+  };
+
+  const startAdminConversationForUser = async (targetUser: AdminUser) => {
+    if (!token) return;
+    const resp = await api.adminStartConversation(token, {
+      user_id: targetUser.id,
+      sender_name: 'Havlo Advisory',
+      team_member_initials: 'HA',
+      team_member_color: '#0052B4',
+      subject: `Conversation with ${targetUser.full_name || targetUser.email}`,
+      initial_message: '',
+    });
+    setSelectedId(resp.id);
+    setAdminTab('recent');
+  };
+
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -149,6 +183,9 @@ export const DashboardInbox: React.FC = () => {
     }, 10000);
     (async () => {
       await loadConversations();
+      if (isAdmin) {
+        await loadAdminUsers('');
+      }
       setLoading(false);
       if (loadTimeoutRef.current) {
         window.clearTimeout(loadTimeoutRef.current);
@@ -309,6 +346,30 @@ export const DashboardInbox: React.FC = () => {
     <DashboardLayout title="Inbox">
       <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
         <div className={`w-full lg:w-[373px] flex-shrink-0 border-r border-[#F1F1F0] flex flex-col bg-white ${selectedId && 'hidden lg:flex'}`}>
+          {isAdmin && (
+            <div className="p-2 border-b border-[#F1F1F0] bg-white">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('recent')}
+                  className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${
+                    adminTab === 'recent' ? 'bg-black text-white' : 'bg-black/5 text-black'
+                  }`}
+                >
+                  Recent conversations
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('users')}
+                  className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold ${
+                    adminTab === 'users' ? 'bg-black text-white' : 'bg-black/5 text-black'
+                  }`}
+                >
+                  All users
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
             {loading ? (
               <div className="p-6 text-center text-sm text-black/50">Loading...</div>
@@ -326,6 +387,44 @@ export const DashboardInbox: React.FC = () => {
                 >
                   Refresh
                 </button>
+              </div>
+            ) : isAdmin && adminTab === 'users' ? (
+              <div className="space-y-2 p-2">
+                <input
+                  value={adminSearch}
+                  onChange={(e) => setAdminSearch(e.target.value)}
+                  placeholder="Search users"
+                  className="w-full h-10 rounded-full bg-[#F4F4F4] px-4 text-sm font-semibold placeholder:text-black/40 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => loadAdminUsers(adminSearch)}
+                  className="w-full rounded-full bg-black text-white py-2 text-xs font-semibold"
+                >
+                  Search
+                </button>
+
+                {adminUsersLoading ? (
+                  <div className="p-4 text-center text-sm text-black/50">Loading users...</div>
+                ) : adminUsersError ? (
+                  <div className="p-4 text-center text-sm text-red-500">{adminUsersError}</div>
+                ) : adminUsers.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-black/50">No users found.</div>
+                ) : (
+                  <div className="space-y-1">
+                    {adminUsers.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => startAdminConversationForUser(u)}
+                        className="w-full rounded-lg p-3 text-left hover:bg-black/5"
+                      >
+                        <div className="text-sm font-semibold text-black truncate">{u.full_name || u.email}</div>
+                        <div className="text-xs text-black/60 truncate">{u.email}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : conversations.length === 0 ? (
               <div className="p-6 text-center text-sm text-black/50">
