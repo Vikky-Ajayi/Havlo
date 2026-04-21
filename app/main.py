@@ -61,6 +61,12 @@ if replit_domains:
         if domain:
             allowed_origins.append(f"https://{domain}")
 
+for known in (
+    "https://heyhavlo.com",
+    "https://www.heyhavlo.com",
+):
+    allowed_origins.append(known)
+
 resolved_origins = list(dict.fromkeys([o.strip() for o in allowed_origins if o.strip()]))
 if not resolved_origins:
     resolved_origins = ["*"]
@@ -68,7 +74,7 @@ if not resolved_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=resolved_origins,
-    allow_origin_regex=r"https://([a-z0-9-]+\.)*vercel\.app",
+    allow_origin_regex=r"https://([a-z0-9-]+\.)*(vercel\.app|heyhavlo\.com)",
     allow_credentials=resolved_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
