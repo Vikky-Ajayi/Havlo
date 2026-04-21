@@ -14,7 +14,7 @@ export const Contact: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
-      <section className="flex flex-col items-center px-6 pt-16 lg:pt-20 pb-10 text-center sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center px-6 pt-[68px] lg:pt-[84px] pb-10 text-center sm:px-10 lg:px-[100px]">
         <div className="flex max-w-[888px] flex-col items-center gap-6 lg:gap-8">
           <div className="flex flex-col items-center gap-4 lg:gap-8">
             <h1 className="font-display text-[36px] sm:text-[48px] lg:text-[64px] font-black leading-[1.1] tracking-tight text-[#001C47]">

@@ -43,7 +43,7 @@ const RelaunchHeroSection: React.FC = () => {
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 lg:px-[100px] pt-20 pb-32 lg:pt-32 lg:pb-40 min-h-[600px] lg:h-[750px]">
+      <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 lg:px-[100px] pt-[84px] pb-32 lg:pt-32 lg:pb-40 min-h-[600px] lg:h-[750px]">
         <div className="w-full max-w-[800px] flex flex-col items-center">
           <h1 className="font-display font-black text-white leading-[1.1] text-[32px] sm:text-[44px] lg:text-[60px] xl:text-[68px]">
             Uncover What's Stopping Your Home from Selling with Havlo Property Sale Audit
@@ -94,7 +94,7 @@ export const RelaunchAssessment: React.FC = () => {
       </div>
 
       {/* 2. The Problem Section */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
             THE PROBLEM
@@ -131,7 +131,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 3. What You Get Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#F9F8F9] px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#F9F8F9] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
             WHAT YOU GET
@@ -170,7 +170,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 4. How It Works Section */}
-      <section className="flex w-full flex-col items-center justify-center bg-black px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex w-full flex-col items-center justify-center bg-black px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col items-start justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
             <span className="font-body text-lg font-medium uppercase tracking-tight text-havlo-purple">
@@ -202,7 +202,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 5. Why Us Section */}
-      <section className="flex flex-col items-center gap-14 bg-black px-4 py-1 md:py-20 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-black px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-white">
             WHY US

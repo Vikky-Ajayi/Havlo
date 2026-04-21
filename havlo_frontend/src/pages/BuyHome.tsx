@@ -85,7 +85,7 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* 2. What we offer Section */}
-      <section className="w-full bg-[#FFFFFE] py-1 md:py-20 px-4 sm:px-10 lg:px-[100px]">
+      <section className="w-full bg-[#FFFFFE] py-1 md:py-[84px] px-4 sm:px-10 lg:px-[100px]">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-12 items-start">
           <div className="lg:w-1/3 flex flex-col gap-10">
             <h2 className="font-display text-[64px] md:text-[80px] font-medium leading-[1] tracking-[-1.6px] text-black">

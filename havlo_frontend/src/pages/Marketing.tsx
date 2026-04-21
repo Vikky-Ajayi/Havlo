@@ -189,7 +189,7 @@ export const Marketing: React.FC = () => {
         <AutoScrollReviews reviews={relaunchReviews} bgColor="#F5F5F3" />
       </section>
 
-      <section className="bg-white px-4 py-14 sm:px-6 lg:px-[100px] lg:py-20">
+      <section className="bg-white px-4 py-[60px] sm:px-6 lg:px-[100px] lg:py-[84px]">
         <div className="mx-auto grid max-w-[1240px] gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <div>
             <div className="mb-4 flex items-center gap-3">
@@ -226,7 +226,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative bg-[#a409d2] px-4 py-16 text-white sm:px-6 lg:px-[100px] lg:py-20">
+      <section className="relative bg-[#a409d2] px-4 py-[68px] text-white sm:px-6 lg:px-[100px] lg:py-[84px]">
         <div className="mx-auto max-w-[1240px]">
           <div className="mb-8 text-center lg:mb-11">
             <div className="mb-3 flex items-center justify-center gap-3">
@@ -251,7 +251,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-16 sm:px-6 lg:px-[100px] lg:py-20">
+      <section className="bg-white px-4 py-[68px] sm:px-6 lg:px-[100px] lg:py-[84px]">
         <div className="mx-auto max-w-[1280px]">
           <div className="mb-10 max-w-[760px]">
             <div className="mb-4 flex items-center gap-3">
@@ -318,7 +318,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-gradient-to-b from-[#ffb0e8] via-[#ffc4e7] to-[#ffe79a] px-4 py-16 sm:px-6 lg:px-[100px] lg:py-20">
+      <section className="bg-gradient-to-b from-[#ffb0e8] via-[#ffc4e7] to-[#ffe79a] px-4 py-[68px] sm:px-6 lg:px-[100px] lg:py-[84px]">
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-9">
             <div className="mb-3 flex items-center gap-3">
@@ -351,7 +351,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-white px-4 py-16 text-center sm:px-6 lg:px-[100px] lg:py-20">
+      <section className="relative overflow-hidden bg-white px-4 py-[68px] text-center sm:px-6 lg:px-[100px] lg:py-[84px]">
         <div className="absolute left-0 right-0 top-0 h-[90px] pointer-events-none">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full bg-[#ffe79a]" />
         </div>

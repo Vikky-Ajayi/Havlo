@@ -72,7 +72,7 @@ export const Navbar: React.FC = () => {
       dropdownItems: [
         { name: 'Elite Property Introduction', href: '/elite-property' },
         { name: 'Sell Faster', href: '/sell-faster' },
-        { name: 'Property Sale Audit', href: '/relaunch-assessment' },
+        { name: 'Property Sale Audit', href: '/property-audit' },
       ]
     },
     {

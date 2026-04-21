@@ -101,7 +101,7 @@ export const Home: React.FC = () => {
         customActions={
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px] px-4 sm:px-6 lg:px-0">
             <button
-              onClick={() => navigate('/relaunch-assessment')}
+              onClick={() => navigate('/property-audit')}
               className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
             >
               Sell My Property Faster
@@ -128,7 +128,7 @@ export const Home: React.FC = () => {
       <MarqueeStrip />
 
       {/* 3. As Seen In */}
-      <section className="flex w-full flex-col items-center bg-white px-4 py-10 sm:px-10 lg:px-[100px] lg:py-14">
+      <section className="flex w-full flex-col items-center bg-white px-4 py-10 sm:px-10 lg:px-[100px] lg:py-[60px]">
         <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
           As seen in
         </span>
@@ -184,7 +184,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 5. Services Section */}
-      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] py-1 md:py-20">
+      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] py-1 md:py-[84px]">
         <div className="flex flex-col items-center gap-10 text-center">
           <div className="flex flex-col items-center gap-10 lg:gap-10">
             <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-[#3A3C3E]">
@@ -252,7 +252,7 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Property Sale Audit"
                     description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                    href="/relaunch-assessment"
+                    href="/property-audit"
                     className="bg-white"
                   />
                   <ServiceCard
@@ -299,7 +299,7 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Property Sale Audit"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                href="/relaunch-assessment"
+                href="/property-audit"
                 className="flex-[2] bg-white"
               />
               <ServiceCard
@@ -351,7 +351,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 6. The Havlo Difference */}
-      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] py-1 md:py-20">
+      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] py-1 md:py-[84px]">
         <h2 className="w-full text-center font-display text-[32px] lg:text-[48px] font-black leading-[1.1] text-white sm:text-[56px]">
           The Havlo Difference
         </h2>
@@ -375,7 +375,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 7. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center bg-white pt-20 lg:pt-60 pb-10 lg:pb-24 overflow-hidden">
+      <section className="relative flex flex-col items-center bg-white pt-[84px] lg:pt-60 pb-10 lg:pb-24 overflow-hidden">
         <div className="relative z-20 flex max-w-[903px] flex-col items-center gap-8 px-4 text-center">
           <h2 className="font-display text-[36px] sm:text-[56px] md:text-[64px] lg:text-[80px] font-black leading-tight lg:leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black">
             Ready to Take the Next Step?
