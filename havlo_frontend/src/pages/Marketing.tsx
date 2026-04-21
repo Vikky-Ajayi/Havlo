@@ -93,36 +93,12 @@ const tiers = [
 
 const faqs = [
   {
-    q: 'Can you help if my home has already been listed for months?',
-    a: 'Yes. Havlo Relaunch is designed specifically for properties that have lost momentum and need a refreshed route to serious buyers.',
-  },
-  {
-    q: 'Will this replace my estate agent?',
-    a: 'No - and you keep them. Havlo works alongside your existing agent, not instead of them. We open up international buyer markets your agent cannot reach through portals alone. Viewings, negotiations, and the sale itself are handled through your agent and solicitor as normal.',
-  },
-  {
-    q: 'What type of property is suitable?',
-    a: 'We work with properties from £500,000. Residential, commercial, and investment properties are all eligible.',
-  },
-  {
-    q: 'Why is international exposure important?',
-    a: 'Most property campaigns are built around local portals, local databases, and the same audience everyone else is targeting. International buyers - expats, investors, relocators - are often the most motivated purchasers, and most sellers never reach them.',
-  },
-  {
-    q: 'Can I continue to use my current agent?',
-    a: 'Yes. We work in parallel with your existing agent. There is no conflict and no disruption to your current sale process.',
-  },
-  {
-    q: 'Do you charge commission after the property sells?',
-    a: 'No. Havlo charges fixed management fees only. We are a marketing service, not an estate agent. There is no commission, no referral fee, and no percentage of the sale price - ever.',
-  },
-  {
     q: 'Do I still need my estate agent?',
     a: 'Yes - and you keep them. Havlo works alongside your existing agent, not instead of them. We open up international buyer markets your agent cannot reach through portals alone. Viewings, negotiations, and the sale itself are handled through your agent and solicitor as normal.',
   },
   {
     q: 'What does month 1 look like financially?',
-    a: 'Month 1 includes the one-time setup fee alongside your first monthly management fee - it is the most investment-heavy month. From month 2 onwards you only pay the monthly management fee, plus your ad spend directly to Meta.',
+    a: 'Month 1 includes the one-time setup fee alongside your first monthly management fee — it is the most investment-heavy month. From month 2 onwards you only pay the monthly management fee, plus your ad spend directly to Meta.',
   },
   {
     q: 'Which plan is right for my property?',
@@ -130,23 +106,15 @@ const faqs = [
   },
   {
     q: 'Why is ad spend separate from your fees?',
-    a: 'Your advertising budget goes directly from your account to Meta. Havlo never touches that money. This means full transparency - you can see every pound spent in real time - and we take no margin on your ad spend whatsoever.',
+    a: 'Your advertising budget goes directly from your account to Meta. Havlo never touches that money. This means full transparency — you can see every pound spent in real time - and we take no margin on your ad spend whatsoever.',
   },
   {
     q: 'Can I continue beyond the minimum term?',
     a: 'Yes. All plans roll monthly after the minimum term. You can pause or stop with 30 days notice once the minimum period is complete.',
   },
   {
-    q: 'How quickly can I expect buyer interest?',
-    a: 'In many cases, sellers begin seeing qualified enquiries within the first few weeks of relaunch. By targeting active international buyers from day one, we accelerate exposure and reduce the time your property sits unnoticed.',
-  },
-  {
-    q: 'What results have other sellers seen?',
-    a: 'We\'ve helped sellers revive listings that had stalled for months-generating fresh enquiries, attracting international buyers, and creating renewed momentum toward a sale. Results vary by property, but the goal is always the same: more qualified buyers, faster.',
-  },
-  {
-    q: 'What makes this different from my agent?',
-    a: 'We don\'t replace your agent-we enhance their reach. Most agents rely on local portals and databases, which limits exposure to a domestic audience. Havlo adds a targeted international layer, putting your property in front of qualified buyers your current marketing isn\'t reaching.',
+    q: 'Do you charge a commission when the property sells?',
+    a: 'No. Havlo charges fixed management fees only. We are a marketing service, not an estate agent. There is no commission, no referral fee, and no percentage of the sale price - ever.',
   },
 ];
 
@@ -355,7 +323,7 @@ export const Marketing: React.FC = () => {
           <div className="mb-9">
             <div className="mb-3 flex items-center gap-3">
               <span className="h-px w-8 bg-black" />
-              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/65">FAQs</span>
+              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/65">Common questions</span>
             </div>
             <h2 className="font-display text-[34px] font-black leading-none tracking-[-0.8px] text-black sm:text-[48px] lg:text-[58px]">Everything you need to know</h2>
           </div>
