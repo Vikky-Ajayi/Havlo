@@ -8,61 +8,101 @@ export const BuyHome: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* ===================== MOBILE (< md) ===================== */}
-      {/* M1. Hero */}
-      <section className="md:hidden relative bg-gradient-to-b from-[#FFB0E8] via-[#FFD7B5] to-[#FEEAA0] px-6 pt-12 pb-14">
-        <div className="flex flex-col items-center text-center gap-6">
-          <h1 className="font-display font-black tracking-[-1.2px] text-[#1F1F1E] text-[34px] leading-[1.05]">
-            Buying a home abroad just got a whole lot easier.
-          </h1>
-          <p className="font-body text-base text-black/80 max-w-[300px]">
-            Everything we charge, all in one peaceful place
-          </p>
-          <button
-            onClick={() => openModal('create-account')}
-            className="h-12 px-7 rounded-full bg-black text-white font-body text-base font-semibold transition-all hover:bg-black/90 active:scale-95"
-          >
-            Get Started Today
-          </button>
+      {/* M1. Hero — white BG, blurred colored circles, floating status cards */}
+      <section className="md:hidden relative bg-[#FEFEFE] overflow-hidden">
+        {/* Blurred colored gradient circles strip at top */}
+        <div className="absolute inset-x-0 top-0 h-[140px] pointer-events-none overflow-hidden">
+          <div className="flex justify-between items-center w-[120%] -ml-[10%] h-full opacity-60 blur-[60px]">
+            <div className="w-[100px] h-[100px] rounded-full bg-[#F2D0B2]" />
+            <div className="w-[100px] h-[100px] rounded-full bg-[#E6ECA2]" />
+            <div className="w-[100px] h-[100px] rounded-full bg-[#D2F4B9]" />
+            <div className="w-[100px] h-[100px] rounded-full bg-[#94E3DC]" />
+            <div className="w-[100px] h-[100px] rounded-full bg-[#9BC3F0]" />
+          </div>
+        </div>
 
-          <div className="mt-6 flex items-center gap-3 self-stretch">
-            <div className="shrink-0 w-11 h-11 rounded-2xl bg-[#A409D2] flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white">
-                <path d="M3 11.5L12 4l9 7.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-8.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <p className="font-display font-bold text-[#1F1F1E] text-lg leading-tight text-left">
-              Track everything in one place, on your dashboard
+        <div className="relative z-10 px-4 pt-10 pb-12">
+          {/* Headline block */}
+          <div className="flex flex-col items-center gap-6 text-center">
+            <h1 className="font-display text-[#1F1F1E] text-[38px] font-black leading-[1] tracking-[-0.76px]">
+              Buying a home abroad just got a whole lot easier.
+            </h1>
+            <p className="font-body text-base font-medium text-black leading-[1.4]">
+              Everything you need in one, peaceful place
             </p>
+            <button
+              onClick={() => openModal('create-account')}
+              className="w-full h-14 px-5 rounded-[48px] bg-black text-white font-body text-lg font-semibold transition-all hover:bg-black/90 active:scale-95"
+            >
+              Get started Today
+            </button>
+          </div>
+
+          {/* Floating status cards stacked / overlapping */}
+          <div className="relative mt-12 mb-8 h-[280px]">
+            {/* Card 1: DONE */}
+            <div className="absolute left-0 top-0 w-[210px] p-4 rounded-[18px] border border-black/10 bg-[#EBFFF6] shadow-[6px_2px_12px_rgba(0,0,0,0.05)] flex flex-col gap-5">
+              <div className="self-start px-2.5 py-1 rounded-full bg-[#00BC67]">
+                <span className="font-body text-[11px] font-medium text-black">DONE</span>
+              </div>
+              <p className="font-body text-xs text-black">Property sourced</p>
+            </div>
+
+            {/* Card 2: IN PROGRESS, rotated */}
+            <div className="absolute left-[40%] top-[90px] w-[200px] p-4 rounded-[18px] border border-black/10 bg-[#FFEBF9] shadow-[6px_2px_12px_rgba(0,0,0,0.05)] flex flex-col gap-5 rotate-[4deg]">
+              <div className="self-start px-2.5 py-1 rounded-full bg-[#FFB0E8]">
+                <span className="font-body text-[11px] font-medium text-black">IN PROGRESS</span>
+              </div>
+              <p className="font-body text-xs text-black">Offer made</p>
+            </div>
+
+            {/* Card 3: COMING UP */}
+            <div className="absolute left-[10%] top-[180px] w-[210px] p-4 rounded-[18px] border border-black/10 bg-white shadow-[6px_2px_12px_rgba(0,0,0,0.05)] flex flex-col gap-5">
+              <div className="self-start px-2.5 py-1 rounded-full bg-black/10">
+                <span className="font-body text-[11px] font-medium text-black">COMING UP</span>
+              </div>
+              <p className="font-body text-xs text-black">Purchase completed</p>
+            </div>
+          </div>
+
+          {/* House icon + Track everything text */}
+          <div className="flex items-start gap-4">
+            <img
+              src="https://api.builder.io/api/v1/image/assets/TEMP/1d39f7bca27c7f8b2a16a58e41c532146fcabcf1?width=894"
+              alt="House"
+              className="w-[120px] h-auto object-contain shrink-0"
+              referrerPolicy="no-referrer"
+            />
+            <h2 className="font-display text-[#1F1F1E] text-[26px] font-extralight leading-[1] tracking-[-0.52px]">
+              Track everything in one place, on your dashboard
+            </h2>
           </div>
         </div>
       </section>
 
-      {/* M2. What we offer */}
-      <section className="md:hidden bg-white px-6 py-14">
+      {/* M2. What we offer — white BG, two cream cards */}
+      <section className="md:hidden bg-[#FFFFFE] px-4 py-10">
         <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-3">
-            <h2 className="font-display text-[34px] font-black leading-[1.05] tracking-[-0.8px] text-black">
+          <div className="flex flex-col gap-6">
+            <h2 className="font-display text-[40px] font-medium leading-[1] tracking-[-0.8px] text-black">
               What we offer
             </h2>
-            <p className="font-body text-base text-black/70">
-              From sourcing to completion, we provide an end-to-end experience for buying property abroad.
+            <p className="font-body text-base text-black leading-[1.4]">
+              From search to completion, we provide an end-to-end experience for buying property abroad.
             </p>
           </div>
 
-          {/* Essential Access */}
-          <div className="rounded-[20px] bg-[#FAEBFE] p-6 flex flex-col gap-5">
-            <div className="self-start px-3 py-1.5 rounded-md bg-[#FFB0E8]">
-              <span className="font-body text-xs font-semibold text-black">
-                Essential Access · From £2000
+          {/* Essential Access — cream BG, pink tag */}
+          <div className="rounded-2xl bg-[#FBF3EA] p-6 flex flex-col gap-6">
+            <div className="self-start px-3 py-2.5 rounded-lg bg-[#FFB0E8]">
+              <span className="font-body text-base font-normal text-black">
+                Essential Access — From $2000
               </span>
             </div>
-            <h3 className="font-display text-[22px] font-bold text-[#1F1F1E] leading-tight">
-              Expert mortgage advice & application service
+            <h3 className="font-display text-2xl font-medium leading-[1.1] text-[#1F1F1E]">
+              Expert mortgage advice & application service Starting from $2000
             </h3>
-            <p className="font-body text-xs font-semibold text-black/60 -mt-3">
-              Starting from £2000
-            </p>
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-4">
               {[
                 'Property search and shortlisting support',
                 'Guidance on international ownership options',
@@ -71,30 +111,27 @@ export const BuyHome: React.FC = () => {
                 'Document checklist and timeline planning',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
-                  <Check className="w-5 h-5 text-[#00BC67] shrink-0 mt-0.5" />
-                  <span className="font-body text-[15px] text-black leading-snug">{item}</span>
+                  <Check className="w-6 h-6 text-[#00BC67] shrink-0 mt-0.5" strokeWidth={2.5} />
+                  <span className="font-body text-base text-black leading-[1.3]">{item}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Essential Plus */}
-          <div className="rounded-[20px] bg-[#FFF6D6] p-6 flex flex-col gap-5">
-            <div className="self-start px-3 py-1.5 rounded-md bg-[#602FD3]">
-              <span className="font-body text-xs font-semibold text-white">
-                Essential Plus · Starting from £5000
+          {/* Essential Plus — cream BG, purple tag */}
+          <div className="rounded-2xl bg-[#FBF3EA] p-6 flex flex-col gap-6">
+            <div className="self-start px-3 py-2.5 rounded-lg bg-[#602FD3]">
+              <span className="font-body text-base font-normal text-white">
+                Essential Plus — Starting from $5000
               </span>
             </div>
-            <h3 className="font-display text-[22px] font-bold text-[#1F1F1E] leading-tight">
+            <h3 className="font-display text-2xl font-medium leading-[1.1] text-[#1F1F1E]">
               Property survey, legal work & more
             </h3>
-            <p className="font-body text-xs font-semibold text-black/60 -mt-3">
-              Starting from £5000
-            </p>
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-4">
               <li className="flex items-start gap-3">
-                <Check className="w-5 h-5 text-[#00BC67] shrink-0 mt-0.5" />
-                <span className="font-body text-[15px] font-bold text-black leading-snug">
+                <Check className="w-6 h-6 text-[#00BC67] shrink-0 mt-0.5" strokeWidth={2.5} />
+                <span className="font-body text-base font-bold text-black leading-[1.3]">
                   Everything in Essential Access, plus:
                 </span>
               </li>
@@ -106,8 +143,8 @@ export const BuyHome: React.FC = () => {
                 'Support through completion and handover',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
-                  <Check className="w-5 h-5 text-[#00BC67] shrink-0 mt-0.5" />
-                  <span className="font-body text-[15px] text-black leading-snug">{item}</span>
+                  <Check className="w-6 h-6 text-[#00BC67] shrink-0 mt-0.5" strokeWidth={2.5} />
+                  <span className="font-body text-base text-black leading-[1.3]">{item}</span>
                 </li>
               ))}
             </ul>
@@ -115,34 +152,41 @@ export const BuyHome: React.FC = () => {
         </div>
       </section>
 
-      {/* M3. How it works */}
-      <section className="md:hidden px-6 py-14 bg-gradient-to-b from-[#9BD9FF] via-[#E8C0F4] to-[#FFB0E8]/60">
-        <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-2">
-            <h2 className="font-display text-[34px] font-black leading-[1.05] tracking-[-0.8px] text-black">
+      {/* M3. How it works — blue→pink→yellow gradient, frosted cards */}
+      <section
+        className="md:hidden px-4 py-12"
+        style={{
+          background: 'linear-gradient(180deg, #9BD9FF 0%, #FFB0E8 50%, #FEEAA0 100%)',
+        }}
+      >
+        <div className="flex flex-col items-center gap-10">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <h2 className="font-display text-[40px] font-black leading-[1] tracking-[-0.8px] text-black">
               How it works
             </h2>
-            <p className="font-body text-sm font-semibold text-black/60">
+            <p className="font-body text-base font-medium text-black/60">
               What's your situation?
             </p>
           </div>
 
-          <div className="flex flex-col gap-3">
+          {/* Toggle */}
+          <div className="flex flex-col gap-3 w-full">
             <div className="flex items-center gap-3 p-4 rounded-xl bg-white border border-black/10">
-              <div className="w-5 h-5 rounded-full border-2 border-black/30" />
-              <span className="font-body text-sm font-semibold text-black/70">I'm buying</span>
+              <Circle className="w-6 h-6 text-black/40" strokeWidth={1.5} />
+              <span className="font-body text-base font-medium text-black/80">I'm buying</span>
             </div>
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-black">
-              <div className="w-5 h-5 rounded-full bg-[#00BC67] flex items-center justify-center">
-                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-black border-2 border-[#D46444]">
+              <div className="w-6 h-6 rounded-full bg-[#00BC67] flex items-center justify-center">
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
               </div>
-              <span className="font-body text-sm font-semibold text-white">
+              <span className="font-body text-base font-medium text-white">
                 I'm buying and selling
               </span>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4">
+          {/* Step cards (frosted glass) */}
+          <div className="flex flex-col gap-6 w-full">
             {[
               {
                 title: 'Bespoke Consultation',
@@ -171,78 +215,82 @@ export const BuyHome: React.FC = () => {
             ].map((step) => (
               <div
                 key={step.title}
-                className="rounded-[18px] bg-white/60 backdrop-blur-sm p-5 flex flex-col gap-2 border border-white/40"
+                className="rounded-3xl p-6 flex flex-col gap-6 bg-white/30 backdrop-blur-[10px]"
               >
-                <h3 className="font-display text-lg font-black text-black leading-tight">
+                <h3 className="font-display text-[28px] font-black text-black leading-[1] tracking-[-0.56px]">
                   {step.title}
                 </h3>
-                <p className="font-body text-sm text-black/75 leading-snug">{step.desc}</p>
+                <p className="font-body text-base font-semibold text-black/80 leading-[1.4]">
+                  {step.desc}
+                </p>
               </div>
             ))}
           </div>
 
           <button
             onClick={() => openModal('create-account')}
-            className="self-center mt-2 h-12 px-7 rounded-full bg-black text-white font-body text-base font-semibold transition-all hover:bg-black/90 active:scale-95"
+            className="mt-2 h-14 px-6 rounded-[48px] bg-black text-white font-body text-lg font-semibold transition-all hover:bg-black/90 active:scale-95"
           >
-            Get Started Today
+            Get started Today
           </button>
         </div>
       </section>
 
-      {/* M4. Let's talk fees */}
-      <section className="md:hidden bg-[#FEEAA0] px-6 py-14">
-        <div className="flex flex-col gap-7">
-          <div className="flex flex-col gap-3">
-            <h2 className="font-display text-[34px] font-black leading-[1.0] tracking-[-0.8px] text-black">
+      {/* M4. Let's talk fees — dark card with white form inside */}
+      <section className="md:hidden bg-white px-4 py-10">
+        <div className="rounded-[28px] bg-[#040504] p-6 flex flex-col gap-8">
+          <div className="flex flex-col gap-5">
+            <h2 className="font-display text-[44px] font-medium leading-[1] tracking-[-0.88px] text-white">
               Let's talk fees
             </h2>
-            <p className="font-body text-sm text-black/75">
+            <p className="font-body text-base text-white leading-[1.5]">
               Our cost depends on your property price, but the fees start from around £2,000.
             </p>
           </div>
 
-          <div className="rounded-[20px] bg-white p-5 flex flex-col gap-4">
-            <label className="flex flex-col gap-2">
-              <span className="font-body text-sm font-semibold text-black">
+          <div className="rounded-[24px] bg-white p-6 flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
+              <label className="font-display text-xl font-medium text-black">
                 Your property price
-              </span>
-              <div className="flex items-center rounded-lg border border-black/10 overflow-hidden">
-                <div className="bg-black px-3 py-2.5 flex items-center justify-center">
-                  <span className="font-display text-base text-white">£</span>
+              </label>
+              <div className="flex items-stretch rounded-lg border border-black/10 overflow-hidden">
+                <div className="bg-black flex items-center justify-center min-w-[44px] px-3">
+                  <span className="font-display text-xl text-white">£</span>
                 </div>
                 <input
                   type="text"
                   defaultValue="2000"
-                  className="w-full font-body text-sm text-black/70 outline-none px-3 py-2.5"
+                  className="flex-1 font-body text-base text-black/60 outline-none px-3 py-2.5"
                 />
               </div>
-            </label>
-
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#00FF8C]">
-              <span className="font-body text-sm text-[#040405]">Your price</span>
-              <span className="font-body text-sm font-bold text-[#040405]">£2,600</span>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <h4 className="font-body text-sm font-semibold text-black">This includes:</h4>
-              <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-black/5">
-                <span className="font-body text-xs text-[#040405]">
-                  All your conveyancing and legal work
-                </span>
-                <span className="font-body text-xs font-bold text-[#040405] whitespace-nowrap">
-                  worth £1,610
-                </span>
-              </div>
-              <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-black/5">
-                <span className="font-body text-xs text-[#040405]">Property survey</span>
-                <span className="font-body text-xs font-bold text-[#040405] whitespace-nowrap">
-                  worth £432
-                </span>
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#00FF8C]">
+              <span className="font-body text-base text-[#040405]">Your price</span>
+              <span className="font-body text-base font-bold text-[#040405]">£2,600</span>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <h4 className="font-display text-xl font-medium text-black">This includes:</h4>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-black/10">
+                  <span className="font-body text-sm text-[#040405]">
+                    All your conveyancing and legal work
+                  </span>
+                  <span className="font-body text-sm font-bold text-[#040405] whitespace-nowrap">
+                    worth £1,610
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-black/10">
+                  <span className="font-body text-sm text-[#040405]">Property survey</span>
+                  <span className="font-body text-sm font-bold text-[#040405] whitespace-nowrap">
+                    worth £432
+                  </span>
+                </div>
               </div>
             </div>
 
-            <button className="self-start mt-1 rounded-full border border-black px-5 py-2.5 font-body text-sm font-semibold text-[#040405] transition-all hover:bg-black hover:text-white active:scale-95">
+            <button className="self-start rounded-full border border-black px-6 py-3 font-body text-base font-semibold text-[#040405] transition-all hover:bg-black hover:text-white active:scale-95">
               Lock in your quote
             </button>
           </div>
