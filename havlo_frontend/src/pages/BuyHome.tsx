@@ -7,8 +7,251 @@ export const BuyHome: React.FC = () => {
   const { openModal } = useModal();
   return (
     <div className="flex flex-col w-full bg-white">
+      {/* ===================== MOBILE (< md) ===================== */}
+      {/* M1. Hero */}
+      <section className="md:hidden relative bg-gradient-to-b from-[#FFB0E8] via-[#FFD7B5] to-[#FEEAA0] px-6 pt-12 pb-14">
+        <div className="flex flex-col items-center text-center gap-6">
+          <h1 className="font-display font-black tracking-[-1.2px] text-[#1F1F1E] text-[34px] leading-[1.05]">
+            Buying a home abroad just got a whole lot easier.
+          </h1>
+          <p className="font-body text-base text-black/80 max-w-[300px]">
+            Everything we charge, all in one peaceful place
+          </p>
+          <button
+            onClick={() => openModal('create-account')}
+            className="h-12 px-7 rounded-full bg-black text-white font-body text-base font-semibold transition-all hover:bg-black/90 active:scale-95"
+          >
+            Get Started Today
+          </button>
+
+          <div className="mt-6 flex items-center gap-3 self-stretch">
+            <div className="shrink-0 w-11 h-11 rounded-2xl bg-[#A409D2] flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white">
+                <path d="M3 11.5L12 4l9 7.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-8.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p className="font-display font-bold text-[#1F1F1E] text-lg leading-tight text-left">
+              Track everything in one place, on your dashboard
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* M2. What we offer */}
+      <section className="md:hidden bg-white px-6 py-14">
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-3">
+            <h2 className="font-display text-[34px] font-black leading-[1.05] tracking-[-0.8px] text-black">
+              What we offer
+            </h2>
+            <p className="font-body text-base text-black/70">
+              From sourcing to completion, we provide an end-to-end experience for buying property abroad.
+            </p>
+          </div>
+
+          {/* Essential Access */}
+          <div className="rounded-[20px] bg-[#FAEBFE] p-6 flex flex-col gap-5">
+            <div className="self-start px-3 py-1.5 rounded-md bg-[#FFB0E8]">
+              <span className="font-body text-xs font-semibold text-black">
+                Essential Access · From £2000
+              </span>
+            </div>
+            <h3 className="font-display text-[22px] font-bold text-[#1F1F1E] leading-tight">
+              Expert mortgage advice & application service
+            </h3>
+            <p className="font-body text-xs font-semibold text-black/60 -mt-3">
+              Starting from £2000
+            </p>
+            <ul className="flex flex-col gap-3">
+              {[
+                'Property search and shortlisting support',
+                'Guidance on international ownership options',
+                'Country-specific buying process overview',
+                'Access to vetted local agents and partners',
+                'Document checklist and timeline planning',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-[#00BC67] shrink-0 mt-0.5" />
+                  <span className="font-body text-[15px] text-black leading-snug">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Essential Plus */}
+          <div className="rounded-[20px] bg-[#FFF6D6] p-6 flex flex-col gap-5">
+            <div className="self-start px-3 py-1.5 rounded-md bg-[#602FD3]">
+              <span className="font-body text-xs font-semibold text-white">
+                Essential Plus · Starting from £5000
+              </span>
+            </div>
+            <h3 className="font-display text-[22px] font-bold text-[#1F1F1E] leading-tight">
+              Property survey, legal work & more
+            </h3>
+            <p className="font-body text-xs font-semibold text-black/60 -mt-3">
+              Starting from £5000
+            </p>
+            <ul className="flex flex-col gap-3">
+              <li className="flex items-start gap-3">
+                <Check className="w-5 h-5 text-[#00BC67] shrink-0 mt-0.5" />
+                <span className="font-body text-[15px] font-bold text-black leading-snug">
+                  Everything in Essential Access, plus:
+                </span>
+              </li>
+              {[
+                'End-to-end purchase coordination',
+                'Negotiation and offer support',
+                'Legal, tax, and financing guidance (via local experts)',
+                'Ongoing liaison with agents, lawyers, and developers',
+                'Support through completion and handover',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <Check className="w-5 h-5 text-[#00BC67] shrink-0 mt-0.5" />
+                  <span className="font-body text-[15px] text-black leading-snug">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* M3. How it works */}
+      <section className="md:hidden px-6 py-14 bg-gradient-to-b from-[#9BD9FF] via-[#E8C0F4] to-[#FFB0E8]/60">
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-2">
+            <h2 className="font-display text-[34px] font-black leading-[1.05] tracking-[-0.8px] text-black">
+              How it works
+            </h2>
+            <p className="font-body text-sm font-semibold text-black/60">
+              What's your situation?
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-white border border-black/10">
+              <div className="w-5 h-5 rounded-full border-2 border-black/30" />
+              <span className="font-body text-sm font-semibold text-black/70">I'm buying</span>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-black">
+              <div className="w-5 h-5 rounded-full bg-[#00BC67] flex items-center justify-center">
+                <Check className="w-3 h-3 text-white" strokeWidth={3} />
+              </div>
+              <span className="font-body text-sm font-semibold text-white">
+                I'm buying and selling
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {[
+              {
+                title: 'Bespoke Consultation',
+                desc: 'We begin with a personalised consultation to understand your property, goals, timeline, and target market.',
+              },
+              {
+                title: 'Property Positioning & Valuation',
+                desc: 'We assess market value and advise on pricing, positioning, and any preparation needed to maximise appeal.',
+              },
+              {
+                title: 'Local Expert Representation',
+                desc: 'We appoint vetted local agents, legal, and tax professionals to manage the sale in-market.',
+              },
+              {
+                title: 'Marketing & Buyer Management',
+                desc: 'Your property is marketed to qualified buyers, with viewings, enquiries, and offers handled on your behalf.',
+              },
+              {
+                title: 'Offer Negotiation & Sale Progression',
+                desc: 'We support negotiations and oversee contracts, due diligence, and buyer coordination through to exchange.',
+              },
+              {
+                title: 'Completion & Post-Sale Support',
+                desc: 'We guide you through completion and provide post-sale support, including fund transfers and reinvestment options.',
+              },
+            ].map((step) => (
+              <div
+                key={step.title}
+                className="rounded-[18px] bg-white/60 backdrop-blur-sm p-5 flex flex-col gap-2 border border-white/40"
+              >
+                <h3 className="font-display text-lg font-black text-black leading-tight">
+                  {step.title}
+                </h3>
+                <p className="font-body text-sm text-black/75 leading-snug">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => openModal('create-account')}
+            className="self-center mt-2 h-12 px-7 rounded-full bg-black text-white font-body text-base font-semibold transition-all hover:bg-black/90 active:scale-95"
+          >
+            Get Started Today
+          </button>
+        </div>
+      </section>
+
+      {/* M4. Let's talk fees */}
+      <section className="md:hidden bg-[#FEEAA0] px-6 py-14">
+        <div className="flex flex-col gap-7">
+          <div className="flex flex-col gap-3">
+            <h2 className="font-display text-[34px] font-black leading-[1.0] tracking-[-0.8px] text-black">
+              Let's talk fees
+            </h2>
+            <p className="font-body text-sm text-black/75">
+              Our cost depends on your property price, but the fees start from around £2,000.
+            </p>
+          </div>
+
+          <div className="rounded-[20px] bg-white p-5 flex flex-col gap-4">
+            <label className="flex flex-col gap-2">
+              <span className="font-body text-sm font-semibold text-black">
+                Your property price
+              </span>
+              <div className="flex items-center rounded-lg border border-black/10 overflow-hidden">
+                <div className="bg-black px-3 py-2.5 flex items-center justify-center">
+                  <span className="font-display text-base text-white">£</span>
+                </div>
+                <input
+                  type="text"
+                  defaultValue="2000"
+                  className="w-full font-body text-sm text-black/70 outline-none px-3 py-2.5"
+                />
+              </div>
+            </label>
+
+            <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-[#00FF8C]">
+              <span className="font-body text-sm text-[#040405]">Your price</span>
+              <span className="font-body text-sm font-bold text-[#040405]">£2,600</span>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <h4 className="font-body text-sm font-semibold text-black">This includes:</h4>
+              <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-black/5">
+                <span className="font-body text-xs text-[#040405]">
+                  All your conveyancing and legal work
+                </span>
+                <span className="font-body text-xs font-bold text-[#040405] whitespace-nowrap">
+                  worth £1,610
+                </span>
+              </div>
+              <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-black/5">
+                <span className="font-body text-xs text-[#040405]">Property survey</span>
+                <span className="font-body text-xs font-bold text-[#040405] whitespace-nowrap">
+                  worth £432
+                </span>
+              </div>
+            </div>
+
+            <button className="self-start mt-1 rounded-full border border-black px-5 py-2.5 font-body text-sm font-semibold text-[#040405] transition-all hover:bg-black hover:text-white active:scale-95">
+              Lock in your quote
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ===================== DESKTOP (>= md) ===================== */}
       {/* 1. Hero Section */}
-      <section className="relative w-full min-h-[960px] bg-[#FEFEFE] overflow-hidden">
+      <section className="hidden md:block relative w-full min-h-[960px] bg-[#FEFEFE] overflow-hidden">
         {/* Blurred Background Circles */}
         <div className="absolute top-[-35px] left-[107px] w-[1226px] h-[284px] blur-[125px] opacity-50 pointer-events-none z-0">
           <div className="flex justify-between items-center w-full h-full">
