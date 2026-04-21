@@ -21,10 +21,10 @@ from fastapi import (
     status,
 )
 from sqlalchemy import desc, func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal, get_db
@@ -146,59 +146,34 @@ async def _ensure_admin_conversation_for_user(
     db: AsyncSession,
 ) -> Conversation:
     """Guarantee the default Havlo Advisory admin conversation exists."""
-    inserted_with_upsert = False
-    if db.bind and db.bind.dialect.name == "postgresql":
-        try:
-            stmt = (
-                pg_insert(Conversation)
-                .values(
-                    user_id=user_id,
-                    team_member_name="Havlo Advisory",
-                    team_member_initials="HA",
-                    team_member_color="#0052B4",
-                    subject="Welcome to Havlo - we're here to help",
-                    is_admin_conversation=True,
-                    unread_count=0,
-                )
-                .on_conflict_do_nothing(
-                    index_elements=["user_id"],
-                    index_where=Conversation.is_admin_conversation.is_(True),
-                )
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.user_id == user_id,
+                Conversation.is_admin_conversation.is_(True),
             )
-            await db.execute(stmt)
-            inserted_with_upsert = True
-        except SQLAlchemyError as exc:
-            # Some production DBs may miss the partial unique index required by ON CONFLICT.
-            # Fall back to explicit read-then-insert path instead of failing the endpoint.
-            logger.warning(
-                "Admin conversation upsert fallback for user=%s due to DB error: %s",
-                user_id,
-                exc,
-            )
-            await db.rollback()
+        )
+    ).scalar_one_or_none()
+    if conv:
+        return conv
 
-    if not inserted_with_upsert:
-        existing = (
-            await db.execute(
-                select(Conversation).where(
-                    Conversation.user_id == user_id,
-                    Conversation.is_admin_conversation.is_(True),
-                )
-            )
-        ).scalar_one_or_none()
-        if not existing:
-            db.add(
-                Conversation(
-                    user_id=user_id,
-                    team_member_name="Havlo Advisory",
-                    team_member_initials="HA",
-                    team_member_color="#0052B4",
-                    subject="Welcome to Havlo - we're here to help",
-                    is_admin_conversation=True,
-                    unread_count=0,
-                )
-            )
-    await db.commit()
+    db.add(
+        Conversation(
+            user_id=user_id,
+            team_member_name="Havlo Advisory",
+            team_member_initials="HA",
+            team_member_color="#0052B4",
+            subject="Welcome to Havlo - we're here to help",
+            is_admin_conversation=True,
+            unread_count=0,
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Another request may have created it concurrently. Re-select.
+        await db.rollback()
+
     conv = (
         await db.execute(
             select(Conversation).where(
@@ -220,7 +195,8 @@ async def list_conversations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationOut]:
-    await _ensure_admin_conversation_for_user(current_user.id, db)
+    user_id = current_user.id
+    await _ensure_admin_conversation_for_user(user_id, db)
 
     last_message_subq = (
         select(Message.content)
@@ -234,13 +210,13 @@ async def list_conversations(
     rows = (
         await db.execute(
             select(Conversation, last_message_subq.label("last_snippet"))
-            .where(Conversation.user_id == current_user.id)
+            .where(Conversation.user_id == user_id)
             .order_by(desc(Conversation.last_message_at))
         )
     ).all()
 
     if not rows:
-        conv = await _ensure_admin_conversation_for_user(current_user.id, db)
+        conv = await _ensure_admin_conversation_for_user(user_id, db)
         rows = [(conv, None)]
 
     return [
