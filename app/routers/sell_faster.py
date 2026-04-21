@@ -70,7 +70,7 @@ async def submit_sell_faster(
     setup_price = float(plan["setup"])
     monthly_price = float(plan["monthly"])
     currency = str(plan["currency"]).upper()
-    total_amount = round(setup_price + monthly_price, 2)
+    total_amount = round(setup_price, 2)
     reference = f"HAVLO-SF-{uuid.uuid4().hex[:12].upper()}"
 
     redirect_url = None
@@ -91,7 +91,7 @@ async def submit_sell_faster(
             currency=currency,
             description=(
                 f"Havlo Sell Faster — {plan['name']} Plan "
-                f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f})"
+                f"(Setup fee £{setup_price:.0f}; £{monthly_price:.0f}/month thereafter)"
             ),
             reference=reference,
             redirect_url=redirect_url,
@@ -178,8 +178,8 @@ async def submit_sell_faster(
         total_amount=total_amount,
         currency=currency,
         message=(
-            f"Application created. Please complete payment of £{total_amount:.2f} "
-            f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f}) to activate your campaign."
+            f"Application created. Please complete the setup payment of £{total_amount:.2f} "
+            f"(£{monthly_price:.0f}/month thereafter) to activate your campaign."
         ),
     )
 

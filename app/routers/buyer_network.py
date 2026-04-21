@@ -69,7 +69,7 @@ async def submit_buyer_network(
     setup_price = float(package["setup"])
     monthly_price = float(package["monthly"])
     currency = str(package["currency"]).upper()
-    total_amount = round(setup_price + monthly_price, 2)
+    total_amount = round(setup_price, 2)
     reference = f"HAVLO-BN-{uuid.uuid4().hex[:12].upper()}"
 
     redirect_url = None
@@ -90,7 +90,7 @@ async def submit_buyer_network(
             currency=currency,
             description=(
                 f"Havlo Buyer Network — {package['name']} Package "
-                f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f})"
+                f"(Setup fee £{setup_price:.0f}; £{monthly_price:.0f}/month thereafter)"
             ),
             reference=reference,
             redirect_url=redirect_url,
@@ -169,8 +169,8 @@ async def submit_buyer_network(
         total_amount=total_amount,
         currency=currency,
         message=(
-            f"Application created. Please complete payment of £{total_amount:.2f} "
-            f"(Setup £{setup_price:.0f} + Month 1 £{monthly_price:.0f}) to activate."
+            f"Application created. Please complete the setup payment of £{total_amount:.2f} "
+            f"(£{monthly_price:.0f}/month thereafter) to activate."
         ),
     )
 
