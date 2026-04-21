@@ -68,6 +68,7 @@ if not resolved_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=resolved_origins,
+    allow_origin_regex=r"https://([a-z0-9-]+\.)*vercel\.app",
     allow_credentials=resolved_origins != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
