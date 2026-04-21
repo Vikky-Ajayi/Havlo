@@ -89,11 +89,11 @@ export const CompleteHomeBuying: React.FC = () => {
       <section className="flex flex-col items-center bg-white py-[84px] lg:py-32 px-6 lg:px-[100px]">
         <div className="max-w-[1100px] mx-auto w-full flex flex-col gap-10 lg:gap-14">
           <div className="flex flex-col gap-4">
-            <span className="font-body text-sm font-bold uppercase tracking-[0.1em] text-[#A409D2]">
-              What we offer
+            <span className="self-start inline-flex items-center rounded-full bg-[#FAEBFE] px-4 py-1.5 font-body text-xs font-bold uppercase tracking-[0.12em] text-[#A409D2]">
+              Bespoke service from £4,500
             </span>
-            <h2 className="font-display text-[36px] sm:text-[44px] lg:text-[56px] font-black leading-[1.1] text-[#040504]">
-              A complete service from £4,500
+            <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-black leading-[1.1] text-[#040504]">
+              What we offer
             </h2>
             <p className="font-body text-base lg:text-lg text-black/70 max-w-[640px]">
               One transparent fee covers every stage of the journey — no hidden costs, no surprises.
