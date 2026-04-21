@@ -99,14 +99,14 @@ export const Home: React.FC = () => {
         imageSrc="/Mask group.png"
         titleStyle={{ fontSize: '72px', lineHeight: '1.0' }}
         customActions={
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px]">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px] px-6 sm:px-0">
             <button
               onClick={() => navigate('/relaunch-assessment')}
               className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
             >
               Sell My Property Faster
             </button>
-            <div className="flex flex-row items-center justify-center gap-3 px-8 sm:px-0">
+            <div className="flex flex-row items-center justify-center gap-3 w-full sm:w-auto">
               <button
                 onClick={() => navigate('/buy-abroad')}
                 className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
