@@ -96,7 +96,7 @@ export const PropertyPurchase: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero */}
-      <section className="relative flex flex-col items-center pt-16 lg:pt-24 pb-16 lg:pb-24 px-6 lg:px-[100px] bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] overflow-hidden">
+      <section className="relative flex flex-col items-center pt-16 lg:pt-24 pb-16 lg:pb-24 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[900px] mx-auto gap-6 lg:gap-10">
           <span className="font-body text-sm lg:text-lg font-medium uppercase tracking-[-0.36px] text-black">
             Property Purchase

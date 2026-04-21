@@ -91,7 +91,7 @@ export const Home: React.FC = () => {
   ] as const;
 
   return (
-    <div className="flex flex-col w-full overflow-hidden bg-white">
+    <div className="flex flex-col w-full overflow-hidden bg-white pb-20">
       {/* 1. Hero Section */}
       <HeroSection 
         title="A Smarter Way to Sell, Buy, and Market Property Globally."
@@ -99,26 +99,29 @@ export const Home: React.FC = () => {
         imageSrc="/Mask group.png"
         titleStyle={{ fontSize: '72px', lineHeight: '1.0' }}
         customActions={
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px] px-4 sm:px-6 lg:px-0">
-            <button
-              onClick={() => navigate('/property-audit')}
-              className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
-            >
-              Sell My Property Faster
-            </button>
-            <div className="flex flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px] px-4 sm:px-6 lg:px-0 mb-12 sm:pb-0">
               <button
-                onClick={() => navigate('/buy-abroad')}
-                className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
+                onClick={() => navigate('/property-audit')}
+                className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-3 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer sm:h-14 whitespace-nowrap"
               >
-                Buy Property Abroad
+                Sell My Property Faster
               </button>
-              <button
-                onClick={() => navigate('/buyer-network')}
-                className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer h-10 sm:h-14 whitespace-nowrap"
-              >
-                For Estate Agents
-              </button>
+
+              <div className="flex flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => navigate('/buy-abroad')}
+                  className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-3 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer sm:h-14 whitespace-nowrap"
+                >
+                  Buy Property Abroad
+                </button>
+
+                {/* <button
+                  onClick={() => navigate('/buyer-network')}
+                  className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-3 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer sm:h-14 whitespace-nowrap"
+                >
+                  For Estate Agents
+                </button> */}
+              
             </div>
           </div>
         }

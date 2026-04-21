@@ -66,7 +66,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 3. What Makes Havlo Different */}
-      <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
         <div className="flex w-full max-w-7xl flex-col items-center justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
             <div className="flex items-center gap-3">

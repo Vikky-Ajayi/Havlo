@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export const AboutUs: React.FC = () => {
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">
-      <section className="bg-gradient-to-b from-[#FFB0E8] to-[#FEEAA0] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
         <div className="mx-auto max-w-[1100px] space-y-8">
           <h1 className="font-display text-[40px] font-black leading-[1.05] tracking-[-1px] text-[#1F1F1E] sm:text-[60px] lg:text-[72px]">
             Beyond borders. Beyond portals.

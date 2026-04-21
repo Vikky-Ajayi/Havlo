@@ -318,7 +318,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-gradient-to-b from-[#ffb0e8] via-[#ffc4e7] to-[#ffe79a] px-4 py-[68px] sm:px-6 lg:px-[100px] lg:py-[84px]">
+      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-[68px] sm:px-6 lg:px-[100px] lg:py-[84px]">
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-9">
             <div className="mb-3 flex items-center gap-3">
