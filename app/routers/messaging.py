@@ -145,17 +145,39 @@ async def _ensure_admin_conversation_for_user(
     user_id: uuid.UUID,
     db: AsyncSession,
 ) -> Conversation:
-    """Guarantee the default Havlo Advisory admin conversation exists."""
-    conv = (
+    """Guarantee exactly one Havlo Advisory admin conversation exists for the user.
+
+    If duplicates exist (legacy data, before the partial unique index was added),
+    keep the oldest one, reassign all messages to it, and delete the rest.
+    """
+    convs = (
         await db.execute(
-            select(Conversation).where(
+            select(Conversation)
+            .where(
                 Conversation.user_id == user_id,
                 Conversation.is_admin_conversation.is_(True),
             )
+            .order_by(Conversation.created_at.asc().nulls_last(), Conversation.id.asc())
         )
-    ).scalar_one_or_none()
-    if conv:
-        return conv
+    ).scalars().all()
+
+    if len(convs) == 1:
+        return convs[0]
+    if len(convs) > 1:
+        keeper = convs[0]
+        dupe_ids = [c.id for c in convs[1:]]
+        await db.execute(
+            update(Message)
+            .where(Message.conversation_id.in_(dupe_ids))
+            .values(conversation_id=keeper.id)
+        )
+        from sqlalchemy import delete as _delete
+        await db.execute(
+            _delete(Conversation).where(Conversation.id.in_(dupe_ids))
+        )
+        await db.commit()
+        await db.refresh(keeper)
+        return keeper
 
     db.add(
         Conversation(

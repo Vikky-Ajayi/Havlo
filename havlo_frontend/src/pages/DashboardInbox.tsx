@@ -202,14 +202,11 @@ export const DashboardInbox: React.FC = () => {
   }, [token, isAdmin]);
 
   useEffect(() => {
-    if (!conversations.length) return;
-    if (!selectedId || !conversations.some((c) => c.id === selectedId)) {
-      setSelectedId(conversations[0].id);
+    if (!selectedId) {
+      setDetail(null);
+      return;
     }
-  }, [conversations, selectedId]);
-
-  useEffect(() => {
-    if (!selectedId || !token) return;
+    if (!token) return;
     loadConversationDetail(selectedId).catch(() => setDetail(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, token, isAdmin]);
@@ -311,18 +308,53 @@ export const DashboardInbox: React.FC = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !selectedId || !messageText.trim()) return;
-    setSending(true);
+    const content = messageText.trim();
+    const convId = selectedId;
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const nowIso = new Date().toISOString();
+    const optimistic = {
+      id: tempId,
+      content,
+      sender_type: isAdmin ? 'team' : 'user',
+      sender_name: isAdmin ? 'Havlo Advisory' : (user?.full_name || 'You'),
+      created_at: nowIso,
+      is_me: true,
+    };
+    setMessageText('');
     setSendError('');
+    setDetail((prev) =>
+      prev && prev.id === convId
+        ? { ...prev, messages: [...prev.messages, optimistic as any] }
+        : prev,
+    );
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === convId
+          ? { ...c, last_message_at: nowIso, last_message_snippet: content.slice(0, 60) }
+          : c,
+      ),
+    );
+    setSending(true);
     try {
-      if (isAdmin) {
-        await api.adminSendMessage(token, selectedId, messageText.trim());
-      } else {
-        await api.sendMessage(token, selectedId, messageText.trim());
-      }
-      setMessageText('');
-      await loadConversationDetail(selectedId);
-      await loadConversations();
+      const resp = isAdmin
+        ? await api.adminSendMessage(token, convId, content)
+        : await api.sendMessage(token, convId, content);
+      const real = (resp as any)?.message;
+      setDetail((prev) =>
+        prev && prev.id === convId
+          ? {
+              ...prev,
+              messages: prev.messages.map((m: any) => (m.id === tempId ? real || m : m)),
+            }
+          : prev,
+      );
     } catch (err: unknown) {
+      setDetail((prev) =>
+        prev && prev.id === convId
+          ? { ...prev, messages: prev.messages.filter((m: any) => m.id !== tempId) }
+          : prev,
+      );
+      setMessageText(content);
       setSendError(err instanceof Error ? err.message : 'Failed to send message.');
     } finally {
       setSending(false);
