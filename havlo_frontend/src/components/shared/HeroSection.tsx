@@ -106,7 +106,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               {customActions}
             </div>
           ) : (
-            <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 mt-6 lg:mt-8 w-full lg:w-auto">
+            <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 mt-6 lg:mt-8 w-full lg:w-auto px-4 sm:px-6 lg:px-0">
               <button
                 onClick={onButtonClick}
                 className="w-full lg:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-10 lg:px-14 py-4 lg:py-5 rounded-full text-lg font-bold border-none cursor-pointer h-14 lg:h-auto"
