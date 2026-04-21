@@ -168,7 +168,7 @@ class ConversationOut(BaseModel):
     team_member_initials: str
     team_member_color: str
     subject: str
-    last_message_at: datetime
+    last_message_at: Optional[datetime] = None
     last_message_snippet: Optional[str] = None
     unread_count: int = 0
 

@@ -24,6 +24,7 @@ from sqlalchemy import desc, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal, get_db
@@ -145,25 +146,38 @@ async def _ensure_admin_conversation_for_user(
     db: AsyncSession,
 ) -> Conversation:
     """Guarantee the default Havlo Advisory admin conversation exists."""
+    inserted_with_upsert = False
     if db.bind and db.bind.dialect.name == "postgresql":
-        stmt = (
-            pg_insert(Conversation)
-            .values(
-                user_id=user_id,
-                team_member_name="Havlo Advisory",
-                team_member_initials="HA",
-                team_member_color="#0052B4",
-                subject="Welcome to Havlo - we're here to help",
-                is_admin_conversation=True,
-                unread_count=0,
+        try:
+            stmt = (
+                pg_insert(Conversation)
+                .values(
+                    user_id=user_id,
+                    team_member_name="Havlo Advisory",
+                    team_member_initials="HA",
+                    team_member_color="#0052B4",
+                    subject="Welcome to Havlo - we're here to help",
+                    is_admin_conversation=True,
+                    unread_count=0,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=["user_id"],
+                    index_where=Conversation.is_admin_conversation.is_(True),
+                )
             )
-            .on_conflict_do_nothing(
-                index_elements=["user_id"],
-                index_where=Conversation.is_admin_conversation.is_(True),
+            await db.execute(stmt)
+            inserted_with_upsert = True
+        except SQLAlchemyError as exc:
+            # Some production DBs may miss the partial unique index required by ON CONFLICT.
+            # Fall back to explicit read-then-insert path instead of failing the endpoint.
+            logger.warning(
+                "Admin conversation upsert fallback for user=%s due to DB error: %s",
+                user_id,
+                exc,
             )
-        )
-        await db.execute(stmt)
-    else:
+            await db.rollback()
+
+    if not inserted_with_upsert:
         existing = (
             await db.execute(
                 select(Conversation).where(
