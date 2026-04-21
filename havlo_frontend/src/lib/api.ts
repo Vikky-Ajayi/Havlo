@@ -371,6 +371,19 @@ export const api = {
       body: { content },
     }),
 
+  renameConversation: (token: string, conversationId: string, subject: string) =>
+    request<Conversation>(`/messaging/conversations/${conversationId}`, {
+      method: 'PATCH',
+      token,
+      body: { subject },
+    }),
+
+  deleteConversation: (token: string, conversationId: string) =>
+    request<null>(`/messaging/conversations/${conversationId}`, {
+      method: 'DELETE',
+      token,
+    }),
+
   bookSession: (token: string, payload: BookSessionPayload) =>
     request<{ booking_id: string; checkout_url: string; checkout_id: string; amount: number; currency: string; message: string }>('/bookings/session', { method: 'POST', token, body: payload }),
 

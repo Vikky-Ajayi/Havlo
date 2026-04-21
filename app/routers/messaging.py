@@ -150,31 +150,41 @@ async def _ensure_admin_conversation_for_user(
     If duplicates exist (legacy data, before the partial unique index was added),
     keep the oldest one, reassign all messages to it, and delete the rest.
     """
+    # Match BOTH proper admin conversations AND legacy "Havlo Advisory" rows
+    # that were created before the is_admin_conversation flag/index existed.
     convs = (
         await db.execute(
             select(Conversation)
             .where(
                 Conversation.user_id == user_id,
-                Conversation.is_admin_conversation.is_(True),
+                (
+                    Conversation.is_admin_conversation.is_(True)
+                    | (Conversation.team_member_name == "Havlo Advisory")
+                ),
             )
             .order_by(Conversation.created_at.asc().nulls_last(), Conversation.id.asc())
         )
     ).scalars().all()
 
-    if len(convs) == 1:
+    if len(convs) == 1 and convs[0].is_admin_conversation:
         return convs[0]
-    if len(convs) > 1:
+    if len(convs) >= 1:
         keeper = convs[0]
         dupe_ids = [c.id for c in convs[1:]]
-        await db.execute(
-            update(Message)
-            .where(Message.conversation_id.in_(dupe_ids))
-            .values(conversation_id=keeper.id)
-        )
-        from sqlalchemy import delete as _delete
-        await db.execute(
-            _delete(Conversation).where(Conversation.id.in_(dupe_ids))
-        )
+        if dupe_ids:
+            await db.execute(
+                update(Message)
+                .where(Message.conversation_id.in_(dupe_ids))
+                .values(conversation_id=keeper.id)
+            )
+            from sqlalchemy import delete as _delete
+            await db.execute(
+                _delete(Conversation).where(Conversation.id.in_(dupe_ids))
+            )
+        # Make sure the keeper is properly flagged so the partial unique index
+        # protects it going forward.
+        if not keeper.is_admin_conversation:
+            keeper.is_admin_conversation = True
         await db.commit()
         await db.refresh(keeper)
         return keeper
@@ -305,6 +315,86 @@ async def get_conversation(
         subject=conv.subject,
         messages=[_to_message_out(m, MessageSenderType.user) for m in conv.messages],
     )
+
+
+from pydantic import BaseModel as _BaseModel
+
+
+class _RenameBody(_BaseModel):
+    subject: str
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
+async def rename_conversation(
+    conversation_id: str,
+    payload: _RenameBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ConversationOut:
+    try:
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
+
+    new_subject = (payload.subject or "").strip()
+    if not new_subject:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Subject cannot be empty.")
+    if len(new_subject) > 255:
+        new_subject = new_subject[:255]
+
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
+
+    conv.subject = new_subject
+    await db.commit()
+    await db.refresh(conv)
+    return ConversationOut(
+        id=str(conv.id),
+        team_member_name=conv.team_member_name,
+        team_member_initials=conv.team_member_initials,
+        team_member_color=conv.team_member_color,
+        subject=conv.subject,
+        last_message_at=conv.last_message_at,
+        unread_count=int(conv.unread_count or 0),
+        last_message_snippet=None,
+    )
+
+
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_conversation(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
+
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
+
+    from sqlalchemy import delete as _delete
+    await db.execute(_delete(Message).where(Message.conversation_id == conv_id))
+    await db.execute(_delete(Conversation).where(Conversation.id == conv_id))
+    await db.commit()
+    return None
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=SendMessageResponse)

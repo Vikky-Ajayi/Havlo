@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { ChevronLeft, Mail, SendHorizontal } from 'lucide-react';
+import { ChevronLeft, Mail, MoreVertical, Pencil, SendHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation, type AdminUser } from '../lib/api';
 
@@ -39,6 +39,19 @@ export const DashboardInbox: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedIdRef = useRef<string | null>(null);
   const loadTimeoutRef = useRef<number | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const close = () => setMenuOpenId(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [menuOpenId]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -361,6 +374,48 @@ export const DashboardInbox: React.FC = () => {
     }
   };
 
+  const handleRename = async () => {
+    if (!token || !renameId) return;
+    const subject = renameText.trim();
+    if (!subject) {
+      setActionError('Subject cannot be empty.');
+      return;
+    }
+    setActionBusy(true);
+    setActionError('');
+    try {
+      await api.renameConversation(token, renameId, subject);
+      setConversations((prev) => prev.map((c) => (c.id === renameId ? { ...c, subject } : c)));
+      setDetail((prev) => (prev && prev.id === renameId ? { ...prev, subject } : prev));
+      setRenameId(null);
+      setRenameText('');
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to rename.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!token || !deleteId) return;
+    setActionBusy(true);
+    setActionError('');
+    const id = deleteId;
+    try {
+      await api.deleteConversation(token, id);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (selectedId === id) {
+        setSelectedId(null);
+        setDetail(null);
+      }
+      setDeleteId(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const formatDate = (raw: string) => new Date(raw).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   const formatDateTime = (raw: string) =>
     new Date(raw).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -492,6 +547,51 @@ export const DashboardInbox: React.FC = () => {
                       {conv.unread_count}
                     </div>
                   )}
+                  {!isAdmin && (
+                    <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId(menuOpenId === conv.id ? null : conv.id);
+                        }}
+                        className="p-1 rounded-full hover:bg-black/10 inline-flex items-center justify-center cursor-pointer"
+                        aria-label="Conversation actions"
+                      >
+                        <MoreVertical size={16} />
+                      </span>
+                      {menuOpenId === conv.id && (
+                        <div className="absolute right-0 top-7 z-20 w-36 rounded-lg border border-black/10 bg-white shadow-lg py-1">
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(null);
+                              setRenameId(conv.id);
+                              setRenameText(conv.subject || '');
+                              setActionError('');
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-semibold text-black hover:bg-black/5 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Pencil size={14} /> Rename
+                          </span>
+                          <span
+                            role="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(null);
+                              setDeleteId(conv.id);
+                              setActionError('');
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Trash2 size={14} /> Delete
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </button>
               ))
             )}
@@ -568,6 +668,43 @@ export const DashboardInbox: React.FC = () => {
           )}
         </div>
       </div>
+
+      {renameId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => !actionBusy && setRenameId(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-black">Rename conversation</h3>
+            <input
+              type="text"
+              autoFocus
+              value={renameText}
+              onChange={(e) => setRenameText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); }}
+              maxLength={255}
+              className="w-full h-11 px-4 bg-[#F4F4F4] rounded-full text-sm font-medium focus:outline-none"
+              placeholder="Conversation name"
+            />
+            {actionError && <p className="text-red-500 text-xs">{actionError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={actionBusy} onClick={() => setRenameId(null)} className="px-4 py-2 text-xs font-semibold text-black/70 hover:bg-black/5 rounded-full">Cancel</button>
+              <button type="button" disabled={actionBusy || !renameText.trim()} onClick={handleRename} className="px-4 py-2 text-xs font-semibold bg-black text-white rounded-full disabled:opacity-50">{actionBusy ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => !actionBusy && setDeleteId(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-black">Delete conversation?</h3>
+            <p className="text-sm text-black/70">This will permanently remove the conversation and all of its messages. This action cannot be undone.</p>
+            {actionError && <p className="text-red-500 text-xs">{actionError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={actionBusy} onClick={() => setDeleteId(null)} className="px-4 py-2 text-xs font-semibold text-black/70 hover:bg-black/5 rounded-full">Cancel</button>
+              <button type="button" disabled={actionBusy} onClick={handleDelete} className="px-4 py-2 text-xs font-semibold bg-red-600 text-white rounded-full disabled:opacity-50">{actionBusy ? 'Deleting…' : 'Delete'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
