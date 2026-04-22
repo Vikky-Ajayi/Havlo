@@ -272,7 +272,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 5. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center px-6 lg:px-[150px] bg-white overflow-hidden md:min-h-[400px] justify-center py-10 my-0">
+      <section className="relative flex flex-col items-center px-6 lg:px-[150px] bg-white overflow-hidden md:min-h-[400px] justify-center py-10 my-0 pt-[20px]">
         <div className="relative z-20 flex flex-col items-center text-center max-w-[700px] mx-auto gap-14">
           <div className="flex flex-col items-center gap-8">
             <h2 className="font-display text-[44px] font-black leading-[1.1] text-black">
