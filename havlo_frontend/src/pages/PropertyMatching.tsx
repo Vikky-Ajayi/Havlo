@@ -10,7 +10,7 @@ export const PropertyMatching: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center lg:pt-24 lg:pb-0 overflow-hidden bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] lg:h-[700px] px-6 lg:px-[100px] py-10 my-0">
+      <section className="relative flex flex-col items-center lg:pt-24 lg:pb-0 overflow-hidden bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] lg:h-[700px] px-6 lg:px-[100px] pt-10 pb-[140px] lg:py-10 my-0">
         <div className="relative z-20 max-w-[1144px] w-full flex flex-col items-center gap-6 lg:gap-10 lg:mb-24">
           <span className="font-body text-sm lg:text-lg font-normal uppercase tracking-[-0.36px] text-black">
             Havlo Property Matching
