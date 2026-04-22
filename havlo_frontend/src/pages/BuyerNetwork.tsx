@@ -111,7 +111,7 @@ export const BuyerNetwork: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero Section */}
-      <section className="relative flex flex-col items-center px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden md:min-h-[756px] py-10 my-0 pb-[140px] lg:pb-10">
+      <section className="relative flex flex-col items-center px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden md:min-h-[680px] py-10 my-0 pb-[126px] lg:pb-10">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[1144px] mx-auto">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
