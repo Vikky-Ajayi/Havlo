@@ -228,7 +228,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 5. Where We Operate Section */}
-      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 sm:px-10 lg:px-[100px] py-10 my-0 pt-[100px]">
         <div className="absolute top-0 left-0 right-0 h-[60px] lg:h-[80px] z-0 pointer-events-none overflow-hidden">
           <HeroBackground showTop={true} showBottom={false} fillColor="#F9F9F8" className="h-full w-full bg-black" />
         </div>
