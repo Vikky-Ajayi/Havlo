@@ -133,7 +133,7 @@ export const BuyerNetwork: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-col items-center gap-3"
+            className="flex flex-col items-center gap-3 pt-[70px]"
           >
             <Button 
               onClick={() => openModal('create-account')}
