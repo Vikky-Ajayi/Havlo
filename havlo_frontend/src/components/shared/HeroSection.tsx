@@ -58,7 +58,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     >
       {/* 1. Gradient Ellipse — outer, NOT clipped */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 top-[-50px] w-full lg:w-[120%] h-[180px] lg:h-[280px] opacity-40 blur-[100px] lg:blur-[120px] z-0"
+        className="absolute left-1/2 -translate-x-1/2 top-[-30px] lg:top-[-50px] w-[130%] lg:w-[120%] h-[260px] lg:h-[280px] opacity-90 lg:opacity-40 blur-[60px] lg:blur-[120px] z-0"
         style={{
           background: 'linear-gradient(90deg, #E6ECA2 0%, #9BC3F0 25%, #FFB0E6 50%, #F2D0B2 75%, #D2F4B9 100%)',
         }}
