@@ -187,7 +187,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 5. Services Section */}
-      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] md:py-[84px] py-10 my-0">
+      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-10 text-center">
           <div className="flex flex-col items-center gap-10 lg:gap-10">
             <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-[#3A3C3E]">
@@ -354,7 +354,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 6. The Havlo Difference */}
-      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] md:py-[84px] py-10 my-0">
+      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] py-10 my-0">
         <h2 className="w-full text-center font-display text-[32px] lg:text-[48px] font-black leading-[1.1] text-white sm:text-[56px]">
           The Havlo Difference
         </h2>

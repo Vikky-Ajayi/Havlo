@@ -151,7 +151,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 4. Who This Is For Section */}
-      <section className="relative flex flex-col items-start gap-14 bg-black px-4 md:py-24 sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="relative flex flex-col items-start gap-14 bg-black px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-start gap-6 text-left w-full mx-auto">
           <h2 className="font-display text-[48px] font-black leading-[1.1] text-white sm:text-[64px]">
             Who This Is For
@@ -228,7 +228,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 5. Where We Operate Section */}
-      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 md:py-24 sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="relative flex flex-col items-center gap-14 bg-[#F9F9F8] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="absolute top-0 left-0 right-0 h-[60px] lg:h-[80px] z-0 pointer-events-none overflow-hidden">
           <HeroBackground showTop={true} showBottom={false} fillColor="#F9F9F8" className="h-full w-full bg-black" />
         </div>
@@ -272,7 +272,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 6. Purple Help Section */}
-      <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 md:pt-32 md:pb-48 sm:px-10 lg:px-[100px] overflow-hidden py-10 my-0" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
+      <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 sm:px-10 lg:px-[100px] overflow-hidden py-10 my-0" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
         {/* Top Jagged Edge — purple bumps point UP into the #F9F9F8 section above */}
         <div className="absolute top-[-1px] left-0 right-0 h-[90px] z-20 pointer-events-none overflow-hidden bg-[#F9F9F8]">
           <HeroBackground
@@ -346,7 +346,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 7. CTA Section */}
-      <section className="flex flex-col items-center gap-10 bg-white px-4 md:py-24 sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="flex flex-col items-center gap-10 bg-white px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="max-w-[800px] font-display text-[48px] font-black leading-[1.1] text-black sm:text-[64px]">
             Ready to Start Your Property Journey?

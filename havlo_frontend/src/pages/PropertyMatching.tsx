@@ -82,7 +82,7 @@ export const PropertyMatching: React.FC = () => {
       </section>
 
       {/* Why Havlo Property Matching? Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#F9F9F9] px-6 lg:px-[100px] md:py-[84px] py-10 my-0">
+      <section className="flex flex-col items-center gap-14 bg-[#F9F9F9] px-6 lg:px-[100px] py-10 my-0">
         <h2 className="font-display text-[48px] lg:text-[56px] font-black leading-[1.1] text-[#040504]">
           Why Havlo Property Matching?
         </h2>
@@ -121,7 +121,7 @@ export const PropertyMatching: React.FC = () => {
       </section>
 
       {/* Form Section */}
-      <section className="flex flex-col items-center gap-10 md:py-[84px] px-6 lg:px-[100px] bg-white py-10 my-0">
+      <section className="flex flex-col items-center gap-10 px-6 lg:px-[100px] bg-white py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="max-w-[482px] font-display text-[44px] font-black leading-[1.1] text-[#050405]">
             Find your perfect property

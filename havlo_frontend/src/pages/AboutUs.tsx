@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export const AboutUs: React.FC = () => {
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">
-      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="mx-auto max-w-[1100px] space-y-8">
           <h1 className="font-display text-[40px] font-black leading-[1.05] tracking-[-1px] text-[#1F1F1E] sm:text-[60px] lg:text-[72px]">
             Beyond borders. Beyond portals.
@@ -24,7 +24,7 @@ export const AboutUs: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-[#F9F9F8] px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="bg-[#F9F9F8] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {[
             { title: 'Buy Property Abroad', description: "Expert advisory for acquiring residential and commercial property abroad. We handle the complexity so you don't have to.", href: '/buy-abroad' },
