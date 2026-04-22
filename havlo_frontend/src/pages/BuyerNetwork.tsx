@@ -297,7 +297,7 @@ export const BuyerNetwork: React.FC = () => {
           <HeroBackground 
             showTop={true}
             showBottom={false}
-            className="h-full w-full bg-[#F9F8F9]" 
+            className="h-full w-full bg-white" 
           />
         </div>
       </section>
