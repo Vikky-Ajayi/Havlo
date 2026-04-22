@@ -272,7 +272,7 @@ export const BuyAbroad: React.FC = () => {
       </section>
 
       {/* 6. Purple Help Section */}
-      <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 sm:px-10 lg:px-[100px] overflow-hidden py-10 my-0" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
+      <section className="relative flex flex-col items-center gap-16 bg-[#A409D2] px-4 sm:px-10 lg:px-[100px] overflow-hidden pt-[120px] pb-10 lg:pt-[140px] lg:pb-[84px] my-0" style={{ borderRadius: '0 0 50% 50% / 0 0 60px 60px' }}>
         {/* Top Jagged Edge — purple bumps point UP into the #F9F9F8 section above */}
         <div className="absolute top-[-1px] left-0 right-0 h-[90px] z-20 pointer-events-none overflow-hidden bg-[#F9F9F8]">
           <HeroBackground
