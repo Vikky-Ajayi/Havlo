@@ -41,7 +41,7 @@ export const PropertyMatching: React.FC = () => {
       </section>
 
       {/* How it works Section */}
-      <section className="flex flex-col items-center gap-14 bg-white px-6 lg:px-[100px] lg:pb-32 py-10 my-0">
+      <section className="flex flex-col items-center gap-14 bg-white px-6 lg:px-[100px] lg:pb-32 py-10 my-0 pt-[10px]">
         <h2 className="font-display text-[48px] lg:text-[56px] font-black leading-[1.1] text-[#040504]">
           How it works
         </h2>
