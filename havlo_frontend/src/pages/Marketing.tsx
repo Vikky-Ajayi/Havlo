@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
-import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 import heroImage from '../../Rectangle 5.png';
@@ -118,19 +117,6 @@ const faqs = [
   },
 ];
 
-const relaunchReviews = [
-  { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
-  { title: 'A real turnaround for our listing', content: 'We had almost given up after months of no offers. The relaunch strategy worked, and we finally secured a buyer.', author: 'Claire, Sheffield' },
-  { title: 'Exactly what we needed after 6+ months', content: 'Havlo helped reposition our property and attract a completely new audience. The difference was immediate.', author: 'Marcus, Liverpool' },
-  { title: 'Sold after being stuck for nearly a year', content: 'Our house had been listed for close to a year with no success. Havlo Relaunch gave it new life and helped us finally move forward.', author: 'Fiona, Oxford' },
-  { title: 'New strategy, real results', content: 'The relaunch approach made all the difference. Better marketing, better positioning, and much stronger enquiries.', author: 'Ryan, Newcastle' },
-  { title: 'From no interest to serious offers', content: 'We went from barely any viewings to genuine offers after using Havlo. The international exposure really worked.', author: 'Priya, Leicester' },
-  { title: 'Helped us break through a stagnant market', content: 'Our property had gone stale on the market. Havlo Relaunch brought in fresh demand and the right kind of buyers.', author: 'Gareth, Cardiff' },
-  { title: 'Professional and highly effective', content: 'The team clearly understood why our property wasn\'t selling and fixed it. We saw results much faster than expected.', author: 'Nadia, Abu Dhabi' },
-  { title: 'Great solution for slow-moving properties', content: 'If your property has been sitting unsold, this service is exactly what you need. It helped us secure a buyer after months of frustration.', author: 'Lewis, Glasgow' },
-  { title: 'A fresh start that worked', content: 'Havlo gave our listing a proper relaunch with a clear strategy. It attracted new interest and ultimately led to a successful sale.', author: 'Sanjay, Slough' },
-];
-
 export const Marketing: React.FC = () => {
   const { openModal } = useModal();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -183,10 +169,6 @@ export const Marketing: React.FC = () => {
         <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-[74px] pointer-events-none lg:h-[98px]">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full" />
         </div>
-      </section>
-
-      <section className="w-full bg-white px-4 sm:px-6 lg:px-[100px] py-10 my-0">
-        <AutoScrollReviews reviews={relaunchReviews} bgColor="#F5F5F3" />
       </section>
 
       <section className="bg-white px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">

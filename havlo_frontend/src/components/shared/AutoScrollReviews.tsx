@@ -30,7 +30,7 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
       {reviews.map((r, i) => (
         <div
           key={`${setKey}-${i}`}
-          className="shrink-0 w-[300px] lg:w-[340px] rounded-xl p-5"
+          className="shrink-0 w-[300px] lg:w-[340px] rounded-xl p-5 flex flex-col h-full"
           style={{ backgroundColor: bgColor }}
         >
           <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
@@ -124,8 +124,8 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden py-10 no-scrollbar cursor-grab active:cursor-grabbing">
-      <div ref={trackRef} className="flex items-center gap-4" style={{ width: 'max-content' }}>
+    <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden py-[30px] no-scrollbar cursor-grab active:cursor-grabbing">
+      <div ref={trackRef} className="flex items-stretch gap-4" style={{ width: 'max-content' }}>
         {renderReviewSet('first')}
         {renderReviewSet('second')}
       </div>

@@ -49,7 +49,7 @@ export const EliteProperty: React.FC = () => {
       />
 
       {/* 2. Reviews Section */}
-      <section className="w-full bg-white px-4 sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="w-full bg-white px-4 sm:px-10 lg:px-[100px] py-0 my-0">
         <AutoScrollReviews
           reviews={elitePropertyReviews}
           bgColor="#F5F5F3"

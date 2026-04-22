@@ -15,7 +15,7 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({
   time,
 }) => {
   return (
-    <div className="flex w-full min-w-0 flex-col items-start gap-4">
+    <div className="flex w-full min-w-0 flex-1 flex-col items-start gap-4">
       <div className="flex w-full min-w-0 flex-col items-start gap-3">
         <TrustpilotStars className="h-[26px]" />
         <h3 className="w-full break-words font-body text-[16px] font-semibold leading-[120%] tracking-[-0.32px] text-[#040504]">
@@ -27,7 +27,7 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({
         {content}
       </p>
 
-      <div className="w-full break-words font-body text-[14px] leading-[140%] text-black">
+      <div className="mt-auto w-full break-words font-body text-[14px] leading-[140%] text-black">
         <span className="font-bold">{author}</span>
         {time && <span className="font-normal">, {time}</span>}
       </div>
