@@ -53,7 +53,11 @@ export const DashboardInbox: React.FC = () => {
   const [loadError, setLoadError] = useState('');
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const [sendError, setSendError] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
   const selectedIdRef = useRef<string | null>(null);
   const loadTimeoutRef = useRef<number | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -166,12 +170,32 @@ export const DashboardInbox: React.FC = () => {
     }
   };
 
-  const loadConversationDetail = async (conversationId: string) => {
+  const loadConversationDetail = async (conversationId: string, opts: { silent?: boolean } = {}) => {
     if (!token) return;
-    const payload = isAdmin
-      ? await api.adminGetConversation(token, conversationId)
-      : await api.getConversation(token, conversationId);
-    setDetail(payload);
+    const { silent } = opts;
+    if (!silent) {
+      setDetailLoading(true);
+      setDetailError('');
+    }
+    try {
+      const payload = isAdmin
+        ? await api.adminGetConversation(token, conversationId)
+        : await api.getConversation(token, conversationId);
+      if (selectedIdRef.current === conversationId) {
+        setDetail(payload);
+        setDetailError('');
+      }
+    } catch (err: unknown) {
+      if (selectedIdRef.current === conversationId) {
+        setDetailError(err instanceof Error ? err.message : 'Could not load messages.');
+        if (!silent) setDetail(null);
+      }
+      throw err;
+    } finally {
+      if (!silent && selectedIdRef.current === conversationId) {
+        setDetailLoading(false);
+      }
+    }
   };
 
   const loadAdminUsers = async (q?: string) => {
@@ -246,10 +270,15 @@ export const DashboardInbox: React.FC = () => {
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
+      setDetailError('');
+      setDetailLoading(false);
       return;
     }
     if (!token) return;
-    loadConversationDetail(selectedId).catch(() => setDetail(null));
+    setDetail(null);
+    loadConversationDetail(selectedId).catch(() => {
+      // error already captured in state
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, token, isAdmin]);
 
@@ -300,7 +329,7 @@ export const DashboardInbox: React.FC = () => {
           );
 
           if (selectedIdRef.current === convId) {
-            await loadConversationDetail(convId);
+            await loadConversationDetail(convId, { silent: true }).catch(() => {});
           }
         } catch {
           // ignore malformed websocket payloads
@@ -336,11 +365,7 @@ export const DashboardInbox: React.FC = () => {
     const timer = setInterval(async () => {
       await loadConversations();
       if (selectedIdRef.current) {
-        try {
-          await loadConversationDetail(selectedIdRef.current);
-        } catch {
-          // ignore
-        }
+        await loadConversationDetail(selectedIdRef.current, { silent: true }).catch(() => {});
       }
     }, 8000);
     return () => clearInterval(timer);
@@ -400,6 +425,7 @@ export const DashboardInbox: React.FC = () => {
       setSendError(err instanceof Error ? err.message : 'Failed to send message.');
     } finally {
       setSending(false);
+      messageInputRef.current?.focus();
     }
   };
 
@@ -460,7 +486,7 @@ export const DashboardInbox: React.FC = () => {
 
   return (
     <DashboardLayout title="Inbox">
-      <div className="flex h-[calc(100dvh-64px)] bg-white overflow-hidden">
+      <div className="flex h-full min-h-0 bg-white overflow-hidden">
         <div className={`w-full lg:w-[373px] flex-shrink-0 border-r border-[#F1F1F0] flex flex-col bg-white ${selectedId && 'hidden lg:flex'}`}>
           {isAdmin && (
             <div className="p-2 border-b border-[#F1F1F0] bg-white">
@@ -637,18 +663,31 @@ export const DashboardInbox: React.FC = () => {
           </div>
         </div>
 
-        <div className={`flex-1 flex flex-col bg-[#F4F5F4] ${!selectedId && 'hidden lg:flex'}`}>
+        <div className={`flex-1 min-h-0 flex flex-col bg-[#F4F5F4] ${!selectedId && 'hidden lg:flex'}`}>
           {selectedId ? (
             <>
-              <div className="lg:hidden h-14 px-4 flex items-center gap-3 bg-white border-b border-[#F1F1F0]">
+              <div className="lg:hidden h-14 flex-shrink-0 px-4 flex items-center gap-3 bg-white border-b border-[#F1F1F0]">
                 <button onClick={() => setSelectedId(null)} className="p-1">
                   <ChevronLeft size={20} />
                 </button>
-                <span className="font-semibold text-sm">{headerName || (conversations.find((c) => c.id === selectedId)?.subject ?? '')}</span>
+                <span className="font-semibold text-sm flex-1 truncate">{headerName || (conversations.find((c) => c.id === selectedId)?.subject ?? '')}</span>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                {!detail ? (
+              <div ref={messagesScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 custom-scrollbar">
+                {detailLoading && !detail ? (
+                  <div className="h-full flex items-center justify-center text-sm text-black/50">Loading messages…</div>
+                ) : detailError && !detail ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
+                    <p className="text-sm text-red-500">{detailError}</p>
+                    <button
+                      type="button"
+                      onClick={() => loadConversationDetail(selectedId).catch(() => {})}
+                      className="inline-flex items-center rounded-full border border-black/20 px-4 py-2 text-xs font-semibold text-black hover:bg-black/5"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : !detail ? (
                   <div className="h-full" />
                 ) : detail.messages.length ? (
                   detail.messages.map((msg) => (
@@ -678,24 +717,36 @@ export const DashboardInbox: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="p-4 bg-white border-t border-[#F1F1F0]">
+              <div
+                className="flex-shrink-0 p-3 sm:p-4 bg-white border-t border-[#F1F1F0]"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+              >
                 {sendError && <p className="text-red-500 text-xs font-body mb-2 text-center">{sendError}</p>}
-                <form onSubmit={handleSendMessage} className="flex items-center gap-3 max-w-[837px] mx-auto">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 sm:gap-3 max-w-[837px] mx-auto">
                   <input
+                    ref={messageInputRef}
                     type="text"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
+                    onFocus={() => {
+                      window.setTimeout(() => {
+                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                      }, 250);
+                    }}
                     placeholder="Type a message"
-                    disabled={sending}
+                    autoComplete="off"
+                    autoCorrect="on"
+                    enterKeyHint="send"
                     style={{ fontSize: '16px' }}
-                    className="flex-1 h-12 px-6 bg-[#F4F4F4] rounded-full text-sm font-semibold italic placeholder:text-black/40 focus:outline-none disabled:opacity-50"
+                    className="flex-1 h-12 px-5 sm:px-6 bg-[#F4F4F4] rounded-full text-sm font-medium placeholder:text-black/40 focus:outline-none"
                   />
                   <button
                     type="submit"
                     disabled={sending || !messageText.trim()}
-                    className="w-12 h-12 rounded-full bg-[#A409D2] flex items-center justify-center text-white hover:bg-[#8e08b6] transition-colors disabled:opacity-50"
+                    className="w-12 h-12 flex-shrink-0 rounded-full bg-[#A409D2] flex items-center justify-center text-white hover:bg-[#8e08b6] transition-colors disabled:opacity-50"
+                    aria-label="Send message"
                   >
-                    <SendHorizontal size={24} />
+                    <SendHorizontal size={22} />
                   </button>
                 </form>
               </div>

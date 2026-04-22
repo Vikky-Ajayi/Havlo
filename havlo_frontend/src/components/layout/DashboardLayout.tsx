@@ -184,7 +184,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
     .filter(section => section.items.length > 0);
 
   return (
-    <div className="flex h-screen bg-[#F4F5F4] overflow-hidden">
+    <div className="flex h-[100dvh] bg-[#F4F5F4] overflow-hidden">
       <style dangerouslySetInnerHTML={{ __html: `
         .sidebar-scrollbar::-webkit-scrollbar {
           width: 4px;
