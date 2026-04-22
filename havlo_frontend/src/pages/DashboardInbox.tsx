@@ -55,6 +55,7 @@ export const DashboardInbox: React.FC = () => {
   const [sendError, setSendError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const detailCacheRef = useRef<Record<string, ConversationDetail>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -173,7 +174,8 @@ export const DashboardInbox: React.FC = () => {
   const loadConversationDetail = async (conversationId: string, opts: { silent?: boolean } = {}) => {
     if (!token) return;
     const { silent } = opts;
-    if (!silent) {
+    const hasCache = !!detailCacheRef.current[conversationId];
+    if (!silent && !hasCache) {
       setDetailLoading(true);
       setDetailError('');
     }
@@ -181,6 +183,7 @@ export const DashboardInbox: React.FC = () => {
       const payload = isAdmin
         ? await api.adminGetConversation(token, conversationId)
         : await api.getConversation(token, conversationId);
+      detailCacheRef.current[conversationId] = payload;
       if (selectedIdRef.current === conversationId) {
         setDetail(payload);
         setDetailError('');
@@ -188,11 +191,11 @@ export const DashboardInbox: React.FC = () => {
     } catch (err: unknown) {
       if (selectedIdRef.current === conversationId) {
         setDetailError(err instanceof Error ? err.message : 'Could not load messages.');
-        if (!silent) setDetail(null);
+        if (!silent && !hasCache) setDetail(null);
       }
       throw err;
     } finally {
-      if (!silent && selectedIdRef.current === conversationId) {
+      if (!silent && !hasCache && selectedIdRef.current === conversationId) {
         setDetailLoading(false);
       }
     }
@@ -275,10 +278,16 @@ export const DashboardInbox: React.FC = () => {
       return;
     }
     if (!token) return;
-    setDetail(null);
-    loadConversationDetail(selectedId).catch(() => {
-      // error already captured in state
-    });
+    const cached = detailCacheRef.current[selectedId];
+    if (cached) {
+      setDetail(cached);
+      setDetailError('');
+      setDetailLoading(false);
+      loadConversationDetail(selectedId, { silent: true }).catch(() => {});
+    } else {
+      setDetail(null);
+      loadConversationDetail(selectedId).catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, token, isAdmin]);
 
