@@ -326,7 +326,7 @@ export const AdminPanel: React.FC = () => {
         </aside>
 
         {/* Conversations column */}
-        <section className="flex w-[300px] flex-col border-r border-white/10">
+        <section className="flex w-[300px] flex-col border-r border-white/10 py-10 my-0">
           {!selectedUser ? (
             <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-white/40">
               Select a user to see their conversations.
@@ -392,7 +392,7 @@ export const AdminPanel: React.FC = () => {
         </section>
 
         {/* Thread column */}
-        <section className="flex flex-1 flex-col bg-[#111113]">
+        <section className="flex flex-1 flex-col bg-[#111113] py-10 my-0">
           {!activeConv ? (
             <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-white/40">
               {selectedUser

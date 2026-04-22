@@ -54,7 +54,7 @@ export const CompleteHomeBuying: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero */}
-      <section className="relative flex flex-col items-center pt-[68px] lg:pt-24 pb-32 lg:pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden">
+      <section className="relative flex flex-col items-center lg:pt-24 lg:pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden py-10 my-0">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[900px] mx-auto gap-6 lg:gap-10">
           <span className="font-body text-sm lg:text-lg font-medium uppercase tracking-[-0.36px] text-black">
             Complete Home Buying Experience
@@ -86,7 +86,7 @@ export const CompleteHomeBuying: React.FC = () => {
       </section>
 
       {/* 2. What we offer */}
-      <section className="flex flex-col items-center bg-white py-[84px] lg:py-32 px-6 lg:px-[100px]">
+      <section className="flex flex-col items-center bg-white lg:py-32 px-6 lg:px-[100px] py-10 my-0">
         <div className="max-w-[1100px] mx-auto w-full flex flex-col gap-10 lg:gap-14">
           <div className="flex flex-col gap-4">
             <span className="self-start inline-flex items-center rounded-full bg-[#FAEBFE] px-4 py-1.5 font-body text-xs font-bold uppercase tracking-[0.12em] text-[#A409D2]">
@@ -114,7 +114,7 @@ export const CompleteHomeBuying: React.FC = () => {
       </section>
 
       {/* 3. How it works */}
-      <section className="flex flex-col bg-[#A409D2] py-[68px] lg:py-32 px-6 lg:px-[100px]">
+      <section className="flex flex-col bg-[#A409D2] lg:py-32 px-6 lg:px-[100px] py-10 my-0">
         <div className="max-w-[1100px] mx-auto w-full flex flex-col gap-8 lg:gap-14">
           <h2 className="font-display text-[36px] sm:text-[44px] lg:text-[56px] font-black leading-[1.1] text-white">
             How it works
@@ -143,7 +143,7 @@ export const CompleteHomeBuying: React.FC = () => {
       </section>
 
       {/* 4. Let's talk fees */}
-      <section className="flex flex-col items-center bg-white py-[84px] lg:py-32 px-6 lg:px-[100px]">
+      <section className="flex flex-col items-center bg-white lg:py-32 px-6 lg:px-[100px] py-10 my-0">
         <div className="max-w-[700px] mx-auto w-full flex flex-col items-center text-center gap-8 lg:gap-10 p-8 lg:p-12 rounded-[24px] bg-[#FAEBFE]">
           <h2 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-black leading-[1.1] text-[#040504]">
             Let's talk fees

@@ -41,7 +41,7 @@ export const Dashboard: React.FC = () => {
     <DashboardLayout title="Buy Property Abroad">
       <div className="max-w-[1162px] mx-auto space-y-6 lg:space-y-10 px-4 sm:px-6 lg:px-0 py-6 lg:py-10">
         {/* Hero Section */}
-        <section className="relative rounded-[20px] bg-black p-6 sm:p-8 lg:p-10 overflow-hidden lg:min-h-[240px] flex flex-col justify-center gap-6">
+        <section className="relative rounded-[20px] bg-black p-6 sm:p-8 lg:p-10 overflow-hidden lg:min-h-[240px] flex flex-col justify-center gap-6 py-10 my-0">
           <div className="relative z-10 max-w-[739px] space-y-6">
             <h2 className="font-display text-[40px] font-black leading-[1] tracking-[-0.4px] text-white">
               Buy residential and commercial property worldwide

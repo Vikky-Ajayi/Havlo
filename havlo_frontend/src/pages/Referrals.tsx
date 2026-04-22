@@ -5,7 +5,7 @@ export const Referrals: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center pt-20 pb-32 px-6 lg:px-[100px] text-center overflow-hidden bg-gradient-to-b from-white via-[#FED8F7]/40 to-[#FED8F7]">
+      <section className="relative flex flex-col items-center justify-center px-6 lg:px-[100px] text-center overflow-hidden bg-gradient-to-b from-white via-[#FED8F7]/40 to-[#FED8F7] py-10 my-0">
         <div className="max-w-[929px] flex flex-col items-center gap-10">
           <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-black">
             Strategic Referral Partnership
@@ -26,7 +26,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Who is this for */}
-      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 py-1 md:py-20 px-6 lg:px-[100px] bg-[#FEFFFF]">
+      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 md:py-20 px-6 lg:px-[100px] bg-[#FEFFFF] py-10 my-0">
         <div className="flex-1 flex flex-col gap-10">
           <div className="flex items-center gap-3">
             <div className="w-20 h-[2px] rounded-full bg-[#D9D9D9]" />
@@ -56,7 +56,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Who this is not for */}
-      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 py-1 md:py-20 px-6 lg:px-[100px] bg-[#040405]">
+      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 md:py-20 px-6 lg:px-[100px] bg-[#040405] py-10 my-0">
         <div className="flex-1 flex flex-col gap-10">
           <div className="flex flex-col gap-10">
             <div className="flex items-center gap-3">
@@ -93,7 +93,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* How the partnership works */}
-      <section className="flex flex-col gap-10 py-1 md:py-20 px-6 lg:px-[100px] bg-[#050405]">
+      <section className="flex flex-col gap-10 md:py-20 px-6 lg:px-[100px] bg-[#050405] py-10 my-0">
         <div className="flex flex-col gap-10">
           <span className="font-body text-lg font-normal text-white uppercase">HOW THE PARTNERSHIP WORKS</span>
           <h2 className="font-display text-[56px] font-black leading-[1.1] text-white">Simple, Transparent Structure</h2>
@@ -133,7 +133,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Commission Structure */}
-      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 py-1 md:py-20 px-6 lg:px-[100px] bg-[#FEFFFF]">
+      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 md:py-20 px-6 lg:px-[100px] bg-[#FEFFFF] py-10 my-0">
         <div className="flex-1 flex flex-col gap-10">
           <div className="flex items-center gap-3">
             <div className="w-20 h-[2px] rounded-full bg-[#D9D9D9]" />
@@ -182,7 +182,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Ideal Referral */}
-      <section className="flex flex-col gap-10 py-1 md:py-20 px-6 lg:px-[100px] bg-[#FFFFFE]">
+      <section className="flex flex-col gap-10 md:py-20 px-6 lg:px-[100px] bg-[#FFFFFE] py-10 my-0">
         <div className="flex flex-col gap-10">
           <div className="flex items-center gap-3">
             <div className="w-20 h-[2px] rounded-full bg-black" />
@@ -222,7 +222,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Protect Your Client Relationship */}
-      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 py-1 md:py-20 px-6 lg:px-[100px] bg-[#FEFFFF]">
+      <section className="flex flex-col lg:flex-row items-start gap-10 lg:gap-20 md:py-20 px-6 lg:px-[100px] bg-[#FEFFFF] py-10 my-0">
         <div className="flex-1 flex flex-col gap-10">
           <div className="flex items-center gap-3">
             <div className="w-20 h-[2px] rounded-full bg-[#D9D9D9]" />
@@ -272,7 +272,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Quality & Integrity Standards */}
-      <section className="flex flex-col items-center gap-10 py-1 md:py-20 px-6 lg:px-[100px] bg-[#A409D2]">
+      <section className="flex flex-col items-center gap-10 md:py-20 px-6 lg:px-[100px] bg-[#A409D2] py-10 my-0">
         <div className="flex flex-col items-center gap-10 text-center">
           <span className="font-body text-2xl font-medium text-white uppercase">WHY PARTNER WITH US</span>
           <h2 className="font-display text-[44px] font-black leading-[1.1] text-white">Quality & Integrity Standards</h2>
@@ -306,7 +306,7 @@ export const Referrals: React.FC = () => {
       </section>
 
       {/* Application Form */}
-      <section className="flex flex-col items-center gap-10 py-1 md:py-20 px-6 lg:px-[100px] bg-white">
+      <section className="flex flex-col items-center gap-10 md:py-20 px-6 lg:px-[100px] bg-white py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <h2 className="max-w-[482px] font-display text-[44px] font-black leading-[1.1] text-[#050405]">
             Apply to Become a Strategic Referral Partner

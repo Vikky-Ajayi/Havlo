@@ -96,7 +96,7 @@ export const PropertyPurchase: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero */}
-      <section className="relative flex flex-col items-center pt-16 lg:pt-24 pb-16 lg:pb-24 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden">
+      <section className="relative flex flex-col items-center lg:pt-24 lg:pb-24 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden py-10 my-0">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[900px] mx-auto gap-6 lg:gap-10">
           <span className="font-body text-sm lg:text-lg font-medium uppercase tracking-[-0.36px] text-black">
             Property Purchase
@@ -111,7 +111,7 @@ export const PropertyPurchase: React.FC = () => {
       </section>
 
       {/* 2. Country directory grouped by region */}
-      <section className="flex flex-col items-center bg-white py-16 lg:py-24 px-6 lg:px-[100px]">
+      <section className="flex flex-col items-center bg-white lg:py-24 px-6 lg:px-[100px] py-10 my-0">
         <div className="max-w-[1240px] mx-auto w-full flex flex-col gap-16 lg:gap-20">
           {regions.map((region) => (
             <div key={region.name} className="flex flex-col gap-6 lg:gap-8">
@@ -146,7 +146,7 @@ export const PropertyPurchase: React.FC = () => {
       </section>
 
       {/* 3. CTA */}
-      <section className="flex flex-col items-center py-20 lg:py-24 px-6 lg:px-[100px] bg-[#F9F8F9]">
+      <section className="flex flex-col items-center lg:py-24 px-6 lg:px-[100px] bg-[#F9F8F9] py-10 my-0">
         <div className="flex flex-col items-center text-center max-w-[700px] mx-auto gap-6 lg:gap-8">
           <h2 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-black leading-[1.1] text-black">
             Don't see your country?

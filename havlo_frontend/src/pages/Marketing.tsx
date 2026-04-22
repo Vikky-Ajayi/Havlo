@@ -139,7 +139,7 @@ export const Marketing: React.FC = () => {
 
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
-      <section className="relative min-h-[420px] overflow-hidden px-4 pb-24 pt-24 sm:min-h-[507px] sm:px-6 lg:min-h-[608px] lg:px-[100px] lg:pb-36 lg:pt-32">
+      <section className="relative min-h-[420px] overflow-hidden px-4 sm:min-h-[507px] sm:px-6 lg:min-h-[608px] lg:px-[100px] lg:pb-36 lg:pt-32 py-10 my-0">
         <div className="absolute inset-0">
           <img src={heroImage} alt="Modern property skyline" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-[#07131b]/70" />
@@ -185,11 +185,11 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="w-full bg-white px-4 pt-2.5 sm:px-6 lg:px-[100px]">
+      <section className="w-full bg-white px-4 sm:px-6 lg:px-[100px] py-10 my-0">
         <AutoScrollReviews reviews={relaunchReviews} bgColor="#F5F5F3" />
       </section>
 
-      <section className="bg-white px-4 py-[60px] sm:px-6 lg:px-[100px] lg:py-[84px]">
+      <section className="bg-white px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
         <div className="mx-auto grid max-w-[1240px] gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <div>
             <div className="mb-4 flex items-center gap-3">
@@ -226,7 +226,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative bg-[#a409d2] px-4 py-[68px] text-white sm:px-6 lg:px-[100px] lg:py-[84px]">
+      <section className="relative bg-[#a409d2] px-4 text-white sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
         <div className="mx-auto max-w-[1240px]">
           <div className="mb-8 text-center lg:mb-11">
             <div className="mb-3 flex items-center justify-center gap-3">
@@ -251,7 +251,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-white px-4 py-[68px] sm:px-6 lg:px-[100px] lg:py-[84px]">
+      <section className="bg-white px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
         <div className="mx-auto max-w-[1280px]">
           <div className="mb-10 max-w-[760px]">
             <div className="mb-4 flex items-center gap-3">
@@ -318,7 +318,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-[68px] sm:px-6 lg:px-[100px] lg:py-[84px]">
+      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
         <div className="mx-auto max-w-[1120px]">
           <div className="mb-9">
             <div className="mb-3 flex items-center gap-3">
@@ -351,7 +351,7 @@ export const Marketing: React.FC = () => {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-white px-4 py-[68px] text-center sm:px-6 lg:px-[100px] lg:py-[84px]">
+      <section className="relative overflow-hidden bg-white px-4 text-center sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
         <div className="absolute left-0 right-0 top-0 h-[90px] pointer-events-none">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full bg-[#ffe79a]" />
         </div>

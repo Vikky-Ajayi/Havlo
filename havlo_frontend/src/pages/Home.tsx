@@ -131,7 +131,7 @@ export const Home: React.FC = () => {
       <MarqueeStrip />
 
       {/* 3. As Seen In */}
-      <section className="flex w-full flex-col items-center bg-white px-4 py-10 sm:px-10 lg:px-[100px] lg:py-[60px]">
+      <section className="flex w-full flex-col items-center bg-white px-4 sm:px-10 lg:px-[100px] lg:py-[60px] py-10 my-0">
         <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
           As seen in
         </span>
@@ -170,7 +170,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 4. Reviews Section */}
-      <section className="w-full bg-white px-4 lg:pt-4 sm:px-6 lg:px-10 pt-[0px]">
+      <section className="w-full bg-white px-4 lg:pt-4 sm:px-6 lg:px-10 py-10 my-0">
         <AutoScrollReviews
           reviews={homeReviews}
           bgColor="#F5F5F3"
@@ -187,7 +187,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 5. Services Section */}
-      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] py-1 md:py-[84px]">
+      <section className="flex flex-col items-center gap-10 lg:gap-14 bg-[#F9F9F8] px-3 lg:px-[100px] md:py-[84px] py-10 my-0">
         <div className="flex flex-col items-center gap-10 text-center">
           <div className="flex flex-col items-center gap-10 lg:gap-10">
             <span className="font-body text-lg font-medium uppercase tracking-[-0.054px] text-[#3A3C3E]">
@@ -354,7 +354,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 6. The Havlo Difference */}
-      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] py-1 md:py-[84px]">
+      <section className="flex flex-col items-center gap-10 bg-[#A409D2] px-3 lg:px-[100px] md:py-[84px] py-10 my-0">
         <h2 className="w-full text-center font-display text-[32px] lg:text-[48px] font-black leading-[1.1] text-white sm:text-[56px]">
           The Havlo Difference
         </h2>
@@ -378,7 +378,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 7. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center bg-white pt-[84px] lg:pt-60 pb-10 lg:pb-24 overflow-hidden">
+      <section className="relative flex flex-col items-center bg-white lg:pt-60 lg:pb-24 overflow-hidden py-10 my-0">
         <div className="relative z-20 flex max-w-[903px] flex-col items-center gap-8 px-4 text-center">
           <h2 className="font-display text-[36px] sm:text-[56px] md:text-[64px] lg:text-[80px] font-black leading-tight lg:leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black">
             Ready to Take the Next Step?

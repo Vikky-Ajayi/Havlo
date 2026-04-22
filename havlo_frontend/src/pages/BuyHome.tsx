@@ -9,7 +9,7 @@ export const BuyHome: React.FC = () => {
     <div className="flex flex-col w-full bg-white">
       {/* ===================== MOBILE (< md) ===================== */}
       {/* M1. Hero — white BG, blurred colored circles, floating status cards */}
-      <section className="md:hidden relative bg-[#FEFEFE] overflow-hidden">
+      <section className="md:hidden relative bg-[#FEFEFE] overflow-hidden py-10 my-0">
         {/* Blurred colored gradient circles strip at top */}
         <div className="absolute inset-x-0 top-0 h-[220px] pointer-events-none overflow-hidden [mask-image:linear-gradient(to_bottom,black,transparent)]">
           <div className="flex justify-between items-center w-[130%] -ml-[15%] h-full opacity-70 blur-[90px]">
@@ -81,7 +81,7 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* M2. What we offer — white BG, two cream cards */}
-      <section className="md:hidden bg-[#FFFFFE] px-4 py-10">
+      <section className="md:hidden bg-[#FFFFFE] px-4 py-10 my-0">
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-6">
             <h2 className="font-display text-[40px] font-medium leading-[1] tracking-[-0.8px] text-black">
@@ -154,7 +154,7 @@ export const BuyHome: React.FC = () => {
 
       {/* M3. How it works — blue→pink→yellow gradient, frosted cards */}
       <section
-        className="md:hidden px-4 py-12"
+        className="md:hidden px-4 py-10 my-0"
         style={{
           background: 'linear-gradient(180deg, #9BD9FF 0%, #FFB0E8 50%, #FEEAA0 100%)',
         }}
@@ -235,7 +235,7 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* M4. Let's talk fees — dark card with white form inside */}
-      <section className="md:hidden bg-white px-4 py-10">
+      <section className="md:hidden bg-white px-4 py-10 my-0">
         {(() => {
           const [price, setPrice] = React.useState("");
           const numericPrice = Number(price) || 0;
@@ -311,7 +311,7 @@ export const BuyHome: React.FC = () => {
 
       {/* ===================== DESKTOP (>= md) ===================== */}
       {/* 1. Hero Section */}
-      <section className="hidden md:block relative w-full min-h-[960px] bg-[#FEFEFE] overflow-hidden">
+      <section className="hidden md:block relative w-full min-h-[960px] bg-[#FEFEFE] overflow-hidden py-10 my-0">
         {/* Blurred Background Circles */}
         <div className="absolute top-[-35px] left-[107px] w-[1226px] h-[284px] blur-[125px] opacity-50 pointer-events-none z-0">
           <div className="flex justify-between items-center w-full h-full">

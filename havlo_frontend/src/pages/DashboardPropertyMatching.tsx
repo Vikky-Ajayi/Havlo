@@ -47,7 +47,7 @@ export const DashboardPropertyMatching: React.FC = () => {
     <DashboardLayout title="Property Matching">
       <div className="max-w-[1162px] mx-auto space-y-6 lg:space-y-10 px-4 sm:px-6 lg:px-0 py-6 lg:py-10">
         {/* Hero Section */}
-        <section className="relative rounded-[20px] bg-black p-6 sm:p-8 lg:p-10 overflow-hidden lg:min-h-[107px] flex flex-col justify-center gap-4">
+        <section className="relative rounded-[20px] bg-black p-6 sm:p-8 lg:p-10 overflow-hidden lg:min-h-[107px] flex flex-col justify-center gap-4 py-10 my-0">
           <div className="relative z-10 space-y-2">
             <h2 className="font-display text-2xl lg:text-[32px] font-black leading-tight tracking-[-0.01em] text-white">
               Get matched to the right property

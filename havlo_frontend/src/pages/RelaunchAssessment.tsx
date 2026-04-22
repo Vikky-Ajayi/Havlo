@@ -28,7 +28,7 @@ const RelaunchHeroSection: React.FC = () => {
     { value: "100%", label: "No disruption to your current sale process" },
   ];
   return (
-    <section className="relative w-full min-h-[600px] lg:h-[750px] overflow-hidden">
+    <section className="relative w-full min-h-[600px] lg:h-[750px] overflow-hidden py-10 my-0">
       <img
         src="https://api.builder.io/api/v1/image/assets/TEMP/46673988b71a834a3489dd511265f99186cf5a29?width=2880"
         alt="Hero House"
@@ -94,7 +94,7 @@ export const RelaunchAssessment: React.FC = () => {
       </div>
 
       {/* 2. The Problem Section */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
             THE PROBLEM
@@ -131,7 +131,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 3. What You Get Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#F9F8F9] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#F9F8F9] px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
             WHAT YOU GET
@@ -170,7 +170,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 4. How It Works Section */}
-      <section className="flex w-full flex-col items-center justify-center bg-black px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex w-full flex-col items-center justify-center bg-black px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex w-full max-w-7xl flex-col items-start justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
             <span className="font-body text-lg font-medium uppercase tracking-tight text-havlo-purple">
@@ -202,7 +202,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 5. Why Us Section */}
-      <section className="flex flex-col items-center gap-14 bg-black px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-black px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <span className="font-body text-lg font-medium uppercase tracking-tight text-white">
             WHY US
@@ -235,7 +235,7 @@ export const RelaunchAssessment: React.FC = () => {
       </section>
 
       {/* 6. Final CTA Section */}
-      <section className="relative flex flex-col items-center gap-8 bg-havlo-purple px-4 pb-24 pt-32 text-center">
+      <section className="relative flex flex-col items-center gap-8 bg-havlo-purple px-4 text-center py-10 my-0">
         <div className="absolute top-0 left-0 w-full overflow-hidden leading-[0] pointer-events-none">
           <svg viewBox="0 0 1440 100" preserveAspectRatio="none" className="relative block w-full h-[100px] fill-black">
             <path d="M0,0 L1440,0 L1440,60 L1300,40 L1150,70 L1000,30 L850,60 L700,20 L550,50 L400,10 L250,40 L100,20 L0,50 Z" />

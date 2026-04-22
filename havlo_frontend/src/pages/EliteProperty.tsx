@@ -49,7 +49,7 @@ export const EliteProperty: React.FC = () => {
       />
 
       {/* 2. Reviews Section */}
-      <section className="w-full bg-white px-4 pt-2.5 sm:px-10 lg:px-[100px]">
+      <section className="w-full bg-white px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <AutoScrollReviews
           reviews={elitePropertyReviews}
           bgColor="#F5F5F3"
@@ -66,7 +66,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 3. What Makes Havlo Different */}
-      <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex w-full flex-col items-center justify-center bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex w-full max-w-7xl flex-col items-center justify-between gap-16 lg:flex-row">
           <div className="flex flex-col items-start gap-10 lg:w-1/2">
             <div className="flex items-center gap-3">
@@ -103,7 +103,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 4. What We Do */}
-      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-black" />
@@ -160,7 +160,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 5. Why Sellers Choose Havlo (Purple Section) */}
-      <section className="relative flex flex-col items-center gap-5 bg-[#A409D2] px-4 pt-1 md:pt-7 pb-1 md:pb-[60px] sm:px-10 lg:px-[100px] overflow-hidden">
+      <section className="relative flex flex-col items-center gap-5 bg-[#A409D2] px-4 md:pt-7 md:pb-[60px] sm:px-10 lg:px-[100px] overflow-hidden py-10 my-0">
         <div className="flex flex-col items-center gap-8 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-white" />
@@ -204,7 +204,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 6. Private International Buyer Advisory */}
-      <section className="flex flex-col items-center gap-14 bg-white px-4 pt-1 md:pt-[60px] pb-1 md:pb-[72px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-white px-4 md:pt-[60px] md:pb-[72px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex w-full max-w-7xl flex-col gap-14">
           <div className="flex flex-col gap-8">
             <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 7. How It Works */}
-      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 py-1 md:py-[84px] sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-14 bg-[#FEFFFF] px-4 md:py-[84px] sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-3">
             <div className="h-0.5 w-7 rounded-full bg-black" />
@@ -375,7 +375,7 @@ export const EliteProperty: React.FC = () => {
       </section>
 
       {/* 8. Tap Into Global Demand */}
-      <section className="flex flex-col items-center gap-8 bg-white px-4 py-1 md:py-[84px] text-center">
+      <section className="flex flex-col items-center gap-8 bg-white px-4 md:py-[84px] text-center py-10 my-0">
         <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] sm:text-[56px]">
           Tap Into Global Demand
         </h2>

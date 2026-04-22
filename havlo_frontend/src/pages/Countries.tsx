@@ -79,7 +79,7 @@ export const Countries: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-[#F8F7F7]">
       {/* 1. Hero Section */}
-      <section className="flex flex-col items-center gap-8 px-4 py-[84px] text-center sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center gap-8 px-4 text-center sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6">
           <h1 className="font-display text-[56px] font-black leading-[1.1] text-[#040504] sm:text-[64px] tracking-tight">
             Where We Operate

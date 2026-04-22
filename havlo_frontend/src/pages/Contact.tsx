@@ -14,7 +14,7 @@ export const Contact: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
-      <section className="flex flex-col items-center px-6 pt-[68px] lg:pt-[84px] pb-10 text-center sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center px-6 lg:pt-[84px] text-center sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex max-w-[888px] flex-col items-center gap-6 lg:gap-8">
           <div className="flex flex-col items-center gap-4 lg:gap-8">
             <h1 className="font-display text-[36px] sm:text-[48px] lg:text-[64px] font-black leading-[1.1] tracking-tight text-[#001C47]">
@@ -28,7 +28,7 @@ export const Contact: React.FC = () => {
       </section>
 
       {/* 2. Contact Info Section */}
-      <section className="flex flex-col items-center px-6 pb-24 sm:px-10 lg:px-[100px]">
+      <section className="flex flex-col items-center px-6 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex w-full max-w-[888px] flex-col gap-6 lg:gap-8">
           {/* Phone Numbers Card */}
           <div className="flex w-full flex-col items-center justify-center gap-6 lg:gap-10 rounded-[24px] bg-[#081B2A] px-6 py-8 sm:flex-row sm:gap-20">

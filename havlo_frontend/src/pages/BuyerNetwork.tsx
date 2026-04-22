@@ -111,7 +111,7 @@ export const BuyerNetwork: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero Section */}
-      <section className="relative flex flex-col items-center pt-24 pb-1 md:pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden md:min-h-[630px]">
+      <section className="relative flex flex-col items-center md:pb-48 px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden md:min-h-[630px] py-10 my-0">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[1144px] mx-auto">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -163,7 +163,7 @@ export const BuyerNetwork: React.FC = () => {
       </div>
 
       {/* 2. Why estate agents choose Havlo */}
-      <section className="flex flex-col items-center bg-white py-1 md:py-24 lg:py-32 px-6 lg:px-[100px]">
+      <section className="flex flex-col items-center bg-white md:py-24 lg:py-32 px-6 lg:px-[100px] py-10 my-0">
         <h2 className="font-display text-[48px] lg:text-[56px] font-black leading-[1.1] text-[#040504] text-center mb-16">
           Why estate agents choose Havlo
         </h2>
@@ -192,7 +192,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 3. How it works */}
-      <section className="flex flex-col py-1 md:py-24 px-6 lg:px-[100px] bg-[#F9F8F9] overflow-hidden">
+      <section className="flex flex-col md:py-24 px-6 lg:px-[100px] bg-[#F9F8F9] overflow-hidden py-10 my-0">
         <div className="max-w-[1040px] mx-auto w-full">
           <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] mb-12">
             How it works
@@ -218,7 +218,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 4. Packages for estate agents */}
-      <section className="flex flex-col py-1 md:py-24 px-6 lg:px-[100px] bg-white">
+      <section className="flex flex-col md:py-24 px-6 lg:px-[100px] bg-white py-10 my-0">
         <div className="max-w-[1240px] mx-auto w-full">
           <p className="font-display text-[22px] font-bold text-[#1F1F1E] mb-2">
             One Additional Sale Typically Covers Your Investment
@@ -272,7 +272,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* 5. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center py-1 md:py-24 px-6 lg:px-[150px] bg-white overflow-hidden md:min-h-[400px] justify-center">
+      <section className="relative flex flex-col items-center md:py-24 px-6 lg:px-[150px] bg-white overflow-hidden md:min-h-[400px] justify-center py-10 my-0">
         <div className="relative z-20 flex flex-col items-center text-center max-w-[700px] mx-auto gap-14">
           <div className="flex flex-col items-center gap-8">
             <h2 className="font-display text-[44px] font-black leading-[1.1] text-black">
