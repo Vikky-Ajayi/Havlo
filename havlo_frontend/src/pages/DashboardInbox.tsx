@@ -3,6 +3,13 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { ChevronLeft, Mail, MoreVertical, Pencil, SendHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation, type AdminUser } from '../lib/api';
+import { readCachedConversations, writeCachedConversations } from '../lib/useInboxUnread';
+
+const broadcastInboxUpdate = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('havlo:inbox-updated'));
+  }
+};
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -27,10 +34,20 @@ export const DashboardInbox: React.FC = () => {
   const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const [adminUsersError, setAdminUsersError] = useState('');
   const [adminSearch, setAdminSearch] = useState('');
-  const [conversations, setConversations] = useState<InboxConversation[]>([]);
+  const [conversations, setConversations] = useState<InboxConversation[]>(() => {
+    if (!token) return [];
+    const cached = readCachedConversations(token, !!user?.is_admin);
+    if (!cached.length) return [];
+    return cached.map((c) =>
+      'user' in (c as AdminConversation) ? adminToInbox(c as AdminConversation) : (c as InboxConversation),
+    );
+  });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (!token) return true;
+    return readCachedConversations(token, !!user?.is_admin).length === 0;
+  });
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -86,6 +103,8 @@ export const DashboardInbox: React.FC = () => {
         }
         const rows = (Array.isArray(data) ? data : []) as AdminConversation[];
         setConversations(rows.map(adminToInbox));
+        writeCachedConversations(token, isAdmin, rows);
+        broadcastInboxUpdate();
         if (rows.length === 0) {
           setLoadState('empty');
           setLoadError('');
@@ -123,6 +142,8 @@ export const DashboardInbox: React.FC = () => {
         }
         const rows = (Array.isArray(data) ? data : []) as Conversation[];
         setConversations(rows);
+        writeCachedConversations(token, isAdmin, rows);
+        broadcastInboxUpdate();
         if (rows.length === 0) {
           setLoadState('empty');
           setLoadError('');
@@ -184,16 +205,24 @@ export const DashboardInbox: React.FC = () => {
 
   useEffect(() => {
     if (!token) return;
-    setLoading(true);
-    setLoadState('loading');
+    const hasCached = readCachedConversations(token, isAdmin).length > 0;
+    if (!hasCached) {
+      setLoading(true);
+      setLoadState('loading');
+    } else {
+      setLoading(false);
+      setLoadState('ready');
+    }
     if (loadTimeoutRef.current) {
       window.clearTimeout(loadTimeoutRef.current);
     }
-    loadTimeoutRef.current = window.setTimeout(() => {
-      setLoading(false);
-      setLoadState((prev) => (prev === 'loading' ? 'timeout' : prev));
-      setLoadError((prev) => prev || 'Loading took too long. Please refresh.');
-    }, 10000);
+    if (!hasCached) {
+      loadTimeoutRef.current = window.setTimeout(() => {
+        setLoading(false);
+        setLoadState((prev) => (prev === 'loading' ? 'timeout' : prev));
+        setLoadError((prev) => prev || 'Loading took too long. Please refresh.');
+      }, 10000);
+    }
     (async () => {
       await loadConversations();
       if (isAdmin) {
@@ -431,7 +460,7 @@ export const DashboardInbox: React.FC = () => {
 
   return (
     <DashboardLayout title="Inbox">
-      <div className="flex h-[calc(100vh-64px)] bg-white overflow-hidden">
+      <div className="flex h-[calc(100dvh-64px)] bg-white overflow-hidden">
         <div className={`w-full lg:w-[373px] flex-shrink-0 border-r border-[#F1F1F0] flex flex-col bg-white ${selectedId && 'hidden lg:flex'}`}>
           {isAdmin && (
             <div className="p-2 border-b border-[#F1F1F0] bg-white">
@@ -521,7 +550,17 @@ export const DashboardInbox: React.FC = () => {
               conversations.map((conv) => (
                 <button
                   key={conv.id}
-                  onClick={() => setSelectedId(conv.id)}
+                  onClick={() => {
+                    setSelectedId(conv.id);
+                    setConversations((prev) => {
+                      const next = prev.map((c) =>
+                        c.id === conv.id ? { ...c, unread_count: 0 } : c,
+                      );
+                      if (token) writeCachedConversations(token, isAdmin, next);
+                      broadcastInboxUpdate();
+                      return next;
+                    });
+                  }}
                   className={`w-full flex items-start gap-3 p-4 rounded-lg transition-colors text-left ${
                     selectedId === conv.id ? 'bg-[#F4F4F4]' : 'hover:bg-gray-50'
                   }`}
@@ -599,17 +638,19 @@ export const DashboardInbox: React.FC = () => {
         </div>
 
         <div className={`flex-1 flex flex-col bg-[#F4F5F4] ${!selectedId && 'hidden lg:flex'}`}>
-          {detail ? (
+          {selectedId ? (
             <>
               <div className="lg:hidden h-14 px-4 flex items-center gap-3 bg-white border-b border-[#F1F1F0]">
                 <button onClick={() => setSelectedId(null)} className="p-1">
                   <ChevronLeft size={20} />
                 </button>
-                <span className="font-semibold text-sm">{headerName}</span>
+                <span className="font-semibold text-sm">{headerName || (conversations.find((c) => c.id === selectedId)?.subject ?? '')}</span>
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                {detail.messages.length ? (
+                {!detail ? (
+                  <div className="h-full" />
+                ) : detail.messages.length ? (
                   detail.messages.map((msg) => (
                     <div key={msg.id} className={`flex items-start gap-2 ${msg.is_me ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className={`max-w-[70%] space-y-1 ${msg.is_me ? 'items-end' : 'items-start'}`}>
@@ -646,6 +687,7 @@ export const DashboardInbox: React.FC = () => {
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type a message"
                     disabled={sending}
+                    style={{ fontSize: '16px' }}
                     className="flex-1 h-12 px-6 bg-[#F4F4F4] rounded-full text-sm font-semibold italic placeholder:text-black/40 focus:outline-none disabled:opacity-50"
                   />
                   <button

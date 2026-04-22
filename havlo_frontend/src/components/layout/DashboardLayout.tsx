@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useInboxUnread } from '../../lib/useInboxUnread';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -69,6 +70,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { count: inboxUnread } = useInboxUnread();
 
   const userRole = user?.is_admin ? 'admin' : (user?.role || 'buyer');
   const userName = user ? `${user.first_name} ${user.last_name}` : 'User';
@@ -145,7 +147,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         { 
           icon: <Mail size={20} />, 
           label: 'Inbox', 
-          badge: 0, 
+          badge: inboxUnread > 0 ? inboxUnread : undefined, 
           path: '/dashboard/inbox',
           active: location.pathname === '/dashboard/inbox'
         },
