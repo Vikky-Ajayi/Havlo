@@ -179,7 +179,7 @@ export const CreateAccountModal: React.FC = () => {
               >
                 <option value="" disabled>Select your role</option>
                 <option value="seller">Seller / Homeowner</option>
-                <option value="agent">Agent</option>
+                <option value="agent">Estate Agent</option>
                 <option value="buyer">Buyer</option>
               </select>
             </div>
