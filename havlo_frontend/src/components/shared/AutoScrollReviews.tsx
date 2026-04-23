@@ -104,13 +104,23 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
 
   return (
     <div
-      ref={containerRef}
-      className="w-full overflow-hidden py-[30px] no-scrollbar cursor-grab active:cursor-grabbing"
-      style={{ touchAction: 'pan-y' }}
+      className="relative w-full"
+      style={{
+        WebkitMaskImage:
+          'linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%)',
+        maskImage:
+          'linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%)',
+      }}
     >
-      <div ref={trackRef} className="flex items-stretch gap-4" style={{ width: 'max-content' }}>
-        {renderReviewSet('first')}
-        {renderReviewSet('second')}
+      <div
+        ref={containerRef}
+        className="w-full overflow-hidden py-[30px] no-scrollbar cursor-grab active:cursor-grabbing"
+        style={{ touchAction: 'pan-y' }}
+      >
+        <div ref={trackRef} className="flex items-stretch gap-4" style={{ width: 'max-content' }}>
+          {renderReviewSet('first')}
+          {renderReviewSet('second')}
+        </div>
       </div>
     </div>
   );
