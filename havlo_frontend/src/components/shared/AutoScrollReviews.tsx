@@ -23,14 +23,17 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
   const renderReviewSet = (setKey: string) => (
     <>
       {header && (
-        <div className="shrink-0 w-[180px] lg:w-[220px] flex flex-col gap-3 px-4 lg:px-8 items-start">
+        <div
+          className="shrink-0 w-[260px] lg:w-[300px] flex flex-col gap-3 px-4 lg:px-6 items-start justify-center self-stretch"
+          aria-hidden={setKey === 'second'}
+        >
           {header}
         </div>
       )}
       {reviews.map((r, i) => (
         <div
           key={`${setKey}-${i}`}
-          className="shrink-0 w-[300px] lg:w-[340px] rounded-xl p-5 flex flex-col h-full"
+          className="shrink-0 w-[300px] lg:w-[340px] min-h-[260px] lg:min-h-[280px] rounded-xl p-5 flex flex-col self-stretch"
           style={{ backgroundColor: bgColor }}
         >
           <ReviewCard title={r.title} content={r.content} author={r.author} time="" />
@@ -46,12 +49,12 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
     let animId: number;
     let paused = false;
     const speed = 0.5;
-    let isDragging = false;
+    let isMouseDragging = false;
     let dragStartX = 0;
     let dragStartScroll = 0;
 
     const step = () => {
-      if (!paused && !isDragging) {
+      if (!paused && !isMouseDragging) {
         const maxScroll = track.scrollWidth / 2;
         container.scrollLeft += speed;
         if (container.scrollLeft >= maxScroll) {
@@ -62,53 +65,32 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
     };
 
     const onMouseDown = (e: MouseEvent) => {
-      isDragging = true;
+      isMouseDragging = true;
       paused = true;
       dragStartX = e.clientX;
       dragStartScroll = container.scrollLeft;
     };
 
     const onMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
+      if (!isMouseDragging) return;
       const delta = e.clientX - dragStartX;
       container.scrollLeft = dragStartScroll - delta;
     };
 
     const onMouseUp = () => {
-      isDragging = false;
-      paused = false;
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      isDragging = true;
-      paused = true;
-      dragStartX = e.touches[0].clientX;
-      dragStartScroll = container.scrollLeft;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (!isDragging) return;
-      const delta = e.touches[0].clientX - dragStartX;
-      container.scrollLeft = dragStartScroll - delta;
-    };
-
-    const onTouchEnd = () => {
-      isDragging = false;
+      isMouseDragging = false;
       paused = false;
     };
 
     animId = requestAnimationFrame(step);
 
     const pause = () => { paused = true; };
-    const resume = () => { if (!isDragging) paused = false; };
+    const resume = () => { if (!isMouseDragging) paused = false; };
     container.addEventListener('mouseenter', pause);
     container.addEventListener('mouseleave', resume);
     container.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-    container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchmove', onTouchMove, { passive: true });
-    container.addEventListener('touchend', onTouchEnd);
 
     return () => {
       cancelAnimationFrame(animId);
@@ -117,14 +99,15 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
       container.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      container.removeEventListener('touchstart', onTouchStart);
-      container.removeEventListener('touchmove', onTouchMove);
-      container.removeEventListener('touchend', onTouchEnd);
     };
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden py-[30px] no-scrollbar cursor-grab active:cursor-grabbing">
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden py-[30px] no-scrollbar cursor-grab active:cursor-grabbing"
+      style={{ touchAction: 'pan-y' }}
+    >
       <div ref={trackRef} className="flex items-stretch gap-4" style={{ width: 'max-content' }}>
         {renderReviewSet('first')}
         {renderReviewSet('second')}
