@@ -115,6 +115,18 @@ const faqs = [
     q: 'Do you charge a commission when the property sells?',
     a: 'No. Havlo charges fixed management fees only. We are a marketing service, not an estate agent. There is no commission, no referral fee, and no percentage of the sale price - ever.',
   },
+  {
+    q: 'How quickly can I expect buyer interest?',
+    a: 'In many cases, sellers begin seeing qualified enquiries within the first few weeks of relaunch. By targeting active international buyers from day one, we accelerate exposure and reduce the time your property sits unnoticed.',
+  },
+  {
+    q: 'What results have other sellers seen?',
+    a: 'We\u2019ve helped sellers revive listings that had stalled for months\u2014generating fresh enquiries, attracting international buyers, and creating renewed momentum toward a sale. Results vary by property, but the goal is always the same: more qualified buyers, faster.',
+  },
+  {
+    q: 'What makes this different from my agent?',
+    a: 'We don\u2019t replace your agent\u2014we enhance their reach. Most agents rely on local portals and databases, which limits exposure to a domestic audience. Havlo adds a targeted international layer, putting your property in front of qualified buyers your current marketing isn\u2019t reaching.',
+  },
 ];
 
 export const Marketing: React.FC = () => {
