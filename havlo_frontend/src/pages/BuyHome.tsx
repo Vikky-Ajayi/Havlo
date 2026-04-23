@@ -1,15 +1,13 @@
 import React from 'react';
-import { Check, ArrowRight, Circle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Check } from 'lucide-react';
 import { useModal } from '../hooks/useModal';
 
 export const BuyHome: React.FC = () => {
   const { openModal } = useModal();
   return (
     <div className="flex flex-col w-full bg-white">
-      {/* ===================== MOBILE (< md) ===================== */}
       {/* M1. Hero — white BG, blurred colored circles, floating status cards */}
-      <section className="md:hidden relative bg-[#FEFEFE] overflow-hidden py-10 my-0">
+      <section className="relative bg-[#FEFEFE] overflow-hidden py-10 my-0">
         {/* Blurred colored gradient circles strip at top */}
         <div className="absolute inset-x-0 top-0 h-[220px] pointer-events-none overflow-hidden [mask-image:linear-gradient(to_bottom,black,transparent)]">
           <div className="flex justify-between items-center w-[130%] -ml-[15%] h-full opacity-70 blur-[90px]">
@@ -81,8 +79,8 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* M2. What we offer — white BG, two cream cards */}
-      <section className="md:hidden bg-[#FFFFFE] px-4 py-10 my-0">
-        <div className="flex flex-col gap-8">
+      <section className="bg-[#FFFFFE] px-4 md:px-10 lg:px-[100px] py-10 md:py-16 my-0">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
           <div className="flex flex-col gap-6">
             <h2 className="font-display text-[40px] font-medium leading-[1] tracking-[-0.8px] text-black">
               What we offer
@@ -92,8 +90,9 @@ export const BuyHome: React.FC = () => {
             </p>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           {/* Essential Access — cream BG, pink tag */}
-          <div className="rounded-2xl bg-[#FBF3EA] p-6 flex flex-col gap-6">
+          <div className="rounded-2xl bg-[#FBF3EA] p-6 lg:p-8 flex flex-col gap-6">
             <div className="self-start px-3 py-2.5 rounded-lg bg-[#FFB0E8]">
               <span className="font-body text-base font-normal text-black">
                 Essential Access — From $2000
@@ -119,7 +118,7 @@ export const BuyHome: React.FC = () => {
           </div>
 
           {/* Essential Plus — cream BG, purple tag */}
-          <div className="rounded-2xl bg-[#FBF3EA] p-6 flex flex-col gap-6">
+          <div className="rounded-2xl bg-[#FBF3EA] p-6 lg:p-8 flex flex-col gap-6">
             <div className="self-start px-3 py-2.5 rounded-lg bg-[#602FD3]">
               <span className="font-body text-base font-normal text-white">
                 Essential Plus — Starting from $5000
@@ -149,17 +148,18 @@ export const BuyHome: React.FC = () => {
               ))}
             </ul>
           </div>
+          </div>
         </div>
       </section>
 
       {/* M3. How it works — blue→pink→yellow gradient, frosted cards */}
       <section
-        className="md:hidden px-4 py-10 my-0"
+        className="px-4 md:px-10 lg:px-[100px] py-10 md:py-16 my-0"
         style={{
           background: 'linear-gradient(180deg, #9BD9FF 0%, #FFB0E8 50%, #FEEAA0 100%)',
         }}
       >
-        <div className="flex flex-col items-center gap-10">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-10">
           <div className="flex flex-col items-center gap-4 text-center">
             <h2 className="font-display text-[40px] font-black leading-[1] tracking-[-0.8px] text-black">
               How it works
@@ -167,7 +167,7 @@ export const BuyHome: React.FC = () => {
           </div>
 
           {/* Step cards (frosted glass) */}
-          <div className="flex flex-col gap-6 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
             {[
               {
                 title: 'Bespoke Consultation',
@@ -218,14 +218,14 @@ export const BuyHome: React.FC = () => {
       </section>
 
       {/* M4. Let's talk fees — dark card with white form inside */}
-      <section className="md:hidden bg-white px-4 py-10 my-0">
+      <section className="bg-white px-4 md:px-10 lg:px-[100px] py-10 md:py-16 my-0">
         {(() => {
           const [price, setPrice] = React.useState("");
           const numericPrice = Number(price) || 0;
           const calculated = Math.round(numericPrice * 0.05);
 
           return (
-            <div className="rounded-[28px] bg-[#040504] p-6 flex flex-col gap-8">
+            <div className="mx-auto w-full max-w-5xl rounded-[28px] bg-[#040504] p-6 md:p-10 lg:p-12 flex flex-col gap-8">
               <div className="flex flex-col gap-5">
                 <h2 className="font-display text-[44px] font-medium leading-[1] tracking-[-0.88px] text-white">
                   Let's talk fees
@@ -292,9 +292,8 @@ export const BuyHome: React.FC = () => {
         })()}
       </section>
 
-      {/* ===================== DESKTOP (>= md) ===================== */}
-      {/* 1. Hero Section */}
-      <section className="hidden md:block relative w-full min-h-[960px] bg-[#FEFEFE] overflow-hidden py-10 my-0">
+      {/* legacy duplicate desktop hero — disabled */}
+      <section className="hidden relative w-full min-h-[960px] bg-[#FEFEFE] overflow-hidden py-10 my-0">
         {/* Blurred Background Circles */}
         <div className="absolute top-[-35px] left-[107px] w-[1226px] h-[284px] blur-[125px] opacity-50 pointer-events-none z-0">
           <div className="flex justify-between items-center w-full h-full">
