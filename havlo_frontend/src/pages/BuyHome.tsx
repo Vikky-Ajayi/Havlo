@@ -164,9 +164,6 @@ export const BuyHome: React.FC = () => {
             <h2 className="font-display text-[40px] font-black leading-[1] tracking-[-0.8px] text-black">
               How it works
             </h2>
-            <p className="font-body text-base font-medium text-black/60">
-              What's your situation?
-            </p>
           </div>
 
           {/* Step cards (frosted glass) */}
