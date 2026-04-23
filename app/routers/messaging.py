@@ -324,6 +324,47 @@ class _RenameBody(_BaseModel):
     subject: str
 
 
+@router.post("/conversations/{conversation_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_conversation_read(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset unread_count and mark all team messages in this conversation as read."""
+    try:
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
+
+    conv = (
+        await db.execute(
+            select(Conversation).where(
+                Conversation.id == conv_id,
+                Conversation.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
+
+    await db.execute(
+        update(Message)
+        .where(
+            Message.conversation_id == conv_id,
+            Message.sender_type == MessageSenderType.team,
+            Message.is_read.is_(False),
+        )
+        .values(is_read=True)
+    )
+    await db.execute(
+        update(Conversation)
+        .where(Conversation.id == conv_id)
+        .values(unread_count=0)
+    )
+    await db.commit()
+    return None
+
+
 @router.patch("/conversations/{conversation_id}", response_model=ConversationOut)
 async def rename_conversation(
     conversation_id: str,
@@ -427,9 +468,10 @@ async def send_user_message(
         sender_type=MessageSenderType.user,
         sender_name=current_user.full_name,
         sender_id=current_user.id,
-        is_read=False,
+        is_read=True,  # user's own outgoing message is always considered read
     )
     db.add(msg)
+    # IMPORTANT: never increment unread_count when the user themselves sends.
     conv.last_message_at = datetime.utcnow()
     await db.commit()
     await db.refresh(msg)

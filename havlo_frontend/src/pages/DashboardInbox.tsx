@@ -292,8 +292,21 @@ export const DashboardInbox: React.FC = () => {
   }, [selectedId, token, isAdmin]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!detail?.messages?.length) return;
+    // Auto-scroll to the latest message whenever the visible list changes.
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
   }, [detail?.messages]);
+
+  // When opening a different conversation, instantly jump to the bottom (no smooth scroll).
+  useEffect(() => {
+    if (!selectedId || !detail?.id || detail.id !== selectedId) return;
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ block: 'end' });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, detail?.id]);
 
   // User WebSocket for real-time updates.
   useEffect(() => {
@@ -595,6 +608,11 @@ export const DashboardInbox: React.FC = () => {
                       broadcastInboxUpdate();
                       return next;
                     });
+                    // Fire-and-forget: tell the backend to reset unread immediately so
+                    // the sidebar badge is in sync the next time anything refreshes.
+                    if (token && !isAdmin) {
+                      api.markConversationRead(token, conv.id).catch(() => {});
+                    }
                   }}
                   className={`w-full flex items-start gap-3 p-4 rounded-lg transition-colors text-left ${
                     selectedId === conv.id ? 'bg-[#F4F4F4]' : 'hover:bg-gray-50'
@@ -675,11 +693,60 @@ export const DashboardInbox: React.FC = () => {
         <div className={`flex-1 min-h-0 flex flex-col bg-[#F4F5F4] ${!selectedId && 'hidden lg:flex'}`}>
           {selectedId ? (
             <>
-              <div className="lg:hidden h-14 flex-shrink-0 px-4 flex items-center gap-3 bg-white border-b border-[#F1F1F0]">
-                <button onClick={() => setSelectedId(null)} className="p-1">
-                  <ChevronLeft size={20} />
+              <div className="lg:hidden h-14 flex-shrink-0 px-2 flex items-center gap-2 bg-white border-b border-[#F1F1F0]">
+                <button
+                  onClick={() => setSelectedId(null)}
+                  className="h-11 w-11 flex items-center justify-center -ml-1 rounded-full hover:bg-black/5 active:bg-black/10"
+                  aria-label="Back to conversations"
+                >
+                  <ChevronLeft size={24} />
                 </button>
                 <span className="font-semibold text-sm flex-1 truncate">{headerName || (conversations.find((c) => c.id === selectedId)?.subject ?? '')}</span>
+                {!isAdmin && selectedId && (
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(menuOpenId === `__header__${selectedId}` ? null : `__header__${selectedId}`);
+                      }}
+                      className="h-11 w-11 flex items-center justify-center rounded-full hover:bg-black/5 active:bg-black/10"
+                      aria-label="Conversation actions"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
+                    {menuOpenId === `__header__${selectedId}` && (
+                      <div className="absolute right-1 top-12 z-30 w-40 rounded-lg border border-black/10 bg-white shadow-lg py-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId(null);
+                            const conv = conversations.find((c) => c.id === selectedId);
+                            setRenameId(selectedId);
+                            setRenameText(conv?.subject || '');
+                            setActionError('');
+                          }}
+                          className="w-full px-3 py-2.5 text-left text-sm font-medium text-black hover:bg-black/5 flex items-center gap-2"
+                        >
+                          <Pencil size={16} /> Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenId(null);
+                            setDeleteId(selectedId);
+                            setActionError('');
+                          }}
+                          className="w-full px-3 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <Trash2 size={16} /> Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div ref={messagesScrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 custom-scrollbar">
@@ -699,7 +766,9 @@ export const DashboardInbox: React.FC = () => {
                 ) : !detail ? (
                   <div className="h-full" />
                 ) : detail.messages.length ? (
-                  detail.messages.map((msg) => (
+                  [...detail.messages]
+                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                    .map((msg) => (
                     <div key={msg.id} className={`flex items-start gap-2 ${msg.is_me ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className={`max-w-[70%] space-y-1 ${msg.is_me ? 'items-end' : 'items-start'}`}>
                         <div

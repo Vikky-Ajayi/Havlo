@@ -384,6 +384,12 @@ export const api = {
       token,
     }),
 
+  markConversationRead: (token: string, conversationId: string) =>
+    request<null>(`/messaging/conversations/${conversationId}/read`, {
+      method: 'POST',
+      token,
+    }),
+
   bookSession: (token: string, payload: BookSessionPayload) =>
     request<{ booking_id: string; checkout_url: string; checkout_id: string; amount: number; currency: string; message: string }>('/bookings/session', { method: 'POST', token, body: payload }),
 
