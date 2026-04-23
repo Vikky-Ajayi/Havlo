@@ -169,20 +169,6 @@ export const BuyHome: React.FC = () => {
             </p>
           </div>
 
-          {/* Toggle */}
-          <div className="flex flex-col gap-3 w-full">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-white border border-black/10">
-              <Circle className="w-6 h-6 text-black/40" strokeWidth={1.5} />
-              <span className="font-body text-base font-medium text-black/80">I'm buying</span>
-            </div>
-            
-              
-                
-             
-              
-            
-          </div>
-
           {/* Step cards (frosted glass) */}
           <div className="flex flex-col gap-6 w-full">
             {[
