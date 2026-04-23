@@ -34,6 +34,15 @@ export const CreateAccountModal: React.FC = () => {
       setError('Please fill in all fields.');
       return;
     }
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    if (!/^[0-9\s\-()]+$/.test(phoneNumber)) {
+      setError('Phone number can only contain digits, spaces, dashes and parentheses.');
+      return;
+    }
+    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+      setError('Please enter a valid phone number (7–15 digits).');
+      return;
+    }
     if (password !== repeatPassword) {
       setError('Passwords do not match.');
       return;
