@@ -168,7 +168,7 @@ export const DashboardSellFaster: React.FC = () => {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const config = useConfig();
-  const calendlyLink = config.calendly_link || 'https://calendly.com/havlo';
+  const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
 
   // ── view state ─────────────────────────────────────────────────────────
   const [storedPlan, setStoredPlan] = useState<SellFasterPlanState | null>(getSellFasterPlan());
@@ -695,9 +695,13 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
         </p>
 
         <div className="mt-6 flex flex-col gap-4 rounded-[14px] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <SpecialistAvatars />
-            <span className="font-display text-[15px] font-bold text-black">Your property exposure specialists</span>
+          <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="shrink-0">
+              <SpecialistAvatars />
+            </div>
+            <span className="min-w-0 font-display text-[15px] font-bold leading-snug text-black">
+              Your property exposure specialists
+            </span>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
