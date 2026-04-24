@@ -639,7 +639,7 @@ export const Marketing: React.FC = () => {
               <img
                 src="/portal-logos/rightmove.png"
                 alt="Rightmove"
-                className="h-5 w-auto object-contain sm:h-6"
+                className="h-9 w-auto object-contain sm:h-11"
                 loading="lazy"
               />
               <img
