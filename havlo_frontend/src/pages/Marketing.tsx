@@ -2,10 +2,35 @@ import React, { useState } from 'react';
 import { Check, Minus, Plus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
+import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 import heroImage from '../../Rectangle 5.png';
 import { usePageMeta } from '../hooks/usePageMeta';
+
+const sellFasterReviews = [
+  { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
+  { title: 'A real turnaround for our listing', content: 'We had almost given up after months of no offers. The relaunch strategy worked, and we finally secured a buyer.', author: 'Claire, Sheffield' },
+  { title: 'Exactly what we needed after 6+ months', content: 'Havlo helped reposition our property and attract a completely new audience. The difference was immediate.', author: 'Marcus, Liverpool' },
+  { title: 'Sold after being stuck for nearly a year', content: 'Our house had been listed for close to a year with no success. Havlo Relaunch gave it new life and helped us finally move forward.', author: 'Fiona, Oxford' },
+  { title: 'New strategy, real results', content: 'The relaunch approach made all the difference. Better marketing, better positioning, and much stronger enquiries.', author: 'Ryan, Newcastle' },
+  { title: 'From no interest to serious offers', content: 'We went from barely any viewings to genuine offers after using Havlo. The international exposure really worked.', author: 'Priya, Leicester' },
+  { title: 'Helped us break through a stagnant market', content: 'Our property had gone stale on the market. Havlo Relaunch brought in fresh demand and the right kind of buyers.', author: 'Gareth, Cardiff' },
+  { title: 'Professional and highly effective', content: 'The team clearly understood why our property wasn’t selling and fixed it. We saw results much faster than expected.', author: 'Nadia, Abu Dhabi' },
+  { title: 'Great solution for slow-moving properties', content: 'If your property has been sitting unsold, this service is exactly what you need. It helped us secure a buyer after months of frustration.', author: 'Lewis, Glasgow' },
+  { title: 'A fresh start that worked', content: 'Havlo gave our listing a proper relaunch with a clear strategy. It attracted new interest and ultimately led to a successful sale.', author: 'Sanjay, Slough' },
+  { title: 'Gave us clarity we didn’t have before', content: 'We couldn’t understand why our property wasn’t selling. The Havlo assessment clearly identified the issues and gave us a solid plan to move forward.', author: 'Andrew, Guildford' },
+  { title: 'Eye-opening and extremely helpful', content: 'The audit highlighted pricing and presentation issues we had completely overlooked. It gave us a clear direction and renewed confidence.', author: 'Rachel, Cambridge' },
+  { title: 'Exactly what we needed', content: 'After months of no progress, the assessment showed us exactly what was holding the sale back. The recommendations were practical and easy to implement.', author: 'Tom, Brighton' },
+  { title: 'Clear, honest and actionable advice', content: 'Havlo didn’t just guess—they provided real insights backed by data. It helped us understand our position in the market properly.', author: 'Louise, York' },
+  { title: 'Helped us fix key issues quickly', content: 'We made a few key changes based on the audit, and the difference was immediate. Much more interest and better quality enquiries.', author: 'Chris, Milton Keynes' },
+  { title: 'Finally understood why it wasn’t selling', content: 'The assessment broke everything down clearly—pricing, photos, and positioning. It all made sense once we saw it laid out properly.', author: 'Nina, Reading' },
+  { title: 'Professional and insightful service', content: 'The level of detail in the report was impressive. It felt like a proper strategy rather than just general advice.', author: 'Hassan, Doha' },
+  { title: 'A smart first step before relaunching', content: 'Before switching agents, this audit helped us get everything right. It saved us time and avoided repeating mistakes.', author: 'Emma, Chelmsford' },
+  { title: 'Straightforward and effective', content: 'No fluff—just clear reasons why our property wasn’t selling and what to do next. Exactly what we needed.', author: 'Daniel, Southampton' },
+  { title: 'Worth it for the clarity alone', content: 'Even before relaunching, the audit gave us a completely new perspective on how our property was being seen by buyers.', author: 'Priya, Harrow' },
+];
 
 const problemPoints = [
   {
@@ -224,7 +249,152 @@ export const Marketing: React.FC = () => {
   const { openModal } = useModal();
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(() => new Set([0]));
   const [showAllFaqs, setShowAllFaqs] = useState(false);
+  const [activeTierIndex, setActiveTierIndex] = useState(0);
   const visibleFaqs = showAllFaqs ? faqs : faqs.slice(0, FAQ_INITIAL_VISIBLE);
+
+  const renderTierCard = (tier: Tier) => {
+    const isPurple = tier.variant === 'purple';
+    const isDark = tier.variant === 'dark';
+    const isLight = tier.variant === 'white';
+    return (
+      <div
+        className={cn(
+          'relative flex flex-col p-6 lg:p-7',
+          isPurple && 'bg-[#a409d2] text-white',
+          isDark && 'bg-[#0c0c0c] text-white',
+          isLight && 'border border-black/12 bg-white text-black'
+        )}
+      >
+        {tier.highlight && (
+          <div className="absolute right-5 top-5 rounded-full bg-white px-3 py-1 font-body text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#a409d2]">
+            {tier.highlight}
+          </div>
+        )}
+
+        <h3
+          className={cn(
+            'font-display text-[26px] font-black leading-none tracking-[-0.5px] sm:text-[28px]',
+            tier.name === 'Private Clients' && 'uppercase tracking-[0.04em] text-[24px] sm:text-[26px]'
+          )}
+        >
+          {tier.name}
+        </h3>
+        <p
+          className={cn(
+            'mt-3 min-h-[42px] font-body text-[13px] font-medium leading-[1.4]',
+            isPurple || isDark ? 'text-white/80' : 'text-black/65'
+          )}
+        >
+          {tier.tagline}
+        </p>
+
+        <div
+          className={cn(
+            'mt-5 border-t pt-5',
+            isPurple || isDark ? 'border-white/15' : 'border-black/12'
+          )}
+        >
+          <div className="font-display text-[20px] font-extrabold leading-[1.2]">{tier.setup}</div>
+          <p
+            className={cn(
+              'mt-1 font-body text-xs font-semibold',
+              isPurple || isDark ? 'text-white/70' : 'text-black/60'
+            )}
+          >
+            {tier.ongoing}
+          </p>
+        </div>
+
+        <ul className="mt-5 flex flex-col gap-2.5">
+          {tier.features.map((feature) => (
+            <li key={feature} className="flex items-start gap-2">
+              <Check
+                className={cn(
+                  'mt-0.5 h-4 w-4 shrink-0',
+                  isPurple || isDark ? 'text-white' : 'text-[#149d4f]'
+                )}
+              />
+              <span
+                className={cn(
+                  'font-body text-[13px] font-medium leading-[1.45]',
+                  isPurple || isDark ? 'text-white/85' : 'text-black/72'
+                )}
+              >
+                {feature}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <div
+          className={cn(
+            'mt-6 rounded-md p-4',
+            isPurple ? 'bg-white/10' : isDark ? 'bg-white/8' : 'bg-black/4'
+          )}
+        >
+          <p
+            className={cn(
+              'font-body text-[12px] font-extrabold uppercase tracking-[0.12em]',
+              isPurple || isDark ? 'text-white' : 'text-black'
+            )}
+          >
+            Typical outcome:
+          </p>
+          <p
+            className={cn(
+              'mt-1.5 font-body text-[12px] font-medium leading-[1.5]',
+              isPurple || isDark ? 'text-white/80' : 'text-black/68'
+            )}
+          >
+            {tier.outcome}
+          </p>
+
+          <p
+            className={cn(
+              'mt-3 font-body text-[12px] font-extrabold uppercase tracking-[0.12em]',
+              isPurple || isDark ? 'text-white' : 'text-black'
+            )}
+          >
+            Ideal for:
+          </p>
+          <p
+            className={cn(
+              'mt-1.5 font-body text-[12px] font-medium leading-[1.5]',
+              isPurple || isDark ? 'text-white/80' : 'text-black/68'
+            )}
+          >
+            {tier.idealFor}
+          </p>
+        </div>
+
+        {tier.footnote && (
+          <p
+            className={cn(
+              'mt-4 font-body text-[11px] font-medium italic',
+              isPurple || isDark ? 'text-white/70' : 'text-black/55'
+            )}
+          >
+            {tier.footnote}
+          </p>
+        )}
+
+        <div className="mt-auto pt-6">
+          <button
+            type="button"
+            onClick={tier.variant === 'dark' ? handleBookCall : handleGetStarted}
+            className={cn(
+              'flex h-11 w-full items-center justify-center px-5 font-body text-[13px] font-semibold transition',
+              isPurple && 'bg-white text-black hover:bg-white/90',
+              isDark && 'border border-white bg-black text-white hover:bg-white/10',
+              isLight && 'bg-black text-white hover:bg-black/85'
+            )}
+          >
+            {tier.cta}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const toggleFaq = (index: number) => {
     setOpenFaqs((prev) => {
@@ -283,6 +453,23 @@ export const Marketing: React.FC = () => {
         <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-[60px] pointer-events-none lg:h-[90px]">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full" />
         </div>
+      </section>
+
+      {/* 1b. Reviews Section */}
+      <section className="w-full bg-white px-4 sm:px-10 lg:px-[100px] py-0 my-0">
+        <AutoScrollReviews
+          reviews={sellFasterReviews}
+          bgColor="#F5F5F3"
+          header={
+            <>
+              <h2 className="font-body text-[28px] lg:text-[36px] font-medium leading-none tracking-[-0.8px] text-[#040504]">Excellent</h2>
+              <TrustpilotStars className="h-[28px] lg:h-[32px]" />
+              <p className="font-body text-[14px] lg:text-[16px] font-normal text-black">
+                Based on <span className="font-bold underline">{sellFasterReviews.length} reviews</span>
+              </p>
+            </>
+          }
+        />
       </section>
 
       {/* 2. THE PROBLEM */}
@@ -382,144 +569,40 @@ export const Marketing: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {tiers.map((tier) => {
-              const isPurple = tier.variant === 'purple';
-              const isDark = tier.variant === 'dark';
-              const isLight = tier.variant === 'white';
-              return (
-                <div
-                  key={tier.name}
-                  className={cn(
-                    'relative flex flex-col p-6 lg:p-7',
-                    isPurple && 'bg-[#a409d2] text-white',
-                    isDark && 'bg-[#0c0c0c] text-white',
-                    isLight && 'border border-black/12 bg-white text-black'
-                  )}
-                >
-                  {tier.highlight && (
-                    <div className="absolute right-5 top-5 rounded-full bg-white px-3 py-1 font-body text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#a409d2]">
-                      {tier.highlight}
-                    </div>
-                  )}
-
-                  <h3
+          {/* Mobile: tabbed layout */}
+          <div className="md:hidden">
+            <div className="flex items-center gap-5 border-b border-black/10 overflow-x-auto no-scrollbar">
+              {tiers.map((tier, index) => {
+                const isActive = activeTierIndex === index;
+                return (
+                  <button
+                    key={tier.name}
+                    type="button"
+                    onClick={() => setActiveTierIndex(index)}
                     className={cn(
-                      'font-display text-[26px] font-black leading-none tracking-[-0.5px] sm:text-[28px]',
-                      tier.name === 'Private Clients' && 'uppercase tracking-[0.04em] text-[24px] sm:text-[26px]'
+                      'shrink-0 -mb-px border-b-2 pb-3 pt-2 font-body text-[15px] font-semibold transition-colors',
+                      isActive
+                        ? 'border-[#ff8ce7] text-black'
+                        : 'border-transparent text-black/45 hover:text-black/70'
                     )}
                   >
                     {tier.name}
-                  </h3>
-                  <p
-                    className={cn(
-                      'mt-3 min-h-[42px] font-body text-[13px] font-medium leading-[1.4]',
-                      isPurple || isDark ? 'text-white/80' : 'text-black/65'
-                    )}
-                  >
-                    {tier.tagline}
-                  </p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-5">
+              <div key={tiers[activeTierIndex].name}>
+                {renderTierCard(tiers[activeTierIndex])}
+              </div>
+            </div>
+          </div>
 
-                  <div
-                    className={cn(
-                      'mt-5 border-t pt-5',
-                      isPurple || isDark ? 'border-white/15' : 'border-black/12'
-                    )}
-                  >
-                    <div className="font-display text-[20px] font-extrabold leading-[1.2]">{tier.setup}</div>
-                    <p
-                      className={cn(
-                        'mt-1 font-body text-xs font-semibold',
-                        isPurple || isDark ? 'text-white/70' : 'text-black/60'
-                      )}
-                    >
-                      {tier.ongoing}
-                    </p>
-                  </div>
-
-                  <ul className="mt-5 flex flex-col gap-2.5">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2">
-                        <Check
-                          className={cn(
-                            'mt-0.5 h-4 w-4 shrink-0',
-                            isPurple || isDark ? 'text-white' : 'text-[#149d4f]'
-                          )}
-                        />
-                        <span
-                          className={cn(
-                            'font-body text-[13px] font-medium leading-[1.45]',
-                            isPurple || isDark ? 'text-white/85' : 'text-black/72'
-                          )}
-                        >
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div
-                    className={cn(
-                      'mt-6 rounded-md p-4',
-                      isPurple ? 'bg-white/10' : isDark ? 'bg-white/8' : 'bg-black/4'
-                    )}
-                  >
-                    <p
-                      className={cn(
-                        'font-body text-[12px] font-extrabold uppercase tracking-[0.12em]',
-                        isPurple || isDark ? 'text-white' : 'text-black'
-                      )}
-                    >
-                      Typical outcome:
-                    </p>
-                    <p
-                      className={cn(
-                        'mt-1.5 font-body text-[12px] font-medium leading-[1.5]',
-                        isPurple || isDark ? 'text-white/80' : 'text-black/68'
-                      )}
-                    >
-                      {tier.outcome}
-                    </p>
-
-                    <p
-                      className={cn(
-                        'mt-3 font-body text-[12px] font-extrabold uppercase tracking-[0.12em]',
-                        isPurple || isDark ? 'text-white' : 'text-black'
-                      )}
-                    >
-                      Ideal for:
-                    </p>
-                    <p
-                      className={cn(
-                        'mt-1.5 font-body text-[12px] font-medium leading-[1.5]',
-                        isPurple || isDark ? 'text-white/80' : 'text-black/68'
-                      )}
-                    >
-                      {tier.idealFor}
-                    </p>
-                  </div>
-
-                  {tier.footnote && (
-                    <p className="mt-4 font-body text-[11px] font-medium italic text-black/55">{tier.footnote}</p>
-                  )}
-
-                  <div className="mt-auto pt-6">
-                    <button
-                      type="button"
-                      onClick={tier.variant === 'dark' ? handleBookCall : handleGetStarted}
-                      className={cn(
-                        'flex h-11 w-full items-center justify-center px-5 font-body text-[13px] font-semibold transition',
-                        isPurple && 'bg-white text-black hover:bg-white/90',
-                        isDark && 'border border-white bg-black text-white hover:bg-white/10',
-                        isLight && 'bg-black text-white hover:bg-black/85'
-                      )}
-                    >
-                      {tier.cta}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          {/* Desktop: grid layout */}
+          <div className="hidden gap-4 md:grid md:grid-cols-2 xl:grid-cols-4">
+            {tiers.map((tier) => (
+              <React.Fragment key={tier.name}>{renderTierCard(tier)}</React.Fragment>
+            ))}
           </div>
 
           {/* Media investment notice */}
@@ -552,16 +635,25 @@ export const Marketing: React.FC = () => {
             <p className="mt-4 font-body text-sm font-medium leading-[1.55] text-black/65 sm:text-base">
               Most properties rely on passive listing platforms such as:
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-80">
-              <span className="font-display text-[22px] font-extrabold tracking-tight text-[#0049a0] sm:text-[26px]">
-                rightmove
-              </span>
-              <span className="font-display text-[22px] font-extrabold tracking-tight text-[#9b1c8a] sm:text-[26px]">
-                ZOOPLA
-              </span>
-              <span className="font-display text-[22px] font-extrabold tracking-tight text-[#1f1f1e] sm:text-[26px]">
-                @TheMarket
-              </span>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 opacity-80 sm:gap-x-14">
+              <img
+                src="/portal-logos/rightmove.png"
+                alt="Rightmove"
+                className="h-5 w-auto object-contain sm:h-6"
+                loading="lazy"
+              />
+              <img
+                src="/portal-logos/zoopla.png"
+                alt="Zoopla"
+                className="h-7 w-auto object-contain sm:h-8"
+                loading="lazy"
+              />
+              <img
+                src="/portal-logos/onthemarket.png"
+                alt="OnTheMarket"
+                className="h-7 w-auto object-contain sm:h-9"
+                loading="lazy"
+              />
             </div>
           </div>
 
