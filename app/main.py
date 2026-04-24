@@ -8,6 +8,7 @@ Startup order:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -245,6 +246,17 @@ async def startup() -> None:
                 await _seed_admin_user()
             except Exception as exc:
                 logger.error("Admin seeding failed (non-fatal): %s", exc)
+
+            # Pre-warm one DB connection so the first /auth/login or /auth/register
+            # response does not pay the asyncpg cold-connect penalty (~150-300ms
+            # against the Supabase pooler from cold). Best effort only.
+            try:
+                from sqlalchemy import text as _text
+                async with engine.connect() as _conn:
+                    await _conn.execute(_text("SELECT 1"))
+                logger.info("DB connection pool pre-warmed.")
+            except Exception as exc:
+                logger.warning("DB pre-warm skipped: %s", exc)
         except Exception as exc:
             DB_ERROR = f"{type(exc).__name__}: {exc}"
             logger.error("DATABASE STARTUP FAILED (non-fatal, app will keep running): %s", DB_ERROR)
@@ -323,6 +335,34 @@ async def diag_sheets_test(request: Request) -> JSONResponse:
         return JSONResponse({"ok": True, "message": "Test row appended to Registrations tab."})
     except Exception as e:
         return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
+
+
+@app.get("/api/v1/diag/email", tags=["Health"])
+async def diag_email(request: Request) -> JSONResponse:
+    """Show whether SendGrid is configured (without exposing the key)."""
+    if not _check_diag_token(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from app.services import email_service as _es
+    return JSONResponse(_es.diagnostics())
+
+
+@app.post("/api/v1/diag/email/test", tags=["Health"])
+async def diag_email_test(request: Request) -> JSONResponse:
+    """Send a test email via SendGrid to verify credentials end-to-end."""
+    if not _check_diag_token(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from app.services import email_service as _es
+    if not _es.is_configured():
+        return JSONResponse({"ok": False, "error": "SendGrid is not configured."}, status_code=400)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    to = (body.get("to") or settings.SUPPORT_EMAIL or "").strip()
+    if not to:
+        return JSONResponse({"ok": False, "error": "Missing 'to' email address."}, status_code=400)
+    sent = await asyncio.to_thread(_es.send_test_email, to)
+    return JSONResponse({"ok": bool(sent), "to": to})
 
 
 @app.get("/api/v1/config", tags=["Config"])

@@ -29,7 +29,7 @@ from app.schemas.schemas import (
     UpdatePasswordRequest,
     UserProfile,
 )
-from app.services import google_sheets
+from app.services import email_service, google_sheets
 from app.services.local_auth import create_access_token, hash_password_async, verify_password_async
 
 logger = logging.getLogger(__name__)
@@ -145,6 +145,11 @@ async def register(
 
     # Post-commit side effects run AFTER the response is sent.
     background_tasks.add_task(_create_admin_conversation_background, str(user.id))
+    background_tasks.add_task(
+        email_service.send_welcome_email_sync,
+        user.email,
+        user.first_name,
+    )
     background_tasks.add_task(
         google_sheets.record_registration,
         {

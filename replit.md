@@ -76,3 +76,13 @@ Havlo is an international real estate platform that facilitates property matchin
   to keep register/login under ~150 ms while staying above the OWASP minimum of 10.
 - Heavy post-signup side effects (admin conversation seed, Google Sheets logging)
   run via FastAPI `BackgroundTasks` so they never block the response.
+
+## 2026-04-24 — Polish & notifications
+
+- **Mobile auto-scroll review marquee**: Switched `AutoScrollReviews.tsx` from a JS `requestAnimationFrame` + `scrollLeft` loop (unreliable on iOS Safari with `overflow:hidden`) to a pure CSS `@keyframes translateX(-50%)` marquee. Pauses on hover. Works on every mobile browser.
+- **SendGrid email service** (`app/services/email_service.py`): graceful no-op when `SENDGRID_API_KEY` / `EMAIL_FROM` are not set; sync helpers used inside FastAPI `BackgroundTasks` so the user-facing HTTP response is never blocked. Required env vars: `SENDGRID_API_KEY`, `EMAIL_FROM`, optional `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`, `SUPPORT_EMAIL`.
+- **Welcome email on signup**: Email-client-safe HTML template (table layout + media query) matching the supplied Figma `Email_5` design. Sent by `auth.py` register as a background task.
+- **Inbox notification email + SMS**: `_maybe_send_team_sms` in `app/routers/messaging.py` now dispatches BOTH SMS (existing Twilio path) and email (new SendGrid path) in parallel via `asyncio.gather`. Reuses the existing `sms_notification_sent` dedupe flag.
+- **Speed**: removed the eager `_ensure_admin_conversation_for_user` call from the hot path of `GET /messaging/conversations`; the empty-list fallback still creates the default thread for brand-new users. Added a one-shot `SELECT 1` DB pre-warm at startup so the first request after boot does not pay the asyncpg cold-connect penalty. Measured locally: register ≈ 210 ms, login ≈ 140 ms.
+- **Diagnostics**: new `/api/v1/diag/email` and `/api/v1/diag/email/test` (gated by `DIAG_TOKEN` in production) report SendGrid configuration status without exposing secrets.
+- **Dependency**: `sendgrid==6.11.0` added to `requirements.txt`.

@@ -69,6 +69,13 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_PHONE_NUMBER: str = ""
 
+    # SendGrid (transactional email)
+    SENDGRID_API_KEY: str = ""
+    EMAIL_FROM: str = ""
+    EMAIL_FROM_NAME: str = "Havlo"
+    EMAIL_REPLY_TO: str = ""
+    SUPPORT_EMAIL: str = "support@Havlo.com"
+
     # ── SumUp ────────────────────────────────────────────────────────────
     SUMUP_API_KEY: str = ""
     SUMUP_MERCHANT_CODE: str = ""

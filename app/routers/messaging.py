@@ -39,7 +39,7 @@ from app.schemas.schemas import (
     SendMessageRequest,
     SendMessageResponse,
 )
-from app.services import twilio_service
+from app.services import email_service, twilio_service
 from app.services.local_auth import decode_access_token
 from app.services.ws_manager import manager
 
@@ -104,7 +104,14 @@ def _serialize_ws_message(msg: Message, conversation_id: str) -> dict:
 
 
 async def _maybe_send_team_sms(message_id: uuid.UUID, user_id: str) -> None:
-    """Send offline SMS notification for a team message."""
+    """Notify the user (SMS + email) about an unread team message.
+
+    Sends both channels in parallel when the user is offline (no active inbox
+    WebSocket). The SMS path keeps its existing dedupe flag (sms_notification_sent);
+    the email path piggybacks on the same flag so we never spam the user with
+    multiple notifications for the same message. Failures in either channel
+    are isolated and never break the API flow.
+    """
     if manager.user_is_online(user_id):
         return
 
@@ -124,19 +131,49 @@ async def _maybe_send_team_sms(message_id: uuid.UUID, user_id: str) -> None:
         user = msg.conversation.user
         if not user:
             return
-        phone = (user.full_phone or "").strip()
-        if not twilio_service.is_valid_e164(phone):
-            return
 
         settings = get_settings()
-        # SMS failure should never break the API flow.
-        sent_ok = await asyncio.to_thread(
-            twilio_service.send_new_message_sms,
-            phone,
-            msg.sender_name,
-            settings.FRONTEND_URL or "",
-        )
-        if sent_ok:
+        frontend_url = (settings.FRONTEND_URL or "").rstrip("/")
+        inbox_url = f"{frontend_url}/dashboard/inbox" if frontend_url else "/dashboard/inbox"
+
+        snippet = (msg.content or "").strip()
+        if len(snippet) > 240:
+            snippet = snippet[:240].rstrip() + "..."
+
+        phone = (user.full_phone or "").strip()
+        email_to = (user.email or "").strip()
+
+        sms_task = None
+        if twilio_service.is_valid_e164(phone):
+            sms_task = asyncio.to_thread(
+                twilio_service.send_new_message_sms,
+                phone,
+                msg.sender_name,
+                frontend_url,
+            )
+
+        email_task = None
+        if email_to and email_service.is_configured():
+            email_task = asyncio.to_thread(
+                email_service.send_inbox_notification_sync,
+                email_to,
+                user.first_name or "",
+                msg.sender_name or "Havlo",
+                snippet,
+                inbox_url,
+            )
+
+        tasks = [t for t in (sms_task, email_task) if t is not None]
+        if not tasks:
+            return
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        any_ok = any(r is True for r in results if not isinstance(r, BaseException))
+
+        # Mark notification as sent if AT LEAST ONE channel succeeded — that
+        # avoids re-spamming on every retry while still allowing the next
+        # message to attempt notification afresh.
+        if any_ok:
             msg.sms_notification_sent = True
             await db.commit()
 
@@ -228,7 +265,11 @@ async def list_conversations(
     db: AsyncSession = Depends(get_db),
 ) -> list[ConversationOut]:
     user_id = current_user.id
-    await _ensure_admin_conversation_for_user(user_id, db)
+    # NOTE: We deliberately skip the eager _ensure_admin_conversation_for_user
+    # call here. It used to run an extra SELECT (and sometimes COMMIT) on every
+    # inbox load even when the user already had conversations, which added
+    # ~80-150ms of latency on cold pool connections. The fallback below covers
+    # the only-time-it-matters case (a brand-new user with no rows yet).
 
     last_message_subq = (
         select(Message.content)

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { ReviewCard } from './ReviewCard';
 
 interface Review {
@@ -11,15 +11,18 @@ interface AutoScrollReviewsProps {
   reviews: Review[];
   bgColor?: string;
   header?: React.ReactNode;
+  speedSeconds?: number;
 }
 
 export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
   reviews,
   bgColor = '#F5F5F3',
   header,
+  speedSeconds = 40,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const [paused, setPaused] = useState(false);
+
   const renderReviewSet = (setKey: string) => (
     <>
       {header && (
@@ -42,82 +45,38 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
     </>
   );
 
-  useEffect(() => {
-    const container = containerRef.current;
-    const track = trackRef.current;
-    if (!container || !track) return;
-    let animId: number;
-    let paused = false;
-    const speed = 0.5;
-    let isMouseDragging = false;
-    let dragStartX = 0;
-    let dragStartScroll = 0;
-
-    const step = () => {
-      if (!paused && !isMouseDragging) {
-        const maxScroll = track.scrollWidth / 2;
-        container.scrollLeft += speed;
-        if (container.scrollLeft >= maxScroll) {
-          container.scrollLeft = 0;
-        }
-      }
-      animId = requestAnimationFrame(step);
-    };
-
-    const onMouseDown = (e: MouseEvent) => {
-      isMouseDragging = true;
-      paused = true;
-      dragStartX = e.clientX;
-      dragStartScroll = container.scrollLeft;
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      if (!isMouseDragging) return;
-      const delta = e.clientX - dragStartX;
-      container.scrollLeft = dragStartScroll - delta;
-    };
-
-    const onMouseUp = () => {
-      isMouseDragging = false;
-      paused = false;
-    };
-
-    animId = requestAnimationFrame(step);
-
-    const pause = () => { paused = true; };
-    const resume = () => { if (!isMouseDragging) paused = false; };
-    container.addEventListener('mouseenter', pause);
-    container.addEventListener('mouseleave', resume);
-    container.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-
-    return () => {
-      cancelAnimationFrame(animId);
-      container.removeEventListener('mouseenter', pause);
-      container.removeEventListener('mouseleave', resume);
-      container.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, []);
-
   return (
     <div
-      className="relative w-full"
+      className="relative w-full overflow-hidden"
       style={{
         WebkitMaskImage:
           'linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%)',
         maskImage:
           'linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%)',
       }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
-      <div
-        ref={containerRef}
-        className="w-full overflow-hidden py-[30px] no-scrollbar cursor-grab active:cursor-grabbing"
-        style={{ touchAction: 'pan-y' }}
-      >
-        <div ref={trackRef} className="flex items-stretch gap-4" style={{ width: 'max-content' }}>
+      {/* Inline keyframes — works on every modern mobile browser without
+          relying on programmatic scrollLeft (which is unreliable on iOS Safari
+          for elements that need overflow:hidden). */}
+      <style>{`
+        @keyframes havlo-marquee {
+          from { transform: translate3d(0, 0, 0); }
+          to   { transform: translate3d(-50%, 0, 0); }
+        }
+      `}</style>
+      <div className="w-full py-[30px]">
+        <div
+          ref={trackRef}
+          className="flex items-stretch gap-4"
+          style={{
+            width: 'max-content',
+            animation: `havlo-marquee ${speedSeconds}s linear infinite`,
+            animationPlayState: paused ? 'paused' : 'running',
+            willChange: 'transform',
+          }}
+        >
           {renderReviewSet('first')}
           {renderReviewSet('second')}
         </div>
