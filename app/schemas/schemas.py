@@ -295,7 +295,7 @@ class ElitePropertyResponse(BaseModel):
 # ── Sell Faster ────────────────────────────────────────────────────────────────
 
 class SellFasterRequest(BaseModel):
-    plan_id: str = Field(..., pattern="^(global|global-plus|worldwide|private-client)$")
+    plan_id: str = Field(..., pattern="^(launch|global|global-plus|worldwide|private-client)$")
     plan_name: str
     property_address: str = Field(..., min_length=1)
     property_type: str = Field(..., min_length=1)
