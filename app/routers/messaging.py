@@ -434,6 +434,20 @@ async def mark_conversation_read(
     if not conv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
 
+    # Capture which message ids are about to be marked read so we can emit a
+    # real-time read receipt to the sender (admin) — Bug 4 fix.
+    just_read_ids_rows = (
+        await db.execute(
+            select(Message.id).where(
+                Message.conversation_id == conv_id,
+                Message.sender_type == MessageSenderType.team,
+                Message.is_read.is_(False),
+            )
+        )
+    ).all()
+    just_read_ids = [str(r[0]) for r in just_read_ids_rows]
+
+    now = datetime.utcnow()
     await db.execute(
         update(Message)
         .where(
@@ -441,7 +455,7 @@ async def mark_conversation_read(
             Message.sender_type == MessageSenderType.team,
             Message.is_read.is_(False),
         )
-        .values(is_read=True)
+        .values(is_read=True, read_at=now)
     )
     await db.execute(
         update(Conversation)
@@ -449,6 +463,14 @@ async def mark_conversation_read(
         .values(unread_count=0)
     )
     await db.commit()
+
+    if just_read_ids:
+        try:
+            await sio_server.emit_message_read(
+                str(conv_id), str(current_user.id), just_read_ids
+            )
+        except Exception as exc:  # pragma: no cover — never block the response
+            logger.warning("sio emit message:read failed: %s", exc)
     return None
 
 

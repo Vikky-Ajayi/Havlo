@@ -199,9 +199,19 @@ export const DashboardInbox: React.FC = () => {
       setDetailError('');
     }
     try {
-      const payload = isAdmin
+      const raw = isAdmin
         ? await api.adminGetConversation(token, conversationId)
         : await api.getConversation(token, conversationId);
+      // Bug 5 fix: a deleted message authored by the OTHER party must never
+      // be shown to the receiver — not even on a fresh page load. We keep
+      // the viewer's own deleted messages so they retain the tombstone
+      // ("This message was deleted") as a confirmation in their UI.
+      const payload = {
+        ...raw,
+        messages: (raw.messages || []).filter(
+          (m: Message) => !(m.is_deleted && !m.is_me),
+        ),
+      };
       detailCacheRef.current[conversationId] = payload;
       if (selectedIdRef.current === conversationId) {
         setDetail(payload);
@@ -278,6 +288,26 @@ export const DashboardInbox: React.FC = () => {
       if (loadTimeoutRef.current) {
         window.clearTimeout(loadTimeoutRef.current);
         loadTimeoutRef.current = null;
+      }
+      // Bug 1 fix: warm the cache for the most recent conversation in the
+      // background so messages are instantly available the moment the user
+      // clicks it. Subsequent switches hit the cache (no re-fetch needed).
+      try {
+        const latest = (() => {
+          const cached = readCachedConversations(token, isAdmin);
+          if (!cached.length) return null;
+          const sorted = [...cached].sort(
+            (a: any, b: any) =>
+              new Date(b.last_message_at || 0).getTime() -
+              new Date(a.last_message_at || 0).getTime(),
+          );
+          return (sorted[0] as any)?.id || null;
+        })();
+        if (latest && !detailCacheRef.current[latest]) {
+          loadConversationDetail(latest, { silent: true }).catch(() => {});
+        }
+      } catch {
+        /* ignore */
       }
     })();
     return () => {
@@ -421,8 +451,32 @@ export const DashboardInbox: React.FC = () => {
       if (selectedIdRef.current !== convId) return;
       setDetail((prev) => {
         if (!prev || prev.id !== convId) return prev;
+        // Bug 5 fix: a message that arrives already flagged is_deleted should
+        // never appear to the receiver. Drop it silently.
+        if ((incoming as any).is_deleted && !((incoming.sender_type === 'team') === isAdmin)) {
+          return prev;
+        }
+        // De-dupe by real id (server echoed an existing message back to us).
         if (prev.messages.some((m: Message) => m.id === incoming.id)) return prev;
         const isMe = (incoming.sender_type === 'team') === isAdmin;
+        // Bug 3 fix: the server echoes our own message back via socket.io
+        // shortly after the optimistic insert. Replace the matching tmp-
+        // placeholder in-place so the message never duplicates or flickers.
+        if (isMe) {
+          const tmpIdx = prev.messages.findIndex(
+            (m: any) =>
+              typeof m.id === 'string' &&
+              m.id.startsWith('tmp-') &&
+              (m.content || '') === (incoming.content || '') &&
+              !!m.is_me,
+          );
+          if (tmpIdx !== -1) {
+            const merged: Message = { ...(incoming as Message), is_me: true };
+            const next = prev.messages.slice();
+            next[tmpIdx] = merged;
+            return { ...prev, messages: next };
+          }
+        }
         const merged: Message = { ...(incoming as Message), is_me: isMe };
         return { ...prev, messages: [...prev.messages, merged] };
       });
@@ -442,6 +496,18 @@ export const DashboardInbox: React.FC = () => {
     onMessageDeleted: (p) => {
       setDetail((prev) => {
         if (!prev || prev.id !== p.conversation_id) return prev;
+        const target = prev.messages.find((m: Message) => m.id === p.message_id);
+        // Bug 5 fix: when the message belongs to the OTHER party (admin
+        // deletes → the user is the receiver, or user deletes → admin is the
+        // receiver) it must vanish silently with no "deleted" placeholder.
+        // For the user who actually deleted it (is_me) we keep the existing
+        // tombstone behaviour so they have a visual confirmation.
+        if (target && !target.is_me) {
+          return {
+            ...prev,
+            messages: prev.messages.filter((m: Message) => m.id !== p.message_id),
+          };
+        }
         return {
           ...prev,
           messages: prev.messages.map((m: Message) =>

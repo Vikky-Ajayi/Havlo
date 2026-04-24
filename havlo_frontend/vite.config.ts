@@ -26,6 +26,11 @@ export default defineConfig(({mode}) => {
           changeOrigin: true,
           ws: true,
         },
+        '/socket.io': {
+          target: 'http://localhost:8000',
+          changeOrigin: true,
+          ws: true,
+        },
       },
     },
     build: {
