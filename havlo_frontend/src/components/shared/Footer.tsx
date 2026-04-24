@@ -67,14 +67,14 @@ export const Footer: React.FC = () => {
 
         {/* Middle Row: Logo/Rating & Links */}
         <div className="flex flex-col lg:flex-row justify-between gap-16">
-          <div className="flex flex-col items-center lg:items-start gap-3">
+          <div className="flex flex-col items-start gap-3">
             <img
               src="https://c.animaapp.com/KKHOxPDD/img/havlo-black-transparent@2x.png"
               alt="Havlo Logo"
               className="h-8 w-auto brightness-0 invert"
               referrerPolicy="no-referrer"
             />
-            <div className="origin-top lg:origin-top-left scale-[0.7] flex flex-col items-center lg:items-start gap-4">
+            <div className="origin-top-left scale-[0.7] flex flex-col items-start gap-4">
               <div className="flex items-center gap-1">
                 <StarIcon />
                 <span className="font-body text-[32px] font-medium tracking-[-0.64px] text-[#FEFFFF]">
@@ -85,15 +85,17 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-12 lg:gap-24 text-center lg:text-left">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-24 text-left">
             <LinkGroup title="Services" links={serviceLinks} />
-            <LinkGroup title="Who we are" links={whoWeAreLinks} />
-            <LinkGroup title="Legal" links={legalLinks} />
+            <div className="grid grid-cols-2 gap-10 lg:gap-24 lg:contents">
+              <LinkGroup title="Who we are" links={whoWeAreLinks} />
+              <LinkGroup title="Legal" links={legalLinks} />
+            </div>
           </div>
         </div>
 
         {/* Disclaimer */}
-        <div className="font-body text-sm lg:text-base font-medium leading-normal tracking-[-0.32px] text-white/80 lg:text-left text-center">
+        <div className="font-body text-sm lg:text-base font-medium leading-normal tracking-[-0.32px] text-white/80 text-left">
           Havlo is a trading style of Sprint Technologies, registered in England and Wales (Company No. 14949509). Office: 2nd Floor, Berkeley Square, London, England, W1J 6BD. Havlo provides property marketing, international property exposure, and purchase advisory services. Havlo does not act as a real estate agent, broker, lawyer, financial advisor, or tax advisor, unless explicitly stated otherwise. All information provided is for general guidance only and does not constitute legal, financial, tax, or investment advice. Property laws, regulations, taxation, and ownership structures vary by jurisdiction and are subject to change. Users are responsible for conducting their own due diligence and obtaining independent professional advice before making any property-related decisions.
           <br /><br />
           Havlo accepts no responsibility for decisions made based on information provided through the platform, nor for the actions, performance, or services of any third-party providers, partners, or local professionals.
