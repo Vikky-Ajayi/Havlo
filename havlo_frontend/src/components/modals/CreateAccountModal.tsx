@@ -7,8 +7,6 @@ import { api } from '../../lib/api';
 import { Button } from '../ui/Button';
 import { CountryCodeSelect } from '../shared/CountryCodeSelect';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
-
 export const CreateAccountModal: React.FC = () => {
   const { closeModal, switchModal } = useModal();
   const { login } = useAuth();
@@ -54,53 +52,39 @@ export const CreateAccountModal: React.FC = () => {
 
     setLoading(true);
     try {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
-      let response: Response;
-      try {
-        response = await fetch(`${API_BASE}/auth/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache',
-          },
-          body: JSON.stringify({
-            email,
-            password,
-            first_name: firstName,
-            last_name: lastName,
-            phone_country_code: phoneCountryCode,
-            phone_number: phoneNumber,
-            role,
-          }),
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      // Single round-trip: register now also returns access_token + profile,
+      // so we can sign the user in immediately without a follow-up /auth/login.
+      const resp = await api.register({
+        email,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+        phone_country_code: phoneCountryCode,
+        phone_number: phoneNumber,
+        role,
+      });
 
-      const data = await response.json().catch(() => ({} as any));
-      if (response.status === 409) {
-        setError('An account with this email already exists. Please log in instead.');
-        return;
-      }
-      if (!response.ok) {
-        setError(data?.detail || 'Registration failed. Please try again.');
-        return;
-      }
-
-      const loginResp = await api.login({ email, password });
-      await login(loginResp);
+      await login({
+        access_token: resp.access_token,
+        token_type: resp.token_type,
+        user_id: resp.user_id,
+        role: resp.role,
+        onboarding_complete: resp.onboarding_complete,
+        is_admin: resp.is_admin,
+        profile: resp.profile,
+      });
       closeModal();
-
       navigate('/dashboard');
     } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        setError('This is taking longer than expected. If you already registered, please try logging in. Otherwise try again.');
+      const msg = err?.message || '';
+      if (/already exists/i.test(msg)) {
+        setError('An account with this email already exists. Please log in instead.');
+      } else if (/timed out/i.test(msg)) {
+        setError('This is taking longer than expected. Please try again.');
       } else if (err instanceof TypeError) {
         setError('Network error. Please check your connection and try again.');
       } else {
-        setError(err?.message || 'Registration failed. If this persists, try logging in with the same email.');
+        setError(msg || 'Registration failed. Please try again.');
       }
     } finally {
       setLoading(false);

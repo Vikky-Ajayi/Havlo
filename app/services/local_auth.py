@@ -11,9 +11,19 @@ from jose import JWTError, jwt
 from app.config import get_settings
 
 
+_BCRYPT_ROUNDS = 11
+
+
 def hash_password(password: str) -> str:
-    """Synchronous bcrypt hash — use `hash_password_async` from request handlers."""
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    """Synchronous bcrypt hash — use `hash_password_async` from request handlers.
+
+    Rounds=11 → ~125ms per hash (vs ~250ms at default 12). Still well above the
+    OWASP minimum of 10. Existing hashes at any cost factor remain verifiable —
+    bcrypt embeds the cost in the hash string.
+    """
+    return bcrypt.hashpw(
+        password.encode("utf-8"), bcrypt.gensalt(rounds=_BCRYPT_ROUNDS)
+    ).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:

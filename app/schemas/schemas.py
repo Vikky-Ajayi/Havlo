@@ -37,6 +37,11 @@ class RegisterResponse(BaseModel):
     message: str
     user_id: str
     role: str
+    access_token: str
+    token_type: str = "bearer"
+    onboarding_complete: bool = False
+    is_admin: bool = False
+    profile: "LoginUserProfile | None" = None
 
 
 class LoginRequest(BaseModel):

@@ -31,7 +31,6 @@ from app.schemas.schemas import (
 )
 from app.services import google_sheets
 from app.services.local_auth import create_access_token, hash_password_async, verify_password_async
-from app.services.supabase_client import get_supabase_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -104,6 +103,12 @@ async def register(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> RegisterResponse:
+    """Local-only registration: create user, hash password, issue JWT in one call.
+
+    No external auth provider call (Supabase auth is not used in this deployment).
+    The response includes an access_token + profile so the frontend does NOT need
+    to make a follow-up /auth/login call. This roughly halves sign-up latency.
+    """
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none():
         raise HTTPException(
@@ -111,12 +116,12 @@ async def register(
             detail="An account with this email already exists.",
         )
 
-    # Step 1: create auth account first (external system)
-    loop = asyncio.get_running_loop()
+    hashed_password = await hash_password_async(payload.password)
+
     user = User(
-        supabase_uid="",
+        supabase_uid=None,
         email=payload.email,
-        password_hash="",
+        password_hash=hashed_password,
         first_name=payload.first_name,
         last_name=payload.last_name,
         phone_country_code=payload.phone_country_code,
@@ -124,43 +129,6 @@ async def register(
         role=UserRole(payload.role),
         onboarding_complete=False,
     )
-
-    try:
-        auth_response = await loop.run_in_executor(
-            None,
-            lambda: get_supabase_admin().auth.admin.create_user(
-                {
-                    "email": payload.email,
-                    "password": payload.password,
-                    "email_confirm": True,
-                }
-            ),
-        )
-        auth_user = getattr(auth_response, "user", None)
-        if not auth_user or not getattr(auth_user, "id", None):
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Failed to create account. Please try again.",
-            )
-        user.supabase_uid = str(auth_user.id)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        error_msg = str(exc).lower()
-        if "already" in error_msg or "exists" in error_msg or "registered" in error_msg:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="An account with this email already exists.",
-            )
-        logger.error("Supabase register failed for %s: %s", payload.email, exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to create account. Please try again.",
-        )
-
-    # Step 2: commit local DB immediately after auth account creation
-    hashed_password = await hash_password_async(payload.password)
-    user.password_hash = hashed_password
     db.add(user)
     try:
         await db.commit()
@@ -173,23 +141,41 @@ async def register(
         )
     await db.refresh(user)
 
-    # Step 3: post-commit side effects only in background tasks
+    access_token = create_access_token(str(user.id))
+
+    # Post-commit side effects run AFTER the response is sent.
     background_tasks.add_task(_create_admin_conversation_background, str(user.id))
-    user_dict = {
-        "id": str(user.id),
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "email": user.email,
-        "phone_country_code": user.phone_country_code,
-        "phone_number": user.phone_number,
-        "role": user.role.value,
-    }
-    background_tasks.add_task(google_sheets.record_registration, user_dict)
+    background_tasks.add_task(
+        google_sheets.record_registration,
+        {
+            "id": str(user.id),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "phone_country_code": user.phone_country_code,
+            "phone_number": user.phone_number,
+            "role": user.role.value,
+        },
+    )
 
     return RegisterResponse(
-        message="Account created successfully. Please log in.",
+        message="Account created successfully.",
         user_id=str(user.id),
         role=user.role.value,
+        access_token=access_token,
+        onboarding_complete=user.onboarding_complete,
+        is_admin=bool(user.is_admin),
+        profile=LoginUserProfile(
+            id=str(user.id),
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            phone_country_code=user.phone_country_code,
+            phone_number=user.phone_number,
+            role=user.role.value,
+            onboarding_complete=user.onboarding_complete,
+            is_admin=bool(user.is_admin),
+        ),
     )
 
 

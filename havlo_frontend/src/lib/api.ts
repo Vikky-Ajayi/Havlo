@@ -92,6 +92,11 @@ export interface RegisterResponse {
   message: string;
   user_id: string;
   role: string;
+  access_token: string;
+  token_type: string;
+  onboarding_complete: boolean;
+  is_admin?: boolean;
+  profile?: UserProfile;
 }
 
 export interface UserProfile {

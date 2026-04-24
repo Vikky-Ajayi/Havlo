@@ -69,3 +69,10 @@ Havlo is an international real estate platform that facilitates property matchin
 - Messaging WebSocket path: `/api/v1/messaging/ws/inbox?token=<jwt>`
 - `POST /api/v1/messaging/conversations` takes `subject` as a query param
 - Password validation requires at least 8 characters on both frontend and backend
+- `POST /api/v1/auth/register` returns `access_token` + `profile` so the frontend can
+  sign the user in with a single round-trip (no follow-up `/auth/login` call). The
+  `CreateAccountModal` relies on this contract.
+- bcrypt cost factor is 11 (~125 ms/hash) — tuned in `app/services/local_auth.py`
+  to keep register/login under ~150 ms while staying above the OWASP minimum of 10.
+- Heavy post-signup side effects (admin conversation seed, Google Sheets logging)
+  run via FastAPI `BackgroundTasks` so they never block the response.
