@@ -286,7 +286,7 @@ export const DashboardSellFaster: React.FC = () => {
       ) : (
         <SellFasterPlansView
           onSelect={handlePlanSelect}
-          onSkip={skipped || storedPlan ? undefined : handleSkip}
+          onSkip={storedPlan ? undefined : handleSkip}
         />
       )}
 

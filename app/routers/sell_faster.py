@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 # ── Server-side pricing — sole source of truth. NEVER trust client amounts. ──
 SELL_FASTER_PLANS: dict[str, dict] = {
+    # Test pricing for the Launch card — charges £1 to validate the SumUp flow
+    # end-to-end. The frontend card content is unchanged; only the server-side
+    # amount sent to SumUp is overridden here.
+    "launch":         {"name": "Launch",         "setup": 1.00,    "monthly": 1500.00, "currency": "GBP"},
     "global":         {"name": "Global",         "setup": 2000.00, "monthly": 1500.00, "currency": "GBP"},
     "global-plus":    {"name": "Global+",        "setup": 3500.00, "monthly": 2500.00, "currency": "GBP"},
     "worldwide":      {"name": "Worldwide",      "setup": 5000.00, "monthly": 3500.00, "currency": "GBP"},

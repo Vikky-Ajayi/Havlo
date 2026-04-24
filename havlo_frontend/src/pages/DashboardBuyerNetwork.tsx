@@ -259,7 +259,7 @@ export const DashboardBuyerNetwork: React.FC = () => {
       ) : (
         <BuyerNetworkPlansView
           onSelect={handleSelectPackage}
-          onSkip={skipped || storedPlan ? undefined : handleSkip}
+          onSkip={storedPlan ? undefined : handleSkip}
         />
       )}
 
