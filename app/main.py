@@ -471,10 +471,55 @@ app.include_router(admin_users.router, prefix=API_PREFIX)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 
-if FRONTEND_DIST.is_dir():
-    from fastapi.responses import HTMLResponse
-    from app.seo import lookup as seo_lookup, inject as seo_inject
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from app.seo import lookup as seo_lookup, inject as seo_inject, PAGE_SEO, SITE_BASE
+from datetime import date
 
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots_txt() -> PlainTextResponse:
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        "Disallow: /dashboard\n"
+        "Disallow: /admin\n"
+        "Disallow: /checkout\n"
+        "Disallow: /get-started\n"
+        f"\nSitemap: {SITE_BASE}/sitemap.xml\n"
+    )
+    return PlainTextResponse(body, media_type="text/plain")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap_xml() -> Response:
+    today = date.today().isoformat()
+    priorities = {"/": "1.0"}
+    changefreqs = {"/": "weekly"}
+    legal_paths = {"/terms", "/privacy-policy", "/cookie-policy"}
+
+    urls = []
+    for path, seo in PAGE_SEO.items():
+        prio = priorities.get(path, "0.6" if path in legal_paths else "0.8")
+        freq = changefreqs.get(path, "yearly" if path in legal_paths else "monthly")
+        urls.append(
+            "  <url>\n"
+            f"    <loc>{seo.canonical_url}</loc>\n"
+            f"    <lastmod>{today}</lastmod>\n"
+            f"    <changefreq>{freq}</changefreq>\n"
+            f"    <priority>{prio}</priority>\n"
+            "  </url>"
+        )
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(urls)
+        + "\n</urlset>\n"
+    )
+    return Response(content=body, media_type="application/xml")
+
+
+if FRONTEND_DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static-assets")
 
     INDEX_HTML_PATH = FRONTEND_DIST / "index.html"
