@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
@@ -24,8 +24,10 @@ export const CreateAccountModal: React.FC = () => {
   const [showRepeatPassword, setShowRepeatPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const inFlight = useRef(false);
 
   const handleSubmit = async () => {
+    if (inFlight.current) return;
     setError('');
 
     if (!firstName || !lastName || !email || !phoneNumber || !role || !password) {
@@ -50,6 +52,7 @@ export const CreateAccountModal: React.FC = () => {
       return;
     }
 
+    inFlight.current = true;
     setLoading(true);
     try {
       // Single round-trip: register now also returns access_token + profile,
@@ -87,6 +90,7 @@ export const CreateAccountModal: React.FC = () => {
         setError(msg || 'Registration failed. Please try again.');
       }
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   };
