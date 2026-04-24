@@ -111,12 +111,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       title: 'PROPERTY',
       items: [
         { 
-          icon: <Star size={20} />, 
-          label: 'Elite Property Introductions', 
-          path: '/dashboard/elite-property',
-          active: location.pathname === '/dashboard/elite-property'
-        },
-        { 
           icon: <Zap size={20} />, 
           label: 'Sell faster — Relaunch', 
           path: '/dashboard/sell-faster',
@@ -127,6 +121,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           label: 'Property Sale Audit', 
           path: '/dashboard/sale-audit',
           active: location.pathname === '/dashboard/sale-audit'
+        },
+        { 
+          icon: <Star size={20} />, 
+          label: 'Elite Property Introductions', 
+          path: '/dashboard/elite-property',
+          active: location.pathname === '/dashboard/elite-property'
         },
       ]
     },
