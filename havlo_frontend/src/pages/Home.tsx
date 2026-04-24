@@ -137,7 +137,7 @@ export const Home: React.FC = () => {
       <MarqueeStrip />
 
       {/* 3. As Seen In */}
-      <section className="flex w-full flex-col items-center bg-white px-4 sm:px-10 lg:px-[100px] lg:py-[60px] py-10 my-0 pb-[10px]">
+      <section className="flex w-full flex-col items-center bg-white px-4 sm:px-10 lg:px-[100px] lg:py-[60px] py-10 my-0 pt-[20px] pb-[20px]">
         <span className="font-body text-xs font-medium uppercase tracking-[0.25em] text-black/50">
           As seen in
         </span>
