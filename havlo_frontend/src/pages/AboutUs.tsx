@@ -2,53 +2,123 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 
+type ServiceCard = {
+  title: string;
+  description: string;
+  href: string;
+  background: string;
+};
+
+const serviceCards: ServiceCard[] = [
+  {
+    title: 'Buy Property Abroad',
+    description:
+      "Expert advisory for acquiring residential and commercial property abroad. We handle the complexity so you don't have to.",
+    href: '/buy-property-abroad',
+    background: '#FFEBF9',
+  },
+  {
+    title: 'Property Matching',
+    description:
+      'Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent.',
+    href: '/property-matching',
+    background: '#EBFFF6',
+  },
+  {
+    title: 'Elite Property Introductions',
+    description:
+      'Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking.',
+    href: '/elite-property',
+    background: '#FFFEEB',
+  },
+  {
+    title: 'Sell Faster (Havlo Relaunch\u2122)',
+    description:
+      'A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer.',
+    href: '/sell-your-property',
+    background: '#EBF4FF',
+  },
+  {
+    title: 'Property Sale Audit (Havlo Relaunch Assessment)',
+    description:
+      "Uncover why your property hasn't sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers.",
+    href: '/property-audit',
+    background: '#FDECEE',
+  },
+  {
+    title: 'International Buyer Network',
+    description:
+      'Sell properties faster by going beyond property portals and connecting listings with a curated network of qualified, ready-to-buy international buyers.',
+    href: '/buyer-network',
+    background: '#FFEBF9',
+  },
+];
+
 export const AboutUs: React.FC = () => {
   usePageMeta({
     title: 'About Us | Trusted Global Property Experts | Havlo',
-    description: "Havlo is a property exposure and advisory platform helping buyers discover and access real estate opportunities abroad with confidence. Learn about Havlo's mission, values, and expertise in international real estate.",
+    description:
+      "Havlo is a property exposure and advisory platform helping buyers discover and access real estate opportunities abroad with confidence. Learn about Havlo's mission, values, and expertise in international real estate.",
     canonical: 'https://www.heyhavlo.com/about-us',
   });
+
   return (
-    <div className="flex flex-col w-full overflow-hidden bg-white">
-      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
-        <div className="mx-auto max-w-[1100px] space-y-8">
-          <h1 className="font-display text-[40px] font-black leading-[1.05] tracking-[-1px] text-[#1F1F1E] sm:text-[60px] lg:text-[72px]">
-            Beyond borders. Beyond portals.
+    <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
+      {/* INTRO SECTION */}
+      <section className="bg-white px-4 pt-12 pb-10 sm:px-6 sm:pt-16 lg:px-[100px] lg:pt-20 lg:pb-14">
+        <div className="mx-auto max-w-[1240px]">
+          <h1 className="font-display text-[40px] font-black leading-[1.0] tracking-[-1px] text-[#0a0a0a] sm:text-[48px] lg:text-[56px]">
+            About us
           </h1>
-          <p className="font-body text-base font-normal leading-[1.7] text-black">
-            Havlo is a property exposure and advisory platform helping buyers discover and access real estate opportunities abroad with confidence. We connect international property listings with a global audience of motivated buyers, making it easier to explore, compare, and act on opportunities beyond your local market. Whether you're looking for a second home, an investment property, or a move overseas, Havlo brings clarity to a process that can often feel complex and fragmented.
+
+          <p className="mt-6 font-body text-lg font-semibold leading-[1.4] text-black sm:text-xl lg:text-[22px]">
+            Beyond borders. Beyond portals.
           </p>
-          <p className="font-body text-base font-normal leading-[1.7] text-black">
-            Our platform is built to give buyers better access to international property markets, while helping sellers and agents reach qualified overseas demand. Alongside exposure, we provide advisory support to help users understand markets, navigate cross-border purchasing, and make more informed decisions.
-          </p>
-          <p className="font-body text-base font-normal leading-[1.7] text-black">
-            At Havlo, we believe buying property abroad should be simple, transparent, and accessible, not limited by geography.
-          </p>
-          <p className="font-body text-base font-normal leading-[1.7] text-black">
-            Havlo is a trading style of Sprint Technologies Ltd, 2nd Floor, Berkeley Square, London, England, W1J 6BD. Registered in England and Wales with Company No. 14949509. VAT Registration Number: 511860708.
-          </p>
+
+          <div className="mt-7 flex flex-col gap-5 font-body text-[15px] font-medium leading-[1.7] text-black/85 sm:text-base lg:text-[17px]">
+            <p>
+              Havlo is a <span className="font-bold">property exposure</span> and advisory platform helping buyers discover and{' '}
+              <span className="font-bold">access real estate opportunities abroad</span> with confidence. We connect{' '}
+              <span className="font-bold">international property listings</span> with a global audience of{' '}
+              <span className="font-bold">motivated buyers</span>, making it easier to explore, compare, and act on opportunities beyond your local market. Whether you're looking for a second home, an{' '}
+              <span className="font-bold">investment property</span>, or a move overseas, Havlo brings clarity to a process that can often feel complex and fragmented.
+            </p>
+            <p>
+              Our platform is built to <span className="font-bold">give buyers better access to international property markets</span>, while helping sellers and agents reach{' '}
+              <span className="font-bold">qualified overseas demand</span>. Alongside exposure, we provide advisory support to help users understand markets, navigate cross-border purchasing, and make more informed decisions.
+            </p>
+            <p>
+              At Havlo, we believe buying property abroad should be{' '}
+              <span className="font-bold">simple, transparent, and accessible,</span> not limited by geography.
+            </p>
+            <p>
+              Havlo is a trading style of Sprint Technologies Ltd, 2nd Floor,{' '}
+              <span className="font-bold">Berkeley Square, London, England, W1J 6BD.</span> Registered in England and Wales with Company No. 14949509. VAT Registration Number: 511860708.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="bg-[#F9F9F8] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
-        <div className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {[
-            { title: 'Buy Property Abroad', description: "Expert advisory for acquiring residential and commercial property abroad. We handle the complexity so you don't have to.", href: '/buy-property-abroad' },
-            { title: 'Property Matching', description: 'Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent.', href: '/property-matching' },
-            { title: 'Elite Property Introductions', description: 'Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking.', href: '/elite-property' },
-            { title: 'Sell Faster (Havlo Relaunch™)', description: 'A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer.', href: '/sell-your-property' },
-            { title: 'Property Sale Audit (Havlo Relaunch Assessment)', description: "Uncover why your property hasn't sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers.", href: '/property-audit' },
-            { title: 'International Buyer Network', description: 'Sell properties faster by going beyond property portals and connecting listings with a curated network of qualified, ready-to-buy international buyers.', href: '/buyer-network' },
-          ].map((card) => (
-            <div key={card.title} className="flex min-h-[280px] flex-col rounded-[16px] border border-black/10 bg-white p-8">
-              <h3 className="font-display text-[30px] font-medium leading-[1.1] tracking-[-0.4px] text-[#1F1F1E]">
+      {/* SERVICE CARDS GRID */}
+      <section className="bg-white px-4 pb-16 sm:px-6 sm:pb-20 lg:px-[100px] lg:pb-24">
+        <div className="mx-auto grid w-full max-w-[1240px] grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {serviceCards.map((card) => (
+            <div
+              key={card.title}
+              className="flex min-h-[300px] flex-col p-7 sm:p-8"
+              style={{ backgroundColor: card.background }}
+            >
+              <h3 className="font-body text-[22px] font-extrabold leading-[1.2] tracking-[-0.2px] text-[#0a0a0a] sm:text-[24px]">
                 {card.title}
               </h3>
-              <p className="mt-6 flex-1 font-body text-base font-normal leading-[1.7] text-black">
+              <p className="mt-4 flex-1 font-body text-[14px] font-medium leading-[1.6] text-black/75 sm:text-[15px]">
                 {card.description}
               </p>
-              <Link to={card.href} className="mt-6 font-body text-base font-normal uppercase tracking-[0.04em] text-black hover:opacity-70">
-                LEARN MORE →
+              <Link
+                to={card.href}
+                className="mt-6 font-body text-[13px] font-extrabold uppercase tracking-[0.12em] text-[#a409d2] transition hover:text-[#7a06a0]"
+              >
+                Learn more →
               </Link>
             </div>
           ))}
