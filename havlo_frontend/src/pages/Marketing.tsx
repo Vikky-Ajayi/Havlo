@@ -640,6 +640,7 @@ export const Marketing: React.FC = () => {
                 src="/portal-logos/rightmove.png"
                 alt="Rightmove"
                 className="h-9 w-auto object-contain sm:h-11"
+                style={{ filter: 'invert(1)' }}
                 loading="lazy"
               />
               <img
