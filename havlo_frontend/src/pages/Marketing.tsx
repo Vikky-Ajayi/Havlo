@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Minus, Plus } from 'lucide-react';
+import { Check, Minus, Plus, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { useModal } from '../hooks/useModal';
@@ -9,92 +9,173 @@ import { usePageMeta } from '../hooks/usePageMeta';
 
 const problemPoints = [
   {
-    title: 'Your ideal buyer may already be overseas—and never sees your listing',
-    text: 'The right buyer could be an expat, investor, relocator, or international purchaser searching from another country.',
+    title: "Portals don't reach international buyers",
+    text: 'Most offshore buyers are not browsing UK property portals. They are reachable through targeted social advertising in their home markets.',
   },
   {
-    title: 'Local portals create local visibility',
-    text: 'Most listings sit on the same portals, in front of the same buyers, with little strategic reach beyond the UK market.',
+    title: 'Every month on market costs you money',
+    text: 'Mortgage payments, maintenance, and price reductions add up fast. The longer a property sits, the more it costs — and the more leverage buyers gain.',
   },
   {
-    title: 'Long listings lose momentum',
-    text: 'The longer a property stays online, the easier it is for buyers to assume something is wrong before they even enquire.',
+    title: 'The right buyer may not be in the UK',
+    text: 'UK property is a global asset class. Buyers in the Gulf, West Africa, Southeast Asia, and beyond are actively seeking UK property — they just cannot find yours.',
   },
 ];
 
 const problemStats = [
-  { value: '£3,000+', label: 'average wasted on listing upgrades and repeat portal spend' },
-  { value: '30+', label: 'international markets actively searching for UK property' },
-  { value: '5x', label: 'stronger perceived reach with a structured relaunch campaign' },
+  { value: '£3,000+', label: 'Average monthly carrying cost while a property sits unsold' },
+  { value: '30+', label: 'Countries Havlo campaigns actively reach' },
+  { value: '0%', label: 'Commission charged on sale — ever' },
 ];
 
 const processSteps = [
   {
     step: '01',
-    title: 'Listing Analysis & Strategy',
-    text: 'We review your property, current listing, price position, buyer profile, and the reason your campaign has slowed down.',
+    title: 'Strategy call',
+    text: 'We learn about your property, your timeline, and the buyer markets most likely to convert. We recommend the right plan and target regions for your specific situation.',
   },
   {
     step: '02',
-    title: 'Reposition & Creative Upgrade',
-    text: 'We rebuild the marketing angle, sharpen the message, and prepare your property for international buyer attention.',
+    title: 'Campaign setup',
+    text: 'We build your Meta campaign from scratch — creative, audience targeting, lead capture, and tracking. Your ad spend goes directly to Meta from your account.',
   },
   {
     step: '03',
-    title: 'International Distribution',
-    text: 'Your home is promoted beyond local portals through targeted exposure, partner routes, and international buyer channels.',
+    title: 'Launch & activation',
+    text: 'Your campaign goes live across the chosen international markets. Qualified buyers begin discovering your property within days, not months.',
   },
   {
     step: '04',
-    title: 'Buyer Enquiries & Optimisation',
-    text: 'You receive clearer insight into performance, buyer response, and the next actions needed to keep momentum alive.',
+    title: 'Optimise & report',
+    text: 'We continuously refine targeting and creative based on live performance data, and send you transparent reports on enquiries, engagement and demand.',
   },
 ];
 
-const tiers = [
+type Tier = {
+  name: string;
+  tagline: string;
+  setup: string;
+  ongoing: string;
+  features: string[];
+  outcome: string;
+  idealFor: string;
+  variant: 'white' | 'purple' | 'dark';
+  highlight?: string;
+  cta: string;
+  footnote?: string;
+};
+
+const tiers: Tier[] = [
   {
-    name: 'Global',
-    price: '£2,000 setup',
-    monthlyPrice: 'then £1,500 / month',
-    description: 'Targeted exposure in three key international markets most likely to convert for your property.',
-    features: ['3 regions of your choice', 'Static + carousel ads', 'Lead capture form', 'Bi-weekly performance report', '3-month minimum'],
-    accent: 'white',
-    tag: '3 REGIONS',
+    name: 'Launch',
+    tagline: 'For generating initial international interest',
+    setup: '£2,000 Property Launch',
+    ongoing: 'Ongoing exposure from £1,500 / month',
+    features: [
+      'Targeted exposure across key international buyer markets',
+      'High-impact campaign designed to capture attention quickly',
+      'Private buyer registration page',
+      'Enquiry capture and qualification',
+      'Live visibility into buyer interest',
+      'Designed to generate demand beyond traditional property portals',
+      'No long-term commitment — continue based on performance',
+    ],
+    outcome:
+      'Early buyer demand generated with a consistent flow of qualified enquiries to initiate market momentum.',
+    idealFor:
+      'Properties looking to attract new demand outside their immediate local market.',
+    variant: 'white',
+    cta: 'Start Your Property Relaunch',
+    footnote: '* Best suited for initial exposure. For stronger competition, consider Amplify.',
   },
   {
-    name: 'Global+',
-    price: '£3,500 setup',
-    monthlyPrice: 'then £2,500 / month',
-    description: 'Broader reach with richer creative and a dedicated landing page for serious international buyers.',
-    features: ['5 regions of your choice', 'Static, carousel + short-form video', 'Dedicated property landing page', 'Weekly performance report', '3-month minimum'],
-    accent: 'purple',
-    badge: 'MOST POPULAR',
-    tag: '5 REGIONS',
+    name: 'Amplify',
+    tagline: 'Designed to create strong buyer demand and competition',
+    setup: '£3,500 Property Launch',
+    ongoing: 'Ongoing exposure from £2,500 / month',
+    features: [
+      'Expanded reach across multiple high-intent global markets',
+      'Multi-format campaign engineered to drive engagement and enquiries',
+      'Dedicated property landing experience',
+      'Continuous optimisation to increase enquiry volume',
+      'Weekly insights into buyer behaviour and demand trends',
+      'Designed to generate demand beyond traditional property portals',
+      'No long-term commitment — continue based on performance',
+    ],
+    outcome:
+      'Sustained enquiry flow with increasing buyer competition, strengthening your negotiating position.',
+    idealFor:
+      'Sellers looking to attract multiple serious buyers and strengthen their negotiating position.',
+    variant: 'purple',
+    highlight: 'MOST POPULAR',
+    cta: 'Start Your Property Relaunch',
   },
   {
-    name: 'Worldwide',
-    price: '£5,000 setup',
-    monthlyPrice: 'then £3,500 / month',
-    description: 'Maximum global exposure for properties that need the widest possible international audience.',
-    features: ['30+ countries worldwide', 'Full creative suite - static, carousel + video', 'Dedicated property landing page', 'Weekly report + monthly strategy call', 'Rolling monthly after 3 months'],
-    accent: 'white',
-    tag: '30+ COUNTRIES',
+    name: 'Dominate',
+    tagline: 'Maximum global exposure to drive premium offers',
+    setup: '£5,000 Property Launch',
+    ongoing: 'Ongoing exposure from £3,500 / month',
+    features: [
+      'Extensive worldwide exposure across 30+ countries',
+      'Full-scale campaign strategy designed for maximum visibility',
+      'Advanced targeting to reach high-value international buyers',
+      'Dedicated campaign management and optimisation',
+      'Ongoing strategy refinement based on live demand data',
+      'Designed to generate demand beyond traditional property portals',
+      'No long-term commitment — continue based on performance',
+    ],
+    outcome:
+      'High enquiry volume, strong buyer competition, and increased likelihood of achieving above-market offers.',
+    idealFor:
+      'Properties where maximising price and buyer competition is the priority.',
+    variant: 'white',
+    cta: 'Start Your Property Relaunch',
   },
   {
-    name: 'Private Client',
-    price: '£5,000 setup',
-    monthlyPrice: 'then £3,500 / month',
-    description: 'For high-value properties that demand a campaign built entirely around them. Pricing tailored to scope - discussed privately.',
-    features: ['Bespoke worldwide targeting strategy', 'Premium creative production', 'Dedicated account manager', 'Weekly strategy calls', 'Pricing discussed privately'],
-    accent: 'black',
-    tag: 'BESPOKE',
+    name: 'Private Clients',
+    tagline: 'Bespoke strategy for high-value and unique properties',
+    setup: 'Custom pricing',
+    ongoing: 'Tailored to scope — discussed privately',
+    features: [
+      'Fully tailored global launch strategy',
+      'Premium creative and campaign positioning',
+      'Access to high-value international buyers',
+      'Bespoke market targeting (UK + international)',
+      'Advanced buyer targeting & optimisation',
+      'Private buyer registration experience',
+      'Live demand insights designed to generate demand beyond traditional portals',
+      'Dedicated campaign management',
+      'Ongoing strategic advisory',
+    ],
+    outcome:
+      'Direct engagement from high-value buyers, intensified competition, and positioning to secure the strongest possible outcome.',
+    idealFor:
+      'High-value or unique properties where maximising buyer competition and final price is the priority.',
+    variant: 'dark',
+    cta: 'Request Private Consultation',
   },
+];
+
+const portalCons = [
+  'Passive listings waiting for buyers',
+  'Competing against hundreds of similar properties',
+  'Limited to buyers already searching',
+  'Local visibility only',
+  'No control over demand flow',
+];
+
+const havloPros = [
+  'Active campaigns generating buyer demand',
+  'Positioned as a standout property launch',
+  'Reaches buyers not yet actively looking',
+  'Local and international visibility across key markets',
+  'Scalable exposure based on your goals',
 ];
 
 const faqs = [
   {
     q: 'Do I still need my estate agent?',
-    a: 'Yes - and you keep them. Havlo works alongside your existing agent, not instead of them. We open up international buyer markets your agent cannot reach through portals alone. Viewings, negotiations, and the sale itself are handled through your agent and solicitor as normal.',
+    a: 'Yes — and you keep them. Havlo works alongside your existing agent, not instead of them. We open up international buyer markets your agent cannot reach through portals alone. Viewings, negotiations, and the sale itself are handled through your agent and solicitor as normal.',
   },
   {
     q: 'What does month 1 look like financially?',
@@ -102,11 +183,11 @@ const faqs = [
   },
   {
     q: 'Which plan is right for my property?',
-    a: 'Choose based on the reach you want, not the value of your property. Not sure? We will recommend the right plan on your free strategy call - there is no obligation to proceed and no pressure to commit.',
+    a: 'Choose based on the reach you want, not the value of your property. Not sure? We will recommend the right plan on your free strategy call — there is no obligation to proceed and no pressure to commit.',
   },
   {
     q: 'Why is ad spend separate from your fees?',
-    a: 'Your advertising budget goes directly from your account to Meta. Havlo never touches that money. This means full transparency — you can see every pound spent in real time - and we take no margin on your ad spend whatsoever.',
+    a: 'Your advertising budget goes directly from your account to Meta. Havlo never touches that money. This means full transparency — you can see every pound spent in real time — and we take no margin on your ad spend whatsoever.',
   },
   {
     q: 'Can I continue beyond the minimum term?',
@@ -114,7 +195,7 @@ const faqs = [
   },
   {
     q: 'Do you charge a commission when the property sells?',
-    a: 'No. Havlo charges fixed management fees only. We are a marketing service, not an estate agent. There is no commission, no referral fee, and no percentage of the sale price - ever.',
+    a: 'No. Havlo charges fixed management fees only. We are a marketing service, not an estate agent. There is no commission, no referral fee, and no percentage of the sale price — ever.',
   },
   {
     q: 'How quickly can I expect buyer interest?',
@@ -122,92 +203,107 @@ const faqs = [
   },
   {
     q: 'What results have other sellers seen?',
-    a: 'We\u2019ve helped sellers revive listings that had stalled for months\u2014generating fresh enquiries, attracting international buyers, and creating renewed momentum toward a sale. Results vary by property, but the goal is always the same: more qualified buyers, faster.',
+    a: 'We\u2019ve helped sellers revive listings that had stalled for months — generating fresh enquiries, attracting international buyers, and creating renewed momentum toward a sale. Results vary by property, but the goal is always the same: more qualified buyers, faster.',
   },
   {
     q: 'What makes this different from my agent?',
-    a: 'We don\u2019t replace your agent\u2014we enhance their reach. Most agents rely on local portals and databases, which limits exposure to a domestic audience. Havlo adds a targeted international layer, putting your property in front of qualified buyers your current marketing isn\u2019t reaching.',
+    a: 'We don\u2019t replace your agent — we enhance their reach. Most agents rely on local portals and databases, which limits exposure to a domestic audience. Havlo adds a targeted international layer, putting your property in front of qualified buyers your current marketing isn\u2019t reaching.',
   },
 ];
 
+const FAQ_INITIAL_VISIBLE = 2;
+
 export const Marketing: React.FC = () => {
   usePageMeta({
-    title: "Sell Your Property Abroad with Ease | Havlo",
-    description: "Sell your property abroad with ease using Havlo. Reach qualified buyers, manage listings seamlessly, and close deals faster—no stress, no hassle.",
+    title: 'Sell Your Property Abroad with Ease | Havlo',
+    description:
+      'Sell your property abroad with ease using Havlo. Reach qualified buyers, manage listings seamlessly, and close deals faster—no stress, no hassle.',
     canonical: 'https://www.heyhavlo.com/sell-your-property',
   });
+
   const { openModal } = useModal();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
+  const visibleFaqs = showAllFaqs ? faqs : faqs.slice(0, FAQ_INITIAL_VISIBLE);
 
   const handleGetStarted = () => openModal('create-account');
+  const handleBookCall = () => openModal('book-session');
 
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
-      <section className="relative min-h-[420px] overflow-hidden px-4 sm:min-h-[507px] sm:px-6 lg:min-h-[608px] lg:px-[100px] lg:pb-36 lg:pt-32 py-10 my-0">
+      {/* 1. HERO */}
+      <section className="relative overflow-hidden px-4 pt-16 pb-24 sm:px-6 sm:pt-20 sm:pb-28 lg:px-[100px] lg:pt-32 lg:pb-44 min-h-[520px] lg:min-h-[720px]">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="Modern property skyline" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-[#07131b]/70" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
+          <img src={heroImage} alt="International property skyline" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f1a]/85 via-[#0a0f1a]/70 to-[#0a0f1a]/85" />
         </div>
 
-        <div className="relative z-10 mx-auto flex max-w-[920px] flex-col items-center text-center">
-          <h1 className="mt-4 font-display text-[38px] font-black leading-[0.95] tracking-[-1px] text-white sm:text-[58px] lg:text-[72px] lg:tracking-[-2px]">
-            Property Isn't Selling. The Right Buyers Haven't Seen It.
+        <div className="relative z-10 mx-auto flex max-w-[1140px] flex-col items-center text-center">
+          <span className="rounded-full border border-white/35 bg-white/5 px-5 py-2 font-body text-[11px] font-semibold uppercase tracking-[0.22em] text-white/85 backdrop-blur-sm sm:text-xs">
+            International Property Marketing
+          </span>
+          <h1 className="mt-6 font-display text-[40px] font-black leading-[1.0] tracking-[-1.2px] text-white sm:text-[64px] lg:text-[80px] lg:tracking-[-2.4px]">
+            Your property.
+            <br />
+            The world's buyers.
           </h1>
-          <p className="mt-5 max-w-[620px] font-body text-sm font-medium leading-[1.55] text-white/85 sm:text-base lg:text-lg">
-            We relaunch slow-to-sell properties using targeted international exposure and high-performance campaigns—so you attract serious buyers and close faster.
+          <p className="mt-6 max-w-[760px] font-body text-sm font-medium leading-[1.55] text-white/80 sm:text-base lg:text-lg">
+            Havlo puts slow-to-sell UK properties in front of qualified international and offshore buyers across 30+ countries — using precision Meta advertising your local agent cannot replicate.
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {[
-              '30+ Countries Reached',
-              '£500K Min. Property Value',
-              '0% Commission on Sale',
-            ].map((badge) => (
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+            {['30+ Countries Reached', '£500K Min. Property Value', '0% Commission On Sale'].map((badge) => (
               <span
                 key={badge}
-                className="rounded-full border border-white/40 px-5 py-2 font-body text-[11px] font-extrabold uppercase tracking-[0.18em] backdrop-blur-sm sm:text-xs text-[#000000] bg-[#ffffff]"
+                className="rounded-full bg-white px-4 py-2 font-body text-[10px] font-extrabold uppercase tracking-[0.16em] text-black sm:text-[11px]"
               >
                 {badge}
               </span>
             ))}
           </div>
-          <div className="mt-7 flex w-full max-w-[680px] flex-col items-center justify-center gap-3 sm:flex-row">
-            <button
-              onClick={handleGetStarted}
-              className="h-12 w-full rounded-full bg-[#ff8ce7] px-9 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-black transition hover:bg-[#ff78df] sm:w-auto"
-            >
-              Start My Relaunch Plan
-            </button>
-          </div>
-          <p className="mt-2 font-body text-xs font-medium text-white/85">
+          <button
+            onClick={handleGetStarted}
+            className="mt-8 h-12 rounded-full bg-[#ff8ce7] px-9 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-black transition hover:bg-[#ff78df] sm:h-14 sm:text-[15px]"
+          >
+            Start My Relaunch Plan
+          </button>
+          <p className="mt-3 font-body text-[11px] font-medium text-white/75 sm:text-xs">
             No agent switch required • Works with your current listing
           </p>
         </div>
 
-        <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-[74px] pointer-events-none lg:h-[98px]">
+        <div className="absolute bottom-[-1px] left-0 right-0 z-20 h-[60px] pointer-events-none lg:h-[90px]">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full" />
         </div>
       </section>
 
-      <section className="bg-white px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
-        <div className="mx-auto grid max-w-[1240px] gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+      {/* 2. THE PROBLEM */}
+      <section className="bg-white px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
+        <div className="mx-auto grid max-w-[1240px] gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
           <div>
             <div className="mb-4 flex items-center gap-3">
               <span className="h-px w-8 bg-black" />
-              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/70">The problem</span>
+              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/70">
+                The problem
+              </span>
             </div>
-            <h2 className="max-w-[720px] font-display text-[34px] font-black leading-[0.98] tracking-[-0.8px] text-black sm:text-[48px] lg:text-[58px]">
-              Your agent is only reaching a fraction of the market.
+            <h2 className="max-w-[640px] font-display text-[32px] font-black leading-[1.0] tracking-[-0.8px] text-black sm:text-[44px] lg:text-[52px]">
+              Your agent is only speaking to local buyers
             </h2>
-            <p className="mt-5 max-w-[640px] font-body text-sm font-semibold leading-[1.6] text-black/65 sm:text-base">
-              Most property campaigns are built around local portals, local databases, and the same audience everyone else is targeting.
+            <p className="mt-5 max-w-[620px] font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-base">
+              Rightmove and Zoopla reach a fraction of the buyers who could purchase your property. The international market — expats, diaspora investors, overseas buyers — is largely invisible to traditional estate agents.
             </p>
-            <div className="mt-9 flex flex-col border-y border-black/10">
+
+            <div className="mt-9 flex flex-col border-t border-black/10">
               {problemPoints.map((point, index) => (
-                <div key={point.title} className="grid gap-3 border-b border-black/10 py-6 last:border-b-0 sm:grid-cols-[48px_1fr]">
-                  <span className="font-display text-sm font-black text-black/35">{String(index + 1).padStart(2, '0')}</span>
+                <div
+                  key={point.title}
+                  className="grid gap-3 border-b border-black/10 py-6 sm:grid-cols-[42px_1fr]"
+                >
+                  <span className="font-display text-base font-black text-black">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
                   <div>
-                    <h3 className="font-body text-base font-extrabold text-black">{point.title}</h3>
+                    <h3 className="font-body text-base font-extrabold leading-[1.3] text-black">{point.title}</h3>
                     <p className="mt-2 font-body text-sm font-medium leading-[1.55] text-black/65">{point.text}</p>
                   </div>
                 </div>
@@ -215,121 +311,307 @@ export const Marketing: React.FC = () => {
             </div>
           </div>
 
-          <div className="self-end bg-[#ffd6f2] p-7 sm:p-9 lg:mb-3 lg:p-10">
+          <div className="self-start bg-[#ffd6f2] p-7 sm:p-9 lg:mt-24 lg:p-10">
             {problemStats.map((stat, index) => (
-              <div key={stat.value} className={cn('py-7', index !== 0 && 'border-t border-black/10')}>
-                <div className="font-display text-[46px] font-black leading-none tracking-[-1.2px] text-black sm:text-[58px]">{stat.value}</div>
-                <p className="mt-3 max-w-[360px] font-body text-sm font-bold leading-[1.45] text-black/70">{stat.label}</p>
+              <div key={stat.value} className={cn('py-7', index !== 0 && 'border-t border-black/15')}>
+                <div className="font-display text-[42px] font-black leading-none tracking-[-1px] text-black sm:text-[54px]">
+                  {stat.value}
+                </div>
+                <p className="mt-3 max-w-[340px] font-body text-sm font-semibold leading-[1.45] text-black/70">
+                  {stat.label}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="relative bg-[#a409d2] px-4 text-white sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
+      {/* 3. HOW IT WORKS */}
+      <section className="relative bg-[#a409d2] px-4 py-14 text-white sm:px-6 lg:px-[100px] lg:py-[100px]">
         <div className="mx-auto max-w-[1240px]">
-          <div className="mb-8 text-center lg:mb-11">
+          <div className="mb-10 text-center lg:mb-14">
             <div className="mb-3 flex items-center justify-center gap-3">
-              <span className="h-px w-8 bg-white/80" />
-              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/80">The process</span>
-              <span className="h-px w-8 bg-white/80" />
+              <span className="h-px w-8 bg-white/70" />
+              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-white/85">
+                How it works
+              </span>
+              <span className="h-px w-8 bg-white/70" />
             </div>
-            <h2 className="font-display text-[31px] font-black leading-[1.02] tracking-[-0.8px] sm:text-[46px] lg:text-[58px]">
-              From brief to international enquiries in weeks.
+            <h2 className="mx-auto max-w-[820px] font-display text-[30px] font-black leading-[1.05] tracking-[-0.8px] sm:text-[44px] lg:text-[52px]">
+              From briefing to international enquiries in weeks
             </h2>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {processSteps.map((step) => (
-              <div key={step.step} className="min-h-[245px] bg-[#b51dde] p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] lg:p-7">
-                <div className="mb-7 flex h-8 w-8 items-center justify-center rounded-sm bg-white/20 font-display text-sm font-black text-white">{step.step}</div>
-                <h3 className="font-display text-[24px] font-black leading-[1] tracking-[-0.4px] text-white">{step.title}</h3>
-                <p className="mt-4 font-body text-sm font-medium leading-[1.5] text-white/78">{step.text}</p>
+              <div
+                key={step.step}
+                className="flex min-h-[260px] flex-col bg-[#b51dde] p-6 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] lg:p-7"
+              >
+                <div className="mb-7 flex h-9 w-9 items-center justify-center rounded-sm bg-white/20 font-display text-sm font-black text-white">
+                  {step.step}
+                </div>
+                <h3 className="font-display text-[22px] font-black leading-[1.05] tracking-[-0.4px] text-white">
+                  {step.title}
+                </h3>
+                <p className="mt-4 font-body text-sm font-medium leading-[1.55] text-white/80">{step.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-white px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
+      {/* 4. CHOOSE YOUR REACH (TIERS) */}
+      <section className="bg-white px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
         <div className="mx-auto max-w-[1280px]">
-          <div className="mb-10 max-w-[760px]">
-            <div className="mb-4 flex items-center gap-3">
-              <span className="h-px w-8 bg-black" />
-              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/70">Our packages</span>
-            </div>
-            <h2 className="font-display text-[34px] font-black leading-[0.98] tracking-[-0.8px] text-black sm:text-[48px] lg:text-[58px]">Choose your reach</h2>
-            <p className="mt-4 max-w-[660px] font-body text-sm font-semibold leading-[1.55] text-black/65 sm:text-base">
-              Select a relaunch level based on your property value, campaign urgency, and the amount of international exposure you want.
+          <div className="mb-10 max-w-[820px]">
+            <h2 className="font-display text-[32px] font-black leading-[1.0] tracking-[-0.8px] text-black sm:text-[44px] lg:text-[52px]">
+              Choose the level of buyer demand you want to create
+            </h2>
+            <p className="mt-4 max-w-[700px] font-body text-sm font-medium leading-[1.55] text-black/65 sm:text-base">
+              Launch your property beyond the local market and generate qualified buyer demand globally.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {tiers.map((tier) => {
-              const isPurple = tier.accent === 'purple';
-              const isBlack = tier.accent === 'black';
+              const isPurple = tier.variant === 'purple';
+              const isDark = tier.variant === 'dark';
+              const isLight = tier.variant === 'white';
               return (
                 <div
                   key={tier.name}
                   className={cn(
-                    'relative flex min-h-[520px] flex-col p-6 lg:p-7',
+                    'relative flex flex-col p-6 lg:p-7',
                     isPurple && 'bg-[#a409d2] text-white',
-                    isBlack && 'bg-black text-white',
-                    !isPurple && !isBlack && 'border border-black/15 bg-white text-black'
+                    isDark && 'bg-[#0c0c0c] text-white',
+                    isLight && 'border border-black/12 bg-white text-black'
                   )}
                 >
-                  {tier.badge && (
+                  {tier.highlight && (
                     <div className="absolute right-5 top-5 rounded-full bg-white px-3 py-1 font-body text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#a409d2]">
-                      {tier.badge}
+                      {tier.highlight}
                     </div>
                   )}
-                  <span className={cn('font-body text-[11px] font-extrabold uppercase tracking-[0.2em]', isPurple || isBlack ? 'text-white/70' : 'text-black/55')}>
-                    {tier.tag}
-                  </span>
-                  <h3 className="mt-3 font-display text-[30px] font-black leading-none tracking-[-0.6px]">{tier.name}</h3>
-                  <p className={cn('mt-4 min-h-[62px] font-body text-sm font-semibold leading-[1.5]', isPurple || isBlack ? 'text-white/75' : 'text-black/62')}>
-                    {tier.description}
-                  </p>
-                  <div className="mt-7 border-t border-current/15 pt-6">
-                    <div className="font-display text-[42px] font-black leading-none tracking-[-1px]">{tier.price}</div>
-                    <p className={cn('mt-2 font-body text-xs font-bold', isPurple || isBlack ? 'text-white/60' : 'text-black/55')}>{tier.monthlyPrice}</p>
-                  </div>
-                  <div className="mt-7 flex flex-1 flex-col gap-3">
-                    {tier.features.map((feature) => (
-                      <div key={feature} className="flex items-start gap-2">
-                        <Check className={cn('mt-0.5 h-4 w-4 shrink-0', isPurple || isBlack ? 'text-white' : 'text-[#149d4f]')} />
-                        <span className={cn('font-body text-sm font-semibold leading-[1.45]', isPurple || isBlack ? 'text-white/78' : 'text-black/68')}>{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <Button
-                    onClick={handleGetStarted}
+
+                  <h3
                     className={cn(
-                      'mt-8 h-12 rounded-full px-5 font-body text-sm font-extrabold uppercase',
-                      isPurple || isBlack ? 'bg-white text-black hover:bg-white/90' : 'bg-black text-white hover:bg-black/90'
+                      'font-display text-[26px] font-black leading-none tracking-[-0.5px] sm:text-[28px]',
+                      tier.name === 'Private Clients' && 'uppercase tracking-[0.04em] text-[24px] sm:text-[26px]'
                     )}
                   >
-                    GET STARTED
-                  </Button>
+                    {tier.name}
+                  </h3>
+                  <p
+                    className={cn(
+                      'mt-3 min-h-[42px] font-body text-[13px] font-medium leading-[1.4]',
+                      isPurple || isDark ? 'text-white/80' : 'text-black/65'
+                    )}
+                  >
+                    {tier.tagline}
+                  </p>
+
+                  <div
+                    className={cn(
+                      'mt-5 border-t pt-5',
+                      isPurple || isDark ? 'border-white/15' : 'border-black/12'
+                    )}
+                  >
+                    <div className="font-display text-[20px] font-extrabold leading-[1.2]">{tier.setup}</div>
+                    <p
+                      className={cn(
+                        'mt-1 font-body text-xs font-semibold',
+                        isPurple || isDark ? 'text-white/70' : 'text-black/60'
+                      )}
+                    >
+                      {tier.ongoing}
+                    </p>
+                  </div>
+
+                  <ul className="mt-5 flex flex-col gap-2.5">
+                    {tier.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2">
+                        <Check
+                          className={cn(
+                            'mt-0.5 h-4 w-4 shrink-0',
+                            isPurple || isDark ? 'text-white' : 'text-[#149d4f]'
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            'font-body text-[13px] font-medium leading-[1.45]',
+                            isPurple || isDark ? 'text-white/85' : 'text-black/72'
+                          )}
+                        >
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div
+                    className={cn(
+                      'mt-6 rounded-md p-4',
+                      isPurple ? 'bg-white/10' : isDark ? 'bg-white/8' : 'bg-black/4'
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        'font-body text-[12px] font-extrabold uppercase tracking-[0.12em]',
+                        isPurple || isDark ? 'text-white' : 'text-black'
+                      )}
+                    >
+                      Typical outcome:
+                    </p>
+                    <p
+                      className={cn(
+                        'mt-1.5 font-body text-[12px] font-medium leading-[1.5]',
+                        isPurple || isDark ? 'text-white/80' : 'text-black/68'
+                      )}
+                    >
+                      {tier.outcome}
+                    </p>
+
+                    <p
+                      className={cn(
+                        'mt-3 font-body text-[12px] font-extrabold uppercase tracking-[0.12em]',
+                        isPurple || isDark ? 'text-white' : 'text-black'
+                      )}
+                    >
+                      Ideal for:
+                    </p>
+                    <p
+                      className={cn(
+                        'mt-1.5 font-body text-[12px] font-medium leading-[1.5]',
+                        isPurple || isDark ? 'text-white/80' : 'text-black/68'
+                      )}
+                    >
+                      {tier.idealFor}
+                    </p>
+                  </div>
+
+                  {tier.footnote && (
+                    <p className="mt-4 font-body text-[11px] font-medium italic text-black/55">{tier.footnote}</p>
+                  )}
+
+                  <div className="mt-auto pt-6">
+                    <Button
+                      onClick={tier.variant === 'dark' ? handleBookCall : handleGetStarted}
+                      className={cn(
+                        'h-11 w-full rounded-full px-5 font-body text-[12px] font-extrabold uppercase tracking-[0.1em]',
+                        isPurple || isDark
+                          ? 'bg-white text-black hover:bg-white/90'
+                          : 'bg-black text-white hover:bg-black/90'
+                      )}
+                    >
+                      {tier.cta}
+                    </Button>
+                  </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Media investment notice */}
+          <div className="mt-8 bg-[#fbf4ef] px-6 py-6 sm:px-8 lg:px-10 lg:py-7">
+            <h4 className="font-body text-base font-extrabold leading-[1.3] text-black sm:text-lg">
+              Media investment
+            </h4>
+            <p className="mt-3 font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-[15px]">
+              To activate global buyer demand, each campaign includes a dedicated exposure budget. This is allocated directly to premium media platforms to position your property in front of qualified international buyers.{' '}
+              <span className="font-bold">
+                Typical investment: £1,500 – £5,000 / month
+              </span>
+              , set at the optimal level based on your property, market and goals. To maintain campaign quality and performance, we recommend a{' '}
+              <span className="font-bold">minimum monthly investment of £500</span> for active campaigns.{' '}
+              <span className="font-bold">Best suited for properties from £500,000+.</span>
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
+      {/* 5. WHY HAVLO VS TRADITIONAL */}
+      <section className="bg-[#f9f9f8] px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
         <div className="mx-auto max-w-[1120px]">
-          <div className="mb-9">
-            <div className="mb-3 flex items-center gap-3">
-              <span className="h-px w-8 bg-black" />
-              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/65">Common questions</span>
+          <div className="mb-10 text-center lg:mb-12">
+            <h2 className="font-display text-[30px] font-black leading-[1.05] tracking-[-0.8px] text-black sm:text-[42px] lg:text-[50px]">
+              Why Havlo vs Traditional
+              <br className="hidden sm:block" /> Property Portals
+            </h2>
+            <p className="mt-4 font-body text-sm font-medium leading-[1.55] text-black/65 sm:text-base">
+              Most properties rely on passive listing platforms such as:
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-80">
+              <span className="font-display text-[22px] font-extrabold tracking-tight text-[#0049a0] sm:text-[26px]">
+                rightmove
+              </span>
+              <span className="font-display text-[22px] font-extrabold tracking-tight text-[#9b1c8a] sm:text-[26px]">
+                ZOOPLA
+              </span>
+              <span className="font-display text-[22px] font-extrabold tracking-tight text-[#1f1f1e] sm:text-[26px]">
+                @TheMarket
+              </span>
             </div>
-            <h2 className="font-display text-[34px] font-black leading-none tracking-[-0.8px] text-black sm:text-[48px] lg:text-[58px]">Everything you need to know</h2>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="bg-white p-6 sm:p-8 lg:p-10">
+              <h3 className="font-display text-[22px] font-extrabold leading-none tracking-[-0.4px] text-black sm:text-[24px]">
+                Traditional portals
+              </h3>
+              <ul className="mt-6 flex flex-col gap-4">
+                {portalCons.map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/8 text-black/60">
+                      <X className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    <span className="font-body text-sm font-medium leading-[1.5] text-black/70 sm:text-[15px]">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="bg-[#0c0c0c] p-6 text-white sm:p-8 lg:p-10">
+              <h3 className="font-display text-[22px] font-extrabold leading-none tracking-[-0.4px] sm:text-[24px]">
+                Havlo
+              </h3>
+              <ul className="mt-6 flex flex-col gap-4">
+                {havloPros.map((item) => (
+                  <li key={item} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#149d4f] text-white">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    <span className="font-body text-sm font-medium leading-[1.5] text-white/85 sm:text-[15px]">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. FAQ */}
+      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
+        <div className="mx-auto max-w-[1120px]">
+          <div className="mb-9 text-center">
+            <div className="mb-3 flex items-center justify-center gap-3">
+              <span className="h-px w-8 bg-black" />
+              <span className="font-body text-[11px] font-extrabold uppercase tracking-[0.22em] text-black/70">
+                Common questions
+              </span>
+              <span className="h-px w-8 bg-black" />
+            </div>
+            <h2 className="font-display text-[32px] font-black leading-none tracking-[-0.8px] text-black sm:text-[44px] lg:text-[52px]">
+              Everything you need to know
+            </h2>
           </div>
 
           <div className="divide-y divide-black/16 border-y border-black/16">
-            {faqs.map((item, index) => {
+            {visibleFaqs.map((item, index) => {
               const isOpen = openFaq === index;
               return (
                 <div key={item.q}>
@@ -338,31 +620,60 @@ export const Marketing: React.FC = () => {
                     onClick={() => setOpenFaq(isOpen ? null : index)}
                     className="flex w-full items-center justify-between gap-5 py-6 text-left"
                   >
-                    <span className="font-body text-base font-extrabold leading-[1.25] text-black sm:text-lg">{item.q}</span>
+                    <span className="font-body text-base font-extrabold leading-[1.25] text-black sm:text-lg">
+                      {item.q}
+                    </span>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/10 text-black">
                       {isOpen ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                     </span>
                   </button>
-                  {isOpen && <p className="max-w-[920px] pb-6 pr-12 font-body text-sm font-semibold leading-[1.65] text-black/68 sm:text-base">{item.a}</p>}
+                  {isOpen && (
+                    <p className="max-w-[920px] pb-6 pr-4 font-body text-sm font-medium leading-[1.65] text-black/70 sm:pr-12 sm:text-base">
+                      {item.a}
+                    </p>
+                  )}
                 </div>
               );
             })}
           </div>
+
+          {!showAllFaqs && faqs.length > FAQ_INITIAL_VISIBLE && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => setShowAllFaqs(true)}
+                className="rounded-full bg-black px-7 py-3 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-black/85"
+              >
+                Load more
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-white px-4 text-center sm:px-6 lg:px-[100px] lg:py-[84px] py-10 my-0">
-        <div className="absolute left-0 right-0 top-0 h-[90px] pointer-events-none">
+      {/* 7. FINAL CTA */}
+      <section className="relative overflow-hidden bg-white px-4 py-16 text-center sm:px-6 lg:px-[100px] lg:py-[100px]">
+        <div className="absolute left-0 right-0 top-0 h-[80px] pointer-events-none">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full bg-[#ffe79a]" />
         </div>
-        <div className="relative z-10 mx-auto mt-10 flex max-w-[760px] flex-col items-center">
-          <h2 className="font-display text-[34px] font-black leading-[0.98] tracking-[-0.8px] text-black sm:text-[48px] lg:text-[64px]">Stop Waiting for Buyers. Start Reaching Them.</h2>
-          <p className="mt-4 max-w-[600px] font-body text-sm font-semibold leading-[1.6] text-black/65 sm:text-base">
-            Relaunch your property with targeted exposure designed to attract serious, qualified buyers.
+        <div className="relative z-10 mx-auto mt-10 flex max-w-[820px] flex-col items-center">
+          <h2 className="font-display text-[32px] font-black leading-[1.0] tracking-[-0.8px] text-black sm:text-[44px] lg:text-[56px]">
+            Your buyer may not be in the UK.
+          </h2>
+          <p className="mt-5 max-w-[640px] font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-base">
+            Book a free 30-minute strategy call. We will tell you which markets are most likely to contain buyers for your property — and whether Havlo is the right fit. No obligation, no pressure.
           </p>
-          <div className="mt-7 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
-            <button onClick={handleGetStarted} className="h-12 rounded-full bg-[#a409d2] px-7 font-body text-sm font-extrabold uppercase text-white hover:bg-[#9408bd]">
+          <div className="mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
+            <button
+              onClick={handleGetStarted}
+              className="h-12 w-full rounded-full bg-[#a409d2] px-7 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#9408bd] sm:w-auto sm:h-14"
+            >
               Start My Relaunch Plan
+            </button>
+            <button
+              onClick={handleBookCall}
+              className="h-12 w-full rounded-full border border-black/20 bg-white px-7 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-black transition hover:bg-black/5 sm:w-auto sm:h-14"
+            >
+              Book A Strategy Call
             </button>
           </div>
         </div>
