@@ -222,9 +222,18 @@ export const Marketing: React.FC = () => {
   });
 
   const { openModal } = useModal();
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaqs, setOpenFaqs] = useState<Set<number>>(() => new Set([0]));
   const [showAllFaqs, setShowAllFaqs] = useState(false);
   const visibleFaqs = showAllFaqs ? faqs : faqs.slice(0, FAQ_INITIAL_VISIBLE);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaqs((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
 
   const handleGetStarted = () => openModal('create-account');
   const handleBookCall = () => openModal('book-session');
@@ -495,17 +504,18 @@ export const Marketing: React.FC = () => {
                   )}
 
                   <div className="mt-auto pt-6">
-                    <Button
+                    <button
+                      type="button"
                       onClick={tier.variant === 'dark' ? handleBookCall : handleGetStarted}
                       className={cn(
-                        'h-11 w-full rounded-full px-5 font-body text-[12px] font-extrabold uppercase tracking-[0.1em]',
-                        isPurple || isDark
-                          ? 'bg-white text-black hover:bg-white/90'
-                          : 'bg-black text-white hover:bg-black/90'
+                        'flex h-11 w-full items-center justify-center px-5 font-body text-[13px] font-semibold transition',
+                        isPurple && 'bg-white text-black hover:bg-white/90',
+                        isDark && 'border border-white bg-black text-white hover:bg-white/10',
+                        isLight && 'bg-black text-white hover:bg-black/85'
                       )}
                     >
                       {tier.cta}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               );
@@ -513,18 +523,19 @@ export const Marketing: React.FC = () => {
           </div>
 
           {/* Media investment notice */}
-          <div className="mt-8 bg-[#fbf4ef] px-6 py-6 sm:px-8 lg:px-10 lg:py-7">
-            <h4 className="font-body text-base font-extrabold leading-[1.3] text-black sm:text-lg">
-              Media investment
+          <div className="mt-8 border-l-4 border-[#e8722e] bg-[#fbf4ef] px-6 py-6 sm:px-8 lg:px-10 lg:py-7">
+            <h4 className="font-body text-base font-extrabold leading-[1.3] text-[#e8722e] sm:text-lg">
+              Media Investment
             </h4>
-            <p className="mt-3 font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-[15px]">
+            <p className="mt-3 font-body text-sm font-medium leading-[1.6] text-black/75 sm:text-[15px]">
               To activate global buyer demand, each campaign includes a dedicated exposure budget. This is allocated directly to premium media platforms to position your property in front of qualified international buyers.{' '}
-              <span className="font-bold">
-                Typical investment: £1,500 – £5,000 / month
-              </span>
-              , set at the optimal level based on your property, market and goals. To maintain campaign quality and performance, we recommend a{' '}
-              <span className="font-bold">minimum monthly investment of £500</span> for active campaigns.{' '}
-              <span className="font-bold">Best suited for properties from £500,000+.</span>
+              <span className="font-bold">Typical investment: £1,000 – £3,000 / month.</span>{' '}
+              We advise on the optimal level based on your property, target markets, and desired speed of sale. Higher exposure typically results in increased buyer competition and faster enquiry velocity.
+            </p>
+            <div className="my-4 h-px w-full bg-black/10" />
+            <p className="font-body text-sm font-medium leading-[1.6] text-black/75 sm:text-[15px]">
+              To maintain campaign quality and performance, we onboard a limited number of properties each month.{' '}
+              <span className="font-bold">Best suited for properties from £500,000+</span>
             </p>
           </div>
         </div>
@@ -554,18 +565,16 @@ export const Marketing: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="bg-white p-6 sm:p-8 lg:p-10">
-              <h3 className="font-display text-[22px] font-extrabold leading-none tracking-[-0.4px] text-black sm:text-[24px]">
+          <div className="mx-auto grid max-w-[760px] gap-5 md:grid-cols-2">
+            <div className="rounded-[28px] border-2 border-[#ff8ce7] bg-white p-6 sm:p-7 lg:p-8">
+              <h3 className="font-body text-[18px] font-extrabold leading-none tracking-[-0.2px] text-black sm:text-[20px]">
                 Traditional portals
               </h3>
-              <ul className="mt-6 flex flex-col gap-4">
+              <ul className="mt-5 flex flex-col gap-3.5">
                 {portalCons.map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/8 text-black/60">
-                      <X className="h-3 w-3" strokeWidth={3} />
-                    </span>
-                    <span className="font-body text-sm font-medium leading-[1.5] text-black/70 sm:text-[15px]">
+                  <li key={item} className="flex items-start gap-2.5">
+                    <X className="mt-0.5 h-4 w-4 shrink-0 text-[#e85b6f]" strokeWidth={3} />
+                    <span className="font-body text-[13px] font-medium leading-[1.5] text-black/75 sm:text-sm">
                       {item}
                     </span>
                   </li>
@@ -573,17 +582,17 @@ export const Marketing: React.FC = () => {
               </ul>
             </div>
 
-            <div className="bg-[#0c0c0c] p-6 text-white sm:p-8 lg:p-10">
-              <h3 className="font-display text-[22px] font-extrabold leading-none tracking-[-0.4px] sm:text-[24px]">
+            <div className="rounded-[28px] border-2 border-[#7dd3e8] bg-white p-6 sm:p-7 lg:p-8">
+              <h3 className="font-body text-[18px] font-extrabold leading-none tracking-[-0.2px] text-black sm:text-[20px]">
                 Havlo
               </h3>
-              <ul className="mt-6 flex flex-col gap-4">
+              <ul className="mt-5 flex flex-col gap-3.5">
                 {havloPros.map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#149d4f] text-white">
-                      <Check className="h-3 w-3" strokeWidth={3} />
+                  <li key={item} className="flex items-start gap-2.5">
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-white">
+                      <Check className="h-2.5 w-2.5" strokeWidth={4} />
                     </span>
-                    <span className="font-body text-sm font-medium leading-[1.5] text-white/85 sm:text-[15px]">
+                    <span className="font-body text-[13px] font-medium leading-[1.5] text-black/80 sm:text-sm">
                       {item}
                     </span>
                   </li>
@@ -612,12 +621,13 @@ export const Marketing: React.FC = () => {
 
           <div className="divide-y divide-black/16 border-y border-black/16">
             {visibleFaqs.map((item, index) => {
-              const isOpen = openFaq === index;
+              const isOpen = openFaqs.has(index);
               return (
                 <div key={item.q}>
                   <button
                     type="button"
-                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                    onClick={() => toggleFaq(index)}
+                    aria-expanded={isOpen}
                     className="flex w-full items-center justify-between gap-5 py-6 text-left"
                   >
                     <span className="font-body text-base font-extrabold leading-[1.25] text-black sm:text-lg">
@@ -637,13 +647,26 @@ export const Marketing: React.FC = () => {
             })}
           </div>
 
-          {!showAllFaqs && faqs.length > FAQ_INITIAL_VISIBLE && (
+          {faqs.length > FAQ_INITIAL_VISIBLE && (
             <div className="mt-8 flex justify-center">
               <button
-                onClick={() => setShowAllFaqs(true)}
-                className="rounded-full bg-black px-7 py-3 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-black/85"
+                onClick={() => {
+                  if (showAllFaqs) {
+                    setShowAllFaqs(false);
+                    setOpenFaqs((prev) => {
+                      const next = new Set<number>();
+                      prev.forEach((i) => {
+                        if (i < FAQ_INITIAL_VISIBLE) next.add(i);
+                      });
+                      return next;
+                    });
+                  } else {
+                    setShowAllFaqs(true);
+                  }
+                }}
+                className="rounded-full bg-black px-9 py-3 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-black/85"
               >
-                Load more
+                {showAllFaqs ? 'Close' : 'Load more'}
               </button>
             </div>
           )}
