@@ -241,7 +241,7 @@ export const Marketing: React.FC = () => {
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
       {/* 1. HERO */}
-      <section className="relative overflow-hidden px-4 pt-16 pb-24 sm:px-6 sm:pt-20 sm:pb-28 lg:px-[100px] lg:pt-32 lg:pb-44 min-h-[520px] lg:min-h-[720px]">
+      <section className="relative overflow-hidden px-6 pt-16 pb-24 sm:pt-20 sm:pb-28 lg:px-[100px] lg:pt-32 lg:pb-44 min-h-[520px] lg:min-h-[720px]">
         <div className="absolute inset-0">
           <img src={heroImage} alt="International property skyline" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f1a]/85 via-[#0a0f1a]/70 to-[#0a0f1a]/85" />
@@ -286,8 +286,8 @@ export const Marketing: React.FC = () => {
       </section>
 
       {/* 2. THE PROBLEM */}
-      <section className="bg-white px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
-        <div className="mx-auto grid max-w-[1240px] gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
+      <section className="bg-white px-6 py-14 lg:px-[100px] lg:py-[100px]">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14">
           <div>
             <div className="mb-4 flex items-center gap-3">
               <span className="h-px w-8 bg-black" />
@@ -336,8 +336,8 @@ export const Marketing: React.FC = () => {
       </section>
 
       {/* 3. HOW IT WORKS */}
-      <section className="relative bg-[#a409d2] px-4 py-14 text-white sm:px-6 lg:px-[100px] lg:py-[100px]">
-        <div className="mx-auto max-w-[1240px]">
+      <section className="relative bg-[#a409d2] px-6 py-14 text-white lg:px-[100px] lg:py-[100px]">
+        <div>
           <div className="mb-10 text-center lg:mb-14">
             <div className="mb-3 flex items-center justify-center gap-3">
               <span className="h-px w-8 bg-white/70" />
@@ -371,8 +371,8 @@ export const Marketing: React.FC = () => {
       </section>
 
       {/* 4. CHOOSE YOUR REACH (TIERS) */}
-      <section className="bg-white px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
-        <div className="mx-auto max-w-[1280px]">
+      <section className="bg-white px-6 py-14 lg:px-[100px] lg:py-[100px]">
+        <div>
           <div className="mb-10 max-w-[820px]">
             <h2 className="font-display text-[32px] font-black leading-[1.0] tracking-[-0.8px] text-black sm:text-[44px] lg:text-[52px]">
               Choose the level of buyer demand you want to create
@@ -542,8 +542,8 @@ export const Marketing: React.FC = () => {
       </section>
 
       {/* 5. WHY HAVLO VS TRADITIONAL */}
-      <section className="bg-[#f9f9f8] px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
-        <div className="mx-auto max-w-[1120px]">
+      <section className="bg-[#f9f9f8] px-6 py-14 lg:px-[100px] lg:py-[100px]">
+        <div>
           <div className="mb-10 text-center lg:mb-12">
             <h2 className="font-display text-[30px] font-black leading-[1.05] tracking-[-0.8px] text-black sm:text-[42px] lg:text-[50px]">
               Why Havlo vs Traditional
@@ -604,8 +604,8 @@ export const Marketing: React.FC = () => {
       </section>
 
       {/* 6. FAQ */}
-      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-4 py-14 sm:px-6 lg:px-[100px] lg:py-[100px]">
-        <div className="mx-auto max-w-[1120px]">
+      <section className="bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] px-6 py-14 lg:px-[100px] lg:py-[100px]">
+        <div>
           <div className="mb-9 text-center">
             <div className="mb-3 flex items-center justify-center gap-3">
               <span className="h-px w-8 bg-black" />
@@ -674,7 +674,7 @@ export const Marketing: React.FC = () => {
       </section>
 
       {/* 7. FINAL CTA */}
-      <section className="relative overflow-hidden bg-white px-4 py-16 text-center sm:px-6 lg:px-[100px] lg:py-[100px]">
+      <section className="relative overflow-hidden bg-white px-6 py-16 text-center lg:px-[100px] lg:py-[100px]">
         <div className="absolute left-0 right-0 top-0 h-[80px] pointer-events-none">
           <HeroBackground showTop={true} showBottom={false} className="h-full w-full bg-[#ffe79a]" />
         </div>

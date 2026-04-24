@@ -65,8 +65,8 @@ export const AboutUs: React.FC = () => {
   return (
     <div className="flex w-full flex-col overflow-hidden bg-white text-[#050505]">
       {/* INTRO SECTION */}
-      <section className="bg-white px-4 pt-12 pb-10 sm:px-6 sm:pt-16 lg:px-[100px] lg:pt-20 lg:pb-14">
-        <div className="mx-auto max-w-[1240px]">
+      <section className="bg-white px-6 pt-12 pb-10 sm:pt-16 lg:px-[100px] lg:pt-20 lg:pb-14">
+        <div>
           <h1 className="font-display text-[40px] font-black leading-[1.0] tracking-[-1px] text-[#0a0a0a] sm:text-[48px] lg:text-[56px]">
             About us
           </h1>
@@ -100,8 +100,8 @@ export const AboutUs: React.FC = () => {
       </section>
 
       {/* SERVICE CARDS GRID */}
-      <section className="bg-white px-4 pb-16 sm:px-6 sm:pb-20 lg:px-[100px] lg:pb-24">
-        <div className="mx-auto grid w-full max-w-[1240px] grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <section className="bg-white px-6 pb-16 sm:pb-20 lg:px-[100px] lg:pb-24">
+        <div className="grid w-full grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {serviceCards.map((card) => (
             <div
               key={card.title}
