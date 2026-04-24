@@ -6,6 +6,7 @@ import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { Users, Globe, ChartLine, Star, ArrowRight } from 'lucide-react';
 import { useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const elitePropertyReviews = [
   { title: 'Highly targeted and effective', content: 'Havlo’s Elite Property Introductions connected us with serious offshore buyers. The quality of interest was far better than anything we’d seen before.', author: 'James, London' },
@@ -34,6 +35,11 @@ const whoThisIsFor = [
 ];
 
 export const EliteProperty: React.FC = () => {
+  usePageMeta({
+    title: "Elite Property Introduction | Havlo",
+    description: "Showcase your elite property to a curated network of ready-to-buy offshore investors. Havlo connects premium listings with qualified global buyers.",
+    canonical: 'https://www.heyhavlo.com/elite-property',
+  });
   const { openModal } = useModal();
 
   return (

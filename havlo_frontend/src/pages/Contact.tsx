@@ -4,8 +4,14 @@ import { Button } from '../components/ui/Button';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { CountrySelect } from '../components/shared/CountrySelect';
 import { useConfig } from '../hooks/useConfig';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const Contact: React.FC = () => {
+  usePageMeta({
+    title: 'Contact Us | Speak to Global Property Experts | Havlo',
+    description: 'Get in touch with Havlo for expert advice on buying, selling, or managing property abroad. Our team is ready to guide you at every step.',
+    canonical: 'https://www.heyhavlo.com/contact-us',
+  });
   const [phoneCode, setPhoneCode] = useState('+44');
   const config = useConfig();
   const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';

@@ -10,6 +10,7 @@ import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { ChevronRight, Globe } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const buyAbroadReviews = [
   { title: 'Simplifies international purchase', content: 'Havlo took all the stress out of buying property overseas. The step-by-step guidance and detailed info gave me confidence to make my first international purchase.', author: 'Tomiwa, Lagos' },
@@ -39,6 +40,11 @@ const teamAvatars: Array<{ name: string; src: string }> = [
 ];
 
 export const BuyAbroad: React.FC = () => {
+  usePageMeta({
+    title: "Buy Property Abroad with Confidence | Havlo",
+    description: "Buy property overseas with ease. Havlo provides expert guidance, legal support, and local insights to help you purchase international property safely and smoothly.",
+    canonical: 'https://www.heyhavlo.com/buy-property-abroad',
+  });
   const navigate = useNavigate();
   const { openModal } = useModal();
   const [activeTab, setActiveTab] = useState('High-Value Investors');

@@ -5,6 +5,7 @@ import { HeroBackground } from '../components/shared/HeroBackground';
 import { useModal } from '../hooks/useModal';
 import { cn } from '../lib/utils';
 import heroImage from '../../Rectangle 5.png';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const problemPoints = [
   {
@@ -130,6 +131,11 @@ const faqs = [
 ];
 
 export const Marketing: React.FC = () => {
+  usePageMeta({
+    title: "Sell Your Property Abroad with Ease | Havlo",
+    description: "Sell your property abroad with ease using Havlo. Reach qualified buyers, manage listings seamlessly, and close deals faster—no stress, no hassle.",
+    canonical: 'https://www.heyhavlo.com/sell-your-property',
+  });
   const { openModal } = useModal();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 

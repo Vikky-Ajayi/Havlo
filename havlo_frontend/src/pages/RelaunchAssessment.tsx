@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const auditReviews = [
   { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
@@ -89,6 +90,11 @@ const RelaunchHeroSection: React.FC = () => {
 };
 
 export const RelaunchAssessment: React.FC = () => {
+  usePageMeta({
+    title: "Property Audit Services to Help You Sell Faster | Havlo",
+    description: "Struggling to sell your property? Havlo's Property Audit analyzes pricing, presentation, and marketing to help you relaunch and attract the right buyers.",
+    canonical: 'https://www.heyhavlo.com/property-audit',
+  });
   const { openModal } = useModal();
   return (
     <div className="flex flex-col w-full overflow-hidden bg-white">

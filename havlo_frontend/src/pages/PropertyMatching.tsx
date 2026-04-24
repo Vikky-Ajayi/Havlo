@@ -3,8 +3,14 @@ import { Clock, Star, Plus, Check } from 'lucide-react';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { CountrySelect } from '../components/shared/CountrySelect';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const PropertyMatching: React.FC = () => {
+  usePageMeta({
+    title: "Property Matching - Find your Ideal Property with Budget | Havlo",
+    description: "Havlo offers reliable property matching services for international homeowners, find properties with your preferred location, type and budget. Our nominated agent finds the homes that fit you.",
+    canonical: 'https://www.heyhavlo.com/property-matching',
+  });
   const [phoneCode, setPhoneCode] = useState('+44');
   const [country, setCountry] = useState('');
   return (

@@ -1,6 +1,12 @@
 import React from 'react';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const PrivacyPolicy: React.FC = () => {
+  usePageMeta({
+    title: "Privacy Policy | Havlo",
+    description: "Learn how Havlo collects, uses, and protects your personal information. Your privacy and data security are important to us.",
+    canonical: 'https://www.heyhavlo.com/privacy-policy',
+  });
   return (
     <div className="flex flex-col w-full bg-white">
       <div className="max-w-[1440px] w-full px-4 sm:px-8 lg:px-[98px] pt-10 sm:pt-16 pb-16 mx-auto">

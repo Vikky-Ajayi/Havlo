@@ -10,6 +10,7 @@ import { HeroSection } from '../components/shared/HeroSection';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { cn } from '../lib/utils';
 
 const homeReviews = [
@@ -76,6 +77,11 @@ const homeReviews = [
 ];
 
 export const Home: React.FC = () => {
+  usePageMeta({
+    title: 'Havlo - Buy, Sell & Manage International Property',
+    description: 'Havlo helps you buy, sell, and manage properties across multiple countries. Get expert support, end-to-end guidance, and a seamless international real estate experience.',
+    canonical: 'https://www.heyhavlo.com/',
+  });
   const { openModal } = useModal();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<'BUYERS' | 'SELLERS' | 'AGENTS'>('SELLERS');
@@ -109,7 +115,7 @@ export const Home: React.FC = () => {
 
               <div className="flex flex-row flex-wrap items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <button
-                  onClick={() => navigate('/buy-abroad')}
+                  onClick={() => navigate('/buy-property-abroad')}
                   className="w-full sm:w-auto transition-all duration-200 hover:bg-black hover:text-white active:scale-95 bg-white text-black px-6 py-3 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer sm:h-14 whitespace-nowrap"
                 >
                   Buy Property Abroad
@@ -228,7 +234,7 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Buy Property Abroad"
                     description="Expert advisory for acquiring residential and commercial property abroad. We handle the complexity so you don't have to."
-                    href="/buy-abroad"
+                    href="/buy-property-abroad"
                     className="bg-white"
                   />
                   <ServiceCard
@@ -249,7 +255,7 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Sell Faster (Havlo Relaunch™)"
                     description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                    href="/sell-faster"
+                    href="/sell-your-property"
                     className="bg-white"
                   />
                   <ServiceCard
@@ -296,7 +302,7 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Sell Faster (Havlo Relaunch™)"
                 description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                href="/sell-faster"
+                href="/sell-your-property"
                 className="flex-1 bg-white"
               />
               <ServiceCard
@@ -323,7 +329,7 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Buy Property Abroad"
                 description="Expert advisory for acquiring residential and commercial property abroad. We handle the complexity so you don't have to."
-                href="/buy-abroad"
+                href="/buy-property-abroad"
                 className="flex-1 bg-white"
               />
               <ServiceCard

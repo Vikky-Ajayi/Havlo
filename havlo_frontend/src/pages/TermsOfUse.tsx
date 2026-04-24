@@ -1,6 +1,12 @@
 import React from 'react';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const TermsOfUse: React.FC = () => {
+  usePageMeta({
+    title: "Terms of Use | Havlo",
+    description: "Review Havlo's Terms of Use to understand our services, user responsibilities, and legal guidelines when using our website and property solutions.",
+    canonical: 'https://www.heyhavlo.com/terms',
+  });
   return (
     <div className="flex flex-col w-full max-w-full gap-10">
       <div className="max-w-[1440px] w-full px-4 sm:px-8 lg:px-[98px] pt-10 sm:pt-16 pb-16 mx-auto">

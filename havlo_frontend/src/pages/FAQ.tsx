@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui/Button';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 interface FAQItemProps {
   question: string;
@@ -475,6 +476,11 @@ const tabConfig: { key: TabKey; label: string; faqs: FAQItemProps[] }[] = [
 ];
 
 export const FAQ: React.FC = () => {
+  usePageMeta({
+    title: "FAQs - International Property Buying with Havlo | Havlo",
+    description: "Find answers to common questions about buying, selling, and managing property abroad with Havlo. Clear guidance to help you make informed decisions.",
+    canonical: 'https://www.heyhavlo.com/faq',
+  });
   const { openModal } = useModal();
   const [activeTab, setActiveTab] = useState<TabKey>('buyers');
   const activeFaqs = tabConfig.find((t) => t.key === activeTab)?.faqs ?? [];

@@ -558,7 +558,7 @@ export const Onboarding: React.FC = () => {
               <button
                 type="button"
                 aria-label="Close"
-                onClick={() => { setShowSuccessPopup(false); navigate('/buy-abroad'); }}
+                onClick={() => { setShowSuccessPopup(false); navigate('/buy-property-abroad'); }}
                 className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors"
               >
                 <X size={18} className="text-black/70" />
@@ -595,7 +595,7 @@ export const Onboarding: React.FC = () => {
                 </a>
                 <button
                   type="button"
-                  onClick={() => { setShowSuccessPopup(false); navigate('/buy-abroad'); }}
+                  onClick={() => { setShowSuccessPopup(false); navigate('/buy-property-abroad'); }}
                   className="mt-2 font-body text-sm font-semibold text-black/60 hover:text-black underline underline-offset-4"
                 >
                   Back to Buy Abroad

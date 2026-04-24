@@ -5,17 +5,17 @@ import { Button } from '../ui/Button';
 export const Footer: React.FC = () => {
   const serviceLinks = [
     { name: 'Elite Property Introduction', href: '/elite-property' },
-    { name: 'Sell Faster', href: '/sell-faster' },
+    { name: 'Sell Faster', href: '/sell-your-property' },
     { name: 'Property Sale Audit', href: '/property-audit' },
-    { name: 'Buy Abroad', href: '/buy-abroad' },
+    { name: 'Buy Property Abroad', href: '/buy-property-abroad' },
     { name: 'Property Matching', href: '/property-matching' },
     { name: 'International Buyer Network', href: '/buyer-network' },
   ];
 
   const whoWeAreLinks = [
-    { name: 'About', href: '/about' },
+    { name: 'About', href: '/about-us' },
     { name: 'FAQ', href: '/faq' },
-    { name: 'Contact Us', href: '/contact' },
+    { name: 'Contact Us', href: '/contact-us' },
     { name: 'Press', href: '#' },
   ];
 

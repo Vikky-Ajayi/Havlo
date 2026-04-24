@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const agentReviews = [
   { title: 'Opened up a completely new buyer market', content: 'Havlo helped us reach international buyers we simply couldn\'t access through traditional portals. It added a powerful new dimension to our listings.', author: 'Oliver, London' },
@@ -20,6 +21,11 @@ const agentReviews = [
 ];
 
 export const BuyerNetwork: React.FC = () => {
+  usePageMeta({
+    title: "Access a Global Buyer Network for Your Property | Havlo",
+    description: "Connect your property to a curated network of qualified global buyers with Havlo. Reach serious investors, increase visibility, and close deals faster.",
+    canonical: 'https://www.heyhavlo.com/buyer-network',
+  });
   const { openModal } = useModal();
   const whyChooseItems = [
     {

@@ -167,15 +167,19 @@ export default function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/about" element={<AboutUs />} />
-              <Route path="/buy-abroad" element={<BuyAbroad />} />
+              <Route path="/about-us" element={<AboutUs />} />
+              <Route path="/about" element={<Navigate to="/about-us" replace />} />
+              <Route path="/buy-property-abroad" element={<BuyAbroad />} />
+              <Route path="/buy-abroad" element={<Navigate to="/buy-property-abroad" replace />} />
               <Route path="/property-audit" element={<RelaunchAssessment />} />
               <Route path="/elite-property" element={<EliteProperty />} />
               <Route path="/buy-home" element={<BuyHome />} />
               <Route path="/complete-home-buying" element={<CompleteHomeBuying />} />
-              <Route path="/sell-faster" element={<Marketing />} />
-              <Route path="/marketing" element={<Navigate to="/sell-faster" replace />} />
-              <Route path="/contact" element={<Contact />} />
+              <Route path="/sell-your-property" element={<Marketing />} />
+              <Route path="/sell-faster" element={<Navigate to="/sell-your-property" replace />} />
+              <Route path="/marketing" element={<Navigate to="/sell-your-property" replace />} />
+              <Route path="/contact-us" element={<Contact />} />
+              <Route path="/contact" element={<Navigate to="/contact-us" replace />} />
               <Route path="/faq" element={<FAQ />} />
               <Route path="/countries" element={<Countries />} />
               <Route path="/property-purchase" element={<PropertyPurchase />} />

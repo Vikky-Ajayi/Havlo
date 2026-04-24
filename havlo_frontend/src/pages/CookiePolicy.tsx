@@ -1,6 +1,12 @@
 import React from 'react';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const CookiePolicy: React.FC = () => {
+  usePageMeta({
+    title: "Cookie Policy | Havlo",
+    description: "Read Havlo's Cookie Policy to understand how cookies are used on our website to enhance user experience and improve site performance.",
+    canonical: 'https://www.heyhavlo.com/cookie-policy',
+  });
   return (
     <div className="flex flex-col w-full bg-white">
       <div className="max-w-[1440px] w-full px-4 sm:px-8 lg:px-[98px] pt-10 sm:pt-16 pb-16 mx-auto">
