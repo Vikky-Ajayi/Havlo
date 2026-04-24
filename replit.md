@@ -86,3 +86,34 @@ Havlo is an international real estate platform that facilitates property matchin
 - **Speed**: removed the eager `_ensure_admin_conversation_for_user` call from the hot path of `GET /messaging/conversations`; the empty-list fallback still creates the default thread for brand-new users. Added a one-shot `SELECT 1` DB pre-warm at startup so the first request after boot does not pay the asyncpg cold-connect penalty. Measured locally: register ≈ 210 ms, login ≈ 140 ms.
 - **Diagnostics**: new `/api/v1/diag/email` and `/api/v1/diag/email/test` (gated by `DIAG_TOKEN` in production) report SendGrid configuration status without exposing secrets.
 - **Dependency**: `sendgrid==6.11.0` added to `requirements.txt`.
+
+## 2026-04-24 — Sell faster & International Buyer Network dashboards
+
+Both seller and agent dashboards (`/dashboard/sell-faster` and `/dashboard/buyer-network`) were rebuilt to match the supplied Figma frames. Each route now multiplexes two views from a single page component, gated by local subscription state in `localStorage`:
+
+- **Plans view** — shown when the user has neither subscribed nor explicitly skipped. Renders the new tiered plan cards.
+  - Sell faster: 4 plans (Launch / Amplify [Most Popular, purple] / Dominate / Private Clients [black]).
+  - Buyer network: 3 packages (Starter / Growth [Most Popular, purple ring] / Network).
+  - "Skip for now" link below the grid bypasses payment and lands the user on the main view with a "subscribe" prompt instead of a subscribed plan card.
+- **Main dashboard view** — shown after a successful payment OR after Skip. Same layout for either, but the top "subscription bar" swaps between a real plan summary (with `UPGRADE …` CTA) and a dashed "NO ACTIVE PLAN" prompt (with `SUBSCRIBE …` CTA).
+  - Sell faster main: hero card, subscription bar, purple welcome card (`Hi {FIRST_NAME}` + `Track Progress` → `/dashboard/inbox`), blue specialists card (Message → inbox, Book a call → Calendly).
+  - Buyer network main: hero, subscription bar, Listings section. After payment a demo "4-bed detached house" listing is auto-seeded (Reach/Enquiries/Viewings stats). "BOOST FOR VISIBILITY" opens the Boost modal. "Add listing": opens the add-listing modal when subscribed; if the user skipped, it routes back to the plans view per spec. The skip variant also shows the placeholder "Add your first listing" card whose CTA bounces back to plans.
+
+### State persistence (`havlo_frontend/src/lib/dashboardState.ts`)
+All persisted via `localStorage`:
+- `havlo:sell_faster_plan` — `{id,name,tag,setupPrice,monthlyPrice,renewsAt}`
+- `havlo:sell_faster_skipped` — `'1'` flag
+- `havlo:buyer_network_plan` — `{id,name,price,slots,renewsAt}`
+- `havlo:buyer_network_skipped` — `'1'` flag
+- `havlo:buyer_network_listings` — array of `BuyerNetworkListing` objects
+The plan is written by `usePaymentReturnPoller`'s `onPaid` callback so that the existing checkout flow (form drawer → SumUp redirect → `?payment=success` poller) seamlessly upgrades the user from the Plans view to the Main view.
+
+### Boost Visibility modal
+Built into `DashboardBuyerNetwork.tsx`. Three preset £150 budget pills, custom amount input, live "Estimated additional reach" estimate (~8 buyers per £1), purple "What your boost does" info box, "BOOST NOW" CTA. After confirmation it shows a success state.
+
+### Dev-only auth & state seeding (only active in `import.meta.env.DEV`)
+For internal preview/screenshots the following query params are honoured **once** on page load and then stripped from the URL:
+- `?_dt=<jwt>` (in `AuthContext.tsx`) — seeds `localStorage.havlo_token`.
+- `?_seed=<sf-plan|sf-amplify|sf-skipped|bn-plan|bn-skipped|clear>` (in `dashboardState.ts`) — seeds dashboard subscription state.
+
+Neither helper runs in production builds.

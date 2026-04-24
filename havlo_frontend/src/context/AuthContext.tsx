@@ -17,6 +17,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'havlo_token';
 
+// Dev-only: allow ?_dt=<token> to seed auth in localStorage so internal preview
+// screenshots can render protected pages without going through the login UI.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const dt = params.get('_dt');
+    if (dt) {
+      localStorage.setItem(TOKEN_KEY, dt);
+      params.delete('_dt');
+      const qs = params.toString();
+      const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     token: localStorage.getItem(TOKEN_KEY),
