@@ -472,11 +472,18 @@ app.include_router(admin_users.router, prefix=API_PREFIX)
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 
 if FRONTEND_DIST.is_dir():
+    from fastapi.responses import HTMLResponse
+    from app.seo import lookup as seo_lookup, inject as seo_inject
+
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static-assets")
+
+    INDEX_HTML_PATH = FRONTEND_DIST / "index.html"
 
     @app.get("/{full_path:path}")
     async def serve_spa(request: Request, full_path: str):
         file_path = FRONTEND_DIST / full_path
         if file_path.is_file():
             return FileResponse(str(file_path))
-        return FileResponse(str(FRONTEND_DIST / "index.html"))
+        html = INDEX_HTML_PATH.read_text(encoding="utf-8")
+        seo = seo_lookup("/" + full_path if full_path else "/")
+        return HTMLResponse(seo_inject(html, seo))
