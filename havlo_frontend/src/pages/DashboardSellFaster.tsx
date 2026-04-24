@@ -722,28 +722,28 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
   );
 };
 
-// Stack of placeholder team avatars (matches Figma's overlapping circles).
+// Stack of team specialist avatars (overlapping circles with real photos).
 const SpecialistAvatars: React.FC = () => {
-  const palette = useMemo(
+  const team = useMemo(
     () => [
-      { bg: '#F2D5BC', initials: 'JA' },
-      { bg: '#7B5A3B', initials: 'KM' },
-      { bg: '#F7DCC0', initials: 'LP' },
-      { bg: '#E5B997', initials: 'RS' },
-      { bg: '#C68B5F', initials: 'DO' },
+      { src: '/team-avatars/avatar1.jpg', name: 'Jess A.' },
+      { src: '/team-avatars/avatar2.jpg', name: 'Kwame M.' },
+      { src: '/team-avatars/avatar3.jpg', name: 'Liam P.' },
+      { src: '/team-avatars/avatar4.jpg', name: 'Rachel S.' },
+      { src: '/team-avatars/avatar5.jpg', name: 'David O.' },
     ],
     []
   );
   return (
     <div className="flex -space-x-3">
-      {palette.map((p, i) => (
-        <div
+      {team.map((p, i) => (
+        <img
           key={i}
-          className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white text-[11px] font-bold text-black/80 shadow-sm"
-          style={{ backgroundColor: p.bg }}
-        >
-          {p.initials}
-        </div>
+          src={p.src}
+          alt={p.name}
+          className="h-10 w-10 rounded-full border-2 border-white object-cover shadow-sm"
+          loading="lazy"
+        />
       ))}
     </div>
   );

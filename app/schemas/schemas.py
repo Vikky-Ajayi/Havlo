@@ -187,8 +187,20 @@ class MessageOut(BaseModel):
     sender_name: str
     created_at: datetime
     is_me: bool  # True when sender_type == "user"
+    is_edited: bool = False
+    edited_at: Optional[datetime] = None
+    is_deleted: bool = False
+    attachment_url: Optional[str] = None
+    attachment_filename: Optional[str] = None
+    attachment_mime: Optional[str] = None
+    attachment_size: Optional[int] = None
+    read_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+
+class EditMessageRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=5000)
 
 
 class ConversationDetailOut(BaseModel):

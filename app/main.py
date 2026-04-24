@@ -197,7 +197,16 @@ async def startup() -> None:
                         ALTER TABLE messages
                             ADD COLUMN IF NOT EXISTS sender_id UUID,
                             ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT FALSE,
-                            ADD COLUMN IF NOT EXISTS sms_notification_sent BOOLEAN NOT NULL DEFAULT FALSE;
+                            ADD COLUMN IF NOT EXISTS sms_notification_sent BOOLEAN NOT NULL DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS is_edited BOOLEAN NOT NULL DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ,
+                            ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+                            ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(1024),
+                            ADD COLUMN IF NOT EXISTS attachment_filename VARCHAR(512),
+                            ADD COLUMN IF NOT EXISTS attachment_mime VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS attachment_size INTEGER,
+                            ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
                     """))
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_messages_convo_created "
@@ -519,6 +528,19 @@ async def sitemap_xml() -> Response:
     return Response(content=body, media_type="application/xml")
 
 
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+
+
+# ── Socket.IO sub-mount ──────────────────────────────────────────────────────
+# Mounted BEFORE the SPA catch-all so /socket.io/* is not swallowed in prod.
+from app.services.socketio_server import sio as _sio  # noqa: E402
+import socketio as _socketio_mod  # noqa: E402
+
+app.mount("/socket.io", _socketio_mod.ASGIApp(_sio, socketio_path=""))
+
+
 if FRONTEND_DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static-assets")
 
@@ -532,3 +554,5 @@ if FRONTEND_DIST.is_dir():
         html = INDEX_HTML_PATH.read_text(encoding="utf-8")
         seo = seo_lookup("/" + full_path if full_path else "/")
         return HTMLResponse(seo_inject(html, seo))
+
+

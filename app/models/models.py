@@ -197,6 +197,22 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    # Additive: edit/delete/attachment/read-receipt fields for the realtime layer.
+    is_edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    edited_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    attachment_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    attachment_filename: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    attachment_mime: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    attachment_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    read_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     conversation: Mapped["Conversation"] = relationship(
         "Conversation", back_populates="messages"

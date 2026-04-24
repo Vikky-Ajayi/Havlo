@@ -243,6 +243,14 @@ export interface Message {
   sender_name: string;
   created_at: string;
   is_me: boolean;
+  is_edited?: boolean;
+  edited_at?: string | null;
+  is_deleted?: boolean;
+  attachment_url?: string | null;
+  attachment_filename?: string | null;
+  attachment_mime?: string | null;
+  attachment_size?: number | null;
+  read_at?: string | null;
 }
 
 export interface AdminConversation extends Conversation {
@@ -394,6 +402,45 @@ export const api = {
       method: 'POST',
       token,
     }),
+
+  editMessage: (token: string, messageId: string, content: string) =>
+    request<Message>(`/messaging/messages/${messageId}`, {
+      method: 'PATCH',
+      token,
+      body: { content },
+    }),
+
+  deleteMessage: (token: string, messageId: string) =>
+    request<{ ok: boolean; id: string; conversation_id: string }>(
+      `/messaging/messages/${messageId}`,
+      { method: 'DELETE', token },
+    ),
+
+  uploadAttachment: async (
+    token: string,
+    conversationId: string,
+    file: File,
+    content: string = '',
+  ): Promise<{ message: Message }> => {
+    const base = (import.meta as any).env?.VITE_API_URL || '/api/v1';
+    const fd = new FormData();
+    fd.append('file', file);
+    if (content) fd.append('content', content);
+    const res = await fetch(`${base}/messaging/conversations/${conversationId}/attachment`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    if (!res.ok) {
+      let detail = 'Upload failed.';
+      try {
+        const j = await res.json();
+        if (j?.detail) detail = String(j.detail);
+      } catch {}
+      throw new Error(detail);
+    }
+    return res.json();
+  },
 
   bookSession: (token: string, payload: BookSessionPayload) =>
     request<{ booking_id: string; checkout_url: string; checkout_id: string; amount: number; currency: string; message: string }>('/bookings/session', { method: 'POST', token, body: payload }),

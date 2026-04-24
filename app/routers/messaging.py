@@ -42,6 +42,8 @@ from app.schemas.schemas import (
 from app.services import email_service, twilio_service
 from app.services.local_auth import decode_access_token
 from app.services.ws_manager import manager
+from app.services import socketio_server as sio_server
+from app.schemas.schemas import EditMessageRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/messaging", tags=["Messaging"])
@@ -79,27 +81,50 @@ async def require_admin_or_secret(
 
 
 def _to_message_out(msg: Message, viewer: MessageSenderType) -> MessageOut:
+    is_deleted = bool(getattr(msg, "is_deleted", False))
     return MessageOut(
         id=str(msg.id),
-        content=msg.content,
+        content="" if is_deleted else msg.content,
         sender_type=msg.sender_type.value,
         sender_name=msg.sender_name,
         created_at=msg.created_at,
         is_me=(msg.sender_type == viewer),
+        is_edited=bool(getattr(msg, "is_edited", False)),
+        edited_at=getattr(msg, "edited_at", None),
+        is_deleted=is_deleted,
+        attachment_url=None if is_deleted else getattr(msg, "attachment_url", None),
+        attachment_filename=None if is_deleted else getattr(msg, "attachment_filename", None),
+        attachment_mime=None if is_deleted else getattr(msg, "attachment_mime", None),
+        attachment_size=None if is_deleted else getattr(msg, "attachment_size", None),
+        read_at=getattr(msg, "read_at", None),
     )
+
+
+def _msg_to_dict(msg: Message) -> dict:
+    is_deleted = bool(getattr(msg, "is_deleted", False))
+    return {
+        "id": str(msg.id),
+        "content": "" if is_deleted else msg.content,
+        "sender_type": msg.sender_type.value,
+        "sender_name": msg.sender_name,
+        "sender_id": str(msg.sender_id) if msg.sender_id else None,
+        "created_at": msg.created_at.isoformat() if msg.created_at else None,
+        "is_edited": bool(getattr(msg, "is_edited", False)),
+        "edited_at": msg.edited_at.isoformat() if getattr(msg, "edited_at", None) else None,
+        "is_deleted": is_deleted,
+        "attachment_url": None if is_deleted else getattr(msg, "attachment_url", None),
+        "attachment_filename": None if is_deleted else getattr(msg, "attachment_filename", None),
+        "attachment_mime": None if is_deleted else getattr(msg, "attachment_mime", None),
+        "attachment_size": None if is_deleted else getattr(msg, "attachment_size", None),
+        "read_at": msg.read_at.isoformat() if getattr(msg, "read_at", None) else None,
+    }
 
 
 def _serialize_ws_message(msg: Message, conversation_id: str) -> dict:
     return {
         "event": "new_message",
         "conversation_id": conversation_id,
-        "message": {
-            "id": str(msg.id),
-            "content": msg.content,
-            "sender_type": msg.sender_type.value,
-            "sender_name": msg.sender_name,
-            "created_at": msg.created_at.isoformat(),
-        },
+        "message": _msg_to_dict(msg),
     }
 
 
@@ -331,6 +356,19 @@ async def get_conversation(
     if not conv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
 
+    now = datetime.utcnow()
+    # Capture which message ids were just read so we can announce a read receipt.
+    just_read_ids_rows = (
+        await db.execute(
+            select(Message.id).where(
+                Message.conversation_id == conv_id,
+                Message.sender_type == MessageSenderType.team,
+                Message.is_read.is_(False),
+            )
+        )
+    ).all()
+    just_read_ids = [str(r[0]) for r in just_read_ids_rows]
+
     await db.execute(
         update(Message)
         .where(
@@ -338,7 +376,7 @@ async def get_conversation(
             Message.sender_type == MessageSenderType.team,
             Message.is_read.is_(False),
         )
-        .values(is_read=True)
+        .values(is_read=True, read_at=now)
     )
     await db.execute(
         update(Conversation)
@@ -347,6 +385,14 @@ async def get_conversation(
     )
     await db.commit()
     await db.refresh(conv)
+
+    if just_read_ids:
+        try:
+            await sio_server.emit_message_read(
+                str(conv_id), str(current_user.id), just_read_ids
+            )
+        except Exception as exc:  # pragma: no cover — never block the response
+            logger.warning("sio emit message:read failed: %s", exc)
 
     return ConversationDetailOut(
         id=str(conv.id),
@@ -479,6 +525,225 @@ async def delete_conversation(
     return None
 
 
+# ── Edit / Delete / Attachment endpoints (additive) ───────────────────────────
+
+def _can_modify(msg: Message, user: User) -> bool:
+    """A user can edit/delete their own message; an admin can modify any
+    team-side message they sent. The team_member_name on the conversation
+    stays untouched in either case."""
+    if msg.is_deleted:
+        return False
+    if msg.sender_id and msg.sender_id == user.id:
+        return True
+    if user.is_admin and msg.sender_type == MessageSenderType.team:
+        return True
+    return False
+
+
+@router.patch("/messages/{message_id}", response_model=MessageOut)
+async def edit_message(
+    message_id: str,
+    payload: EditMessageRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageOut:
+    try:
+        mid = uuid.UUID(message_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid message ID.") from exc
+
+    msg = (
+        await db.execute(
+            select(Message)
+            .where(Message.id == mid)
+            .options(selectinload(Message.conversation))
+        )
+    ).scalar_one_or_none()
+    if not msg:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found.")
+    if not _can_modify(msg, current_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only edit your own messages.")
+
+    new_content = payload.content.strip()
+    if not new_content:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Content cannot be empty.")
+
+    msg.content = new_content
+    msg.is_edited = True
+    msg.edited_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(msg)
+
+    conv_id = str(msg.conversation_id)
+    background_tasks.add_task(sio_server.emit_message_edited, conv_id, _msg_to_dict(msg))
+    viewer = MessageSenderType.user if msg.sender_type == MessageSenderType.user else MessageSenderType.team
+    return _to_message_out(msg, viewer)
+
+
+@router.delete("/messages/{message_id}", status_code=status.HTTP_200_OK)
+async def delete_message(
+    message_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    try:
+        mid = uuid.UUID(message_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid message ID.") from exc
+
+    msg = (
+        await db.execute(select(Message).where(Message.id == mid))
+    ).scalar_one_or_none()
+    if not msg:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found.")
+    if not _can_modify(msg, current_user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can only delete your own messages.")
+
+    msg.is_deleted = True
+    msg.deleted_at = datetime.utcnow()
+    msg.attachment_url = None
+    msg.attachment_filename = None
+    msg.attachment_mime = None
+    msg.attachment_size = None
+    await db.commit()
+
+    conv_id = str(msg.conversation_id)
+    background_tasks.add_task(sio_server.emit_message_deleted, conv_id, str(msg.id))
+    return {"ok": True, "id": str(msg.id), "conversation_id": conv_id}
+
+
+_ALLOWED_MIMES = {
+    "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain", "text/csv",
+}
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+_UPLOADS_ROOT = None  # resolved lazily so the router can import without main
+
+
+def _ensure_uploads_dir():
+    global _UPLOADS_ROOT
+    if _UPLOADS_ROOT is None:
+        from pathlib import Path as _P
+        _UPLOADS_ROOT = _P(__file__).resolve().parent.parent.parent / "uploads" / "messages"
+        _UPLOADS_ROOT.mkdir(parents=True, exist_ok=True)
+    return _UPLOADS_ROOT
+
+
+from fastapi import File, Form, UploadFile  # noqa: E402
+
+
+@router.post("/conversations/{conversation_id}/attachment", response_model=SendMessageResponse)
+async def upload_attachment(
+    conversation_id: str,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    content: str = Form(""),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SendMessageResponse:
+    """Upload a file as a new message in this conversation. Stored under
+    /uploads/messages/ and served as a static asset."""
+    try:
+        conv_id = uuid.UUID(conversation_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid conversation ID.") from exc
+
+    conv = (
+        await db.execute(
+            select(Conversation)
+            .where(Conversation.id == conv_id)
+            .options(selectinload(Conversation.user))
+        )
+    ).scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
+
+    is_admin_send = current_user.is_admin and conv.user_id != current_user.id
+    if not is_admin_send and conv.user_id != current_user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Forbidden.")
+
+    mime = (file.content_type or "application/octet-stream").lower()
+    if mime not in _ALLOWED_MIMES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"File type {mime!r} not allowed.")
+
+    raw = await file.read()
+    size = len(raw)
+    if size == 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Empty file.")
+    if size > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "File exceeds 10 MB limit.")
+
+    safe_name = (file.filename or "upload").replace("/", "_").replace("\\", "_")
+    suffix = ""
+    if "." in safe_name:
+        suffix = "." + safe_name.rsplit(".", 1)[-1].lower()[:10]
+    stored_name = f"{uuid.uuid4().hex}{suffix}"
+    target = _ensure_uploads_dir() / stored_name
+
+    import aiofiles
+    async with aiofiles.open(target, "wb") as fh:
+        await fh.write(raw)
+
+    public_url = f"/uploads/messages/{stored_name}"
+
+    sender_type = MessageSenderType.team if is_admin_send else MessageSenderType.user
+    sender_name = "Havlo Advisory" if is_admin_send else current_user.full_name
+    msg = Message(
+        conversation_id=conv_id,
+        content=(content or "").strip(),
+        sender_type=sender_type,
+        sender_name=sender_name,
+        sender_id=current_user.id,
+        is_read=(sender_type == MessageSenderType.user),
+        attachment_url=public_url,
+        attachment_filename=safe_name,
+        attachment_mime=mime,
+        attachment_size=size,
+    )
+    db.add(msg)
+    if sender_type == MessageSenderType.team:
+        await db.execute(
+            update(Conversation)
+            .where(Conversation.id == conv_id)
+            .values(
+                unread_count=Conversation.unread_count + 1,
+                last_message_at=datetime.utcnow(),
+            )
+        )
+    else:
+        conv.last_message_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(msg)
+
+    user_id = str(conv.user_id)
+    if sender_type == MessageSenderType.team:
+        background_tasks.add_task(manager.send_to_user, user_id, _serialize_ws_message(msg, str(conv.id)))
+        background_tasks.add_task(_maybe_send_team_sms, msg.id, user_id)
+    else:
+        ws_payload = _serialize_ws_message(msg, str(conv.id))
+        ws_payload["user"] = {
+            "id": str(current_user.id),
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+        }
+        background_tasks.add_task(manager.broadcast_to_admins, ws_payload)
+
+    background_tasks.add_task(
+        sio_server.emit_message_new, str(conv.id), _msg_to_dict(msg), user_id
+    )
+
+    viewer = MessageSenderType.user if not is_admin_send else MessageSenderType.team
+    return SendMessageResponse(message=_to_message_out(msg, viewer))
+
+
 @router.post("/conversations/{conversation_id}/messages", response_model=SendMessageResponse)
 async def send_user_message(
     conversation_id: str,
@@ -524,6 +789,14 @@ async def send_user_message(
         "email": current_user.email,
     }
     background_tasks.add_task(manager.broadcast_to_admins, ws_payload)
+    # Mirror to socket.io so realtime listeners (admin dashboards, the user's
+    # other tabs) see the new message instantly, in addition to the existing WS.
+    background_tasks.add_task(
+        sio_server.emit_message_new,
+        str(conv.id),
+        _msg_to_dict(msg),
+        str(current_user.id),
+    )
 
     return SendMessageResponse(message=_to_message_out(msg, MessageSenderType.user))
 
@@ -579,6 +852,9 @@ async def admin_send_message(
     user_id = str(conv.user_id)
     background_tasks.add_task(manager.send_to_user, user_id, _serialize_ws_message(msg, str(conv.id)))
     background_tasks.add_task(_maybe_send_team_sms, msg.id, user_id)
+    background_tasks.add_task(
+        sio_server.emit_message_new, str(conv.id), _msg_to_dict(msg), user_id
+    )
 
     return SendMessageResponse(message=_to_message_out(msg, MessageSenderType.team))
 

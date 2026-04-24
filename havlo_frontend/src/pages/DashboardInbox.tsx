@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { ChevronLeft, Mail, MoreVertical, Pencil, SendHorizontal, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, ChevronLeft, Mail, MoreVertical, Paperclip, Pencil, SendHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation, type AdminUser } from '../lib/api';
+import { api, buildWsUrl, type Conversation, type ConversationDetail, type AdminConversation, type AdminUser, type Message } from '../lib/api';
 import { readCachedConversations, writeCachedConversations } from '../lib/useInboxUnread';
+import { useSocket } from '../lib/useSocket';
 
 const broadcastInboxUpdate = () => {
   if (typeof window !== 'undefined') {
@@ -67,6 +68,24 @@ export const DashboardInbox: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState('');
+  // Real-time messaging additions (edit/delete/typing/attachments).
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [msgMenuOpenId, setMsgMenuOpenId] = useState<string | null>(null);
+  const [deleteMsgId, setDeleteMsgId] = useState<string | null>(null);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const otherTypingTimeoutRef = useRef<number | null>(null);
+  const lastTypingSentRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!msgMenuOpenId) return;
+    const close = () => setMsgMenuOpenId(null);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, [msgMenuOpenId]);
 
   useEffect(() => {
     if (!menuOpenId) return;
@@ -381,6 +400,90 @@ export const DashboardInbox: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, isAdmin]);
 
+  // ── Socket.IO real-time channel (additive to the native WS above) ──────────
+  const { emitTyping } = useSocket(token, selectedId, {
+    onMessageNew: (p) => {
+      const convId = p.conversation_id;
+      const incoming = p.message;
+      // Update the conversation list snippet/unread badge.
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.id !== convId) return c;
+          const isActive = selectedIdRef.current === convId;
+          return {
+            ...c,
+            last_message_at: incoming.created_at || new Date().toISOString(),
+            last_message_snippet: (incoming.content || incoming.attachment_filename || '').slice(0, 60) || null,
+            unread_count: isActive ? c.unread_count : (c.unread_count ?? 0) + 1,
+          };
+        }),
+      );
+      if (selectedIdRef.current !== convId) return;
+      setDetail((prev) => {
+        if (!prev || prev.id !== convId) return prev;
+        if (prev.messages.some((m: Message) => m.id === incoming.id)) return prev;
+        const isMe = (incoming.sender_type === 'team') === isAdmin;
+        const merged: Message = { ...(incoming as Message), is_me: isMe };
+        return { ...prev, messages: [...prev.messages, merged] };
+      });
+    },
+    onMessageEdited: (p) => {
+      const incoming = p.message;
+      setDetail((prev) => {
+        if (!prev || prev.id !== p.conversation_id) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m: Message) =>
+            m.id === incoming.id ? { ...m, ...incoming, is_me: m.is_me } : m,
+          ),
+        };
+      });
+    },
+    onMessageDeleted: (p) => {
+      setDetail((prev) => {
+        if (!prev || prev.id !== p.conversation_id) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m: Message) =>
+            m.id === p.message_id
+              ? { ...m, is_deleted: true, content: '', attachment_url: null, attachment_filename: null }
+              : m,
+          ),
+        };
+      });
+    },
+    onMessageRead: (p) => {
+      const ids = new Set(p.message_ids);
+      setDetail((prev) => {
+        if (!prev || prev.id !== p.conversation_id) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.map((m: Message) =>
+            ids.has(m.id) ? { ...m, read_at: new Date().toISOString() } : m,
+          ),
+        };
+      });
+    },
+    onTyping: (p) => {
+      if (p.conversation_id !== selectedIdRef.current) return;
+      // Ignore my own typing echo.
+      if (user?.id && p.user_id === user.id) return;
+      setOtherTyping(!!p.is_typing);
+      if (otherTypingTimeoutRef.current) {
+        window.clearTimeout(otherTypingTimeoutRef.current);
+        otherTypingTimeoutRef.current = null;
+      }
+      if (p.is_typing) {
+        otherTypingTimeoutRef.current = window.setTimeout(() => setOtherTyping(false), 4000);
+      }
+    },
+  });
+
+  // Reset the "other side typing" indicator whenever the active thread changes.
+  useEffect(() => {
+    setOtherTyping(false);
+  }, [selectedId]);
+
   // Admin fallback polling.
   useEffect(() => {
     if (!token || !isAdmin) return;
@@ -449,6 +552,136 @@ export const DashboardInbox: React.FC = () => {
       setSending(false);
       messageInputRef.current?.focus();
     }
+  };
+
+  const handleTextChange = (value: string) => {
+    setMessageText(value);
+    if (!selectedId) return;
+    const now = Date.now();
+    if (value && now - lastTypingSentRef.current > 1500) {
+      lastTypingSentRef.current = now;
+      emitTyping(selectedId, true);
+    }
+    if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = window.setTimeout(() => {
+      if (selectedId) emitTyping(selectedId, false);
+      lastTypingSentRef.current = 0;
+    }, 2000);
+  };
+
+  const handleAttachmentClick = () => fileInputRef.current?.click();
+
+  const handleAttachmentChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f || !token || !selectedId) return;
+    if (f.size > 10 * 1024 * 1024) {
+      setSendError('File exceeds 10 MB limit.');
+      return;
+    }
+    setAttachmentBusy(true);
+    setSendError('');
+    try {
+      const resp = await api.uploadAttachment(token, selectedId, f, '');
+      const real = (resp as any)?.message;
+      if (real) {
+        setDetail((prev) =>
+          prev && prev.id === selectedId
+            ? prev.messages.some((m: Message) => m.id === real.id)
+              ? prev
+              : { ...prev, messages: [...prev.messages, { ...real, is_me: true }] }
+            : prev,
+        );
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedId
+              ? {
+                  ...c,
+                  last_message_at: real.created_at,
+                  last_message_snippet: (real.attachment_filename || real.content || '').slice(0, 60),
+                }
+              : c,
+          ),
+        );
+      }
+    } catch (err: unknown) {
+      setSendError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setAttachmentBusy(false);
+    }
+  };
+
+  const handleStartEdit = (msg: Message) => {
+    setEditingMsgId(msg.id);
+    setEditingText(msg.content || '');
+    setMsgMenuOpenId(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMsgId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!token || !editingMsgId) return;
+    const next = editingText.trim();
+    if (!next) {
+      setSendError('Message cannot be empty.');
+      return;
+    }
+    const id = editingMsgId;
+    setSendError('');
+    try {
+      const updated = await api.editMessage(token, id, next);
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: prev.messages.map((m: Message) =>
+                m.id === id ? { ...m, ...updated, is_me: m.is_me } : m,
+              ),
+            }
+          : prev,
+      );
+      setEditingMsgId(null);
+      setEditingText('');
+    } catch (err: unknown) {
+      setSendError(err instanceof Error ? err.message : 'Failed to edit message.');
+    }
+  };
+
+  const handleDeleteMsg = async () => {
+    if (!token || !deleteMsgId) return;
+    const id = deleteMsgId;
+    setActionBusy(true);
+    setActionError('');
+    try {
+      await api.deleteMessage(token, id);
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              messages: prev.messages.map((m: Message) =>
+                m.id === id
+                  ? { ...m, is_deleted: true, content: '', attachment_url: null, attachment_filename: null }
+                  : m,
+              ),
+            }
+          : prev,
+      );
+      setDeleteMsgId(null);
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : 'Failed to delete message.');
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const formatBytes = (n?: number | null) => {
+    if (!n || n <= 0) return '';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleRename = async () => {
@@ -766,24 +999,174 @@ export const DashboardInbox: React.FC = () => {
                 ) : !detail ? (
                   <div className="h-full" />
                 ) : detail.messages.length ? (
-                  [...detail.messages]
-                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                    .map((msg) => (
-                    <div key={msg.id} className={`flex items-start gap-2 ${msg.is_me ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className={`max-w-[70%] space-y-1 ${msg.is_me ? 'items-end' : 'items-start'}`}>
+                  (() => {
+                    const sorted = [...detail.messages].sort(
+                      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+                    );
+                    const lastMineWithReadIdx = (() => {
+                      for (let i = sorted.length - 1; i >= 0; i -= 1) {
+                        if (sorted[i].is_me && !sorted[i].is_deleted) return i;
+                      }
+                      return -1;
+                    })();
+                    return sorted.map((msg, idx) => {
+                      const isEditing = editingMsgId === msg.id;
+                      const isDeleted = !!msg.is_deleted;
+                      const showStatus = msg.is_me && idx === lastMineWithReadIdx && !isDeleted;
+                      const isImage = !!msg.attachment_mime && msg.attachment_mime.startsWith('image/');
+                      return (
                         <div
-                          className={`p-3 text-sm font-medium leading-relaxed ${
-                            msg.is_me
-                              ? 'bg-[#A409D2] text-white rounded-2xl rounded-tr-none'
-                              : 'bg-white text-[#121212] rounded-2xl rounded-tl-none'
-                          }`}
+                          key={msg.id}
+                          className={`group flex items-start gap-2 ${msg.is_me ? 'flex-row-reverse' : 'flex-row'}`}
                         >
-                          {msg.content}
+                          <div className={`max-w-[70%] space-y-1 ${msg.is_me ? 'items-end' : 'items-start'}`}>
+                            {isEditing ? (
+                              <div className="bg-white border border-black/10 rounded-2xl p-2 shadow-sm">
+                                <textarea
+                                  value={editingText}
+                                  onChange={(e) => setEditingText(e.target.value)}
+                                  rows={2}
+                                  className="w-64 sm:w-80 text-sm text-black px-2 py-1 focus:outline-none resize-none"
+                                  autoFocus
+                                />
+                                <div className="flex justify-end gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={handleCancelEdit}
+                                    className="px-3 py-1 text-xs font-semibold text-black/70 hover:bg-black/5 rounded-full"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleSaveEdit}
+                                    disabled={!editingText.trim()}
+                                    className="px-3 py-1 text-xs font-semibold bg-[#A409D2] text-white rounded-full disabled:opacity-50"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                className={`p-3 text-sm font-medium leading-relaxed ${
+                                  isDeleted
+                                    ? 'bg-black/5 text-black/40 italic rounded-2xl'
+                                    : msg.is_me
+                                    ? 'bg-[#A409D2] text-white rounded-2xl rounded-tr-none'
+                                    : 'bg-white text-[#121212] rounded-2xl rounded-tl-none'
+                                }`}
+                              >
+                                {isDeleted ? (
+                                  <span>This message was deleted</span>
+                                ) : (
+                                  <>
+                                    {msg.attachment_url && (
+                                      <div className="mb-2">
+                                        {isImage ? (
+                                          <a href={msg.attachment_url} target="_blank" rel="noreferrer">
+                                            <img
+                                              src={msg.attachment_url}
+                                              alt={msg.attachment_filename || 'attachment'}
+                                              className="max-h-64 rounded-lg"
+                                            />
+                                          </a>
+                                        ) : (
+                                          <a
+                                            href={msg.attachment_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            download={msg.attachment_filename || undefined}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
+                                              msg.is_me ? 'bg-white/15 hover:bg-white/25' : 'bg-black/5 hover:bg-black/10'
+                                            }`}
+                                          >
+                                            <Paperclip size={14} />
+                                            <span className="text-xs underline">
+                                              {msg.attachment_filename || 'Attachment'}
+                                            </span>
+                                            {msg.attachment_size ? (
+                                              <span className="text-[10px] opacity-70">
+                                                {formatBytes(msg.attachment_size)}
+                                              </span>
+                                            ) : null}
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+                                    {msg.content && <span>{msg.content}</span>}
+                                  </>
+                                )}
+                              </div>
+                            )}
+                            <div
+                              className={`flex items-center gap-2 text-[10px] text-[#121212]/60 px-1 ${
+                                msg.is_me ? 'justify-end' : 'justify-start'
+                              }`}
+                            >
+                              <span>{formatDateTime(msg.created_at)}</span>
+                              {msg.is_edited && !isDeleted && <span className="italic">(edited)</span>}
+                              {showStatus && (
+                                msg.read_at ? (
+                                  <span className="flex items-center gap-1 text-[#A409D2]" title="Seen">
+                                    <CheckCheck size={12} />
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1" title="Sent">
+                                    <Check size={12} />
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
+
+                          {msg.is_me && !isDeleted && !isEditing && !msg.id.startsWith('tmp-') && (
+                            <div className="relative self-center" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMsgMenuOpenId(msgMenuOpenId === msg.id ? null : msg.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 focus:opacity-100 h-7 w-7 flex items-center justify-center rounded-full hover:bg-black/5 transition-opacity"
+                                aria-label="Message actions"
+                              >
+                                <MoreVertical size={16} />
+                              </button>
+                              {msgMenuOpenId === msg.id && (
+                                <div className="absolute right-0 top-7 z-30 w-32 rounded-lg border border-black/10 bg-white shadow-lg py-1">
+                                  {!msg.attachment_url && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartEdit(msg);
+                                      }}
+                                      className="w-full px-3 py-2 text-left text-xs font-medium text-black hover:bg-black/5 flex items-center gap-2"
+                                    >
+                                      <Pencil size={14} /> Edit
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMsgMenuOpenId(null);
+                                      setDeleteMsgId(msg.id);
+                                      setActionError('');
+                                    }}
+                                    className="w-full px-3 py-2 text-left text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                  >
+                                    <Trash2 size={14} /> Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[10px] text-[#121212]/60 px-1">{formatDateTime(msg.created_at)}</div>
-                      </div>
-                    </div>
-                  ))
+                      );
+                    });
+                  })()
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
                     <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-sm">
@@ -799,13 +1182,34 @@ export const DashboardInbox: React.FC = () => {
                 className="flex-shrink-0 p-3 sm:p-4 bg-white border-t border-[#F1F1F0]"
                 style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
               >
+                {otherTyping && (
+                  <p className="text-[11px] text-black/50 font-body mb-2 text-center italic">
+                    {isAdmin ? 'User is typing…' : `${detail?.team_member_name || 'Havlo Advisory'} is typing…`}
+                  </p>
+                )}
                 {sendError && <p className="text-red-500 text-xs font-body mb-2 text-center">{sendError}</p>}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleAttachmentChange}
+                  accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                />
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2 sm:gap-3 max-w-[837px] mx-auto">
+                  <button
+                    type="button"
+                    onClick={handleAttachmentClick}
+                    disabled={attachmentBusy}
+                    className="w-12 h-12 flex-shrink-0 rounded-full bg-[#F4F4F4] flex items-center justify-center text-black/70 hover:bg-black/10 transition-colors disabled:opacity-50"
+                    aria-label="Attach file"
+                  >
+                    <Paperclip size={20} />
+                  </button>
                   <input
                     ref={messageInputRef}
                     type="text"
                     value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
+                    onChange={(e) => handleTextChange(e.target.value)}
                     onFocus={() => {
                       window.setTimeout(() => {
                         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -872,6 +1276,20 @@ export const DashboardInbox: React.FC = () => {
             <div className="flex justify-end gap-2">
               <button type="button" disabled={actionBusy} onClick={() => setDeleteId(null)} className="px-4 py-2 text-xs font-semibold text-black/70 hover:bg-black/5 rounded-full">Cancel</button>
               <button type="button" disabled={actionBusy} onClick={handleDelete} className="px-4 py-2 text-xs font-semibold bg-red-600 text-white rounded-full disabled:opacity-50">{actionBusy ? 'Deleting…' : 'Delete'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteMsgId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => !actionBusy && setDeleteMsgId(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-black">Delete this message?</h3>
+            <p className="text-sm text-black/70">The message will be marked as deleted for everyone in this conversation.</p>
+            {actionError && <p className="text-red-500 text-xs">{actionError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={actionBusy} onClick={() => setDeleteMsgId(null)} className="px-4 py-2 text-xs font-semibold text-black/70 hover:bg-black/5 rounded-full">Cancel</button>
+              <button type="button" disabled={actionBusy} onClick={handleDeleteMsg} className="px-4 py-2 text-xs font-semibold bg-red-600 text-white rounded-full disabled:opacity-50">{actionBusy ? 'Deleting…' : 'Delete'}</button>
             </div>
           </div>
         </div>
