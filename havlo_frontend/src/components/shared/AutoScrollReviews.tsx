@@ -66,7 +66,7 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
           to   { transform: translate3d(-50%, 0, 0); }
         }
       `}</style>
-      <div className="w-full py-[30px]">
+      <div className="w-full py-[30px] pt-[10px]">
         <div
           ref={trackRef}
           className="flex items-stretch gap-4"
