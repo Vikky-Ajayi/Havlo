@@ -53,48 +53,58 @@ export const Footer: React.FC = () => {
     { name: 'Terms of Service', href: '/terms' },
     { name: 'Privacy Policy', href: '/privacy-policy' },
     { name: 'Cookie Policy', href: '/cookie-policy' },
-    { name: 'Stop Property Marketing by Post', href: '#opt-out', action: 'opt-out' as const },
   ];
 
   return (
     <footer className="w-full bg-[#040504] flex flex-col items-center pt-0 pb-0">
       <div className="w-full max-w-[1600px] px-4 lg:px-14 pt-10 lg:pt-14 pb-6 rounded-[32px] bg-[#050505] flex flex-col gap-10 lg:gap-14 mx-2 lg:mx-auto">
         {/* Top Row: Newsletter & Socials */}
-        <div className="flex flex-col lg:flex-row justify-between items-center gap-10">
-          <form
-            onSubmit={handleNewsletterSubmit}
-            className="relative flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto"
-          >
-            <div className="relative flex h-14 w-full sm:w-[377px] items-center rounded-[56px] bg-[#1F1F1E] px-6">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={newsletterEmail}
-                onChange={(e) => setNewsletterEmail(e.target.value)}
-                className="w-full bg-transparent font-body text-base font-semibold text-white placeholder:text-white/50 focus:outline-none"
-              />
-            </div>
-            <Button
-              type="submit"
-              disabled={newsletterSubmitting}
-              variant="secondary"
-              className="h-14 px-5 rounded-[56px] font-bold bg-white text-black hover:bg-gray-200 transition-colors w-full sm:w-auto disabled:opacity-60"
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
+          <div className="flex flex-col items-start gap-3 w-full lg:w-auto">
+            <form
+              onSubmit={handleNewsletterSubmit}
+              className="relative flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto"
             >
-              {newsletterSubmitting ? 'Joining…' : 'Join Newsletter'}
-            </Button>
-            {toast && (
-              <div
-                role="status"
-                className={`absolute -top-14 left-0 right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 rounded-[12px] px-4 py-3 text-sm font-semibold shadow-lg whitespace-nowrap text-center ${
-                  toast.tone === 'success'
-                    ? 'bg-[#E6F8EE] text-[#15803D]'
-                    : 'bg-[#FEE2E2] text-[#B91C1C]'
-                }`}
-              >
-                {toast.message}
+              <div className="relative flex h-14 w-full sm:w-[377px] items-center rounded-[56px] bg-[#1F1F1E] px-6">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  className="w-full bg-transparent font-body text-base font-semibold text-white placeholder:text-white/50 focus:outline-none"
+                />
               </div>
-            )}
-          </form>
+              <Button
+                type="submit"
+                disabled={newsletterSubmitting}
+                variant="secondary"
+                className="h-14 px-5 rounded-[56px] font-bold bg-white text-black hover:bg-gray-200 transition-colors w-full sm:w-auto disabled:opacity-60"
+              >
+                {newsletterSubmitting ? 'Joining…' : 'Join Newsletter'}
+              </Button>
+              {toast && (
+                <div
+                  role="status"
+                  className={`absolute -top-14 left-0 right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 rounded-[12px] px-4 py-3 text-sm font-semibold shadow-lg whitespace-nowrap text-center ${
+                    toast.tone === 'success'
+                      ? 'bg-[#E6F8EE] text-[#15803D]'
+                      : 'bg-[#FEE2E2] text-[#B91C1C]'
+                  }`}
+                >
+                  {toast.message}
+                </div>
+              )}
+            </form>
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(new CustomEvent('havlo:open-opt-out'))
+              }
+              className="font-body text-sm font-semibold tracking-[-0.28px] text-white/70 hover:text-white underline underline-offset-4 decoration-white/40 hover:decoration-white transition-colors"
+            >
+              Stop Property Marketing by Post
+            </button>
+          </div>
 
           <div className="flex items-center gap-7">
             {[
@@ -169,33 +179,20 @@ const LinkGroup = ({
   links,
 }: {
   title: string;
-  links: { name: string; href: string; action?: 'opt-out' }[];
+  links: { name: string; href: string }[];
 }) => (
   <div className="flex flex-col gap-6">
     <h4 className="font-display text-xl font-black text-white">{title}</h4>
     <div className="flex flex-col gap-8">
-      {links.map((link) =>
-        link.action === 'opt-out' ? (
-          <button
-            key={link.name}
-            type="button"
-            onClick={() =>
-              window.dispatchEvent(new CustomEvent('havlo:open-opt-out'))
-            }
-            className="text-left font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
-          >
-            {link.name}
-          </button>
-        ) : (
-          <Link
-            key={link.name}
-            to={link.href}
-            className="font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
-          >
-            {link.name}
-          </Link>
-        ),
-      )}
+      {links.map((link) => (
+        <Link
+          key={link.name}
+          to={link.href}
+          className="font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
+        >
+          {link.name}
+        </Link>
+      ))}
     </div>
   </div>
 );
