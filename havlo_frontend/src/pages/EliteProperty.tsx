@@ -179,7 +179,7 @@ export const EliteProperty: React.FC = () => {
           </h2>
         </div>
 
-        <div className="grid w-full grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl">
+        <div className="grid w-full grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-7xl pb-[85px]">
           {[
             { num: "01", title: "We Don't List. We Introduce.", desc: "Traditional agents rely on listings and passive exposure. We actively place your property in front of buyers already looking." },
             { num: "02", title: "Access to Capital-Rich Buyers", desc: "Our network includes family offices and international investors with immediate purchasing power." },
