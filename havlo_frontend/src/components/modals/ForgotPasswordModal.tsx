@@ -12,14 +12,15 @@ export const ForgotPasswordModal: React.FC = () => {
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
-    if (!email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
       setError('Please enter your email address.');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      await api.forgotPassword(email.trim());
+      await api.forgotPassword(normalizedEmail);
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send reset link. Please try again.');
@@ -71,6 +72,11 @@ export const ForgotPasswordModal: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="email"
+                  autoComplete="email"
                   className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
                 />
               </div>

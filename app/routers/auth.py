@@ -7,7 +7,7 @@ import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -129,7 +129,15 @@ async def register(
     The response includes an access_token + profile so the frontend does NOT need
     to make a follow-up /auth/login call. This roughly halves sign-up latency.
     """
-    existing = await db.execute(select(User).where(User.email == payload.email))
+    # Normalize email: trim + lowercase. Case-sensitive comparison would let
+    # users accidentally create duplicate accounts (e.g. iOS auto-capitalises
+    # the first letter), then permanently lock themselves out because the
+    # login lookup is also case-sensitive.
+    normalized_email = payload.email.strip().lower()
+
+    existing = await db.execute(
+        select(User).where(func.lower(User.email) == normalized_email)
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -140,12 +148,12 @@ async def register(
 
     user = User(
         supabase_uid=None,
-        email=payload.email,
+        email=normalized_email,
         password_hash=hashed_password,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
+        first_name=payload.first_name.strip(),
+        last_name=payload.last_name.strip(),
         phone_country_code=payload.phone_country_code,
-        phone_number=payload.phone_number,
+        phone_number=payload.phone_number.strip(),
         role=UserRole(payload.role),
         onboarding_complete=False,
     )
@@ -210,7 +218,12 @@ async def login(
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> LoginResponse:
-    result = await db.execute(select(User).where(User.email == payload.email))
+    # Case-insensitive lookup so users can log in regardless of how they
+    # capitalised their email at registration time.
+    normalized_email = payload.email.strip().lower()
+    result = await db.execute(
+        select(User).where(func.lower(User.email) == normalized_email)
+    )
     user = result.scalar_one_or_none()
 
     if user is None or not user.password_hash:

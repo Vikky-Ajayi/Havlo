@@ -20,14 +20,15 @@ export const LoginModal: React.FC = () => {
   const handleLogin = async () => {
     setError('');
 
-    if (!email || !password) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
       setError('Please enter your email and password.');
       return;
     }
 
     setLoading(true);
     try {
-      const resp = await api.login({ email, password });
+      const resp = await api.login({ email: normalizedEmail, password });
       await login(resp);
       closeModal();
 
@@ -76,6 +77,11 @@ export const LoginModal: React.FC = () => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="email"
+                  autoComplete="email"
                   className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
                 />
               </div>

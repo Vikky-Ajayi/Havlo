@@ -30,7 +30,8 @@ export const CreateAccountModal: React.FC = () => {
     if (inFlight.current) return;
     setError('');
 
-    if (!firstName || !lastName || !email || !phoneNumber || !role || !password) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!firstName || !lastName || !normalizedEmail || !phoneNumber || !role || !password) {
       setError('Please fill in all fields.');
       return;
     }
@@ -58,12 +59,12 @@ export const CreateAccountModal: React.FC = () => {
       // Single round-trip: register now also returns access_token + profile,
       // so we can sign the user in immediately without a follow-up /auth/login.
       const resp = await api.register({
-        email,
+        email: normalizedEmail,
         password,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         phone_country_code: phoneCountryCode,
-        phone_number: phoneNumber,
+        phone_number: phoneNumber.trim(),
         role,
       });
 
@@ -152,6 +153,11 @@ export const CreateAccountModal: React.FC = () => {
                 placeholder="Email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
+                autoComplete="email"
                 className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
             </label>
