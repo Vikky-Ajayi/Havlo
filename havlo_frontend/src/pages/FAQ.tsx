@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui/Button';
 import { useModal } from '../hooks/useModal';
@@ -482,6 +483,7 @@ export const FAQ: React.FC = () => {
     canonical: 'https://www.heyhavlo.com/faq',
   });
   const { openModal } = useModal();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('buyers');
   const activeFaqs = tabConfig.find((t) => t.key === activeTab)?.faqs ?? [];
 
@@ -561,7 +563,7 @@ export const FAQ: React.FC = () => {
           </p>
         </div>
         <Button
-          onClick={() => openModal('book-session')}
+          onClick={() => navigate('/contact-us')}
           className="h-14 px-6 rounded-[48px] bg-black text-[#FEFFFF] font-semibold text-lg hover:bg-black/90 transition-colors"
         >
           Talk to our Team
