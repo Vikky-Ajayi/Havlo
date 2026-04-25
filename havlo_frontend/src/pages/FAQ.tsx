@@ -379,6 +379,25 @@ const sellerFaqs: FAQItemProps[] = [
       </div>
     ),
   },
+  {
+    question: 'I received a marketing letter, but my property is not for sale—what should I do?',
+    answer: (
+      <div className="flex flex-col gap-3">
+        <p>If you’ve received a letter from us and your property is not for sale, there’s no need to worry. This may have been sent in error by one of our marketing partners.</p>
+        <p>
+          To stop receiving marketing communications from us, simply complete our{' '}
+          <a href="/contact-us" className="text-havlo-purple underline hover:no-underline">opt-out form</a>{' '}
+          and we’ll ensure your details are removed from future campaigns.
+        </p>
+        <p>If you’d prefer, you can keep the letter and contact us in the future should you decide to sell your property.</p>
+        <p>
+          If you’ve received an unsolicited letter and would like to opt out, the same process applies—just fill in the{' '}
+          <a href="/contact-us" className="text-havlo-purple underline hover:no-underline">opt-out form</a>.
+        </p>
+        <p>Please note that we source some of our data from publicly available records, and occasionally errors can occur.</p>
+      </div>
+    ),
+  },
 ];
 
 const agentFaqs: FAQItemProps[] = [
