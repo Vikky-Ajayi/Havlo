@@ -328,14 +328,24 @@ async def health_v1() -> JSONResponse:
 
 
 def _check_diag_token(request: Request) -> bool:
-    """Allow diag endpoints in dev, or with a valid X-Diag-Token in any env."""
+    """Allow diag endpoints in dev, or with a valid token in any env.
+
+    In production the request must present a token equal to the ``DIAG_TOKEN``
+    environment variable. The token can be supplied via either:
+      * ``X-Diag-Token`` header (recommended for scripts), or
+      * ``?token=...`` query string (handy for one-off browser tests).
+    """
     settings = get_settings()
     if (getattr(settings, "APP_ENV", "development") or "development").lower() != "production":
         return True
     expected = os.environ.get("DIAG_TOKEN", "").strip()
     if not expected:
         return False
-    provided = request.headers.get("X-Diag-Token", "").strip()
+    provided = (
+        request.headers.get("X-Diag-Token", "").strip()
+        or request.query_params.get("token", "").strip()
+        or request.query_params.get("diag_token", "").strip()
+    )
     return bool(provided) and provided == expected
 
 
