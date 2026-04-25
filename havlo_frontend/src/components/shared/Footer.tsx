@@ -53,6 +53,7 @@ export const Footer: React.FC = () => {
     { name: 'Terms of Service', href: '/terms' },
     { name: 'Privacy Policy', href: '/privacy-policy' },
     { name: 'Cookie Policy', href: '/cookie-policy' },
+    { name: 'Stop Property Marketing by Post', href: '#opt-out', action: 'opt-out' as const },
   ];
 
   return (
@@ -163,19 +164,38 @@ export const Footer: React.FC = () => {
   );
 };
 
-const LinkGroup = ({ title, links }: { title: string; links: { name: string; href: string }[] }) => (
+const LinkGroup = ({
+  title,
+  links,
+}: {
+  title: string;
+  links: { name: string; href: string; action?: 'opt-out' }[];
+}) => (
   <div className="flex flex-col gap-6">
     <h4 className="font-display text-xl font-black text-white">{title}</h4>
     <div className="flex flex-col gap-8">
-      {links.map((link) => (
-        <Link
-          key={link.name}
-          to={link.href}
-          className="font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
-        >
-          {link.name}
-        </Link>
-      ))}
+      {links.map((link) =>
+        link.action === 'opt-out' ? (
+          <button
+            key={link.name}
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent('havlo:open-opt-out'))
+            }
+            className="text-left font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
+          >
+            {link.name}
+          </button>
+        ) : (
+          <Link
+            key={link.name}
+            to={link.href}
+            className="font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
+          >
+            {link.name}
+          </Link>
+        ),
+      )}
     </div>
   </div>
 );

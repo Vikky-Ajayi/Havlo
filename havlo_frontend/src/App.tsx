@@ -68,7 +68,13 @@ const ScrollToTop = () => {
 };
 
 const ModalRenderer = () => {
-  const { activeModal } = useModal();
+  const { activeModal, openModal } = useModal();
+
+  useEffect(() => {
+    const handler = () => openModal('opt-out');
+    window.addEventListener('havlo:open-opt-out', handler);
+    return () => window.removeEventListener('havlo:open-opt-out', handler);
+  }, [openModal]);
 
   switch (activeModal) {
     case 'login': return <LoginModal />;
