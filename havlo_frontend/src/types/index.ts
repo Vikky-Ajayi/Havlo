@@ -8,6 +8,8 @@ export type ModalType =
   | 'settings-password'
   | 'book-session' 
   | 'consultation'
+  | 'contact-success'
+  | 'opt-out'
   | null;
 
 export interface ModalContextType {

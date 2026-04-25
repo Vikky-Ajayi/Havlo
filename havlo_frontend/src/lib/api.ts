@@ -502,4 +502,27 @@ export const api = {
       `/admin/users/${userId}`,
       { method: 'DELETE', token },
     ),
+
+  // ── Public website forms (no auth) ───────────────────────────────────────
+  submitContactForm: (payload: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_country_code: string;
+    phone_number: string;
+    country_of_residence: string;
+    message: string;
+  }) => request<{ ok: boolean }>('/public/contact', { method: 'POST', body: payload }),
+
+  joinNewsletter: (email: string, source: string = 'footer') =>
+    request<{ ok: boolean }>('/public/newsletter', {
+      method: 'POST',
+      body: { email, source },
+    }),
+
+  marketingOptOut: (email: string, notes: string = '') =>
+    request<{ ok: boolean }>('/public/marketing-opt-out', {
+      method: 'POST',
+      body: { email, notes },
+    }),
 };

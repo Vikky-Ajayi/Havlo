@@ -1,8 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
+import { api } from '../../lib/api';
 
 export const Footer: React.FC = () => {
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, tone: 'success' | 'error') => {
+    setToast({ message, tone });
+    window.setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = newsletterEmail.trim();
+    if (!email) {
+      showToast('Please enter your email address.', 'error');
+      return;
+    }
+    setNewsletterSubmitting(true);
+    try {
+      await api.joinNewsletter(email, 'footer');
+      setNewsletterEmail('');
+      showToast("You're in! Welcome to the Havlo newsletter.", 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      showToast(msg, 'error');
+    } finally {
+      setNewsletterSubmitting(false);
+    }
+  };
+
   const serviceLinks = [
     { name: 'Elite Property Introduction', href: '/elite-property' },
     { name: 'Sell Faster', href: '/sell-your-property' },
@@ -30,21 +60,40 @@ export const Footer: React.FC = () => {
       <div className="w-full max-w-[1600px] px-4 lg:px-14 pt-10 lg:pt-14 pb-6 rounded-[32px] bg-[#050505] flex flex-col gap-10 lg:gap-14 mx-2 lg:mx-auto">
         {/* Top Row: Newsletter & Socials */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-10">
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+          <form
+            onSubmit={handleNewsletterSubmit}
+            className="relative flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto"
+          >
             <div className="relative flex h-14 w-full sm:w-[377px] items-center rounded-[56px] bg-[#1F1F1E] px-6">
               <input
                 type="email"
                 placeholder="Enter your email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
                 className="w-full bg-transparent font-body text-base font-semibold text-white placeholder:text-white/50 focus:outline-none"
               />
             </div>
             <Button
+              type="submit"
+              disabled={newsletterSubmitting}
               variant="secondary"
-              className="h-14 px-5 rounded-[56px] font-bold bg-white text-black hover:bg-gray-200 transition-colors w-full sm:w-auto"
+              className="h-14 px-5 rounded-[56px] font-bold bg-white text-black hover:bg-gray-200 transition-colors w-full sm:w-auto disabled:opacity-60"
             >
-              Join Newsletter
+              {newsletterSubmitting ? 'Joining…' : 'Join Newsletter'}
             </Button>
-          </div>
+            {toast && (
+              <div
+                role="status"
+                className={`absolute -top-14 left-0 right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 rounded-[12px] px-4 py-3 text-sm font-semibold shadow-lg whitespace-nowrap text-center ${
+                  toast.tone === 'success'
+                    ? 'bg-[#E6F8EE] text-[#15803D]'
+                    : 'bg-[#FEE2E2] text-[#B91C1C]'
+                }`}
+              >
+                {toast.message}
+              </div>
+            )}
+          </form>
 
           <div className="flex items-center gap-7">
             {[

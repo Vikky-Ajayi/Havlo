@@ -75,6 +75,8 @@ class Settings(BaseSettings):
     EMAIL_FROM_NAME: str = "Havlo"
     EMAIL_REPLY_TO: str = ""
     SUPPORT_EMAIL: str = "support@Havlo.com"
+    # Where to send "new sheet entry" notifications.
+    ADMIN_NOTIFY_EMAIL: str = "myhavloservices@gmail.com"
 
     # ── SumUp ────────────────────────────────────────────────────────────
     SUMUP_API_KEY: str = ""

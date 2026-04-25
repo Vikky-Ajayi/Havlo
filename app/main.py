@@ -29,6 +29,7 @@ from app.routers import (
     messaging,
     onboarding,
     property_matching,
+    public_forms,
     sale_audit,
     sell_faster,
     users,
@@ -485,6 +486,7 @@ app.include_router(sell_faster.public_router, prefix=API_PREFIX)
 app.include_router(sale_audit.router, prefix=API_PREFIX)
 app.include_router(buyer_network.router, prefix=API_PREFIX)
 app.include_router(buyer_network.public_router, prefix=API_PREFIX)
+app.include_router(public_forms.router, prefix=API_PREFIX)
 
 from app.routers import admin_debug  # noqa: E402
 app.include_router(admin_debug.router, prefix=API_PREFIX)

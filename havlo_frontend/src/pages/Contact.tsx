@@ -5,6 +5,8 @@ import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { CountrySelect } from '../components/shared/CountrySelect';
 import { useConfig } from '../hooks/useConfig';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useModal } from '../hooks/useModal';
+import { api } from '../lib/api';
 
 export const Contact: React.FC = () => {
   usePageMeta({
@@ -12,11 +14,54 @@ export const Contact: React.FC = () => {
     description: 'Get in touch with Havlo for expert advice on buying, selling, or managing property abroad. Our team is ready to guide you at every step.',
     canonical: 'https://www.heyhavlo.com/contact-us',
   });
-  const [phoneCode, setPhoneCode] = useState('+44');
   const config = useConfig();
+  const { openModal } = useModal();
   const calendlyLink = config.calendly_link || 'https://calendly.com/hello-heyhavlo/havlo-enquiry-call';
   const calendlyLabel = calendlyLink.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneCode, setPhoneCode] = useState('+44');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [countryOfResidence, setCountryOfResidence] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phoneNumber.trim()) {
+      setError('Please complete all required fields.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.submitContactForm({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        phone_country_code: phoneCode,
+        phone_number: phoneNumber.trim(),
+        country_of_residence: countryOfResidence,
+        message: message.trim(),
+      });
+      // Reset form
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setPhoneNumber('');
+      setCountryOfResidence('');
+      setMessage('');
+      openModal('contact-success');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col w-full bg-[#F4F4F4]">
       {/* 1. Hero Section */}
@@ -68,13 +113,32 @@ export const Contact: React.FC = () => {
 
           {/* Contact Form Card */}
           <div className="flex w-full flex-col items-center gap-8 rounded-[32px] bg-white p-8 sm:p-10 border border-white/10">
-            <form className="flex w-full flex-col gap-8">
+            <form className="flex w-full flex-col gap-8" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <FormInput label="First Name" placeholder="Enter first name" required />
-                <FormInput label="Last Name" placeholder="Enter last name" required />
+                <FormInput
+                  label="First Name"
+                  placeholder="Enter first name"
+                  required
+                  value={firstName}
+                  onChange={setFirstName}
+                />
+                <FormInput
+                  label="Last Name"
+                  placeholder="Enter last name"
+                  required
+                  value={lastName}
+                  onChange={setLastName}
+                />
               </div>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <FormInput label="Email" placeholder="Enter your email address" type="email" required />
+                <FormInput
+                  label="Email"
+                  placeholder="Enter your email address"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={setEmail}
+                />
                 <div className="flex flex-col gap-4">
                   <label className="font-body text-sm font-bold text-[#001C47]">
                     Phone<span className="text-[#FA4242]">*</span>
@@ -84,7 +148,10 @@ export const Contact: React.FC = () => {
                     <input
                       type="tel"
                       placeholder="Enter your phone number"
-                      className="flex-1 bg-transparent px-3 font-body text-xs text-[#676B80] placeholder:text-[#676B80]/50 focus:outline-none"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      required
+                      className="flex-1 bg-transparent px-3 font-body text-xs text-black placeholder:text-[#676B80]/50 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -109,13 +176,25 @@ export const Contact: React.FC = () => {
                 </label>
                 <textarea
                   placeholder="How can we be of help"
-                  className="h-[116px] w-full rounded-lg bg-[#EEF0F2] p-4 font-body text-xs text-[#676B80] placeholder:text-[#676B80]/50 focus:outline-none resize-none"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="h-[116px] w-full rounded-lg bg-[#EEF0F2] p-4 font-body text-xs text-black placeholder:text-[#676B80]/50 focus:outline-none resize-none"
                 />
               </div>
 
+              {error && (
+                <div className="rounded-lg bg-[#FEE2E2] px-4 py-3 font-body text-sm text-[#B91C1C]">
+                  {error}
+                </div>
+              )}
+
               <div className="flex justify-center pt-4">
-                <Button className="h-10 sm:h-14 w-full max-w-[258px] rounded-[48px] bg-black text-sm sm:text-base font-semibold text-white hover:bg-black/90">
-                  Submit
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="h-10 sm:h-14 w-full max-w-[258px] rounded-[48px] bg-black text-sm sm:text-base font-semibold text-white hover:bg-black/90 disabled:opacity-60"
+                >
+                  {submitting ? 'Submitting…' : 'Submit'}
                 </Button>
               </div>
             </form>
@@ -145,16 +224,34 @@ const ContactMethodCard = ({ icon, label, value, href }: { icon: React.ReactNode
   </div>
 );
 
-const FormInput = ({ label, placeholder, type = "text", required = false }: { label: string; placeholder: string; type?: string; required?: boolean }) => (
+const FormInput = ({
+  label,
+  placeholder,
+  type = 'text',
+  required = false,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  type?: string;
+  required?: boolean;
+  value?: string;
+  onChange?: (v: string) => void;
+}) => (
   <div className="flex flex-col gap-4">
     <label className="font-body text-sm font-bold text-[#001C47]">
-      {label}{required && <span className="text-[#FA4242]">*</span>}
+      {label}
+      {required && <span className="text-[#FA4242]">*</span>}
     </label>
     <div className="flex h-12 w-full items-center rounded-lg bg-[#EEF0F2] px-4">
       <input
         type={type}
         placeholder={placeholder}
-        className="w-full bg-transparent font-body text-xs text-[#676B80] placeholder:text-[#676B80]/50 focus:outline-none"
+        value={value ?? ''}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        required={required}
+        className="w-full bg-transparent font-body text-xs text-black placeholder:text-[#676B80]/50 focus:outline-none"
       />
     </div>
   </div>

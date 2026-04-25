@@ -385,15 +385,19 @@ const sellerFaqs: FAQItemProps[] = [
       <div className="flex flex-col gap-3">
         <p>If you’ve received a letter from us and your property is not for sale, there’s no need to worry. This may have been sent in error by one of our marketing partners.</p>
         <p>
-          To stop receiving marketing communications from us, simply complete our{' '}
-          <a href="/contact-us" className="text-havlo-purple underline hover:no-underline">opt-out form</a>{' '}
-          and we’ll ensure your details are removed from future campaigns.
+          To stop receiving marketing communications from us, simply use our opt-out form and we’ll ensure your details are removed from future campaigns.
         </p>
+        <div className="flex">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('havlo:open-opt-out'))}
+            className="inline-flex h-10 items-center rounded-[48px] bg-black px-5 text-sm font-semibold text-white hover:bg-black/90 transition-colors"
+          >
+            Stop Property Marketing by Post
+          </button>
+        </div>
         <p>If you’d prefer, you can keep the letter and contact us in the future should you decide to sell your property.</p>
-        <p>
-          If you’ve received an unsolicited letter and would like to opt out, the same process applies—just fill in the{' '}
-          <a href="/contact-us" className="text-havlo-purple underline hover:no-underline">opt-out form</a>.
-        </p>
+        <p>If you’ve received an unsolicited letter and would like to opt out, the same process applies—just use the button above.</p>
         <p>Please note that we source some of our data from publicly available records, and occasionally errors can occur.</p>
       </div>
     ),
@@ -505,6 +509,12 @@ export const FAQ: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('buyers');
   const activeFaqs = tabConfig.find((t) => t.key === activeTab)?.faqs ?? [];
+
+  React.useEffect(() => {
+    const handler = () => openModal('opt-out');
+    window.addEventListener('havlo:open-opt-out', handler);
+    return () => window.removeEventListener('havlo:open-opt-out', handler);
+  }, [openModal]);
 
   return (
     <div className="flex flex-col w-full bg-white">

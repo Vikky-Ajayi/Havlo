@@ -63,6 +63,17 @@ SHEET_TABS: dict[str, list[str]] = {
         "Phone Country Code", "Phone Number", "Full Phone",
         "Preferred Date", "Preferred Time", "Checkout ID", "Payment Status",
     ],
+    "Contact Form": [
+        "Timestamp", "First Name", "Last Name", "Email",
+        "Phone Country Code", "Phone Number", "Full Phone",
+        "Country of Residence", "Message",
+    ],
+    "Newsletter": [
+        "Timestamp", "Email", "Source",
+    ],
+    "Marketing Opt-Out": [
+        "Timestamp", "Email", "Notes",
+    ],
 }
 
 
@@ -316,6 +327,33 @@ def record_buyer_network(user_data: dict[str, Any], form_data: dict[str, Any]) -
         form_data.get("additional_info", ""),
     ]
     _append_row("Buyer Network", row)
+
+
+def record_contact_form(form: dict[str, Any]) -> None:
+    code = form.get("phone_country_code", "")
+    num = form.get("phone_number", "")
+    row = [
+        datetime.utcnow().isoformat(),
+        form.get("first_name", ""),
+        form.get("last_name", ""),
+        form.get("email", ""),
+        code,
+        num,
+        f"{code}{num}".strip(),
+        form.get("country_of_residence", ""),
+        form.get("message", ""),
+    ]
+    _append_row("Contact Form", row)
+
+
+def record_newsletter(email: str, source: str = "footer") -> None:
+    row = [datetime.utcnow().isoformat(), email, source]
+    _append_row("Newsletter", row)
+
+
+def record_marketing_opt_out(email: str, notes: str = "") -> None:
+    row = [datetime.utcnow().isoformat(), email, notes]
+    _append_row("Marketing Opt-Out", row)
 
 
 def record_session_booking(user_data: dict[str, Any], booking_data: dict[str, Any]) -> None:

@@ -480,6 +480,85 @@ def send_inbox_notification_sync(
     )
 
 
+# ────────────────────────────────────────────────────────────────────────────
+# Admin "new sheet entry" notification
+# Sent (best-effort) to ADMIN_NOTIFY_EMAIL whenever a website form writes a
+# new row to a Google Sheet tab. Uses BackgroundTasks so the user-facing
+# response is never delayed.
+# ────────────────────────────────────────────────────────────────────────────
+
+def _admin_notice_html(sheet_tab: str, summary: str, fields: dict[str, str]) -> str:
+    rows = "".join(
+        f"<tr>"
+        f"<td style='padding:6px 12px;font-weight:600;color:#000;border-bottom:1px solid #eee;'>"
+        f"{_html_lib.escape(str(k))}</td>"
+        f"<td style='padding:6px 12px;color:#1F1F1E;border-bottom:1px solid #eee;'>"
+        f"{_html_lib.escape(str(v))}</td>"
+        f"</tr>"
+        for k, v in fields.items()
+    )
+    return f"""<!DOCTYPE html>
+<html><head><meta charset='UTF-8'></head>
+<body style="margin:0;padding:0;background:#F4F4F4;font-family:Arial,Helvetica,sans-serif;color:#000;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4F4F4">
+  <tr><td align="center" style="padding:24px 16px;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+           style="width:560px;max-width:100%;background:#FFFFFF;border:1px solid rgba(0,0,0,0.06);border-radius:12px;">
+      <tr><td style="padding:24px 28px 4px 28px;">
+        <div style="font-weight:900;font-size:22px;letter-spacing:-1px;color:#000;">HAVLO</div>
+      </td></tr>
+      <tr><td style="padding:8px 28px 0 28px;">
+        <h1 style="margin:0 0 8px 0;font-size:20px;line-height:28px;font-weight:800;color:#000;">
+          New entry: {_html_lib.escape(sheet_tab)}
+        </h1>
+        <p style="margin:0 0 16px 0;font-size:14px;line-height:22px;color:#4F5A68;">
+          {_html_lib.escape(summary)}
+        </p>
+      </td></tr>
+      <tr><td style="padding:0 28px 16px 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="border:1px solid #eee;border-radius:8px;font-size:14px;">
+          {rows}
+        </table>
+      </td></tr>
+      <tr><td style="padding:0 28px 24px 28px;">
+        <p style="margin:0;font-size:12px;color:#3A3C3E;">
+          Sent automatically when a Havlo website form writes a row to your Google Sheet.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+
+def _admin_notice_plain(sheet_tab: str, summary: str, fields: dict[str, str]) -> str:
+    body = f"New entry: {sheet_tab}\n{summary}\n\n"
+    for k, v in fields.items():
+        body += f"  {k}: {v}\n"
+    body += "\nSent automatically when a Havlo website form writes a row to your Google Sheet.\n"
+    return body
+
+
+def send_admin_notification_sync(sheet_tab: str, summary: str, fields: dict[str, str]) -> bool:
+    """Notify the configured admin address that a new row was added to a sheet."""
+    s = get_settings()
+    to_email = (s.ADMIN_NOTIFY_EMAIL or "").strip()
+    if not to_email:
+        logger.info("Skipping admin notification (ADMIN_NOTIFY_EMAIL empty).")
+        return False
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[Havlo] New entry — {sheet_tab}",
+        html_body=_admin_notice_html(sheet_tab, summary, fields),
+        plain_body=_admin_notice_plain(sheet_tab, summary, fields),
+    )
+
+
+async def send_admin_notification(sheet_tab: str, summary: str, fields: dict[str, str]) -> bool:
+    return await asyncio.to_thread(send_admin_notification_sync, sheet_tab, summary, fields)
+
+
 async def send_inbox_notification(
     to_email: str,
     first_name: str,

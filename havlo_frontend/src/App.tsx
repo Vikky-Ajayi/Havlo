@@ -50,6 +50,8 @@ import { NewPasswordModal } from './components/modals/NewPasswordModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 import { BookSessionModal } from './components/modals/BookSessionModal';
 import { ConsultationModal } from './components/modals/ConsultationModal';
+import { ContactSuccessModal } from './components/modals/ContactSuccessModal';
+import { OptOutModal } from './components/modals/OptOutModal';
 
 const PageLoader = () => (
   <div className="flex h-[60vh] items-center justify-center">
@@ -78,6 +80,8 @@ const ModalRenderer = () => {
     case 'settings-password': return <SettingsModal />;
     case 'book-session': return <BookSessionModal />;
     case 'consultation': return <ConsultationModal />;
+    case 'contact-success': return <ContactSuccessModal />;
+    case 'opt-out': return <OptOutModal />;
     default: return null;
   }
 };
