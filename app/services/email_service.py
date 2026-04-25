@@ -19,12 +19,17 @@ from __future__ import annotations
 import asyncio
 import html as _html_lib
 import logging
+import time
 from functools import lru_cache
 from typing import Optional
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# SendGrid retry policy — short, bounded, sync-safe.
+_RETRY_ATTEMPTS = 3
+_RETRY_BACKOFF_S = (1, 3, 6)  # backoff before attempts 2 and 3 (we use index attempt-1)
 
 
 def _is_configured() -> bool:
@@ -47,9 +52,19 @@ def _get_client():
 
 
 def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
-    """Synchronous send. Always returns a bool, never raises."""
+    """Synchronous send with bounded retries. Always returns a bool, never raises.
+
+    Retries on transient errors (HTTP 429 rate limit, HTTP 5xx, network/timeout
+    exceptions). Permanent failures (4xx other than 429) are NOT retried —
+    re-sending them would just be rejected again.
+    """
     if not _is_configured():
-        logger.info("Skipping email to %s — SendGrid not configured.", to_email)
+        logger.warning(
+            "Skipping email to %s — SendGrid is not configured (SENDGRID_API_KEY=%s, EMAIL_FROM=%s).",
+            to_email,
+            "set" if get_settings().SENDGRID_API_KEY else "MISSING",
+            get_settings().EMAIL_FROM or "MISSING",
+        )
         return False
 
     try:
@@ -63,31 +78,57 @@ def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> 
     if client is None:
         return False
 
-    try:
-        from_email = Email(s.EMAIL_FROM, s.EMAIL_FROM_NAME or "Havlo")
-        message = Mail(
-            from_email=from_email,
-            to_emails=To(to_email),
-            subject=subject,
-            plain_text_content=Content("text/plain", plain_body),
-            html_content=Content("text/html", html_body),
-        )
-        if s.EMAIL_REPLY_TO:
-            message.reply_to = Email(s.EMAIL_REPLY_TO)
-        response = client.send(message)
-        # Accept 2xx
-        ok = 200 <= int(response.status_code) < 300
-        if ok:
-            logger.info("Email queued to %s (subject=%r, status=%s)", to_email, subject, response.status_code)
-        else:
+    from_email = Email(s.EMAIL_FROM, s.EMAIL_FROM_NAME or "Havlo")
+    message = Mail(
+        from_email=from_email,
+        to_emails=To(to_email),
+        subject=subject,
+        plain_text_content=Content("text/plain", plain_body),
+        html_content=Content("text/html", html_body),
+    )
+    if s.EMAIL_REPLY_TO:
+        message.reply_to = Email(s.EMAIL_REPLY_TO)
+
+    last_error: Optional[str] = None
+    for attempt in range(1, _RETRY_ATTEMPTS + 1):
+        try:
+            response = client.send(message)
+            status_code = int(response.status_code)
+            if 200 <= status_code < 300:
+                logger.info(
+                    "Email delivered to %s (subject=%r, status=%s, attempt=%d)",
+                    to_email, subject, status_code, attempt,
+                )
+                return True
+            body_preview = getattr(response, "body", b"")
+            try:
+                body_preview = body_preview.decode("utf-8", "replace")[:500]
+            except Exception:
+                body_preview = str(body_preview)[:500]
+            transient = status_code == 429 or 500 <= status_code < 600
             logger.error(
-                "SendGrid returned non-2xx for %s: status=%s body=%r",
-                to_email, response.status_code, getattr(response, "body", b"")[:300],
+                "SendGrid %s for %s (attempt %d/%d, from=%s): status=%s body=%s",
+                "transient error" if transient else "permanent error",
+                to_email, attempt, _RETRY_ATTEMPTS, s.EMAIL_FROM, status_code, body_preview,
             )
-        return ok
-    except Exception as exc:  # noqa: BLE001
-        logger.error("SendGrid send failed for %s: %s", to_email, exc)
-        return False
+            last_error = f"status={status_code}"
+            if not transient:
+                return False
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "SendGrid network/exception for %s (attempt %d/%d, from=%s): %s",
+                to_email, attempt, _RETRY_ATTEMPTS, s.EMAIL_FROM, exc,
+            )
+            last_error = str(exc)
+
+        if attempt < _RETRY_ATTEMPTS:
+            time.sleep(_RETRY_BACKOFF_S[attempt - 1])
+
+    logger.error(
+        "SendGrid send permanently failed for %s after %d attempts: %s",
+        to_email, _RETRY_ATTEMPTS, last_error,
+    )
+    return False
 
 
 async def _send_async(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:

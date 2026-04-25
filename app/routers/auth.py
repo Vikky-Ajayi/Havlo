@@ -97,6 +97,26 @@ async def _create_admin_conversation_background(user_id: str) -> None:
             logger.error("Failed creating admin conversation in background: %s", exc)
 
 
+async def _send_welcome_email_safely(to_email: str, first_name: str) -> None:
+    """Fire-and-forget welcome email dispatch.
+
+    Runs on the event loop independently of FastAPI's BackgroundTasks chain so
+    it can never be blocked behind a slow DB-bound task. Catches every
+    exception so a transport failure can never affect the parent request.
+    """
+    try:
+        ok = await asyncio.to_thread(
+            email_service.send_welcome_email_sync, to_email, first_name
+        )
+        if not ok:
+            logger.error(
+                "Welcome email NOT delivered to %s — see SendGrid logs above for cause.",
+                to_email,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Welcome email task crashed for %s: %s", to_email, exc)
+
+
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     payload: RegisterRequest,
@@ -144,12 +164,13 @@ async def register(
     access_token = create_access_token(str(user.id))
 
     # Post-commit side effects run AFTER the response is sent.
+    # Welcome email is dispatched as an independent asyncio task so it can
+    # never be blocked behind a slow DB-bound BackgroundTask. The wrapper
+    # internally retries on transient SendGrid errors and swallows all
+    # exceptions, so we don't need to await it.
+    asyncio.create_task(_send_welcome_email_safely(user.email, user.first_name))
+
     background_tasks.add_task(_create_admin_conversation_background, str(user.id))
-    background_tasks.add_task(
-        email_service.send_welcome_email_sync,
-        user.email,
-        user.first_name,
-    )
     background_tasks.add_task(
         google_sheets.record_registration,
         {
