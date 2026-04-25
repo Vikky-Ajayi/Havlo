@@ -114,7 +114,7 @@ export const CreateAccountModal: React.FC = () => {
             </button>
           </div>
           <p className="font-body text-base font-medium leading-[1.5] tracking-[-0.32px] text-black/90 opacity-80">
-            Join thousands of Users finding their dream properties worldwide
+            Sell globally. Buy abroad.
           </p>
         </div>
 
