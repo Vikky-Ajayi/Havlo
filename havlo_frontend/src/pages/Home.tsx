@@ -384,7 +384,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 7. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center bg-white lg:pt-60 lg:pb-24 overflow-hidden py-10 my-0 pt-[100px] pb-[0px]">
+      <section className="relative flex flex-col items-center bg-white lg:pt-60 lg:pb-24 overflow-hidden py-10 my-0 pt-[60px] pb-[0px]">
         <div className="relative z-20 flex max-w-[903px] flex-col items-center gap-8 px-4 text-center">
           <h2 className="font-display text-[36px] sm:text-[56px] md:text-[64px] lg:text-[80px] font-black leading-tight lg:leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black">
             Ready to Take the Next Step?
