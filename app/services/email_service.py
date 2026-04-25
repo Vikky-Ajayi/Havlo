@@ -37,6 +37,27 @@ def _is_configured() -> bool:
     return bool(s.SENDGRID_API_KEY and s.EMAIL_FROM)
 
 
+_GLOBAL_HOST = "https://api.sendgrid.com"
+_EU_HOST = "https://api.eu.sendgrid.com"
+
+
+def _resolve_sendgrid_host() -> str:
+    """Return the correct SendGrid base URL for the configured region.
+
+    SendGrid runs two independent regions: global (api.sendgrid.com) and EU
+    data-residency (api.eu.sendgrid.com). API keys belong to exactly one
+    region; calling the wrong host returns ``HTTP 401 Unauthorized`` even
+    with a valid key.
+
+    Reference: https://www.twilio.com/docs/sendgrid/for-developers/sending-email/getting-started-eu-data-residency
+    """
+    s = get_settings()
+    region = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower()
+    if region in ("eu", "europe"):
+        return _EU_HOST
+    return _GLOBAL_HOST
+
+
 @lru_cache
 def _get_client():
     """Lazily import + cache the SendGrid client so the package is optional."""
@@ -48,18 +69,23 @@ def _get_client():
     s = get_settings()
     if not s.SENDGRID_API_KEY:
         return None
-    client = SendGridAPIClient(s.SENDGRID_API_KEY)
-    # Route requests to the EU data-residency endpoint when configured.
-    # SendGrid EU-region accounts return HTTP 401 against the default
-    # (global) host even with a valid key — they must hit api.eu.sendgrid.com.
-    region = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower()
-    if region == "eu":
-        try:
-            client.client.host = "https://api.eu.sendgrid.com"
-            logger.info("SendGrid client routed to EU endpoint (api.eu.sendgrid.com).")
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("Could not set SendGrid EU host: %s", exc)
+    host = _resolve_sendgrid_host()
+    # Pass host directly to the constructor — this is the documented API and
+    # propagates correctly into the underlying python_http_client.Client.
+    client = SendGridAPIClient(api_key=s.SENDGRID_API_KEY, host=host)
+    logger.info(
+        "SendGrid client initialised (host=%s, region=%s, from=%s).",
+        host, getattr(s, "SENDGRID_REGION", "global") or "global", s.EMAIL_FROM or "MISSING",
+    )
     return client
+
+
+def reset_client_cache() -> None:
+    """Drop the cached client so the next call re-reads settings.
+
+    Useful in tests or after rotating env vars without restarting the process.
+    """
+    _get_client.cache_clear()
 
 
 def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
@@ -100,6 +126,14 @@ def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> 
     if s.EMAIL_REPLY_TO:
         message.reply_to = Email(s.EMAIL_REPLY_TO)
 
+    # Import the SDK's typed HTTP error so we can read .status_code/.body
+    # instead of relying on the str(exc) form which loses detail.
+    try:
+        from python_http_client.exceptions import HTTPError as SgHTTPError
+    except ImportError:  # pragma: no cover - bundled with sendgrid
+        SgHTTPError = None  # type: ignore[assignment]
+
+    host = _resolve_sendgrid_host()
     last_error: Optional[str] = None
     for attempt in range(1, _RETRY_ATTEMPTS + 1):
         try:
@@ -107,10 +141,11 @@ def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> 
             status_code = int(response.status_code)
             if 200 <= status_code < 300:
                 logger.info(
-                    "Email delivered to %s (subject=%r, status=%s, attempt=%d)",
-                    to_email, subject, status_code, attempt,
+                    "Email delivered to %s (subject=%r, status=%s, attempt=%d, host=%s)",
+                    to_email, subject, status_code, attempt, host,
                 )
                 return True
+            # SendGrid normally raises on non-2xx, but handle the rare path.
             body_preview = getattr(response, "body", b"")
             try:
                 body_preview = body_preview.decode("utf-8", "replace")[:500]
@@ -118,19 +153,47 @@ def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> 
                 body_preview = str(body_preview)[:500]
             transient = status_code == 429 or 500 <= status_code < 600
             logger.error(
-                "SendGrid %s for %s (attempt %d/%d, from=%s): status=%s body=%s",
+                "SendGrid %s for %s (attempt %d/%d, host=%s, from=%s): status=%s body=%s",
                 "transient error" if transient else "permanent error",
-                to_email, attempt, _RETRY_ATTEMPTS, s.EMAIL_FROM, status_code, body_preview,
+                to_email, attempt, _RETRY_ATTEMPTS, host, s.EMAIL_FROM, status_code, body_preview,
             )
             last_error = f"status={status_code}"
             if not transient:
                 return False
         except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "SendGrid network/exception for %s (attempt %d/%d, from=%s): %s",
-                to_email, attempt, _RETRY_ATTEMPTS, s.EMAIL_FROM, exc,
+            status_code = getattr(exc, "status_code", None)
+            body = getattr(exc, "body", None)
+            try:
+                body_preview = (
+                    body.decode("utf-8", "replace") if isinstance(body, (bytes, bytearray)) else str(body or "")
+                )[:500]
+            except Exception:
+                body_preview = ""
+            transient = (
+                status_code is None  # network/timeout
+                or status_code == 429
+                or (isinstance(status_code, int) and 500 <= status_code < 600)
             )
-            last_error = str(exc)
+            logger.error(
+                "SendGrid %s for %s (attempt %d/%d, host=%s, from=%s): status=%s body=%s exc=%s",
+                "transient error" if transient else "permanent error",
+                to_email, attempt, _RETRY_ATTEMPTS, host, s.EMAIL_FROM,
+                status_code if status_code is not None else "n/a",
+                body_preview, exc,
+            )
+            if status_code == 401:
+                # Highest-signal hint: the credentials were rejected by the
+                # endpoint we hit. Tell the operator exactly what to check.
+                region_set = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower()
+                logger.error(
+                    "SendGrid 401 from %s. The API key was rejected by this region. "
+                    "If your SendGrid account is on EU data residency, set the env var "
+                    "SENDGRID_REGION=eu and redeploy. Current SENDGRID_REGION=%r.",
+                    host, region_set or "(unset → defaults to global)",
+                )
+            last_error = f"status={status_code} body={body_preview!r}" if status_code else str(exc)
+            if not transient:
+                return False
 
         if attempt < _RETRY_ATTEMPTS:
             time.sleep(_RETRY_BACKOFF_S[attempt - 1])
@@ -585,6 +648,7 @@ async def send_inbox_notification(
 def diagnostics() -> dict:
     """Expose minimal config status (no secret material) for /diag endpoints."""
     s = get_settings()
+    region = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower() or "global"
     return {
         "configured": _is_configured(),
         "from_set": bool(s.EMAIL_FROM),
@@ -592,6 +656,9 @@ def diagnostics() -> dict:
         "reply_to_set": bool(s.EMAIL_REPLY_TO),
         "support_email_set": bool(s.SUPPORT_EMAIL),
         "key_present": bool(s.SENDGRID_API_KEY),
+        "region": region,
+        "host": _resolve_sendgrid_host(),
+        "from_email": s.EMAIL_FROM or None,
     }
 
 
