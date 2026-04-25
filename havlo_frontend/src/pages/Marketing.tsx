@@ -34,7 +34,7 @@ const sellFasterReviews = [
 
 const problemPoints = [
   {
-    title: "Portals don't reach international buyers",
+    title: 'Your ideal buyer may already be overseas—and never sees your listing',
     text: 'Most offshore buyers are not browsing UK property portals. They are reachable through targeted social advertising in their home markets.',
   },
   {
@@ -56,22 +56,22 @@ const problemStats = [
 const processSteps = [
   {
     step: '01',
-    title: 'Strategy call',
+    title: 'Listing Analysis & Strategy',
     text: 'We learn about your property, your timeline, and the buyer markets most likely to convert. We recommend the right plan and target regions for your specific situation.',
   },
   {
     step: '02',
-    title: 'Campaign setup',
+    title: 'Reposition & Creative Upgrade',
     text: 'We build your Meta campaign from scratch — creative, audience targeting, lead capture, and tracking. Your ad spend goes directly to Meta from your account.',
   },
   {
     step: '03',
-    title: 'Launch & activation',
+    title: 'International Distribution',
     text: 'Your campaign goes live across the chosen international markets. Qualified buyers begin discovering your property within days, not months.',
   },
   {
     step: '04',
-    title: 'Optimise & report',
+    title: 'Buyer Enquiries & Optimisation',
     text: 'We continuously refine targeting and creative based on live performance data, and send you transparent reports on enquiries, engagement and demand.',
   },
 ];
@@ -80,6 +80,7 @@ type Tier = {
   name: string;
   tagline: string;
   setup: string;
+  setupLabel?: string;
   ongoing: string;
   features: string[];
   outcome: string;
@@ -94,7 +95,8 @@ const tiers: Tier[] = [
   {
     name: 'Launch',
     tagline: 'For generating initial international interest',
-    setup: '£2,000 Property Launch',
+    setup: '£2,000',
+    setupLabel: 'International Property Launch',
     ongoing: 'Ongoing exposure from £1,500 / month',
     features: [
       'Targeted exposure across key international buyer markets',
@@ -116,7 +118,8 @@ const tiers: Tier[] = [
   {
     name: 'Amplify',
     tagline: 'Designed to create strong buyer demand and competition',
-    setup: '£3,500 Property Launch',
+    setup: '£3,500',
+    setupLabel: 'International Property Launch',
     ongoing: 'Ongoing exposure from £2,500 / month',
     features: [
       'Expanded reach across multiple high-intent global markets',
@@ -138,7 +141,8 @@ const tiers: Tier[] = [
   {
     name: 'Dominate',
     tagline: 'Maximum global exposure to drive premium offers',
-    setup: '£5,000 Property Launch',
+    setup: '£5,000',
+    setupLabel: 'International Property Launch',
     ongoing: 'Ongoing exposure from £3,500 / month',
     features: [
       'Extensive worldwide exposure across 30+ countries',
@@ -294,7 +298,12 @@ export const Marketing: React.FC = () => {
             isPurple || isDark ? 'border-white/15' : 'border-black/12'
           )}
         >
-          <div className="font-display text-[20px] font-extrabold leading-[1.2]">{tier.setup}</div>
+          <div className="font-display text-[20px] leading-[1.2]">
+            <span className="font-extrabold">{tier.setup}</span>
+            {tier.setupLabel && (
+              <span className="ml-1.5 font-normal">{tier.setupLabel}</span>
+            )}
+          </div>
           <p
             className={cn(
               'mt-1 font-body text-xs font-semibold',
@@ -418,16 +427,13 @@ export const Marketing: React.FC = () => {
         </div>
 
         <div className="relative z-10 mx-auto flex max-w-[1140px] flex-col items-center text-center">
-          <span className="rounded-full border border-white/35 bg-white/5 px-5 py-2 font-body text-[11px] font-semibold uppercase tracking-[0.22em] text-white/85 backdrop-blur-sm sm:text-xs">
-            International Property Marketing
-          </span>
-          <h1 className="mt-6 font-display text-[40px] font-black leading-[1.0] tracking-[-1.2px] text-white sm:text-[64px] lg:text-[80px] lg:tracking-[-2.4px]">
-            Your property.
+          <h1 className="font-display text-[40px] font-black leading-[1.0] tracking-[-1.2px] text-white sm:text-[64px] lg:text-[80px] lg:tracking-[-2.4px]">
+            Property Isn't Selling.
             <br />
-            The world's buyers.
+            The Right Buyers Haven't Seen It.
           </h1>
           <p className="mt-6 max-w-[760px] font-body text-sm font-medium leading-[1.55] text-white/80 sm:text-base lg:text-lg">
-            Havlo puts slow-to-sell UK properties in front of qualified international and offshore buyers across 30+ countries — using precision Meta advertising your local agent cannot replicate.
+            We relaunch slow-to-sell properties using targeted international exposure and high-performance campaigns—so you attract serious buyers and close faster.
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
             {['30+ Countries Reached', '£500K Min. Property Value', '0% Commission On Sale'].map((badge) => (
@@ -483,7 +489,7 @@ export const Marketing: React.FC = () => {
               </span>
             </div>
             <h2 className="max-w-[640px] font-display text-[32px] font-black leading-[1.0] tracking-[-0.8px] text-black sm:text-[44px] lg:text-[52px]">
-              Your agent is only speaking to local buyers
+              Your agent is only reaching a fraction of the market..
             </h2>
             <p className="mt-5 max-w-[620px] font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-base">
               Rightmove and Zoopla reach a fraction of the buyers who could purchase your property. The international market — expats, diaspora investors, overseas buyers — is largely invisible to traditional estate agents.
@@ -635,23 +641,11 @@ export const Marketing: React.FC = () => {
             <p className="mt-4 font-body text-sm font-medium leading-[1.55] text-black/65 sm:text-base">
               Most properties rely on passive listing platforms such as:
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-6 opacity-80 sm:gap-x-14">
+            <div className="mt-6 flex items-center justify-center">
               <img
-                src="/portal-logos/rightmove.png"
-                alt="Rightmove"
-                className="h-7 w-auto object-contain sm:h-9"
-                loading="lazy"
-              />
-              <img
-                src="/portal-logos/zoopla.png"
-                alt="Zoopla"
-                className="h-7 w-auto object-contain sm:h-8"
-                loading="lazy"
-              />
-              <img
-                src="/portal-logos/onthemarket.png"
-                alt="OnTheMarket"
-                className="h-7 w-auto object-contain sm:h-9"
+                src="/portal-logos/portal-logos-grey.png"
+                alt="Rightmove, Zoopla, OnTheMarket"
+                className="h-7 w-auto max-w-full object-contain sm:h-9"
                 loading="lazy"
               />
             </div>
@@ -758,7 +752,7 @@ export const Marketing: React.FC = () => {
                 }}
                 className="rounded-full bg-black px-9 py-3 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-black/85"
               >
-                {showAllFaqs ? 'Close' : 'Load more'}
+                {showAllFaqs ? 'Read less' : 'Read more'}
               </button>
             </div>
           )}

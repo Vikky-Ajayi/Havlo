@@ -536,7 +536,7 @@ const PlanCard: React.FC<{ plan: Plan; onSelect: () => void }> = ({ plan, onSele
         ) : (
           <div className="mb-7">
             <div className={`font-display text-[18px] font-semibold tracking-tight ${plan.isPopular ? 'text-white' : 'text-black'}`}>
-              {plan.setupPrice} Property Launch
+              {plan.setupPrice} International Property Launch
             </div>
             <div className={`font-display text-[16px] font-semibold ${plan.isPopular ? 'text-white' : 'text-black/85'}`}>
               Ongoing exposure from {plan.monthlyPrice}/month
@@ -628,7 +628,7 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
                 {plan.tag}
               </span>
               <span className="font-display text-[15px] font-semibold tracking-tight text-black">
-                <span className="font-black">{plan.setupPrice}</span> PROPERTY LAUNCH
+                <span className="font-black">{plan.setupPrice}</span> INTERNATIONAL PROPERTY LAUNCH
               </span>
             </div>
             <p className="font-body text-[14px] text-black/60">renews {formatRenewalDate(plan.renewsAt)}</p>

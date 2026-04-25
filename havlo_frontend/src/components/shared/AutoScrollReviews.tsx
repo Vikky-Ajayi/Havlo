@@ -18,7 +18,7 @@ export const AutoScrollReviews: React.FC<AutoScrollReviewsProps> = ({
   reviews,
   bgColor = '#F5F5F3',
   header,
-  speedSeconds = 40,
+  speedSeconds = 80,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
