@@ -78,8 +78,8 @@ const homeReviews = [
 
 export const Home: React.FC = () => {
   usePageMeta({
-    title: 'Havlo - Buy, Sell & Manage International Property',
-    description: 'Havlo helps you buy, sell, and manage properties across multiple countries. Get expert support, end-to-end guidance, and a seamless international real estate experience.',
+    title: 'Havlo | Find Buyers Fast for Slow-Selling Properties | Buy Overseas',
+    description: 'Havlo helps homeowners and estate agents find buyers fast for slow-selling properties, and helps international buyers purchase property overseas with confidence.',
     canonical: 'https://www.heyhavlo.com/',
   });
   const { openModal } = useModal();
