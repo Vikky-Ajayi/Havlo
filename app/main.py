@@ -242,6 +242,20 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW(),
                             ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
                     """))
+                    # Self-heal legacy NOT NULL constraints from the original
+                    # Supabase Auth schema. These columns are nullable in the
+                    # current ORM model (supabase_uid is unused on local-auth
+                    # signups, password_hash is unused for any future SSO
+                    # signups). DROP NOT NULL is idempotent — it succeeds
+                    # whether the constraint is present or not. Without this,
+                    # /auth/register fails on every fresh signup with a
+                    # NotNullViolationError that was masked as "email
+                    # already exists" by the IntegrityError handler.
+                    await conn.execute(text("""
+                        ALTER TABLE users
+                            ALTER COLUMN supabase_uid DROP NOT NULL,
+                            ALTER COLUMN password_hash DROP NOT NULL;
+                    """))
                 else:
                     logger.info(
                         "Skipping Postgres-only schema sync on dialect=%s",

@@ -162,10 +162,35 @@ async def register(
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
-        logger.error("DB register integrity error for %s: %s", payload.email, exc)
+        # Only treat a true email-uniqueness violation as a 409 with the
+        # "already exists" message. Any other constraint violation (NOT NULL,
+        # foreign key, enum-value mismatch, etc.) is a real server bug —
+        # surfacing it as 409 used to mask schema-drift issues for hours
+        # (e.g. legacy NOT NULL on supabase_uid from the old Supabase Auth
+        # migration). Now those return a generic 500 with full server-side
+        # logging so the next regression is visible immediately.
+        orig = getattr(exc, "orig", None)
+        constraint_name = (getattr(orig, "constraint_name", "") or "").lower()
+        is_email_unique_conflict = (
+            orig is not None
+            and orig.__class__.__name__ == "UniqueViolationError"
+            and ("email" in constraint_name or constraint_name == "users_email_key")
+        )
+        if is_email_unique_conflict:
+            logger.info(
+                "Register conflict: email already exists for %s", normalized_email
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email already exists.",
+            )
+        logger.error(
+            "DB register integrity error for %s (constraint=%r): %s",
+            normalized_email, constraint_name or "<unknown>", exc,
+        )
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Account creation failed due to a server error. Please try again or contact support.",
         )
     await db.refresh(user)
 
