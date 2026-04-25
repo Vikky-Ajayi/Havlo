@@ -466,7 +466,8 @@ export const BuyHome: React.FC = () => {
 
       {/* D3. How it works — zigzag with curved connector line */}
       <section
-        className="hidden lg:block"
+        id="how-it-works"
+        className="hidden lg:block scroll-mt-20"
         style={{ background: 'linear-gradient(180deg, #9BD9FF 0%, #FFB0E8 50%, #FEEAA0 100%)' }}
       >
         <div className="mx-auto w-full max-w-[1440px] px-[100px] pt-24 pb-20">
@@ -478,28 +479,36 @@ export const BuyHome: React.FC = () => {
 
           {/* Zigzag steps with center curved line */}
           <div className="relative mt-16 mx-auto w-full max-w-[1240px] h-[1320px]">
-            {/* SVG center line connecting all 6 cards */}
+            {/* SVG snake connecting all 6 cards — spans full container so we can
+                anchor dots exactly at each card's inner edge & vertical centre.
+                Card centres (y): 104.5, 304.5, 544.5, 744.5, 984.5, 1184.5
+                Left-card right edge x = 479, right-card left edge x = 719.
+                Each cubic uses vertical control handles for a smooth S-snake. */}
             <svg
-              className="absolute left-1/2 -translate-x-1/2 top-[60px] pointer-events-none"
-              width="260"
-              height="1180"
-              viewBox="0 0 260 1180"
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              viewBox="0 0 1240 1320"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              preserveAspectRatio="xMidYMin meet"
+              preserveAspectRatio="none"
             >
               <path
-                d="M 30 30 C 30 130, 230 130, 230 230 C 230 360, 230 460, 230 560 C 230 660, 30 660, 30 760 C 30 860, 30 920, 30 960 C 30 1020, 200 1020, 200 1100"
+                d="M 479 104.5
+                   C 479 204.5, 719 204.5, 719 304.5
+                   C 719 404.5, 479 444.5, 479 544.5
+                   C 479 644.5, 719 644.5, 719 744.5
+                   C 719 844.5, 479 884.5, 479 984.5
+                   C 479 1084.5, 719 1084.5, 719 1184.5"
                 stroke="#1F1F1E"
                 strokeWidth="2"
                 fill="none"
                 strokeLinecap="round"
               />
-              <circle cx="30" cy="30" r="22" fill="#1F1F1E" />
-              <circle cx="230" cy="230" r="22" fill="#1F1F1E" />
-              <circle cx="230" cy="560" r="22" fill="#1F1F1E" />
-              <circle cx="30" cy="760" r="22" fill="#1F1F1E" />
-              <circle cx="200" cy="1100" r="22" fill="#1F1F1E" />
+              <circle cx="479" cy="104.5" r="14" fill="#1F1F1E" />
+              <circle cx="719" cy="304.5" r="14" fill="#1F1F1E" />
+              <circle cx="479" cy="544.5" r="14" fill="#1F1F1E" />
+              <circle cx="719" cy="744.5" r="14" fill="#1F1F1E" />
+              <circle cx="479" cy="984.5" r="14" fill="#1F1F1E" />
+              <circle cx="719" cy="1184.5" r="14" fill="#1F1F1E" />
             </svg>
 
             {/* Step 1: Bespoke Consultation — top left */}
