@@ -119,27 +119,42 @@ def _get_spreadsheet() -> gspread.Spreadsheet:
     return gc.open_by_key(settings.GOOGLE_SPREADSHEET_ID.strip())
 
 
+_tabs_verified: bool = False
+
+
 def ensure_tabs_exist() -> None:
-    """Create all required tabs (worksheets) if they do not exist yet."""
+    """Create any missing tabs (worksheets). Cheap on warm starts.
+
+    Performs a single ``worksheets()`` read and only touches the API again
+    when a tab is actually missing. The previous implementation made one
+    read per tab on every boot, which exhausted the Sheets per-minute read
+    quota when the container restarted (HTTP 429).
+    """
+    global _tabs_verified
+    if _tabs_verified:
+        return
     if not is_configured():
         logger.info("Google Sheets not configured — skipping tab setup.")
         return
     try:
         sheet = _get_spreadsheet()
-        existing = {ws.title for ws in sheet.worksheets()}
-        for tab_name, headers in SHEET_TABS.items():
-            if tab_name not in existing:
-                ws = sheet.add_worksheet(title=tab_name, rows=1000, cols=len(headers))
-                ws.append_row(headers)
-                logger.info("Created Google Sheet tab: %s", tab_name)
-            else:
-                ws = sheet.worksheet(tab_name)
-                if ws.row_count == 0 or not ws.row_values(1):
-                    ws.insert_row(headers, 1)
-        logger.info("Google Sheets tabs verified.")
+        existing = {ws.title for ws in sheet.worksheets()}  # 1 API read
+        missing = [t for t in SHEET_TABS if t not in existing]
+        if not missing:
+            _tabs_verified = True
+            logger.info("Google Sheets tabs verified (all %d present).", len(SHEET_TABS))
+            return
+        for tab_name in missing:
+            headers = SHEET_TABS[tab_name]
+            ws = sheet.add_worksheet(title=tab_name, rows=1000, cols=len(headers))
+            ws.append_row(headers)
+            logger.info("Created Google Sheet tab: %s", tab_name)
+        _tabs_verified = True
+        logger.info("Google Sheets tabs verified (created %d new).", len(missing))
     except Exception as exc:
+        # Non-fatal: a transient 429 should not crash startup. The next
+        # request that needs sheets will simply log its own error.
         logger.error("Failed to ensure Google Sheet tabs: %s", exc)
-        raise
 
 
 def _append_row(tab_name: str, row: list[Any], raise_on_error: bool = False) -> None:

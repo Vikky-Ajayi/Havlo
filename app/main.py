@@ -370,21 +370,33 @@ async def diag_email(request: Request) -> JSONResponse:
     return JSONResponse(_es.diagnostics())
 
 
-@app.post("/api/v1/diag/email/test", tags=["Health"])
+@app.api_route("/api/v1/diag/email/test", methods=["GET", "POST"], tags=["Health"])
 async def diag_email_test(request: Request) -> JSONResponse:
-    """Send a test email via SendGrid to verify credentials end-to-end."""
+    """Send a test email via SendGrid to verify credentials end-to-end.
+
+    Accepts either:
+      * POST with JSON body ``{"to": "you@example.com"}``
+      * GET  with query string ``?to=you@example.com`` (handy for browser testing)
+    """
     if not _check_diag_token(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     from app.services import email_service as _es
     if not _es.is_configured():
         return JSONResponse({"ok": False, "error": "SendGrid is not configured."}, status_code=400)
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    to = (body.get("to") or settings.SUPPORT_EMAIL or "").strip()
+    to = (request.query_params.get("to") or "").strip()
+    if not to and request.method == "POST":
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        to = (body.get("to") or "").strip()
     if not to:
-        return JSONResponse({"ok": False, "error": "Missing 'to' email address."}, status_code=400)
+        to = (settings.SUPPORT_EMAIL or "").strip()
+    if not to:
+        return JSONResponse(
+            {"ok": False, "error": "Missing 'to' email address. Pass ?to=you@example.com or POST {\"to\": \"...\"}."},
+            status_code=400,
+        )
     sent = await asyncio.to_thread(_es.send_test_email, to)
     return JSONResponse({"ok": bool(sent), "to": to})
 
