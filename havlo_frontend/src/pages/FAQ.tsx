@@ -551,7 +551,7 @@ export const FAQ: React.FC = () => {
       </div>
 
       {/* Still Have Questions Section */}
-      <section className="flex flex-col items-center gap-14 bg-[#FBF3EA] px-4 sm:px-10 lg:px-[100px] py-10 my-0">
+      <section className="flex flex-col items-center gap-14 bg-[#FBF3EA] px-4 sm:px-10 lg:px-[100px] py-10 my-0 mt-[50px]">
         <div className="flex flex-col items-center gap-10 text-center max-w-[929px]">
           <h2 className="font-display text-[56px] font-medium leading-none tracking-[-1.44px] text-[#1F1F1E] sm:text-[72px]">
             Still Have Questions?
