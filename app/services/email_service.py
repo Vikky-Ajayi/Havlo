@@ -48,7 +48,18 @@ def _get_client():
     s = get_settings()
     if not s.SENDGRID_API_KEY:
         return None
-    return SendGridAPIClient(s.SENDGRID_API_KEY)
+    client = SendGridAPIClient(s.SENDGRID_API_KEY)
+    # Route requests to the EU data-residency endpoint when configured.
+    # SendGrid EU-region accounts return HTTP 401 against the default
+    # (global) host even with a valid key — they must hit api.eu.sendgrid.com.
+    region = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower()
+    if region == "eu":
+        try:
+            client.client.host = "https://api.eu.sendgrid.com"
+            logger.info("SendGrid client routed to EU endpoint (api.eu.sendgrid.com).")
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Could not set SendGrid EU host: %s", exc)
+    return client
 
 
 def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:

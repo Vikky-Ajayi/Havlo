@@ -71,6 +71,10 @@ class Settings(BaseSettings):
 
     # SendGrid (transactional email)
     SENDGRID_API_KEY: str = ""
+    # "global" (default, api.sendgrid.com) or "eu" (api.eu.sendgrid.com).
+    # EU-residency SendGrid accounts MUST set this to "eu" or every send
+    # returns HTTP 401 Unauthorized.
+    SENDGRID_REGION: str = "global"
     EMAIL_FROM: str = ""
     EMAIL_FROM_NAME: str = "Havlo"
     EMAIL_REPLY_TO: str = ""
