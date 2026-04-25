@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../components/ui/Button';
-import { useModal } from '../hooks/useModal';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 interface FAQItemProps {
@@ -387,18 +386,18 @@ const sellerFaqs: FAQItemProps[] = [
         <p>
           To stop receiving marketing communications from us, simply use our opt-out form and we’ll ensure your details are removed from future campaigns.
         </p>
-        <div className="flex">
+        <p>If you’d prefer, you can keep the letter and contact us in the future should you decide to sell your property.</p>
+        <p>If you’ve received an unsolicited letter and would like to opt out, the same process applies.</p>
+        <p>Please note that we source some of our data from publicly available records, and occasionally errors can occur.</p>
+        <p>
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('havlo:open-opt-out'))}
-            className="inline-flex h-10 items-center rounded-[48px] bg-black px-5 text-sm font-semibold text-white hover:bg-black/90 transition-colors"
+            className="font-semibold text-black underline underline-offset-2 hover:text-[#A409D2] transition-colors"
           >
-            Stop Property Marketing by Post
+            Click here to opt out
           </button>
-        </div>
-        <p>If you’d prefer, you can keep the letter and contact us in the future should you decide to sell your property.</p>
-        <p>If you’ve received an unsolicited letter and would like to opt out, the same process applies—just use the button above.</p>
-        <p>Please note that we source some of our data from publicly available records, and occasionally errors can occur.</p>
+        </p>
       </div>
     ),
   },
@@ -505,16 +504,9 @@ export const FAQ: React.FC = () => {
     description: "Find answers to common questions about buying, selling, and managing property abroad with Havlo. Clear guidance to help you make informed decisions.",
     canonical: 'https://www.heyhavlo.com/faq',
   });
-  const { openModal } = useModal();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('buyers');
   const activeFaqs = tabConfig.find((t) => t.key === activeTab)?.faqs ?? [];
-
-  React.useEffect(() => {
-    const handler = () => openModal('opt-out');
-    window.addEventListener('havlo:open-opt-out', handler);
-    return () => window.removeEventListener('havlo:open-opt-out', handler);
-  }, [openModal]);
 
   return (
     <div className="flex flex-col w-full bg-white">
