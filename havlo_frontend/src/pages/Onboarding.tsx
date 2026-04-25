@@ -157,21 +157,6 @@ export const Onboarding: React.FC = () => {
     }
   };
 
-  const buildWhatsAppHref = () => {
-    const lines = [
-      `Hi Havlo! I just completed the Buy Abroad form.`,
-      `Name: ${name}`,
-      `Email: ${email}`,
-      `Phone: ${phoneCode} ${phoneNumber}`,
-      `Looking in: ${selectedCountries.join(', ')}`,
-      `Property type: ${selectedPropertyType}`,
-      `Timeframe: ${selectedTimeframe}`,
-      `Budget: ${currency} ${budget}`,
-      `Currently based in: ${baseCountry}`,
-    ];
-    const msg = encodeURIComponent(lines.join('\n'));
-    return `${WHATSAPP_URL}?text=${msg}`;
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white overflow-x-hidden">
@@ -576,7 +561,7 @@ export const Onboarding: React.FC = () => {
               </div>
               <div className="flex flex-col gap-3">
                 <a
-                  href={buildWhatsAppHref()}
+                  href={WHATSAPP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-3 w-full h-14 rounded-full bg-[#25D366] text-white font-body text-base font-bold hover:opacity-90 transition-opacity"
