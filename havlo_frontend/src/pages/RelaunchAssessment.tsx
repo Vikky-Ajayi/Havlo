@@ -108,7 +108,7 @@ export const RelaunchAssessment: React.FC = () => {
       {/* 2. The Problem Section */}
       <section className="flex flex-col items-center gap-14 bg-white px-4 sm:px-10 lg:px-[100px] py-10 my-0">
         <div className="flex flex-col items-center gap-6 text-center">
-          <span className="font-body text-lg font-medium uppercase tracking-tight text-[#3A3C3E]">
+          <span className="font-body text-lg lg:text-[20px] font-medium uppercase tracking-tight text-[#3A3C3E]">
             THE PROBLEM
           </span>
           <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#040504] sm:text-[56px]">
