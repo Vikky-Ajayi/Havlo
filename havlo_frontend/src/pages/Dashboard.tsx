@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { 
   ArrowRight
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { usePaymentReturnPoller } from '../lib/paymentReturn';
@@ -27,15 +27,17 @@ export const Dashboard: React.FC = () => {
     },
   });
 
-  useEffect(() => {
-    if (!user) return;
-    if (user.is_admin) return;
+  // Role-based default landing screen. Done synchronously (not in useEffect)
+  // so that sellers/agents never briefly see the buyer "Buy Abroad" page
+  // before being redirected to their own dashboard.
+  if (user && !user.is_admin) {
     if (user.role === 'agent') {
-      navigate('/dashboard/buyer-network', { replace: true });
-    } else if (user.role === 'seller') {
-      navigate('/dashboard/sell-faster', { replace: true });
+      return <Navigate to="/dashboard/buyer-network" replace />;
     }
-  }, [user, navigate]);
+    if (user.role === 'seller') {
+      return <Navigate to="/dashboard/sell-faster" replace />;
+    }
+  }
 
   return (
     <DashboardLayout title="Buy Property Abroad">
