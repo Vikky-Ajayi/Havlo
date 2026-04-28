@@ -73,44 +73,64 @@ export const BuyerNetwork: React.FC = () => {
     },
   ];
 
-  const packages = [
+  // Pricing tiers — kept in sync with the dashboard view at
+  // src/pages/DashboardBuyerNetwork.tsx so the public marketing page and
+  // the in-app subscribe view show identical packages.
+  const packages: Array<{
+    id: string;
+    name: string;
+    description: string;
+    price: string;
+    priceLabel: string;
+    features: string[];
+    outcome: string;
+    isPopular?: boolean;
+    isNetwork?: boolean;
+  }> = [
     {
-      name: 'PARTNER',
-      price: '£2,000/mo',
-      subtitle: 'Up to 2 active properties',
+      id: 'starter',
+      name: 'STARTER',
+      description: 'Activate international buyer demand on selected listings.',
+      price: '£295',
+      priceLabel: '/ branch / month',
       features: [
-        'International buyer network access',
-        'Strategy & campaign planning',
-        'Monthly reporting',
-        'Email support',
+        'Launch up to 2 properties to global audiences',
+        'Initial demand activation across international markets',
+        'Capture and manage qualified buyer enquiries',
+        'Real-time visibility into buyer demand',
       ],
-      recommended: false,
+      outcome: 'Early-stage demand and consistent enquiry flow to build momentum.',
     },
     {
-      name: 'GROWTH PARTNER',
-      price: '£4,000/mo',
-      subtitle: 'Up to 5 active properties',
+      id: 'growth',
+      name: 'GROWTH',
+      description: 'Designed to generate sustained demand and buyer competition.',
+      price: '£495',
+      priceLabel: '/ branch / month',
       features: [
-        'Everything in Partner',
-        'Priority launches',
-        'Co-branded marketing',
-        'Weekly reporting',
-        'Strategy calls',
+        'Launch up to 5 properties across multiple international markets',
+        'Expanded global exposure to high-intent buyers',
+        'Priority launch positioning',
+        'Co-branded launch assets to strengthen vendor perception',
       ],
-      recommended: true,
+      outcome:
+        'Consistent enquiry flow with increasing buyer competition and stronger negotiating leverage.',
+      isPopular: true,
     },
     {
-      name: 'PRIVATE CLIENT PARTNER',
-      price: '£7,500+/mo',
-      subtitle: 'High-volume',
+      id: 'network',
+      name: 'NETWORK',
+      description: 'Scale demand generation across your entire network.',
+      price: '£199',
+      priceLabel: '/ branch / month',
       features: [
-        'Dedicated account manager',
-        'Full creative suite',
-        'White-label service',
-        'Weekly strategy calls',
-        'Vendor-winning support',
+        'Unlimited property launches',
+        'Network-wide demand visibility',
+        'Centralised reporting for performance tracking',
+        'Rollout and onboarding support',
       ],
-      recommended: false,
+      outcome: 'Scalable demand generation across multiple listings and branches.',
+      isNetwork: true,
     },
   ];
 
@@ -236,43 +256,88 @@ export const BuyerNetwork: React.FC = () => {
             Packages for estate agents
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {packages.map((pkg) => (
-              <div 
-                key={pkg.name}
-                className="flex flex-col p-6 rounded-[20px] border-[1.5px] border-black/10 relative"
-              >
-                <div className="flex justify-between items-center mb-6 h-[29px]">
-                  <span className="font-display text-lg font-medium uppercase tracking-[-0.36px] text-black">
-                    {pkg.name}
-                  </span>
-                  {pkg.recommended && (
-                    <div className="bg-[#00BC67] px-2 py-1">
-                      <span className="font-display text-lg font-medium uppercase tracking-[-0.36px] text-white">
-                        RECOMMENDED
-                      </span>
+            {packages.map((pkg) => {
+              const ringClass = pkg.isPopular
+                ? 'border-[2px] border-[#A409D2]'
+                : 'border border-black/10';
+              const accentText = pkg.isNetwork
+                ? 'text-[#149D4F]'
+                : 'text-[#A409D2]';
+              const outcomeBg = pkg.isNetwork
+                ? 'bg-[#149D4F]/10'
+                : 'bg-[#A409D2]/10';
+              const ctaLabel = pkg.isNetwork
+                ? 'Request Partnership'
+                : 'Launch my Properties';
+              return (
+                <div
+                  key={pkg.id}
+                  className={`flex flex-col rounded-[14px] bg-white p-6 ${ringClass}`}
+                >
+                  <div className="flex flex-1 flex-col">
+                    <div className="mb-4 flex items-start justify-between gap-2">
+                      <h4 className="font-display text-[18px] font-extrabold tracking-tight text-black">
+                        {pkg.name}
+                      </h4>
+                      {pkg.isPopular && (
+                        <span className="rounded bg-[#A409D2] px-2 py-1 font-display text-[11px] font-bold uppercase tracking-tight text-white">
+                          MOST POPULAR
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-3 mb-6">
-                  <div className="font-display text-[28px] font-semibold tracking-[-0.56px] text-[#1F1F1E]">
-                    {pkg.price}
-                  </div>
-                  <div className="font-body text-sm font-normal tracking-[-0.28px] text-black/70">
-                    {pkg.subtitle}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-4 pt-4 border-t border-black/10">
-                  {pkg.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-[#149D4F]" />
-                      <span className="font-body text-base font-medium tracking-[-0.32px] text-black/70">
-                        {feature}
-                      </span>
+
+                    <div className="mb-2">
+                      {pkg.isNetwork && (
+                        <p className="mb-1 font-display text-[12px] font-bold uppercase tracking-tight text-black/60">
+                          FROM
+                        </p>
+                      )}
+                      <p
+                        className={`font-display text-[36px] font-black leading-none tracking-tight ${accentText}`}
+                      >
+                        {pkg.price}
+                      </p>
+                      <p className="mt-1 font-body text-[13px] font-medium text-black/65">
+                        {pkg.priceLabel}
+                      </p>
                     </div>
-                  ))}
+
+                    <p
+                      className={`mt-4 mb-5 font-display text-[14px] font-bold leading-snug ${accentText}`}
+                    >
+                      {pkg.description}
+                    </p>
+
+                    <ul className="mb-5 space-y-3">
+                      {pkg.features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 mt-[3px] flex-shrink-0 text-[#149D4F]" />
+                          <span className="font-body text-[14px] leading-snug text-black/85">
+                            {feature}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className={`mt-auto rounded-[8px] p-3 ${outcomeBg}`}>
+                      <p className={`font-display text-[13px] font-bold ${accentText}`}>
+                        Typical outcome:
+                      </p>
+                      <p className="mt-1 font-body text-[13px] leading-snug text-black/75">
+                        {pkg.outcome}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => openModal('create-account')}
+                    className="mt-5 w-full rounded-md bg-black px-4 py-3 font-body text-[14px] font-semibold tracking-tight text-white hover:bg-black/90"
+                  >
+                    {ctaLabel}
+                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
