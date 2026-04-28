@@ -712,7 +712,7 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
                 NO ACTIVE PLAN
               </span>
               <span className="font-display text-[15px] font-semibold tracking-tight text-black">
-                Pick a plan to launch your property relaunch campaign
+                Run Your Property Demand Check
               </span>
             </div>
             <p className="font-body text-[14px] text-black/60">
