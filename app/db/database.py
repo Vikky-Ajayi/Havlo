@@ -76,7 +76,13 @@ if DATABASE_URL:
         pool_size=5,
         max_overflow=10,
         pool_pre_ping=True,
-        pool_recycle=300,            # recycle conns every 5 min (Supabase pooler friendly)
+        # Recycle connections every 30 min instead of 5. With 5-min recycle the
+        # pool routinely cycled to empty during low-traffic windows, so the
+        # next form submission paid the full asyncpg+SSL handshake cost
+        # (~200-800ms against Supabase's pgbouncer). 30 min keeps connections
+        # warm across normal idle periods, and pool_pre_ping still guards
+        # against actually-stale sockets.
+        pool_recycle=1800,
         pool_timeout=10,             # wait up to 10s for a free connection
         connect_args=connect_args,
     )

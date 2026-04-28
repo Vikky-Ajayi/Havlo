@@ -432,6 +432,15 @@ const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token
             </motion.div>
           </div>
         </div>
+
+        {/* Result popup — opens once the loader finishes and the flow returns
+            to the form view. Must live inside this branch so it actually
+            renders when step==='form'. */}
+        <DemandCheckResultModal
+          open={showResultModal}
+          onClose={() => setShowResultModal(false)}
+          onActivatePlan={onActivatePlan}
+        />
       </div>
     );
   }

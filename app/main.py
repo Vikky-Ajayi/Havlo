@@ -296,9 +296,39 @@ async def startup() -> None:
     except Exception as exc:
         logger.error("Google Sheets setup failed (non-fatal): %s", exc)
 
+    # ── DB pool keep-alive ─────────────────────────────────────────────────
+    # Run a tiny `SELECT 1` every ~4 minutes to keep at least one connection
+    # in the pool warm. Without this, low-traffic windows let the pool drain
+    # via Supabase's idle disconnect, and the next form submission pays the
+    # asyncpg+SSL handshake cost (~200-800ms) — the main reason public form
+    # submissions feel slow in production but instant in dev.
+    if HAS_DATABASE:
+        from sqlalchemy import text as _text
+
+        async def _db_keepalive() -> None:
+            interval_s = 240  # 4 min — well below pool_recycle (30 min)
+            while True:
+                try:
+                    async with engine.connect() as conn:
+                        await conn.execute(_text("SELECT 1"))
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("DB keep-alive ping failed: %s", exc)
+                await asyncio.sleep(interval_s)
+
+        # Stash the task on the app state so it isn't garbage-collected.
+        app.state.db_keepalive_task = asyncio.create_task(_db_keepalive())
+        logger.info("DB keep-alive ping scheduled (every 4 min).")
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
+    task = getattr(app.state, "db_keepalive_task", None)
+    if task is not None:
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
     await engine.dispose()
     logger.info("Database connections closed.")
 
