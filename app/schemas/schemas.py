@@ -352,6 +352,20 @@ class BuyerNetworkRequest(BaseModel):
     target_markets: list[str] = Field(..., min_length=1)
     contact_preference: str = "email"
     additional_info: Optional[str] = None
+    discount_code: Optional[str] = None
+
+
+class PropertyDemandCheckRequest(BaseModel):
+    property_address: str = Field(..., min_length=1, max_length=500)
+    city: str = Field(..., min_length=1, max_length=200)
+    postcode: str = Field(..., min_length=1, max_length=50)
+    listing_url: Optional[str] = Field(None, max_length=1000)
+
+
+class PropertyDemandCheckResponse(BaseModel):
+    ok: bool = True
+    city: str
+    markets: list[str]
 
 
 class BuyerNetworkResponse(BaseModel):

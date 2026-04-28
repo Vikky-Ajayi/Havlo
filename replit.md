@@ -117,3 +117,25 @@ For internal preview/screenshots the following query params are honoured **once*
 - `?_seed=<sf-plan|sf-amplify|sf-skipped|bn-plan|bn-skipped|clear>` (in `dashboardState.ts`) — seeds dashboard subscription state.
 
 Neither helper runs in production builds.
+
+## 2026-04-28 — Corrections #4 changes
+
+Applied the "corrections_4" PDF change list:
+
+- **Marketing page (`havlo_frontend/src/pages/Marketing.tsx`)**
+  - Amplify tier setup price £3,500 → £3,000.
+  - All three plan cards' "ongoing" string updated to: `Ongoing buyer demand generation and exposure from £X / month`.
+  - Section 7 Final CTA: headline changed to "Your buyer isn't limited to the UK.", body copy rewritten around exposure-not-price, Book-A-Strategy-Call button removed (only Start My Relaunch Plan remains).
+- **Google Analytics** — gtag.js snippet for `G-YZC82R78VZ` injected into `havlo_frontend/index.html`.
+- **Sell-faster dashboard (`havlo_frontend/src/pages/DashboardSellFaster.tsx`)** — removed the previous purple "welcome" card and blue "specialists" card; replaced with a single new **Property Demand Check** card and modal:
+  - Modal has 3 steps: form (Property Address, City, Postcode, Listing URL) → loader (~5.6s, 0–100%, 7 rotating micro-messages with city interpolated) → result popup listing UAE/Singapore/USA/Hong Kong with an "Activate My Property Relaunch Plan" CTA that opens the existing upgrade flow.
+- **Backend Property Demand Check**
+  - New `Property Demand Checks` tab in `app/services/google_sheets.py` (Timestamp, User ID, Full Name, Email, Property Address, City, Postcode, Listing URL).
+  - New helper `record_property_demand_check`.
+  - New authenticated endpoint `POST /api/v1/sell-faster/property-demand-check` (in `app/routers/sell_faster.py`) that logs to Sheets in a background task and returns the markets list. Schemas added in `app/schemas/schemas.py` (`PropertyDemandCheckRequest` / `Response`).
+- **AGENT100 100% off discount code (Buyer Network only)**
+  - `BuyerNetworkRequest` schema gained an optional `discount_code: str`.
+  - `app/routers/buyer_network.py` accepts `AGENT100` (case-insensitive); when applied, total amount is set to £0, SumUp checkout is skipped, and both `Application` and `Payment` rows are written with `PaymentStatus.completed` immediately. The response message is reworded to confirm activation.
+  - `DashboardBuyerNetwork.tsx` adds an optional "Discount code" input in the activation drawer with live AGENT100 confirmation, and skips the SumUp redirect (sending the user straight to `/dashboard/buyer-network?payment=success&ref=…`) when the server returns `total_amount === 0`.
+- **FAQ opt-out modal (`havlo_frontend/src/components/modals/OptOutModal.tsx`)** — "Email" label and placeholder replaced with "Property Address" / "Enter your property address"; input switched from `type="email"` to `type="text"`; success message and validation updated accordingly.
+- **Buyer Network public page pricing (T006)** — pending; awaiting new prices from the user before updating `BuyerNetwork.tsx` pricing strings.

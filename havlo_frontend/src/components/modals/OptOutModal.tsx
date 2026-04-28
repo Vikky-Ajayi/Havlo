@@ -7,21 +7,21 @@ import { api } from '../../lib/api';
 
 export const OptOutModal: React.FC = () => {
   const { closeModal } = useModal();
-  const [email, setEmail] = useState('');
+  const [propertyAddress, setPropertyAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      setError('Please enter your email address.');
+    if (!propertyAddress.trim()) {
+      setError('Please enter your property address.');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      await api.marketingOptOut(email.trim());
+      await api.marketingOptOut(propertyAddress.trim());
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
@@ -52,7 +52,7 @@ export const OptOutModal: React.FC = () => {
                 You're opted out.
               </h2>
               <p className="font-body text-base leading-relaxed text-black/70">
-                We've added <span className="font-semibold">{email}</span> to our suppression list and will stop sending marketing letters to that address.
+                We've added <span className="font-semibold">{propertyAddress}</span> to our suppression list and will stop sending marketing letters to that address.
               </p>
             </div>
             <Button
@@ -75,13 +75,13 @@ export const OptOutModal: React.FC = () => {
 
             <div className="flex flex-col gap-2">
               <label className="font-body text-sm font-bold text-[#001C47]">
-                Email<span className="text-[#FA4242]">*</span>
+                Property Address<span className="text-[#FA4242]">*</span>
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
+                type="text"
+                value={propertyAddress}
+                onChange={(e) => setPropertyAddress(e.target.value)}
+                placeholder="Enter your property address"
                 required
                 className="h-12 w-full rounded-lg bg-[#EEF0F2] px-4 font-body text-sm text-black placeholder:text-[#676B80]/60 focus:outline-none focus:ring-2 focus:ring-black/10"
               />

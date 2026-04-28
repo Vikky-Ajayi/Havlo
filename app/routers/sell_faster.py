@@ -14,6 +14,8 @@ from app.dependencies import get_current_user, require_roles
 from app.models.models import Payment, PaymentStatus, SellFasterApplication, User
 from app.schemas.schemas import (
     PaymentStatusResponse,
+    PropertyDemandCheckRequest,
+    PropertyDemandCheckResponse,
     SellFasterRequest,
     SellFasterResponse,
 )
@@ -182,6 +184,37 @@ async def submit_sell_faster(
             f"Application created. Please complete the setup payment of £{total_amount:.2f} "
             f"(£{monthly_price:.0f}/month thereafter) to activate your campaign."
         ),
+    )
+
+
+@router.post("/property-demand-check", response_model=PropertyDemandCheckResponse)
+async def submit_property_demand_check(
+    payload: PropertyDemandCheckRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+) -> PropertyDemandCheckResponse:
+    """Log a Property Demand Check submission to Google Sheets and return market guidance."""
+    user_dict = {
+        "id": str(current_user.id),
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "email": current_user.email,
+    }
+    form_dict = {
+        "property_address": payload.property_address,
+        "city": payload.city,
+        "postcode": payload.postcode,
+        "listing_url": payload.listing_url or "",
+    }
+    background_tasks.add_task(google_sheets.record_property_demand_check, user_dict, form_dict)
+    logger.info(
+        "Property Demand Check submitted user=%s city=%s postcode=%s",
+        current_user.id, payload.city, payload.postcode,
+    )
+    return PropertyDemandCheckResponse(
+        ok=True,
+        city=payload.city,
+        markets=["United Arab Emirates", "Singapore", "United States", "Hong Kong"],
     )
 
 

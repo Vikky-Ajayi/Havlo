@@ -127,6 +127,7 @@ export const DashboardBuyerNetwork: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [discountCode, setDiscountCode] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -189,6 +190,7 @@ export const DashboardBuyerNetwork: React.FC = () => {
     setSubmitError('');
     try {
       try { localStorage.setItem('havlo:buyer_network_pending', JSON.stringify(selectedPackage)); } catch { /* ignore */ }
+      const trimmedCode = discountCode.trim();
       const result = await api.submitBuyerNetwork(token, {
         package_id: selectedPackage.id,
         package_name: selectedPackage.name,
@@ -196,9 +198,17 @@ export const DashboardBuyerNetwork: React.FC = () => {
         property_types: ['Residential'],
         target_markets: ['International'],
         contact_preference: 'agent',
+        discount_code: trimmedCode || undefined,
       });
       setIsDrawerOpen(false);
       if (!result.checkout_id) throw new Error('Missing checkout ID from payment gateway.');
+
+      // AGENT100 (or any 100% off code) — already paid server-side, skip SumUp redirect.
+      if (result.total_amount === 0) {
+        window.location.href = `/dashboard/buyer-network?payment=success&ref=${encodeURIComponent(result.checkout_id)}`;
+        return;
+      }
+
       const { redirectToCheckout } = await import('../lib/paymentReturn');
       redirectToCheckout(result.checkout_id, {
         kind: 'buyer_network',
@@ -309,9 +319,19 @@ export const DashboardBuyerNetwork: React.FC = () => {
                       className="h-12 flex-1 rounded-lg border border-black/5 bg-white px-4 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
                   </div>
                 </div>
+                <div className="space-y-3">
+                  <label className="block font-body text-sm font-bold text-[#001C47]">Discount code <span className="font-normal text-black/50">(optional)</span></label>
+                  <input type="text" value={discountCode} onChange={(e) => setDiscountCode(e.target.value)}
+                    placeholder="e.g. AGENT100"
+                    autoComplete="off"
+                    className="h-12 w-full rounded-lg border border-black/5 bg-white px-4 font-body text-sm uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-black/5" />
+                </div>
                 <div className="rounded-xl border border-[#A409D2]/20 bg-[#A409D2]/5 p-4">
                   <p className="font-display text-sm font-bold text-[#A409D2]">Plan summary</p>
                   <p className="mt-1 font-body text-sm text-black/80">{selectedPackage.name} — {selectedPackage.price}{selectedPackage.priceLabel}</p>
+                  {discountCode.trim().toUpperCase() === 'AGENT100' && (
+                    <p className="mt-2 font-body text-sm font-bold text-[#149d4f]">AGENT100 — 100% off applied at checkout.</p>
+                  )}
                 </div>
               </form>
               <div className="border-t border-[#F1F1F0] bg-white p-6">

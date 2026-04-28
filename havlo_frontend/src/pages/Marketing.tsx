@@ -97,7 +97,7 @@ const tiers: Tier[] = [
     tagline: 'For generating initial international interest',
     setup: '£2,000',
     setupLabel: 'International Property Launch',
-    ongoing: 'Ongoing exposure from £1,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure from £1,500 / month',
     features: [
       'Targeted exposure across key international buyer markets',
       'High-impact campaign designed to capture attention quickly',
@@ -118,9 +118,9 @@ const tiers: Tier[] = [
   {
     name: 'Amplify',
     tagline: 'Designed to create strong buyer demand and competition',
-    setup: '£3,500',
+    setup: '£3,000',
     setupLabel: 'International Property Launch',
-    ongoing: 'Ongoing exposure from £2,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure from £2,500 / month',
     features: [
       'Expanded reach across multiple high-intent global markets',
       'Multi-format campaign engineered to drive engagement and enquiries',
@@ -143,7 +143,7 @@ const tiers: Tier[] = [
     tagline: 'Maximum global exposure to drive premium offers',
     setup: '£5,000',
     setupLabel: 'International Property Launch',
-    ongoing: 'Ongoing exposure from £3,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure from £3,500 / month',
     features: [
       'Extensive worldwide exposure across 30+ countries',
       'Full-scale campaign strategy designed for maximum visibility',
@@ -766,10 +766,10 @@ export const Marketing: React.FC = () => {
         </div>
         <div className="relative z-10 mx-auto mt-10 flex max-w-[820px] flex-col items-center">
           <h2 className="font-display text-[32px] font-black leading-[1.0] tracking-[-0.8px] text-black sm:text-[44px] lg:text-[56px]">
-            Your buyer may not be in the UK.
+            Your buyer isn't limited to the UK.
           </h2>
           <p className="mt-5 max-w-[640px] font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-base">
-            Book a free 30-minute strategy call. We will tell you which markets are most likely to contain buyers for your property — and whether Havlo is the right fit. No obligation, no pressure.
+            Most slow-selling properties don't have a price problem — they have an exposure problem. Havlo relaunches your property to qualified international buyers actively looking for opportunities like yours, and gives you a clear plan to get it sold.
           </p>
           <div className="mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
             <button
@@ -777,12 +777,6 @@ export const Marketing: React.FC = () => {
               className="h-12 w-full rounded-full bg-[#a409d2] px-7 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#9408bd] sm:w-auto sm:h-14"
             >
               Start My Relaunch Plan
-            </button>
-            <button
-              onClick={handleBookCall}
-              className="h-12 w-full rounded-full border border-black/20 bg-white px-7 font-body text-sm font-extrabold uppercase tracking-[0.08em] text-black transition hover:bg-black/5 sm:w-auto sm:h-14"
-            >
-              Book A Strategy Call
             </button>
           </div>
         </div>

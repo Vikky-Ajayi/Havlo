@@ -72,6 +72,12 @@ async def submit_buyer_network(
     total_amount = round(setup_price, 2)
     reference = f"HAVLO-BN-{uuid.uuid4().hex[:12].upper()}"
 
+    # ── AGENT100: server-side 100% off code (Buyer Network only) ──
+    discount_code = (payload.discount_code or "").strip().upper()
+    discount_applied = discount_code == "AGENT100"
+    if discount_applied:
+        total_amount = 0.0
+
     redirect_url = None
     if settings.FRONTEND_URL:
         redirect_url = (
@@ -80,36 +86,44 @@ async def submit_buyer_network(
         )
 
     logger.info(
-        "Buyer Network checkout requested ref=%s package=%s amount=%.2f currency=%s",
-        reference, payload.package_id, total_amount, currency,
+        "Buyer Network checkout requested ref=%s package=%s amount=%.2f currency=%s discount=%s",
+        reference, payload.package_id, total_amount, currency, discount_code or "none",
     )
 
-    try:
-        checkout = await sumup_service.create_checkout(
-            amount=total_amount,
-            currency=currency,
-            description=(
-                f"Havlo Buyer Network — {package['name']} Package "
-                f"(Setup fee £{setup_price:.0f}; £{monthly_price:.0f}/month thereafter)"
-            ),
-            reference=reference,
-            redirect_url=redirect_url,
-        )
-    except SumUpError as exc:
-        logger.error("SumUp buyer-network failed: %s body=%s", exc, exc.body)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"SumUp error: {exc} {exc.body or ''}".strip(),
-        )
-    except Exception as exc:
-        logger.exception("Unexpected error creating SumUp checkout: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Payment gateway unavailable. Please try again.",
-        )
+    checkout_id = ""
+    checkout_url = ""
 
-    checkout_id = checkout.get("id", "")
-    checkout_url = checkout.get("checkout_url", "")
+    if discount_applied:
+        # Skip SumUp entirely — record as paid immediately.
+        logger.info("AGENT100 applied — skipping SumUp checkout for ref=%s", reference)
+        checkout_id = reference  # use our own reference as the unique checkout id
+    else:
+        try:
+            checkout = await sumup_service.create_checkout(
+                amount=total_amount,
+                currency=currency,
+                description=(
+                    f"Havlo Buyer Network — {package['name']} Package "
+                    f"(Setup fee £{setup_price:.0f}; £{monthly_price:.0f}/month thereafter)"
+                ),
+                reference=reference,
+                redirect_url=redirect_url,
+            )
+        except SumUpError as exc:
+            logger.error("SumUp buyer-network failed: %s body=%s", exc, exc.body)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"SumUp error: {exc} {exc.body or ''}".strip(),
+            )
+        except Exception as exc:
+            logger.exception("Unexpected error creating SumUp checkout: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Payment gateway unavailable. Please try again.",
+            )
+
+        checkout_id = checkout.get("id", "")
+        checkout_url = checkout.get("checkout_url", "")
 
     application = BuyerNetworkApplication(
         user_id=current_user.id,
@@ -123,7 +137,7 @@ async def submit_buyer_network(
         additional_info=payload.additional_info,
         sumup_checkout_id=checkout_id,
         sumup_checkout_url=checkout_url,
-        payment_status=PaymentStatus.pending,
+        payment_status=PaymentStatus.completed if discount_applied else PaymentStatus.pending,
     )
     db.add(application)
 
@@ -132,7 +146,7 @@ async def submit_buyer_network(
         checkout_id=checkout_id,
         amount=total_amount,
         currency=currency,
-        status=PaymentStatus.pending,
+        status=PaymentStatus.completed if discount_applied else PaymentStatus.pending,
         reference_type="buyer_network",
     )
     db.add(payment)
@@ -162,16 +176,23 @@ async def submit_buyer_network(
     }
     background_tasks.add_task(google_sheets.record_buyer_network, user_dict, form_dict)
 
+    if discount_applied:
+        message = (
+            f"AGENT100 applied — your {package['name']} package is activated free of charge."
+        )
+    else:
+        message = (
+            f"Application created. Please complete the setup payment of £{total_amount:.2f} "
+            f"(£{monthly_price:.0f}/month thereafter) to activate."
+        )
+
     return BuyerNetworkResponse(
         application_id=str(application.id),
         checkout_url=checkout_url,
         checkout_id=checkout_id,
         total_amount=total_amount,
         currency=currency,
-        message=(
-            f"Application created. Please complete the setup payment of £{total_amount:.2f} "
-            f"(£{monthly_price:.0f}/month thereafter) to activate."
-        ),
+        message=message,
     )
 
 

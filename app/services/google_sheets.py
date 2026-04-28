@@ -74,6 +74,10 @@ SHEET_TABS: dict[str, list[str]] = {
     "Marketing Opt-Out": [
         "Timestamp", "Email", "Notes",
     ],
+    "Property Demand Checks": [
+        "Timestamp", "User ID", "Full Name", "Email",
+        "Property Address", "City", "Postcode", "Listing URL",
+    ],
 }
 
 
@@ -369,6 +373,24 @@ def record_newsletter(email: str, source: str = "footer") -> None:
 def record_marketing_opt_out(email: str, notes: str = "") -> None:
     row = [datetime.utcnow().isoformat(), email, notes]
     _append_row("Marketing Opt-Out", row)
+
+
+def record_property_demand_check(user_data: dict[str, Any], form_data: dict[str, Any]) -> None:
+    full_name = (
+        form_data.get("full_name")
+        or f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
+    )
+    row = [
+        datetime.utcnow().isoformat(),
+        str(user_data.get("id", "")),
+        full_name,
+        user_data.get("email", ""),
+        form_data.get("property_address", ""),
+        form_data.get("city", ""),
+        form_data.get("postcode", ""),
+        form_data.get("listing_url", ""),
+    ]
+    _append_row("Property Demand Checks", row)
 
 
 def record_session_booking(user_data: dict[str, Any], booking_data: dict[str, Any]) -> None:

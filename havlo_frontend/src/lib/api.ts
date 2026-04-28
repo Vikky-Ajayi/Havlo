@@ -223,6 +223,20 @@ export interface BuyerNetworkPayload {
   target_markets: string[];
   contact_preference?: string;
   additional_info?: string;
+  discount_code?: string;
+}
+
+export interface PropertyDemandCheckPayload {
+  property_address: string;
+  city: string;
+  postcode: string;
+  listing_url?: string;
+}
+
+export interface PropertyDemandCheckResult {
+  ok: boolean;
+  city: string;
+  markets: string[];
 }
 
 export interface Conversation {
@@ -346,6 +360,11 @@ export const api = {
 
   submitBuyerNetwork: (token: string, payload: BuyerNetworkPayload) =>
     request<{ application_id: string; checkout_url: string; checkout_id: string; total_amount: number; currency: string; message: string }>('/buyer-network', { method: 'POST', token, body: payload }),
+
+  submitPropertyDemandCheck: (token: string, payload: PropertyDemandCheckPayload) =>
+    request<PropertyDemandCheckResult>('/sell-faster/property-demand-check', {
+      method: 'POST', token, body: payload,
+    }),
 
   // ── Public pricing (no auth) ─────────────────────────────────────────────
   getSellFasterPlans: () =>
