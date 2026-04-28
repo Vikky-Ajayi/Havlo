@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useConfig } from '../hooks/useConfig';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { usePaymentReturnPoller } from '../lib/paymentReturn';
 import {
   defaultRenewalDate,
@@ -279,6 +280,154 @@ const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token
   const messages = buildMicroMessages(city);
   const currentMicro = messages[microIndex] || messages[0];
 
+  // While we're on the form step we use a two-pane layout (form on the left,
+  // gradient testimonial panel on the right) that mirrors the public
+  // Onboarding screen. The loading and result steps fall back to the original
+  // narrow single-column layout so they stay visually centered.
+  if (step === 'form') {
+    return (
+      <div className="-mx-4 sm:-mx-6 lg:-mx-0">
+        <div className="flex flex-col lg:flex-row lg:min-h-[calc(100vh-160px)]">
+          {/* Left side: form */}
+          <div className="flex-1 flex flex-col gap-8 px-6 py-10 sm:px-8 lg:px-12 lg:py-14">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex w-fit items-center gap-2 rounded-lg bg-[#F4F4F4] px-3 py-2 transition-colors hover:bg-gray-200"
+            >
+              <ChevronLeft size={16} />
+              <span className="font-body text-sm font-semibold text-black">Go back</span>
+            </button>
+
+            <motion.form
+              key="form"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onSubmit={handleSubmit}
+              className="flex max-w-[580px] flex-col gap-8"
+            >
+              <div className="flex flex-col gap-3">
+                <h1 className="font-display text-[40px] font-black leading-none tracking-[-1.12px] text-black sm:text-[48px] lg:text-[56px]">
+                  Tell us about your property
+                </h1>
+                <p className="font-body text-base font-medium leading-[1.5] tracking-[-0.32px] text-black/80">
+                  Enter a few details so we can analyse buyer demand and identify your strongest international markets.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                  <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
+                    Property Address
+                  </label>
+                  <input
+                    type="text"
+                    value={propertyAddress}
+                    onChange={(e) => setPropertyAddress(e.target.value)}
+                    placeholder="e.g. 12 Kensington Gardens"
+                    className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="e.g. London"
+                    className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
+                    Postcode
+                  </label>
+                  <input
+                    type="text"
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value)}
+                    placeholder="e.g. SW7 2AR"
+                    className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
+                    Listing URL <span className="font-medium text-black/55">(optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={listingUrl}
+                    onChange={(e) => setListingUrl(e.target.value)}
+                    placeholder="https://"
+                    className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+                  />
+                  <p className="font-body text-xs font-medium text-black/55">
+                    Provide your existing listing link for more accurate buyer insights.
+                  </p>
+                </div>
+              </div>
+
+              {error && (
+                <p className="font-body text-sm font-medium text-red-600">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-[48px] bg-black font-body text-lg font-bold tracking-[-0.36px] text-white transition-colors hover:bg-black/90 disabled:opacity-50"
+              >
+                <Search size={18} />
+                Analyse my property
+              </button>
+            </motion.form>
+          </div>
+
+          {/* Right side: gradient testimonial panel — hidden on mobile so the
+              form takes the full width on small screens, matching Onboarding. */}
+          <div className="hidden lg:flex flex-1 bg-gradient-to-b from-[#9BD9FF] via-[#FFB0E8] to-[#FEEAA0] items-center justify-center p-12">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-[402px] bg-white rounded-2xl border-[1.5px] border-black overflow-hidden shadow-xl"
+            >
+              <div className="p-6 flex flex-col gap-16">
+                <div className="flex flex-col gap-6">
+                  <img
+                    src="https://api.builder.io/api/v1/image/assets/TEMP/6f2723c232f5b302a2b616f7a1986aa7610e378e?width=272"
+                    alt="Havlo Logo"
+                    className="w-[136px] h-8 object-contain"
+                  />
+                  <p className="font-body text-sm font-medium leading-[1.5] tracking-[-0.28px] text-black/80">
+                    From relaunch to completion, we expose your property to qualified international buyers — <span className="font-bold">seamlessly and with confidence.</span>
+                  </p>
+                </div>
+              </div>
+              <div className="p-6 border-t border-black/10 flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body text-xl font-bold text-[#277453]">Rated</span>
+                    <TrustpilotStars className="h-6" />
+                  </div>
+                  <p className="font-body text-sm font-bold text-black/80 leading-[1.5] tracking-[-0.28px]">
+                    Rated Excellent based on over 1,000 customer reviews.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-[680px] flex-col gap-8 px-4 py-8 sm:px-6 lg:py-12">
       {/* Persistent "Go back" — cancels the flow and returns to the dashboard. */}
@@ -292,99 +441,6 @@ const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token
       </button>
 
       <AnimatePresence mode="wait">
-        {step === 'form' && (
-          <motion.form
-            key="form"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-8"
-          >
-            <div className="flex flex-col gap-3">
-              <h1 className="font-display text-[40px] font-black leading-none tracking-[-1.12px] text-black sm:text-[48px] lg:text-[56px]">
-                Tell us about your property
-              </h1>
-              <p className="font-body text-base font-medium leading-[1.5] tracking-[-0.32px] text-black/80">
-                Enter a few details so we can analyse buyer demand and identify your strongest international markets.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
-                  Property Address
-                </label>
-                <input
-                  type="text"
-                  value={propertyAddress}
-                  onChange={(e) => setPropertyAddress(e.target.value)}
-                  placeholder="e.g. 12 Kensington Gardens"
-                  className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
-                  City
-                </label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. London"
-                  className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
-                  Postcode
-                </label>
-                <input
-                  type="text"
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  placeholder="e.g. SW7 2AR"
-                  className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
-                  Listing URL <span className="font-medium text-black/55">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  value={listingUrl}
-                  onChange={(e) => setListingUrl(e.target.value)}
-                  placeholder="https://"
-                  className="h-14 w-full rounded-xl border border-[#3A3C3E]/10 bg-[#242628]/5 px-4 font-body text-base font-medium text-black outline-none placeholder:text-black/50"
-                />
-                <p className="font-body text-xs font-medium text-black/55">
-                  Provide your existing listing link for more accurate buyer insights.
-                </p>
-              </div>
-            </div>
-
-            {error && (
-              <p className="font-body text-sm font-medium text-red-600">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-[48px] bg-black font-body text-lg font-bold tracking-[-0.36px] text-white transition-colors hover:bg-black/90 disabled:opacity-50"
-            >
-              <Search size={18} />
-              Analyse my property
-            </button>
-          </motion.form>
-        )}
-
         {step === 'loading' && (
           <motion.div
             key="loading"
