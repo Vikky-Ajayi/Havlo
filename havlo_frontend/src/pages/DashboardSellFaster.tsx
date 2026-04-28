@@ -1042,7 +1042,7 @@ const PlanCard: React.FC<{ plan: Plan; onSelect: () => void }> = ({ plan, onSele
         <div className="font-display text-[20px] leading-[1.2]">
           <span className="font-extrabold">{plan.setupPrice}</span>
           {plan.setupLabel && (
-            <span className="ml-1.5 font-normal">{plan.setupLabel}</span>
+            <span className="ml-1.5 font-body text-[15px] font-normal">{plan.setupLabel}</span>
           )}
         </div>
         <p

@@ -301,7 +301,7 @@ export const Marketing: React.FC = () => {
           <div className="font-display text-[20px] leading-[1.2]">
             <span className="font-extrabold">{tier.setup}</span>
             {tier.setupLabel && (
-              <span className="ml-1.5 font-normal">{tier.setupLabel}</span>
+              <span className="ml-1.5 font-body text-[15px] font-normal">{tier.setupLabel}</span>
             )}
           </div>
           <p
