@@ -769,7 +769,7 @@ export const Marketing: React.FC = () => {
             Your buyer isn't limited to the UK.
           </h2>
           <p className="mt-5 max-w-[640px] font-body text-sm font-medium leading-[1.6] text-black/70 sm:text-base">
-            Most slow-selling properties don't have a price problem — they have an exposure problem. Havlo relaunches your property to qualified international buyers actively looking for opportunities like yours, and gives you a clear plan to get it sold.
+            Instantly discover where your buyers are and start generating international demand for your property — no calls, no pressure.
           </p>
           <div className="mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
             <button
