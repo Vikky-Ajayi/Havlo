@@ -184,11 +184,13 @@ const ArrowUpRightTiny: React.FC<{ className?: string }> = ({ className }) => (
 // Property Demand Check modal — 3-step flow (form → loader → result)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Real country flag PNGs are downloaded into /public/flags so they ship with
+// the static frontend bundle (no external CDN dependency at runtime).
 const DEMAND_CHECK_MARKETS: { flag: string; name: string }[] = [
-  { flag: '🇦🇪', name: 'UAE' },
-  { flag: '🇸🇬', name: 'Singapore' },
-  { flag: '🇺🇸', name: 'USA' },
-  { flag: '🇭🇰', name: 'Hong Kong' },
+  { flag: '/flags/ae.png', name: 'UAE' },
+  { flag: '/flags/sg.png', name: 'Singapore' },
+  { flag: '/flags/us.png', name: 'USA' },
+  { flag: '/flags/hk.png', name: 'Hong Kong' },
 ];
 
 const buildMicroMessages = (city: string): string[] => {
@@ -215,7 +217,11 @@ interface PropertyDemandCheckFlowProps {
 // pill inputs, rounded-pill black CTA) with a 3-phase journey: form → 7s
 // progress loader → buyer-market result.
 const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token, onCancel, onActivatePlan }) => {
-  const [step, setStep] = useState<'form' | 'loading' | 'result'>('form');
+  // The flow has two screens: the form and the loader. The "result" is
+  // shown as a popup modal *over* the form once the loader finishes — it is
+  // no longer a third in-page step.
+  const [step, setStep] = useState<'form' | 'loading'>('form');
+  const [showResultModal, setShowResultModal] = useState(false);
   const [propertyAddress, setPropertyAddress] = useState('');
   const [city, setCity] = useState('');
   const [postcode, setPostcode] = useState('');
@@ -225,10 +231,11 @@ const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token
   const [progress, setProgress] = useState(0);
   const [microIndex, setMicroIndex] = useState(0);
 
-  // 7-second loader: animate 0→100% and rotate through the 7 micro-messages.
+  // 13-second loader: animate 0→100% and rotate through the micro-messages.
+  // When complete, return to the form view and open the result popup on top.
   useEffect(() => {
     if (step !== 'loading') return;
-    const totalMs = 7000;
+    const totalMs = 13000;
     const start = performance.now();
     let raf = 0;
     const messages = buildMicroMessages(city);
@@ -244,7 +251,8 @@ const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token
       } else {
         setProgress(100);
         setMicroIndex(messages.length - 1);
-        setStep('result');
+        setStep('form');
+        setShowResultModal(true);
       }
     };
     raf = requestAnimationFrame(tick);
@@ -487,56 +495,136 @@ const PropertyDemandCheckFlow: React.FC<PropertyDemandCheckFlowProps> = ({ token
           </motion.div>
         )}
 
-        {step === 'result' && (
+      </AnimatePresence>
+
+      {/* Result popup — opens once the loader finishes */}
+      <DemandCheckResultModal
+        open={showResultModal}
+        onClose={() => setShowResultModal(false)}
+        onActivatePlan={onActivatePlan}
+      />
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Result popup shown after the demand-check loader completes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface DemandCheckResultModalProps {
+  open: boolean;
+  onClose: () => void;
+  onActivatePlan: () => void;
+}
+
+const DemandCheckResultModal: React.FC<DemandCheckResultModalProps> = ({ open, onClose, onActivatePlan }) => {
+  // Lock the page scroll while the modal is open and allow ESC to close.
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="demand-result-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={onClose}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 py-6 sm:px-6"
+        >
           <motion.div
-            key="result"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            className="flex flex-col gap-6"
+            key="demand-result-card"
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[640px] overflow-hidden rounded-2xl bg-white shadow-2xl"
           >
-            <h2 className="font-display text-[32px] font-black leading-[1.1] tracking-[-1px] text-black sm:text-[40px]">
-              Your property shows strong potential to attract international buyers and generate competition.
-            </h2>
-            <p className="font-body text-base font-medium leading-[1.5] tracking-[-0.32px] text-black/80">
-              Based on current global buyer activity and comparable properties.
-            </p>
-
-            <div className="rounded-2xl bg-black/5 p-6">
-              <p className="font-display text-sm font-extrabold uppercase tracking-[0.1em] text-black">
-                Top Buyer Markets for Your Property
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 font-body text-base font-semibold text-black">
-                {DEMAND_CHECK_MARKETS.map((m, i) => (
-                  <React.Fragment key={m.name}>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span aria-hidden className="text-[20px] leading-none">{m.flag}</span>
-                      {m.name}
-                    </span>
-                    {i < DEMAND_CHECK_MARKETS.length - 1 && (
-                      <span className="text-black/35">•</span>
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-
-            <p className="font-body text-base leading-[1.55] text-black/75">
-              Multiple international regions have been identified where your property is likely to attract buyers faster, with demand typically generated within 8 weeks.
-            </p>
-
+            {/* Close button */}
             <button
               type="button"
-              onClick={onActivatePlan}
-              className="mt-2 inline-flex h-14 w-full max-w-[420px] items-center justify-center gap-2 rounded-[48px] bg-[#A409D2] px-6 font-body text-base font-bold tracking-[-0.32px] text-white transition-colors hover:bg-[#8c08b3]"
+              onClick={onClose}
+              aria-label="Close"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 text-black transition-colors hover:bg-black/10"
             >
-              Activate My Property Relaunch Plan
-              <ArrowUpRightTiny />
+              <X size={18} />
             </button>
+
+            {/* Header banner */}
+            <div className="flex items-center gap-3 bg-[#A409D2]/10 px-6 py-4 sm:px-8">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#A409D2] text-white">
+                <Sparkles size={18} />
+              </div>
+              <span className="font-display text-xs font-extrabold uppercase tracking-[0.14em] text-[#A409D2]">
+                Property analysis complete
+              </span>
+            </div>
+
+            {/* Body */}
+            <div className="flex flex-col gap-6 px-6 py-6 sm:px-8 sm:py-8">
+              <div className="flex flex-col gap-3">
+                <h2 className="font-display text-[26px] font-black leading-[1.15] tracking-[-0.6px] text-black sm:text-[32px]">
+                  Your property shows strong potential to attract international buyers and generate competition.
+                </h2>
+                <p className="font-body text-sm font-medium leading-[1.5] tracking-[-0.28px] text-black/70 sm:text-base">
+                  Based on current global buyer activity and comparable properties.
+                </p>
+              </div>
+
+              {/* Top buyer markets — real flags */}
+              <div className="rounded-2xl border border-black/10 bg-black/[0.03] p-5 sm:p-6">
+                <p className="font-display text-xs font-extrabold uppercase tracking-[0.12em] text-black/80">
+                  Top buyer markets for your property
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {DEMAND_CHECK_MARKETS.map((m) => (
+                    <div
+                      key={m.name}
+                      className="flex flex-col items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-4 text-center"
+                    >
+                      <img
+                        src={m.flag}
+                        alt={`${m.name} flag`}
+                        className="h-8 w-12 rounded-md border border-black/10 object-cover"
+                        loading="lazy"
+                      />
+                      <span className="font-body text-sm font-semibold tracking-[-0.28px] text-black">
+                        {m.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="font-body text-sm leading-[1.55] text-black/70 sm:text-base">
+                Multiple international regions have been identified where your property is likely to attract buyers faster, with demand typically generated within <span className="font-semibold text-black">8 weeks</span>.
+              </p>
+
+              <button
+                type="button"
+                onClick={onActivatePlan}
+                className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-[48px] bg-[#A409D2] px-6 font-body text-base font-bold tracking-[-0.32px] text-white transition-colors hover:bg-[#8c08b3]"
+              >
+                Activate My Property Relaunch Plan
+                <ArrowUpRightTiny />
+              </button>
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
