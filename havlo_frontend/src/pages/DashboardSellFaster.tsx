@@ -648,7 +648,10 @@ export const DashboardSellFaster: React.FC = () => {
   const [skipped, setSkipped] = useState<boolean>(getSellFasterSkipped());
   const [forcePlansView, setForcePlansView] = useState<boolean>(false);
 
-  const showMain = (storedPlan !== null || skipped) && !forcePlansView;
+  // Default to the main dashboard view for everyone (including newly registered
+  // sellers who have no plan). Users reach the Plans view by clicking SUBSCRIBE
+  // on the "NO ACTIVE PLAN" bar (which sets forcePlansView=true).
+  const showMain = !forcePlansView;
 
   // ── form drawer state ──────────────────────────────────────────────────
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
