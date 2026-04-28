@@ -1183,9 +1183,13 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
         <div className="flex flex-col gap-4 rounded-[14px] border border-dashed border-black/15 bg-white p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="bg-black/85 px-2 py-1 font-display text-[12px] font-bold uppercase tracking-tight text-white">
+              <button
+                type="button"
+                onClick={onUpgrade}
+                className="bg-black/85 px-2 py-1 font-display text-[12px] font-bold uppercase tracking-tight text-white transition-colors hover:bg-black"
+              >
                 NO ACTIVE PLAN
-              </span>
+              </button>
               <span className="font-display text-[15px] font-semibold tracking-tight text-black">
                 Run Your Property Demand Check
               </span>
@@ -1213,13 +1217,22 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
         <p className="mx-auto mt-5 max-w-[640px] font-body text-sm font-medium leading-relaxed text-white sm:text-base">
           Welcome to your dashboard — track your property exposure campaigns and your property sale audit.
         </p>
-        <button
-          onClick={onTrackProgress}
-          className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 font-body text-[14px] font-semibold tracking-tight text-black hover:bg-white/95"
-        >
-          <MessageSquare size={16} />
-          Track Progress
-        </button>
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <button
+            onClick={onTrackProgress}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 font-body text-[14px] font-semibold tracking-tight text-black hover:bg-white/95"
+          >
+            <MessageSquare size={16} />
+            Track Progress
+          </button>
+          <button
+            type="button"
+            onClick={onUpgrade}
+            className="font-body text-[13px] font-semibold tracking-tight text-white underline underline-offset-4 hover:text-white/80"
+          >
+            View plans &amp; pricing
+          </button>
+        </div>
       </div>
 
       {/* Specialists card (blue) */}
