@@ -24,16 +24,20 @@ interface Plan {
   tag: string;
   description: string;
   setupPrice: string;
+  setupLabel?: string;
   monthlyPrice: string;
   setupAmount: number;
   monthlyAmount: number;
+  ongoing: string;
   features: string[];
   outcome: string;
   idealFor: string;
   isPopular?: boolean;
   isDark?: boolean;
   isPrivate?: boolean;
+  highlight?: string;
   footnote?: string;
+  cta?: string;
 }
 
 const plans: Plan[] = [
@@ -43,9 +47,11 @@ const plans: Plan[] = [
     tag: 'Launch',
     description: 'For generating initial international interest',
     setupPrice: '£2,000',
+    setupLabel: 'Initial Launch Investment',
     monthlyPrice: '£1,500',
     setupAmount: 2000,
     monthlyAmount: 1500,
+    ongoing: 'Ongoing buyer demand generation and exposure from £1,500 / month',
     features: [
       'Targeted exposure across key international buyer markets',
       'High-impact campaign designed to capture attention quickly',
@@ -53,23 +59,26 @@ const plans: Plan[] = [
       'Enquiry capture and qualification',
       'Live visibility into buyer interest',
       'Designed to generate demand beyond traditional property portals',
-      'No long-term commitment. Continue based on performance',
+      'No long-term commitment — continue based on performance',
     ],
     outcome:
-      'Early buyer demand generated with a consistent flow of qualified enquiries to initiate market momentum',
+      'Early buyer demand generated with a consistent flow of qualified enquiries to initiate market momentum.',
     idealFor:
-      'Properties looking to attract new demand outside their immediate local market',
-    footnote: '* Best suited for initial exposure. For stronger competition, consider Amplify*',
+      'Properties looking to attract new demand outside their immediate local market.',
+    footnote: '* Best suited for initial exposure. For stronger competition, consider Amplify.',
+    cta: 'Start Your Property Relaunch',
   },
   {
     id: 'amplify',
-    name: 'Amplify (Most Popular)',
+    name: 'Amplify',
     tag: 'Amplify',
     description: 'Designed to create strong buyer demand and competition',
-    setupPrice: '£3,500',
+    setupPrice: '£3,000',
+    setupLabel: 'Initial Launch Investment',
     monthlyPrice: '£2,500',
-    setupAmount: 3500,
+    setupAmount: 3000,
     monthlyAmount: 2500,
+    ongoing: 'Ongoing buyer demand generation and exposure from £2,500 / month',
     features: [
       'Expanded reach across multiple high-intent global markets',
       'Multi-format campaign engineered to drive engagement and enquiries',
@@ -77,13 +86,15 @@ const plans: Plan[] = [
       'Continuous optimisation to increase enquiry volume',
       'Weekly insights into buyer behaviour and demand trends',
       'Designed to generate demand beyond traditional property portals',
-      'No long-term commitment. Continue based on performance',
+      'No long-term commitment — continue based on performance',
     ],
     outcome:
-      'Sustained enquiry flow with increasing buyer competition, strengthening your negotiating position',
+      'Sustained enquiry flow with increasing buyer competition, strengthening your negotiating position.',
     idealFor:
-      'Sellers looking to attract multiple serious buyers and strengthen negotiating position',
+      'Sellers looking to attract multiple serious buyers and strengthen their negotiating position.',
     isPopular: true,
+    highlight: 'MOST POPULAR',
+    cta: 'Start Your Property Relaunch',
   },
   {
     id: 'dominate',
@@ -91,9 +102,11 @@ const plans: Plan[] = [
     tag: 'Dominate',
     description: 'Maximum global exposure to drive premium offers',
     setupPrice: '£5,000',
+    setupLabel: 'Initial Launch Investment',
     monthlyPrice: '£3,500',
     setupAmount: 5000,
     monthlyAmount: 3500,
+    ongoing: 'Ongoing buyer demand generation and exposure from £3,500 / month',
     features: [
       'Extensive worldwide exposure across 30+ countries',
       'Full-scale campaign strategy designed for maximum visibility',
@@ -101,22 +114,24 @@ const plans: Plan[] = [
       'Dedicated campaign management and optimisation',
       'Ongoing strategy refinement based on live demand data',
       'Designed to generate demand beyond traditional property portals',
-      'No long-term commitment. Continue based on performance',
+      'No long-term commitment — continue based on performance',
     ],
     outcome:
-      'High enquiry volume, strong buyer competition, and increased likelihood of achieving above-market offers momentum',
+      'High enquiry volume, strong buyer competition, and increased likelihood of achieving above-market offers.',
     idealFor:
-      'Properties where maximising price and buyer competition is the priority',
+      'Properties where maximising price and buyer competition is the priority.',
+    cta: 'Start Your Property Relaunch',
   },
   {
     id: 'private-clients',
-    name: 'PRIVATE CLIENTS',
+    name: 'Private Clients',
     tag: 'Private',
     description: 'Bespoke strategy for high-value and unique properties',
     setupPrice: 'Custom pricing',
     monthlyPrice: '',
     setupAmount: 0,
     monthlyAmount: 0,
+    ongoing: 'Tailored to scope — discussed privately',
     features: [
       'Fully tailored global launch strategy',
       'Premium creative and campaign positioning',
@@ -124,17 +139,17 @@ const plans: Plan[] = [
       'Bespoke market targeting (UK + international)',
       'Advanced buyer targeting & optimisation',
       'Private buyer registration experience',
-      'Live demand insights designed to generate demand beyond traditional property portals',
-      'No long-term commitment. Continue based on performance',
+      'Live demand insights designed to generate demand beyond traditional portals',
       'Dedicated campaign management',
       'Ongoing strategic advisory',
     ],
     outcome:
-      'Direct engagement from high-value buyers, intensified competition, and positioning to secure the strongest possible outcome',
+      'Direct engagement from high-value buyers, intensified competition, and positioning to secure the strongest possible outcome.',
     idealFor:
-      'High-value or unique properties where maximising buyer competition and final price is the priority',
+      'High-value or unique properties where maximising buyer competition and final price is the priority.',
     isDark: true,
     isPrivate: true,
+    cta: 'Request Private Consultation',
   },
 ];
 
@@ -490,7 +505,7 @@ const SellFasterPlansView: React.FC<PlansProps> = ({ onSelect, onSkip }) => (
       Choose a relaunch plan
     </h3>
 
-    <div className="grid grid-cols-1 overflow-hidden rounded-xl border border-black/10 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
       {plans.map((plan) => (
         <PlanCard key={plan.id} plan={plan} onSelect={() => onSelect(plan)} />
       ))}
@@ -510,82 +525,130 @@ const SellFasterPlansView: React.FC<PlansProps> = ({ onSelect, onSkip }) => (
 );
 
 const PlanCard: React.FC<{ plan: Plan; onSelect: () => void }> = ({ plan, onSelect }) => {
-  const isLight = plan.isPopular || plan.isDark;
-  const bg = plan.isPopular ? 'bg-[#A409D2] text-white' : plan.isDark ? 'bg-black text-white' : 'bg-white text-black';
-  const ctaLabel = plan.isPrivate ? 'Request Private Consultation' : 'Start Your Property Relaunch';
-  const ctaClass = plan.isPopular
-    ? 'bg-white text-black hover:bg-white/90'
-    : 'bg-black text-white hover:bg-black/90';
+  const isPurple = !!plan.isPopular;
+  const isDark = !!plan.isDark;
+  const isLight = !isPurple && !isDark;
+  const onColored = isPurple || isDark;
+
+  const containerClass = [
+    'relative flex flex-col p-6 lg:p-7',
+    isPurple && 'bg-[#A409D2] text-white',
+    isDark && 'bg-[#0c0c0c] text-white',
+    isLight && 'border border-black/12 bg-white text-black',
+  ].filter(Boolean).join(' ');
+
+  const ctaClass = [
+    'flex h-11 w-full items-center justify-center px-5 font-body text-[13px] font-semibold transition',
+    isPurple && 'bg-white text-black hover:bg-white/90',
+    isDark && 'border border-white bg-black text-white hover:bg-white/10',
+    isLight && 'bg-black text-white hover:bg-black/85',
+  ].filter(Boolean).join(' ');
 
   return (
-    <div
-      className={`flex flex-col border-b border-black/10 p-6 lg:min-h-[820px] lg:border-b-0 lg:border-r lg:last:border-r-0 ${bg}`}
-    >
-      <div className="flex-1">
-        <h4 className={`mb-1 font-display text-[26px] font-semibold tracking-tight ${plan.isPopular || plan.isDark ? 'text-white' : 'text-black'}`}>
-          {plan.name}
-        </h4>
-        <p className={`mb-6 font-body text-[14px] leading-snug ${plan.isPopular ? 'text-white/85' : plan.isDark ? 'text-white/75' : 'text-black/70'}`}>
-          {plan.description}
+    <div className={containerClass}>
+      {plan.highlight && (
+        <div className="absolute right-5 top-5 rounded-full bg-white px-3 py-1 font-body text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#A409D2]">
+          {plan.highlight}
+        </div>
+      )}
+
+      <h3
+        className={`font-display text-[26px] font-black leading-none tracking-[-0.5px] sm:text-[28px] ${
+          plan.isPrivate ? 'uppercase tracking-[0.04em] text-[24px] sm:text-[26px]' : ''
+        }`}
+      >
+        {plan.name}
+      </h3>
+      <p
+        className={`mt-3 min-h-[42px] font-body text-[13px] font-medium leading-[1.4] ${
+          onColored ? 'text-white/80' : 'text-black/65'
+        }`}
+      >
+        {plan.description}
+      </p>
+
+      <div className={`mt-5 border-t pt-5 ${onColored ? 'border-white/15' : 'border-black/12'}`}>
+        <div className="font-display text-[20px] leading-[1.2]">
+          <span className="font-extrabold">{plan.setupPrice}</span>
+          {plan.setupLabel && (
+            <span className="ml-1.5 font-normal">{plan.setupLabel}</span>
+          )}
+        </div>
+        <p
+          className={`mt-1 font-body text-xs font-semibold ${
+            onColored ? 'text-white/70' : 'text-black/60'
+          }`}
+        >
+          {plan.ongoing}
         </p>
-
-        {plan.isPrivate ? (
-          <div className="mb-7">
-            <div className="font-display text-[20px] font-semibold tracking-tight text-white">Custom pricing</div>
-          </div>
-        ) : (
-          <div className="mb-7">
-            <div className={`font-display text-[18px] font-semibold tracking-tight ${plan.isPopular ? 'text-white' : 'text-black'}`}>
-              {plan.setupPrice} International Property Launch
-            </div>
-            <div className={`font-display text-[16px] font-semibold ${plan.isPopular ? 'text-white' : 'text-black/85'}`}>
-              Ongoing exposure from {plan.monthlyPrice}/month
-            </div>
-          </div>
-        )}
-
-        <ul className={`mb-6 space-y-3 border-t pt-5 ${plan.isPopular ? 'border-white/30' : plan.isDark ? 'border-white/15' : 'border-black/10'}`}>
-          {plan.features.map((f, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className={isLight ? 'text-white' : 'text-[#149D4F]'}>
-                <FeatureTick light={isLight} />
-              </span>
-              <span className={`font-body text-[14px] leading-snug ${plan.isPopular ? 'text-white' : plan.isDark ? 'text-white/90' : 'text-black/80'}`}>
-                {f}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <div className={`mb-4 space-y-1 border-t pt-5 ${plan.isPopular ? 'border-white/30' : plan.isDark ? 'border-white/15' : 'border-black/10'}`}>
-          <p className={`font-display text-[14px] font-bold ${plan.isPopular ? 'text-white' : plan.isDark ? 'text-white' : 'text-[#A409D2]'}`}>
-            Typical outcome:
-          </p>
-          <p className={`font-body text-[13px] leading-snug ${plan.isPopular ? 'text-white/90' : plan.isDark ? 'text-white/80' : 'text-black/70'}`}>
-            {plan.outcome}
-          </p>
-        </div>
-
-        <div className="mb-4 space-y-1">
-          <p className={`font-display text-[14px] font-bold ${plan.isPopular ? 'text-white' : plan.isDark ? 'text-white' : 'text-black'}`}>
-            Ideal for:
-          </p>
-          <p className={`font-body text-[13px] leading-snug ${plan.isPopular ? 'text-white/90' : plan.isDark ? 'text-white/80' : 'text-black/70'}`}>
-            {plan.idealFor}
-          </p>
-        </div>
-
-        {plan.footnote && (
-          <p className="mt-3 font-body text-[12px] italic text-black/60">{plan.footnote}</p>
-        )}
       </div>
 
-      <button
-        onClick={onSelect}
-        className={`mt-6 w-full rounded-md px-4 py-3 font-body text-[14px] font-semibold tracking-tight transition-colors ${ctaClass}`}
+      <ul className="mt-5 flex flex-col gap-2.5">
+        {plan.features.map((f, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <FeatureTick light={onColored} />
+            <span
+              className={`font-body text-[13px] font-medium leading-[1.45] ${
+                onColored ? 'text-white/85' : 'text-black/72'
+              }`}
+            >
+              {f}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div
+        className={`mt-6 rounded-md p-4 ${
+          isPurple ? 'bg-white/10' : isDark ? 'bg-white/8' : 'bg-black/4'
+        }`}
       >
-        {ctaLabel}
-      </button>
+        <p
+          className={`font-body text-[12px] font-extrabold uppercase tracking-[0.12em] ${
+            onColored ? 'text-white' : 'text-black'
+          }`}
+        >
+          Typical outcome:
+        </p>
+        <p
+          className={`mt-1.5 font-body text-[12px] font-medium leading-[1.5] ${
+            onColored ? 'text-white/80' : 'text-black/68'
+          }`}
+        >
+          {plan.outcome}
+        </p>
+
+        <p
+          className={`mt-3 font-body text-[12px] font-extrabold uppercase tracking-[0.12em] ${
+            onColored ? 'text-white' : 'text-black'
+          }`}
+        >
+          Ideal for:
+        </p>
+        <p
+          className={`mt-1.5 font-body text-[12px] font-medium leading-[1.5] ${
+            onColored ? 'text-white/80' : 'text-black/68'
+          }`}
+        >
+          {plan.idealFor}
+        </p>
+      </div>
+
+      {plan.footnote && (
+        <p
+          className={`mt-4 font-body text-[11px] font-medium italic ${
+            onColored ? 'text-white/70' : 'text-black/55'
+          }`}
+        >
+          {plan.footnote}
+        </p>
+      )}
+
+      <div className="mt-auto pt-6">
+        <button type="button" onClick={onSelect} className={ctaClass}>
+          {plan.cta || 'Start Your Property Relaunch'}
+        </button>
+      </div>
     </div>
   );
 };
@@ -628,7 +691,7 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
                 {plan.tag}
               </span>
               <span className="font-display text-[15px] font-semibold tracking-tight text-black">
-                <span className="font-black">{plan.setupPrice}</span> INTERNATIONAL PROPERTY LAUNCH
+                <span className="font-black">{plan.setupPrice}</span> INITIAL LAUNCH INVESTMENT
               </span>
             </div>
             <p className="font-body text-[14px] text-black/60">renews {formatRenewalDate(plan.renewsAt)}</p>
