@@ -618,7 +618,7 @@ const DemandCheckResultModal: React.FC<DemandCheckResultModalProps> = ({ open, o
               </div>
 
               <p className="font-body text-sm leading-[1.55] text-black/70 sm:text-base">
-                Multiple international regions have been identified where your property is likely to attract buyers faster, with demand typically generated within 2-8 weeks.
+                Multiple international regions have been identified where your property is likely to attract buyers faster, with demand typically generated within <span className="font-semibold text-black">2-8 weeks</span>.
               </p>
 
               <button
