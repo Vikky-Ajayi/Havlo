@@ -716,7 +716,7 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
               </span>
             </div>
             <p className="font-body text-[14px] text-black/60">
-              Subscribe to unlock global exposure, targeted advertising, and weekly insights.
+              Run a quick check to see how your property could perform with global buyer exposure — before you commit.
             </p>
           </div>
           <button
