@@ -96,7 +96,7 @@ const tiers: Tier[] = [
     name: 'Launch',
     tagline: 'For generating initial international interest',
     setup: '£2,000',
-    setupLabel: 'International Property Launch',
+    setupLabel: 'Initial Launch Investment',
     ongoing: 'Ongoing buyer demand generation and exposure from £1,500 / month',
     features: [
       'Targeted exposure across key international buyer markets',
@@ -119,7 +119,7 @@ const tiers: Tier[] = [
     name: 'Amplify',
     tagline: 'Designed to create strong buyer demand and competition',
     setup: '£3,000',
-    setupLabel: 'International Property Launch',
+    setupLabel: 'Initial Launch Investment',
     ongoing: 'Ongoing buyer demand generation and exposure from £2,500 / month',
     features: [
       'Expanded reach across multiple high-intent global markets',
@@ -142,7 +142,7 @@ const tiers: Tier[] = [
     name: 'Dominate',
     tagline: 'Maximum global exposure to drive premium offers',
     setup: '£5,000',
-    setupLabel: 'International Property Launch',
+    setupLabel: 'Initial Launch Investment',
     ongoing: 'Ongoing buyer demand generation and exposure from £3,500 / month',
     features: [
       'Extensive worldwide exposure across 30+ countries',

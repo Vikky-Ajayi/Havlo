@@ -536,7 +536,7 @@ const PlanCard: React.FC<{ plan: Plan; onSelect: () => void }> = ({ plan, onSele
         ) : (
           <div className="mb-7">
             <div className={`font-display text-[18px] font-semibold tracking-tight ${plan.isPopular ? 'text-white' : 'text-black'}`}>
-              {plan.setupPrice} International Property Launch
+              {plan.setupPrice} Initial Launch Investment
             </div>
             <div className={`font-display text-[16px] font-semibold ${plan.isPopular ? 'text-white' : 'text-black/85'}`}>
               Ongoing exposure from {plan.monthlyPrice}/month
