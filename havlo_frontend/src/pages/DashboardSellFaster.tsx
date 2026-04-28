@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Search, Sparkles, X } from 'lucide-react';
+import { Check, MessageSquare, PhoneCall, X } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { useConfig } from '../hooks/useConfig';
@@ -536,7 +536,7 @@ const PlanCard: React.FC<{ plan: Plan; onSelect: () => void }> = ({ plan, onSele
         ) : (
           <div className="mb-7">
             <div className={`font-display text-[18px] font-semibold tracking-tight ${plan.isPopular ? 'text-white' : 'text-black'}`}>
-              {plan.setupPrice} Initial Launch Investment
+              {plan.setupPrice} International Property Launch
             </div>
             <div className={`font-display text-[16px] font-semibold ${plan.isPopular ? 'text-white' : 'text-black/85'}`}>
               Ongoing exposure from {plan.monthlyPrice}/month
@@ -666,360 +666,90 @@ const SellFasterMain: React.FC<MainProps> = ({ plan, firstName, calendlyLink, on
         </div>
       )}
 
-      {/* Property Demand Check (replaces previous welcome + specialists cards) */}
-      <PropertyDemandCheckCard displayName={displayName} onActivate={onUpgrade} />
+      {/* Welcome card (purple) */}
+      <div className="overflow-hidden rounded-[20px] border-[3px] border-black bg-[#A409D2] p-8 text-center sm:p-12">
+        <p className="font-body text-base font-medium text-white">Hi</p>
+        <h3 className="mt-2 font-display text-[44px] font-black leading-none tracking-tight text-white sm:text-[56px]">
+          {displayName}
+        </h3>
+        <p className="mx-auto mt-5 max-w-[640px] font-body text-sm font-medium leading-relaxed text-white sm:text-base">
+          Welcome to your dashboard — track your property exposure campaigns and your property sale audit.
+        </p>
+        <button
+          onClick={onTrackProgress}
+          className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 font-body text-[14px] font-semibold tracking-tight text-black hover:bg-white/95"
+        >
+          <MessageSquare size={16} />
+          Track Progress
+        </button>
+      </div>
+
+      {/* Specialists card (blue) */}
+      <div className="overflow-hidden rounded-[20px] border-[3px] border-black bg-[#BBDDF8] p-6 sm:p-8">
+        <h3 className="font-display text-2xl font-black leading-tight tracking-tight text-black sm:text-[28px]">
+          Your property exposure specialists
+        </h3>
+        <p className="mt-4 font-display text-[15px] font-bold text-black">Need help? Contact your Havlo team here</p>
+        <p className="mt-3 font-body text-[14px] leading-relaxed text-black/85">
+          This is your team, but on occasion (when they're on holiday, busy or away due to illness) you might be contacted by other Havlo team members
+        </p>
+
+        <div className="mt-6 flex flex-col gap-4 rounded-[14px] bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <div className="shrink-0">
+              <SpecialistAvatars />
+            </div>
+            <span className="min-w-0 font-display text-[15px] font-bold leading-snug text-black">
+              Your property exposure specialists
+            </span>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={onMessage}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-5 font-body text-[13px] font-semibold tracking-tight text-white hover:bg-black/90"
+            >
+              <MessageSquare size={15} />
+              Message
+            </button>
+            <a
+              href={calendlyLink}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-5 font-body text-[13px] font-semibold tracking-tight text-white hover:bg-black/90"
+            >
+              <PhoneCall size={15} />
+              Book a call
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-// ── Property Demand Check ─────────────────────────────────────────────────────
-
-const DEMAND_MARKETS = ['United Arab Emirates', 'Singapore', 'United States', 'Hong Kong'];
-
-const microMessages = (city: string): string[] => [
-  `Scanning the ${city} property market…`,
-  'Analysing buyer demand across global markets…',
-  'Cross-referencing 30+ international buyer pools…',
-  'Identifying high-intent investor segments…',
-  `Mapping international interest in ${city}…`,
-  'Compiling your property demand report…',
-  'Finalising your relaunch markets…',
-];
-
-interface PropertyDemandCheckCardProps {
-  displayName: string;
-  onActivate: () => void;
-}
-
-const PropertyDemandCheckCard: React.FC<PropertyDemandCheckCardProps> = ({ displayName, onActivate }) => {
-  const [open, setOpen] = useState(false);
+// Stack of team specialist avatars (overlapping circles with real photos).
+const SpecialistAvatars: React.FC = () => {
+  const team = useMemo(
+    () => [
+      { src: '/team-avatars/avatar1.jpg', name: 'Jess A.' },
+      { src: '/team-avatars/avatar2.jpg', name: 'Kwame M.' },
+      { src: '/team-avatars/avatar3.jpg', name: 'Liam P.' },
+      { src: '/team-avatars/avatar4.jpg', name: 'Rachel S.' },
+      { src: '/team-avatars/avatar5.jpg', name: 'David O.' },
+    ],
+    []
+  );
   return (
-    <>
-      <div className="overflow-hidden rounded-[20px] border-[3px] border-black bg-[#A409D2] p-8 text-center sm:p-12">
-        <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 font-body text-[11px] font-extrabold uppercase tracking-[0.16em] text-white">
-          <Sparkles size={12} /> New
-        </div>
-        <p className="mt-4 font-body text-base font-medium text-white">Hi</p>
-        <h3 className="mt-1 font-display text-[40px] font-black leading-none tracking-tight text-white sm:text-[52px]">
-          {displayName}
-        </h3>
-        <h4 className="mx-auto mt-6 max-w-[640px] font-display text-2xl font-black leading-tight tracking-tight text-white sm:text-[30px]">
-          Run Your Property Demand Check
-        </h4>
-        <p className="mx-auto mt-4 max-w-[640px] font-body text-sm font-medium leading-relaxed text-white/90 sm:text-base">
-          Tell us a few details about your property and we'll identify the international buyer markets most likely to drive serious interest.
-        </p>
-        <button
-          onClick={() => setOpen(true)}
-          className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-7 font-body text-[14px] font-semibold tracking-tight text-black hover:bg-white/95"
-        >
-          <Search size={16} />
-          Run My Property Demand Check
-        </button>
-      </div>
-
-      <PropertyDemandCheckModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        onActivate={() => {
-          setOpen(false);
-          onActivate();
-        }}
-      />
-    </>
+    <div className="flex -space-x-3">
+      {team.map((p, i) => (
+        <img
+          key={i}
+          src={p.src}
+          alt={p.name}
+          className="h-10 w-10 rounded-full border-2 border-white object-cover shadow-sm"
+          loading="lazy"
+        />
+      ))}
+    </div>
   );
 };
-
-interface PropertyDemandCheckModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onActivate: () => void;
-}
-
-type DemandStep = 'form' | 'loading' | 'result';
-
-const PropertyDemandCheckModal: React.FC<PropertyDemandCheckModalProps> = ({ isOpen, onClose, onActivate }) => {
-  const { token } = useAuth();
-  const [step, setStep] = useState<DemandStep>('form');
-  const [propertyAddress, setPropertyAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [postcode, setPostcode] = useState('');
-  const [listingUrl, setListingUrl] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Loader state
-  const [progress, setProgress] = useState(0);
-  const [msgIdx, setMsgIdx] = useState(0);
-  const [markets, setMarkets] = useState<string[]>(DEMAND_MARKETS);
-  const [resolvedCity, setResolvedCity] = useState('');
-  const apiDoneRef = useRef(false);
-  const minDoneRef = useRef(false);
-
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setTimeout(() => {
-        setStep('form');
-        setPropertyAddress('');
-        setCity('');
-        setPostcode('');
-        setListingUrl('');
-        setError(null);
-        setSubmitting(false);
-        setProgress(0);
-        setMsgIdx(0);
-        apiDoneRef.current = false;
-        minDoneRef.current = false;
-      }, 250);
-    }
-  }, [isOpen]);
-
-  const advanceWhenReady = () => {
-    if (apiDoneRef.current && minDoneRef.current) {
-      setStep('result');
-    }
-  };
-
-  // Loader animation: 0 → 100 over ~5.6s, message rotation every ~800ms.
-  useEffect(() => {
-    if (step !== 'loading') return;
-    const messages = microMessages(resolvedCity || city || 'your area');
-    setProgress(0);
-    setMsgIdx(0);
-    minDoneRef.current = false;
-
-    const startedAt = Date.now();
-    const totalMs = 5600;
-    const tick = setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const pct = Math.min(100, Math.round((elapsed / totalMs) * 100));
-      setProgress(pct);
-      if (pct >= 100) {
-        clearInterval(tick);
-        minDoneRef.current = true;
-        advanceWhenReady();
-      }
-    }, 60);
-
-    const msgTimer = setInterval(() => {
-      setMsgIdx((prev) => (prev + 1 < messages.length ? prev + 1 : prev));
-    }, Math.floor(totalMs / messages.length));
-
-    return () => {
-      clearInterval(tick);
-      clearInterval(msgTimer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) {
-      setError('You need to be signed in to run this check.');
-      return;
-    }
-    if (!propertyAddress.trim() || !city.trim() || !postcode.trim()) {
-      setError('Please fill in property address, city and postcode.');
-      return;
-    }
-    setError(null);
-    setSubmitting(true);
-    setResolvedCity(city.trim());
-    setStep('loading');
-    apiDoneRef.current = false;
-
-    try {
-      const res = await api.submitPropertyDemandCheck(token, {
-        property_address: propertyAddress.trim(),
-        city: city.trim(),
-        postcode: postcode.trim(),
-        listing_url: listingUrl.trim() || undefined,
-      });
-      setMarkets(res.markets && res.markets.length > 0 ? res.markets : DEMAND_MARKETS);
-      setResolvedCity(res.city || city.trim());
-    } catch (err) {
-      console.error('Property demand check failed', err);
-      // Still show a result with default markets so the user gets value.
-      setMarkets(DEMAND_MARKETS);
-    } finally {
-      apiDoneRef.current = true;
-      setSubmitting(false);
-      advanceWhenReady();
-    }
-  };
-
-  const messages = microMessages(resolvedCity || city || 'your area');
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={step === 'form' ? onClose : undefined}
-            className="fixed inset-0 z-[80] bg-black/50 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.98 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-            className="fixed left-1/2 top-1/2 z-[81] w-[min(560px,calc(100vw-32px))] max-h-[calc(100vh-32px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[20px] bg-white shadow-2xl"
-          >
-            {step !== 'loading' && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F4F4] hover:bg-[#E5E5E5]"
-              >
-                <X size={16} />
-              </button>
-            )}
-
-            {step === 'form' && (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-7 py-8 sm:px-9 sm:py-10">
-                <div className="flex flex-col gap-2 pr-8">
-                  <h2 className="font-display text-2xl font-black leading-tight tracking-tight text-black sm:text-[28px]">
-                    Run Your Property Demand Check
-                  </h2>
-                  <p className="font-body text-sm leading-relaxed text-black/70">
-                    Tell us about your property and we'll identify the buyer markets most likely to deliver serious interest.
-                  </p>
-                </div>
-
-                <FieldText label="Property Address" required value={propertyAddress} onChange={setPropertyAddress} placeholder="e.g. 12 Albany Mews, Knightsbridge" />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <FieldText label="City" required value={city} onChange={setCity} placeholder="e.g. London" />
-                  <FieldText label="Postcode" required value={postcode} onChange={setPostcode} placeholder="e.g. SW1X 7HJ" />
-                </div>
-                <FieldText label="Listing URL (optional)" value={listingUrl} onChange={setListingUrl} placeholder="https://…" />
-
-                {error && (
-                  <div className="rounded-lg bg-[#FEE2E2] px-4 py-3 font-body text-sm text-[#B91C1C]">{error}</div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-black font-body text-[14px] font-semibold tracking-tight text-white hover:bg-black/90 disabled:opacity-60"
-                >
-                  <Search size={16} />
-                  Run My Property Demand Check
-                </button>
-              </form>
-            )}
-
-            {step === 'loading' && (
-              <div className="flex flex-col items-center gap-6 px-7 py-12 text-center sm:px-9">
-                <div className="relative flex h-20 w-20 items-center justify-center">
-                  <div className="absolute inset-0 animate-ping rounded-full bg-[#A409D2]/20" />
-                  <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-[#A409D2] text-white">
-                    <Search size={28} />
-                  </div>
-                </div>
-                <h3 className="font-display text-xl font-black tracking-tight text-black sm:text-2xl">
-                  Running your property demand check…
-                </h3>
-                <div className="w-full max-w-[420px]">
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
-                    <motion.div
-                      className="h-full rounded-full bg-[#A409D2]"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progress}%` }}
-                      transition={{ ease: 'linear', duration: 0.1 }}
-                    />
-                  </div>
-                  <p className="mt-3 font-body text-sm font-bold text-[#A409D2]">{progress}%</p>
-                </div>
-                <div className="min-h-[44px] w-full max-w-[460px]">
-                  <AnimatePresence mode="wait">
-                    <motion.p
-                      key={msgIdx}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.25 }}
-                      className="font-body text-sm leading-relaxed text-black/70"
-                    >
-                      {messages[msgIdx]}
-                    </motion.p>
-                  </AnimatePresence>
-                </div>
-              </div>
-            )}
-
-            {step === 'result' && (
-              <div className="flex flex-col gap-6 px-7 py-9 sm:px-9 sm:py-10">
-                <div className="flex flex-col items-center gap-3 text-center pr-2">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#E6F8EE]">
-                    <Check className="h-7 w-7 text-[#149d4f]" />
-                  </div>
-                  <h2 className="font-display text-2xl font-black leading-tight tracking-tight text-black sm:text-[28px]">
-                    Strong international demand detected
-                  </h2>
-                  <p className="font-body text-sm leading-relaxed text-black/70">
-                    Based on your property in <span className="font-semibold">{resolvedCity || city}</span>, the markets most likely to contain serious buyers are:
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {markets.map((m) => (
-                    <div
-                      key={m}
-                      className="flex items-center gap-2 rounded-xl border border-black/10 bg-[#FAFAFA] px-4 py-3"
-                    >
-                      <Check className="h-4 w-4 text-[#149d4f]" />
-                      <span className="font-body text-sm font-semibold text-black">{m}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="rounded-xl border border-[#A409D2]/20 bg-[#A409D2]/5 px-4 py-3">
-                  <p className="font-body text-sm leading-relaxed text-black/80">
-                    To put your property in front of qualified buyers in these markets, activate your relaunch plan below.
-                  </p>
-                </div>
-
-                <button
-                  onClick={onActivate}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#A409D2] font-body text-[14px] font-semibold tracking-tight text-white hover:bg-[#9408bd]"
-                >
-                  Activate My Property Relaunch Plan
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const FieldText: React.FC<{
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  required?: boolean;
-}> = ({ label, value, onChange, placeholder, required }) => (
-  <div className="flex flex-col gap-2">
-    <label className="font-body text-sm font-bold text-[#001C47]">
-      {label}
-      {required && <span className="text-[#FA4242]">*</span>}
-    </label>
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      required={required}
-      className="h-12 w-full rounded-lg bg-[#EEF0F2] px-4 font-body text-sm text-black placeholder:text-[#676B80]/60 focus:outline-none focus:ring-2 focus:ring-black/10"
-    />
-  </div>
-);
-
 
