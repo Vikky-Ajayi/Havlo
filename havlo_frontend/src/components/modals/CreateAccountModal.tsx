@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
@@ -25,6 +25,15 @@ export const CreateAccountModal: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const inFlight = useRef(false);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCountryCodeChange = useCallback((code: string) => {
+    setPhoneCountryCode(code);
+    // Defer focus so the dropdown close animation completes first —
+    // avoids the iOS Safari focus/blur conflict caused by the label
+    // re-activating after the button click inside it.
+    setTimeout(() => phoneInputRef.current?.focus(), 50);
+  }, []);
 
   const handleSubmit = async () => {
     if (inFlight.current) return;
@@ -133,6 +142,9 @@ export const CreateAccountModal: React.FC = () => {
                   placeholder="First name"
                   value={firstName}
                   onChange={e => setFirstName(e.target.value)}
+                  autoComplete="given-name"
+                  autoCapitalize="words"
+                  autoCorrect="off"
                   className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
                 />
               </label>
@@ -142,6 +154,9 @@ export const CreateAccountModal: React.FC = () => {
                   placeholder="Last name"
                   value={lastName}
                   onChange={e => setLastName(e.target.value)}
+                  autoComplete="family-name"
+                  autoCapitalize="words"
+                  autoCorrect="off"
                   className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
                 />
               </label>
@@ -162,18 +177,30 @@ export const CreateAccountModal: React.FC = () => {
               />
             </label>
 
-            <label className="relative flex h-14 items-center gap-2 rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] px-2 cursor-text">
-              <div className="flex-shrink-0">
-                <CountryCodeSelect value={phoneCountryCode} onChange={setPhoneCountryCode} />
+            {/* Phone row: must be a <div> not a <label> — a <button> inside a
+                <label> causes iOS Safari to fire a spurious focus/blur on the
+                input after the dropdown closes, leaving it unresponsive. */}
+            <div
+              className="relative flex h-14 items-center gap-2 rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] px-2 cursor-text"
+              onClick={() => phoneInputRef.current?.focus()}
+            >
+              <div
+                className="flex-shrink-0"
+                onClick={e => e.stopPropagation()}
+              >
+                <CountryCodeSelect value={phoneCountryCode} onChange={handleCountryCodeChange} />
               </div>
               <input
+                ref={phoneInputRef}
                 type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
                 placeholder="Enter phone number"
                 value={phoneNumber}
                 onChange={e => setPhoneNumber(e.target.value)}
                 className="min-w-0 flex-1 bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
-            </label>
+            </div>
 
             <div className="flex flex-col gap-2">
               <label className="font-body text-sm font-medium text-black/80">Select your role</label>
@@ -195,6 +222,9 @@ export const CreateAccountModal: React.FC = () => {
                 placeholder="Password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
                 className="min-w-0 flex-1 bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
               <button
@@ -214,6 +244,9 @@ export const CreateAccountModal: React.FC = () => {
                 placeholder="Repeat password"
                 value={repeatPassword}
                 onChange={e => setRepeatPassword(e.target.value)}
+                autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
                 className="min-w-0 flex-1 bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
               <button

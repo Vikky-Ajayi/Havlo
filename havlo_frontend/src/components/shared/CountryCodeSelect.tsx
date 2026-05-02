@@ -137,7 +137,11 @@ export const CountryCodeSelect: React.FC<CountryCodeSelectProps> = ({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+          <div
+            className="fixed inset-0 z-[60]"
+            onClick={() => setIsOpen(false)}
+            onTouchEnd={e => { e.preventDefault(); setIsOpen(false); }}
+          />
           <div
             role="listbox"
             aria-label="Country code"
