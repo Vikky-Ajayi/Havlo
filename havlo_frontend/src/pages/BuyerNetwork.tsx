@@ -1,11 +1,37 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
 import { usePageMeta } from '../hooks/usePageMeta';
+
+const portalCons = [
+  'Listings go stale over time, losing visibility and momentum',
+  'Relies on the same pool of active buyers who have already seen the property',
+  'Price reductions become the only lever to generate interest',
+  '"Seen it before" effect kills buyer engagement',
+  'Competes directly with newer, more attractive listings',
+  'Limited control—wait and hope for enquiries',
+  'Vendors lose confidence when properties sit unsold',
+  'Agents risk losing instructions on slow-moving stock',
+  'Exposure declines over time in portal algorithms',
+  'Reactive approach: respond to demand that may never come',
+];
+
+const havloPros = [
+  'Relaunches stale properties with fresh campaigns that reignite interest',
+  'Targets new audiences who haven\'t seen or considered the property before',
+  'Generates demand without immediately cutting price',
+  'Repositions the property as a new opportunity, not old stock',
+  'Creates a standout campaign that separates it from portal noise',
+  'Proactive outreach that drives enquiries on demand',
+  'Demonstrates a clear action plan, restoring vendor confidence',
+  'Helps agents retain instructions and recover deals',
+  'Fresh visibility across multiple channels—not just portals',
+  'Strategic approach: create demand where none exists',
+];
 
 const agentReviews = [
   { title: 'Opened up a completely new buyer market', content: 'Havlo helped us reach international buyers we simply couldn\'t access through traditional portals. It added a powerful new dimension to our listings.', author: 'Oliver, London' },
@@ -70,67 +96,6 @@ export const BuyerNetwork: React.FC = () => {
       id: 4,
       title: 'Sell faster and impress vendors',
       description: 'With Havlo handling international exposure, agents close sales faster, attract higher-value instructions, and enhance their reputation.',
-    },
-  ];
-
-  // Pricing tiers — kept in sync with the dashboard view at
-  // src/pages/DashboardBuyerNetwork.tsx so the public marketing page and
-  // the in-app subscribe view show identical packages.
-  const packages: Array<{
-    id: string;
-    name: string;
-    description: string;
-    price: string;
-    priceLabel: string;
-    features: string[];
-    outcome: string;
-    isPopular?: boolean;
-    isNetwork?: boolean;
-  }> = [
-    {
-      id: 'starter',
-      name: 'STARTER',
-      description: 'Activate international buyer demand on selected listings.',
-      price: '£295',
-      priceLabel: '/ branch / month',
-      features: [
-        'Launch up to 2 properties to global audiences',
-        'Initial demand activation across international markets',
-        'Capture and manage qualified buyer enquiries',
-        'Real-time visibility into buyer demand',
-      ],
-      outcome: 'Early-stage demand and consistent enquiry flow to build momentum.',
-    },
-    {
-      id: 'growth',
-      name: 'GROWTH',
-      description: 'Designed to generate sustained demand and buyer competition.',
-      price: '£495',
-      priceLabel: '/ branch / month',
-      features: [
-        'Launch up to 5 properties across multiple international markets',
-        'Expanded global exposure to high-intent buyers',
-        'Priority launch positioning',
-        'Co-branded launch assets to strengthen vendor perception',
-      ],
-      outcome:
-        'Consistent enquiry flow with increasing buyer competition and stronger negotiating leverage.',
-      isPopular: true,
-    },
-    {
-      id: 'network',
-      name: 'NETWORK',
-      description: 'Scale demand generation across your entire network.',
-      price: '£199',
-      priceLabel: '/ branch / month',
-      features: [
-        'Unlimited property launches',
-        'Network-wide demand visibility',
-        'Centralised reporting for performance tracking',
-        'Rollout and onboarding support',
-      ],
-      outcome: 'Scalable demand generation across multiple listings and branches.',
-      isNetwork: true,
     },
   ];
 
@@ -243,101 +208,61 @@ export const BuyerNetwork: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. Packages for estate agents */}
-      <section className="flex flex-col px-6 lg:px-[100px] bg-white py-10 my-0">
-        <div className="max-w-[1240px] mx-auto w-full">
-          <p className="font-display text-[22px] font-bold text-[#1F1F1E] mb-2">
-            One Additional Sale Typically Covers Your Investment
-          </p>
-          <p className="font-body text-base text-black/60 mb-10 max-w-[680px]">
-            Designed to deliver qualified international buyers — not just more exposure. For most agents, a single completed deal offsets the cost of the campaign.
-          </p>
-          <h2 className="font-display text-[44px] font-black leading-[1.1] text-[#050405] mb-14">
-            Packages for estate agents
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {packages.map((pkg) => {
-              const ringClass = pkg.isPopular
-                ? 'border-[2px] border-[#A409D2]'
-                : 'border border-black/10';
-              const accentText = pkg.isNetwork
-                ? 'text-[#149D4F]'
-                : 'text-[#A409D2]';
-              const outcomeBg = pkg.isNetwork
-                ? 'bg-[#149D4F]/10'
-                : 'bg-[#A409D2]/10';
-              const ctaLabel = pkg.isNetwork
-                ? 'Request Partnership'
-                : 'Launch my Properties';
-              return (
-                <div
-                  key={pkg.id}
-                  className={`flex flex-col rounded-[14px] bg-white p-6 ${ringClass}`}
-                >
-                  <div className="flex flex-1 flex-col">
-                    <div className="mb-4 flex items-start justify-between gap-2">
-                      <h4 className="font-display text-[18px] font-extrabold tracking-tight text-black">
-                        {pkg.name}
-                      </h4>
-                      {pkg.isPopular && (
-                        <span className="rounded bg-[#A409D2] px-2 py-1 font-display text-[11px] font-bold uppercase tracking-tight text-white">
-                          MOST POPULAR
-                        </span>
-                      )}
-                    </div>
+      {/* 4. Why Havlo vs Traditional Property Portals */}
+      <section className="bg-[#f9f9f8] px-6 py-14 lg:px-[100px] lg:py-[100px]">
+        <div>
+          <div className="mb-10 text-center lg:mb-12">
+            <h2 className="font-display text-[30px] font-black leading-[1.05] tracking-[-0.8px] text-black sm:text-[42px] lg:text-[50px]">
+              Why Havlo vs Traditional
+              <br className="hidden sm:block" /> Property Portals
+            </h2>
+            <p className="mt-4 font-body text-sm font-medium leading-[1.55] text-black/65 sm:text-base">
+              Most properties rely on passive listing platforms such as:
+            </p>
+            <div className="mt-6 flex items-center justify-center">
+              <img
+                src="/portal-logos/portal-logos-grey.png"
+                alt="Rightmove, Zoopla, OnTheMarket"
+                className="h-7 w-auto max-w-full object-contain sm:h-9"
+                loading="lazy"
+              />
+            </div>
+          </div>
 
-                    <div className="mb-2">
-                      {pkg.isNetwork && (
-                        <p className="mb-1 font-display text-[12px] font-bold uppercase tracking-tight text-black/60">
-                          FROM
-                        </p>
-                      )}
-                      <p
-                        className={`font-display text-[36px] font-black leading-none tracking-tight ${accentText}`}
-                      >
-                        {pkg.price}
-                      </p>
-                      <p className="mt-1 font-body text-[13px] font-medium text-black/65">
-                        {pkg.priceLabel}
-                      </p>
-                    </div>
+          <div className="mx-auto grid max-w-[760px] gap-5 md:grid-cols-2">
+            <div className="rounded-[28px] border-2 border-[#ff8ce7] bg-white p-6 sm:p-7 lg:p-8">
+              <h3 className="font-body text-[18px] font-extrabold leading-none tracking-[-0.2px] text-black sm:text-[20px]">
+                Traditional portals
+              </h3>
+              <ul className="mt-5 flex flex-col gap-3.5">
+                {portalCons.map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <X className="mt-0.5 h-4 w-4 shrink-0 text-[#e85b6f]" strokeWidth={3} />
+                    <span className="font-body text-[13px] font-medium leading-[1.5] text-black/75 sm:text-sm">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-                    <p
-                      className={`mt-4 mb-5 font-display text-[14px] font-bold leading-snug ${accentText}`}
-                    >
-                      {pkg.description}
-                    </p>
-
-                    <ul className="mb-5 space-y-3">
-                      {pkg.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <Check className="w-4 h-4 mt-[3px] flex-shrink-0 text-[#149D4F]" />
-                          <span className="font-body text-[14px] leading-snug text-black/85">
-                            {feature}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className={`mt-auto rounded-[8px] p-3 ${outcomeBg}`}>
-                      <p className={`font-display text-[13px] font-bold ${accentText}`}>
-                        Typical outcome:
-                      </p>
-                      <p className="mt-1 font-body text-[13px] leading-snug text-black/75">
-                        {pkg.outcome}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => openModal('create-account')}
-                    className="mt-5 w-full rounded-md bg-black px-4 py-3 font-body text-[14px] font-semibold tracking-tight text-white hover:bg-black/90"
-                  >
-                    {ctaLabel}
-                  </button>
-                </div>
-              );
-            })}
+            <div className="rounded-[28px] border-2 border-[#7dd3e8] bg-white p-6 sm:p-7 lg:p-8">
+              <h3 className="font-body text-[18px] font-extrabold leading-none tracking-[-0.2px] text-black sm:text-[20px]">
+                Havlo
+              </h3>
+              <ul className="mt-5 flex flex-col gap-3.5">
+                {havloPros.map((item) => (
+                  <li key={item} className="flex items-start gap-2.5">
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-white">
+                      <Check className="h-2.5 w-2.5" strokeWidth={4} />
+                    </span>
+                    <span className="font-body text-[13px] font-medium leading-[1.5] text-black/80 sm:text-sm">
+                      {item}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
