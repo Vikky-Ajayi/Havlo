@@ -186,19 +186,29 @@ const tiers: Tier[] = [
 ];
 
 const portalCons = [
-  'Passive listings waiting for buyers',
-  'Competing against hundreds of similar properties',
-  'Limited to buyers already searching',
-  'Local visibility only',
-  'No control over demand flow',
+  'Listings go stale over time, losing visibility and momentum',
+  'Relies on the same pool of active buyers who have already seen the property',
+  'Price reductions become the only lever to generate interest',
+  '"Seen it before" effect kills buyer engagement',
+  'Competes directly with newer, more attractive listings',
+  'Limited control—wait and hope for enquiries',
+  'Vendors lose confidence when properties sit unsold',
+  'Agents risk losing instructions on slow-moving stock',
+  'Exposure declines over time in portal algorithms',
+  'Reactive approach: respond to demand that may never come',
 ];
 
 const havloPros = [
-  'Active campaigns generating buyer demand',
-  'Positioned as a standout property launch',
-  'Reaches buyers not yet actively looking',
-  'Local and international visibility across key markets',
-  'Scalable exposure based on your goals',
+  'Relaunches stale properties with fresh campaigns that reignite interest',
+  'Targets new audiences who haven\'t seen or considered the property before',
+  'Generates demand without immediately cutting price',
+  'Repositions the property as a new opportunity, not old stock',
+  'Creates a standout campaign that separates it from portal noise',
+  'Proactive outreach that drives enquiries on demand',
+  'Demonstrates a clear action plan, restoring vendor confidence',
+  'Helps agents retain instructions and recover deals',
+  'Fresh visibility across multiple channels—not just portals',
+  'Strategic approach: create demand where none exists',
 ];
 
 const faqs = [
