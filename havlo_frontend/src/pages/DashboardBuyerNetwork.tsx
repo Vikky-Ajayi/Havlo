@@ -499,6 +499,8 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
   const [bedrooms, setBedrooms] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
+  const [manualLink, setManualLink] = useState('');
+  const [manualImageUrl, setManualImageUrl] = useState('');
   const [manualSubmitting, setManualSubmitting] = useState(false);
   const [manualError, setManualError] = useState<string | null>(null);
 
@@ -536,6 +538,8 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
         bedrooms: bedrooms.trim() || undefined,
         address: address.trim() || undefined,
         description: description.trim() || undefined,
+        external_url: manualLink.trim() || undefined,
+        image_url: manualImageUrl.trim() || undefined,
       });
       onAdded(result);
       onClose();
@@ -691,6 +695,31 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
                 rows={4}
                 className="w-full rounded-lg border border-black/5 bg-[#242628]/5 px-4 py-3 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10 resize-none"
               />
+            </div>
+            <div>
+              <label className={labelCls}>
+                Listing link <span className="font-normal text-black/40">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={manualLink}
+                onChange={(e) => setManualLink(e.target.value)}
+                placeholder="https://www.rightmove.co.uk/properties/..."
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>
+                Property image URL <span className="font-normal text-black/40">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={manualImageUrl}
+                onChange={(e) => setManualImageUrl(e.target.value)}
+                placeholder="https://..."
+                className={inputCls}
+              />
+              <p className="mt-1 font-body text-[11px] text-black/40">Paste a direct link to a photo of the property.</p>
             </div>
             {manualError && <p className="font-body text-[13px] text-red-600">{manualError}</p>}
             <button
