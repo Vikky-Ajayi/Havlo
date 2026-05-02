@@ -424,7 +424,6 @@ function ListingCard({ listing, token, activated }: ListingCardProps) {
               <p className="font-body text-[12px] text-black/60">
                 Advanced services fee:{' '}
                 <span className="font-display font-bold text-black">{formatFee(fee)}</span>
-                <span className="text-black/40 ml-1 text-[11px]">(0.25% rounded up to nearest £500)</span>
               </p>
             </div>
           )}
@@ -637,7 +636,7 @@ export default function DashboardBuyerNetwork() {
               Faster Sales Through Better Exposure
             </h2>
             <p className="max-w-[620px] font-body text-sm font-medium leading-relaxed text-white/80 sm:text-base">
-              Connect your listing portal profile to import your properties. Get a free AI analysis report on any listing, or activate a targeted international buyer demand campaign — a one-off 0.25% fee rounded up to the nearest £500.
+              Connect your listing portal profile to import your properties. Get a free AI analysis report on any listing, or activate a targeted international buyer demand campaign to generate fresh buyer interest.
             </p>
           </div>
           <HeroRings />
@@ -715,7 +714,7 @@ export default function DashboardBuyerNetwork() {
                 {
                   num: '3',
                   title: 'Activate demand',
-                  desc: 'Pay a one-off 0.25% fee (min £500, rounded to nearest £500) to launch a targeted international buyer campaign.',
+                  desc: 'Activate a targeted international buyer demand campaign for any listing to generate fresh enquiries and renewed interest.',
                 },
               ].map((s) => (
                 <div key={s.num} className="flex gap-4">
@@ -776,7 +775,7 @@ export default function DashboardBuyerNetwork() {
 
         {/* Free listing note */}
         <p className="text-center font-body text-[12px] text-black/40">
-          Listing on Havlo is <span className="font-semibold text-black/60">always free</span>. A 0.25% fee applies only when you activate our advanced demand services for a specific property.
+          Listing on Havlo is <span className="font-semibold text-black/60">always free</span>. A fee only applies when you activate our advanced demand services for a specific property.
         </p>
 
       </div>
