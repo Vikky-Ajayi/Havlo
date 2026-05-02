@@ -95,6 +95,15 @@ class AdvancedServiceStatusResponse(BaseModel):
     paid: bool
 
 
+class ActivatedListingOut(BaseModel):
+    payment_record_id: str
+    listing_id: str | None
+    listing_url: str | None
+    listing_title: str | None
+    service_fee_amount: float
+    activated_at: str
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _detect_platform(url: str) -> str:
@@ -434,6 +443,32 @@ async def create_advanced_service_checkout(
         currency="GBP",
         message=f"Checkout created for £{fee:,.0f} advanced services fee.",
     )
+
+
+@router.get("/activated-listings", response_model=list[ActivatedListingOut])
+async def get_activated_listings(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all listings where the advanced service payment is completed."""
+    result = await db.execute(
+        select(AgentAdvancedServicePayment).where(
+            AgentAdvancedServicePayment.user_id == current_user.id,
+            AgentAdvancedServicePayment.payment_status == "completed",
+        )
+    )
+    records = result.scalars().all()
+    return [
+        ActivatedListingOut(
+            payment_record_id=str(r.id),
+            listing_id=str(r.listing_id) if r.listing_id else None,
+            listing_url=r.listing_url,
+            listing_title=r.listing_title,
+            service_fee_amount=r.service_fee_amount,
+            activated_at=r.created_at.isoformat(),
+        )
+        for r in records
+    ]
 
 
 @router.get("/advanced-service/{record_id}/status", response_model=AdvancedServiceStatusResponse)

@@ -593,6 +593,16 @@ export const api = {
       paid: boolean;
     }>(`/agent/advanced-service/${recordId}/status`, { token }),
 
+  agentGetActivatedListings: (token: string) =>
+    request<{
+      payment_record_id: string;
+      listing_id: string | null;
+      listing_url: string | null;
+      listing_title: string | null;
+      service_fee_amount: number;
+      activated_at: string;
+    }[]>('/agent/activated-listings', { token }),
+
   // ── Public website forms (no auth) ───────────────────────────────────────
   submitContactForm: (payload: {
     first_name: string;

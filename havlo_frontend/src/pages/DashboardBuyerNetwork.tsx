@@ -17,6 +17,12 @@ import {
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { api, type AgentListing } from '../lib/api';
+import {
+  persistPendingPayment,
+  redirectToCheckout,
+  usePaymentReturnPoller,
+  PAYMENT_TIMEOUT_MESSAGE,
+} from '../lib/paymentReturn';
 
 // ── Fee calculator (mirrors backend) ──────────────────────────────────────────
 function calculateFee(priceRaw: string): number | null {
@@ -118,6 +124,65 @@ function renderReport(text: string) {
   return elements;
 }
 
+// ── Payment success banner ─────────────────────────────────────────────────────
+interface PaymentSuccessBannerProps {
+  listingTitle: string | null;
+  fee: number;
+  onDismiss: () => void;
+}
+
+function PaymentSuccessBanner({ listingTitle, fee, onDismiss }: PaymentSuccessBannerProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      transition={{ duration: 0.3 }}
+      className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700/40 rounded-2xl p-4 flex items-start gap-3"
+    >
+      <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-800/40 flex items-center justify-center shrink-0">
+        <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-display font-semibold text-green-800 dark:text-green-300">
+          Demand campaign activated!
+        </p>
+        <p className="text-xs text-green-700 dark:text-green-400 mt-0.5 leading-relaxed">
+          {listingTitle ? (
+            <>Your campaign for <span className="font-semibold">{listingTitle}</span> is now live. </>
+          ) : (
+            'Your campaign is now live. '
+          )}
+          Fee of {formatFee(fee)} has been received. Expect renewed enquiries within 7–14 days.
+        </p>
+      </div>
+      <button
+        onClick={onDismiss}
+        className="p-1 text-green-500 hover:text-green-700 dark:hover:text-green-300 transition-colors shrink-0"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </motion.div>
+  );
+}
+
+// ── Polling banner ─────────────────────────────────────────────────────────────
+function PaymentPollingBanner() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -16 }}
+      className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/40 rounded-2xl p-4 flex items-center gap-3"
+    >
+      <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />
+      <p className="text-sm text-blue-700 dark:text-blue-300">
+        Confirming your payment — this usually takes a few seconds…
+      </p>
+    </motion.div>
+  );
+}
+
 // ── AI Report modal ────────────────────────────────────────────────────────────
 interface AIReportModalProps {
   listing: AgentListing;
@@ -149,9 +214,7 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
     }
   }, [listing, token]);
 
-  useEffect(() => {
-    generate();
-  }, [generate]);
+  useEffect(() => { generate(); }, [generate]);
 
   return (
     <div
@@ -165,7 +228,6 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
         transition={{ duration: 0.2 }}
         className="w-full max-w-2xl max-h-[85vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
       >
-        {/* Header */}
         <div className="flex items-start gap-3 p-5 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
           <div className="w-9 h-9 rounded-xl bg-[#C5A57B]/10 flex items-center justify-center shrink-0">
             <Sparkles className="w-4 h-4 text-[#C5A57B]" />
@@ -189,7 +251,6 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -213,13 +274,10 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
             </div>
           )}
           {report && !loading && (
-            <div className="prose-sm max-w-none">
-              {renderReport(report)}
-            </div>
+            <div className="prose-sm max-w-none">{renderReport(report)}</div>
           )}
         </div>
 
-        {/* Footer */}
         {report && !loading && (
           <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 shrink-0 flex justify-end">
             <button
@@ -240,7 +298,6 @@ interface ActivateDemandModalProps {
   listing: AgentListing;
   token: string;
   onClose: () => void;
-  onSuccess: (checkoutUrl: string) => void;
 }
 
 const BENEFIT_BULLETS = [
@@ -257,7 +314,7 @@ const BENEFIT_BULLETS = [
   'Turn underperforming stock into active opportunities',
 ];
 
-function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDemandModalProps) {
+function ActivateDemandModal({ listing, token, onClose }: ActivateDemandModalProps) {
   const fee = listing.price ? calculateFee(listing.price) : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -276,10 +333,20 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
         listing_title: listing.title || undefined,
         property_price_raw: listing.price,
       });
-      onSuccess(res.checkout_url || res.checkout_id);
+      // Persist the pending payment so the return poller can pick it up
+      persistPendingPayment({
+        kind: 'advanced_service',
+        recordId: res.payment_record_id,
+        reference: res.checkout_id,
+      });
+      // Redirect through the Havlo checkout page (SumUp widget)
+      redirectToCheckout(res.checkout_id, {
+        kind: 'advanced_service',
+        recordId: res.payment_record_id,
+        reference: res.checkout_id,
+      });
     } catch (e: any) {
       setError(e?.message || 'Could not create payment. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -294,9 +361,8 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ duration: 0.2 }}
-        className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]"
       >
-        {/* Header bar */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-[#C5A57B]" />
@@ -310,7 +376,6 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
         </div>
 
         <div className="px-5 pb-5 space-y-4">
-          {/* Fee display */}
           <div>
             {fee !== null ? (
               <p className="text-4xl font-display font-bold text-zinc-900 dark:text-white tracking-tight">
@@ -330,7 +395,6 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
             </p>
           </div>
 
-          {/* Benefits */}
           <ul className="space-y-1.5">
             {BENEFIT_BULLETS.map((b, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
@@ -340,7 +404,6 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
             ))}
           </ul>
 
-          {/* Typical outcome */}
           <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3.5">
             <p className="text-xs font-display font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
               Typical outcome
@@ -350,7 +413,6 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
             </p>
           </div>
 
-          {/* Advertising investment note */}
           <div>
             <p className="text-xs font-display font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
               Advertising Investment
@@ -366,7 +428,6 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
             </p>
           )}
 
-          {/* CTA */}
           <button
             onClick={handleActivate}
             disabled={loading || fee === null}
@@ -375,7 +436,7 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Processing…
+                Redirecting to payment…
               </>
             ) : (
               'Activate Demand'
@@ -391,21 +452,15 @@ function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDem
 interface ListingCardProps {
   listing: AgentListing;
   token: string;
+  activated: boolean;
 }
 
-function ListingCard({ listing, token }: ListingCardProps) {
+function ListingCard({ listing, token, activated }: ListingCardProps) {
   const [showReport, setShowReport] = useState(false);
   const [showActivate, setShowActivate] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const fee = listing.price ? calculateFee(listing.price) : null;
-
-  const handleActivateSuccess = (checkoutUrl: string) => {
-    setShowActivate(false);
-    if (checkoutUrl && checkoutUrl.startsWith('http')) {
-      window.location.href = checkoutUrl;
-    }
-  };
 
   return (
     <>
@@ -413,8 +468,20 @@ function ListingCard({ listing, token }: ListingCardProps) {
         layout
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-zinc-800/60 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+        className={`bg-white dark:bg-zinc-800/60 rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition-shadow relative ${
+          activated
+            ? 'border-green-300/70 dark:border-green-700/50'
+            : 'border-zinc-200/80 dark:border-zinc-700/50'
+        }`}
       >
+        {/* Demand Activated ribbon */}
+        {activated && (
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 bg-green-500 text-white rounded-full text-xs font-semibold shadow-sm">
+            <Zap className="w-3 h-3" />
+            Demand Activated
+          </div>
+        )}
+
         {/* Image */}
         {listing.image_url && (
           <div className="relative h-44 bg-zinc-100 dark:bg-zinc-700 overflow-hidden">
@@ -434,7 +501,6 @@ function ListingCard({ listing, token }: ListingCardProps) {
 
         {/* Body */}
         <div className="p-4 space-y-3">
-          {/* Title + price */}
           <div>
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-sm font-display font-semibold text-zinc-900 dark:text-white leading-snug line-clamp-2 flex-1">
@@ -459,7 +525,6 @@ function ListingCard({ listing, token }: ListingCardProps) {
             )}
           </div>
 
-          {/* Description (collapsible) */}
           {listing.description && (
             <div>
               <p className={`text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
@@ -469,23 +534,29 @@ function ListingCard({ listing, token }: ListingCardProps) {
                 onClick={() => setExpanded(!expanded)}
                 className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 mt-1 transition-colors"
               >
-                {expanded ? (
-                  <><ChevronUp className="w-3 h-3" /> Show less</>
-                ) : (
-                  <><ChevronDown className="w-3 h-3" /> Show more</>
-                )}
+                {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> Show more</>}
               </button>
             </div>
           )}
 
-          {/* Fee hint */}
-          {fee !== null && (
+          {/* Fee hint — only show if not yet activated */}
+          {fee !== null && !activated && (
             <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-700/50 rounded-lg px-3 py-2">
               <Zap className="w-3.5 h-3.5 text-[#C5A57B] shrink-0" />
               <p className="text-xs text-zinc-600 dark:text-zinc-400">
                 Advanced services fee:{' '}
                 <span className="font-semibold text-zinc-800 dark:text-zinc-200">{formatFee(fee)}</span>
                 <span className="text-zinc-400 ml-1">(0.25% rounded up to nearest £500)</span>
+              </p>
+            </div>
+          )}
+
+          {/* Activated info strip */}
+          {activated && (
+            <div className="flex items-center gap-1.5 bg-green-50 dark:bg-green-900/20 rounded-lg px-3 py-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <p className="text-xs text-green-700 dark:text-green-400 font-semibold">
+                Campaign live — buyer demand campaign is active for this property.
               </p>
             </div>
           )}
@@ -500,32 +571,31 @@ function ListingCard({ listing, token }: ListingCardProps) {
               AI Report
               <span className="text-zinc-400 font-normal">• Free</span>
             </button>
-            <button
-              onClick={() => setShowActivate(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-colors"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Activate Demand
-            </button>
+
+            {activated ? (
+              <div className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-green-100 dark:bg-green-900/30 text-xs font-semibold text-green-700 dark:text-green-400">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Active
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowActivate(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-colors"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Activate Demand
+              </button>
+            )}
           </div>
         </div>
       </motion.div>
 
       <AnimatePresence>
         {showReport && (
-          <AIReportModal
-            listing={listing}
-            token={token}
-            onClose={() => setShowReport(false)}
-          />
+          <AIReportModal listing={listing} token={token} onClose={() => setShowReport(false)} />
         )}
         {showActivate && (
-          <ActivateDemandModal
-            listing={listing}
-            token={token}
-            onClose={() => setShowActivate(false)}
-            onSuccess={handleActivateSuccess}
-          />
+          <ActivateDemandModal listing={listing} token={token} onClose={() => setShowActivate(false)} />
         )}
       </AnimatePresence>
     </>
@@ -551,7 +621,17 @@ export default function DashboardBuyerNetwork() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
 
-  // Load profile link + listings on mount
+  // Activated listing IDs (those with completed advanced service payments)
+  // Key: listing_id (string UUID), or a fallback key per record if listing_id is null
+  const [activatedListingIds, setActivatedListingIds] = useState<Set<string>>(new Set());
+
+  // Payment return success state
+  const [paidBanner, setPaidBanner] = useState<{
+    listingTitle: string | null;
+    fee: number;
+  } | null>(null);
+
+  // ── Load profile + listings + activated status on mount ────────────────────
   useEffect(() => {
     if (!token) return;
     (async () => {
@@ -568,8 +648,14 @@ export default function DashboardBuyerNetwork() {
 
       setListingsLoading(true);
       try {
-        const data = await api.agentGetListings(token);
-        setListings(data);
+        const [listingsData, activatedData] = await Promise.all([
+          api.agentGetListings(token),
+          api.agentGetActivatedListings(token),
+        ]);
+        setListings(listingsData);
+        setActivatedListingIds(
+          new Set(activatedData.filter((r) => r.listing_id).map((r) => r.listing_id!)),
+        );
       } catch {} finally {
         setListingsLoading(false);
       }
@@ -577,6 +663,36 @@ export default function DashboardBuyerNetwork() {
     })();
   }, [token]);
 
+  // ── Payment return poller ──────────────────────────────────────────────────
+  const { polling: paymentPolling } = usePaymentReturnPoller({
+    kind: 'advanced_service',
+    token,
+    fetchStatus: async (recordId) => {
+      const res = await api.agentGetAdvancedServiceStatus(token!, recordId);
+      return { paid: res.paid, status: res.status };
+    },
+    onPaid: async (result) => {
+      // Re-fetch activated listings so the badge appears immediately
+      if (token) {
+        try {
+          const activated = await api.agentGetActivatedListings(token);
+          setActivatedListingIds(
+            new Set(activated.filter((r) => r.listing_id).map((r) => r.listing_id!)),
+          );
+          // Show success banner — find the most recently activated record's title + fee
+          const latest = activated[activated.length - 1];
+          if (latest) {
+            setPaidBanner({ listingTitle: latest.listing_title, fee: latest.service_fee_amount });
+          }
+        } catch {}
+      }
+    },
+    onTimeout: () => {
+      // Silent — SumUp can be slow; the banner will appear on next reload if paid
+    },
+  });
+
+  // ── Profile save ───────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
     if (!token || !profileUrl.trim()) return;
     setProfileSaving(true);
@@ -595,6 +711,7 @@ export default function DashboardBuyerNetwork() {
     }
   };
 
+  // ── Listings sync ──────────────────────────────────────────────────────────
   const handleSync = async () => {
     if (!token) return;
     setSyncing(true);
@@ -622,7 +739,20 @@ export default function DashboardBuyerNetwork() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+
+        {/* Payment banners */}
+        <AnimatePresence>
+          {paymentPolling && <PaymentPollingBanner key="polling" />}
+          {paidBanner && !paymentPolling && (
+            <PaymentSuccessBanner
+              key="success"
+              listingTitle={paidBanner.listingTitle}
+              fee={paidBanner.fee}
+              onDismiss={() => setPaidBanner(null)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Page header */}
         <div>
@@ -688,7 +818,6 @@ export default function DashboardBuyerNetwork() {
             </p>
           )}
 
-          {/* Sync button */}
           {savedUrl && (
             <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-700">
               <button
@@ -696,16 +825,10 @@ export default function DashboardBuyerNetwork() {
                 disabled={syncing}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#C5A57B]/50 text-sm font-semibold text-[#C5A57B] hover:bg-[#C5A57B]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {syncing ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 {syncing ? 'Syncing listings…' : 'Sync Listings from Portal'}
               </button>
-              {syncError && (
-                <p className="text-xs text-red-500 dark:text-red-400 mt-2">{syncError}</p>
-              )}
+              {syncError && <p className="text-xs text-red-500 dark:text-red-400 mt-2">{syncError}</p>}
               {syncSuccess && (
                 <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-start gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {syncSuccess}
@@ -724,25 +847,22 @@ export default function DashboardBuyerNetwork() {
             <div className="grid sm:grid-cols-3 gap-4">
               {[
                 {
-                  step: '1',
                   icon: <Home className="w-4 h-4 text-[#C5A57B]" />,
                   title: 'Connect your portal',
                   desc: 'Paste your Rightmove, Zoopla or OnTheMarket agent profile URL above.',
                 },
                 {
-                  step: '2',
                   icon: <FileText className="w-4 h-4 text-[#C5A57B]" />,
                   title: 'Get AI insights — free',
                   desc: 'Click "AI Report" on any imported listing for a free property analysis and action plan.',
                 },
                 {
-                  step: '3',
                   icon: <Zap className="w-4 h-4 text-[#C5A57B]" />,
                   title: 'Activate demand',
                   desc: 'Pay a one-off 0.25% fee (min £500) to launch a targeted international buyer campaign.',
                 },
-              ].map((s) => (
-                <div key={s.step} className="flex gap-3">
+              ].map((s, idx) => (
+                <div key={idx} className="flex gap-3">
                   <div className="w-7 h-7 rounded-full bg-[#C5A57B]/10 flex items-center justify-center shrink-0 mt-0.5">
                     {s.icon}
                   </div>
@@ -771,6 +891,9 @@ export default function DashboardBuyerNetwork() {
                 </h2>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                   {listings.length} listing{listings.length !== 1 ? 's' : ''} imported
+                  {activatedListingIds.size > 0 && (
+                    <> · <span className="text-green-600 dark:text-green-400 font-semibold">{activatedListingIds.size} active campaign{activatedListingIds.size !== 1 ? 's' : ''}</span></>
+                  )}
                   {lastSyncedLabel ? ` · Last synced ${lastSyncedLabel}` : ''}
                 </p>
               </div>
@@ -784,9 +907,7 @@ export default function DashboardBuyerNetwork() {
               </button>
             </div>
 
-            {syncError && (
-              <p className="text-xs text-red-500 dark:text-red-400 mb-3">{syncError}</p>
-            )}
+            {syncError && <p className="text-xs text-red-500 dark:text-red-400 mb-3">{syncError}</p>}
             {syncSuccess && (
               <p className="text-xs text-green-600 dark:text-green-400 mb-3 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> {syncSuccess}
@@ -795,7 +916,12 @@ export default function DashboardBuyerNetwork() {
 
             <div className="grid sm:grid-cols-2 gap-4">
               {listings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} token={token!} />
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  token={token!}
+                  activated={activatedListingIds.has(listing.id)}
+                />
               ))}
             </div>
           </div>

@@ -29,7 +29,7 @@ const DashboardPropertyMatching = React.lazy(() => import('./pages/DashboardProp
 const DashboardEliteProperty = React.lazy(() => import('./pages/DashboardEliteProperty').then(m => ({ default: m.DashboardEliteProperty })));
 const DashboardSellFaster = React.lazy(() => import('./pages/DashboardSellFaster').then(m => ({ default: m.DashboardSellFaster })));
 const DashboardSaleAudit = React.lazy(() => import('./pages/DashboardSaleAudit').then(m => ({ default: m.DashboardSaleAudit })));
-const DashboardBuyerNetwork = React.lazy(() => import('./pages/DashboardBuyerNetwork').then(m => ({ default: m.DashboardBuyerNetwork })));
+const DashboardBuyerNetwork = React.lazy(() => import('./pages/DashboardBuyerNetwork'));
 const DashboardInbox = React.lazy(() => import('./pages/DashboardInbox').then(m => ({ default: m.DashboardInbox })));
 const DashboardSettings = React.lazy(() => import('./pages/DashboardSettings').then(m => ({ default: m.DashboardSettings })));
 const DashboardUsers = React.lazy(() => import('./pages/DashboardUsers').then(m => ({ default: m.DashboardUsers })));
