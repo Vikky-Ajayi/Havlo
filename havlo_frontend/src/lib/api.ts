@@ -593,6 +593,19 @@ export const api = {
       paid: boolean;
     }>(`/agent/advanced-service/${recordId}/status`, { token }),
 
+  agentAddManualListing: (
+    token: string,
+    payload: {
+      title: string;
+      price?: string;
+      bedrooms?: string;
+      address?: string;
+      description?: string;
+      external_url?: string;
+      image_url?: string;
+    },
+  ) => request<AgentListing>('/agent/listings/manual', { method: 'POST', token, body: payload }),
+
   agentGetActivatedListings: (token: string) =>
     request<{
       payment_record_id: string;

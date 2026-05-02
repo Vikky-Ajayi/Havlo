@@ -79,6 +79,16 @@ class AdvancedServiceRequest(BaseModel):
     property_price_raw: str = Field(..., description="Listed price as shown, e.g. £875,000")
 
 
+class ManualListingRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+    price: str | None = Field(None, max_length=100)
+    bedrooms: str | None = Field(None, max_length=50)
+    address: str | None = Field(None, max_length=500)
+    description: str | None = None
+    external_url: str | None = Field(None, max_length=2000)
+    image_url: str | None = Field(None, max_length=2000)
+
+
 class AdvancedServiceResponse(BaseModel):
     payment_record_id: str
     checkout_id: str
@@ -291,6 +301,38 @@ async def get_listings(
         )
         for l in listings
     ]
+
+
+@router.post("/listings/manual", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
+async def add_manual_listing(
+    payload: ManualListingRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add a single listing manually (no portal sync required)."""
+    listing = AgentListing(
+        user_id=current_user.id,
+        external_url=payload.external_url or None,
+        title=payload.title,
+        price=payload.price or None,
+        description=payload.description or None,
+        image_url=payload.image_url or None,
+        bedrooms=payload.bedrooms or None,
+        platform="manual",
+    )
+    db.add(listing)
+    await db.commit()
+    await db.refresh(listing)
+    return ListingOut(
+        id=str(listing.id),
+        external_url=listing.external_url,
+        title=listing.title,
+        price=listing.price,
+        description=listing.description,
+        image_url=listing.image_url,
+        bedrooms=listing.bedrooms,
+        platform=listing.platform,
+    )
 
 
 # ── AI Report ─────────────────────────────────────────────────────────────────

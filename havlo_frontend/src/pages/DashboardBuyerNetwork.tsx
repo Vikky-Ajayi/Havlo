@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
+import { Link2, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { api, type AgentListing } from '../lib/api';
@@ -475,6 +475,238 @@ function ListingCard({ listing, token, activated }: ListingCardProps) {
   );
 }
 
+// ── Add Listing modal (two tabs: link / manual form) ──────────────────────────
+interface AddListingModalProps {
+  token: string;
+  onClose: () => void;
+  onAdded: (listing: AgentListing) => void;
+}
+
+type AddTab = 'link' | 'manual';
+
+function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
+  const [tab, setTab] = useState<AddTab>('link');
+
+  // Link tab state
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkSubmitting, setLinkSubmitting] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Manual tab state
+  const [title, setTitle] = useState('');
+  const [price, setPrice] = useState('');
+  const [bedrooms, setBedrooms] = useState('');
+  const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+
+  const inputCls = 'h-12 w-full rounded-lg border border-black/5 bg-[#242628]/5 px-4 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10';
+  const labelCls = 'block font-body text-[13px] font-bold text-[#001C47] mb-1.5';
+
+  const handleLinkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkUrl.trim()) return;
+    setLinkSubmitting(true);
+    setLinkError(null);
+    try {
+      const result = await api.agentAddManualListing(token, {
+        title: linkTitle.trim() || linkUrl.trim(),
+        external_url: linkUrl.trim(),
+      });
+      onAdded(result);
+      onClose();
+    } catch (err: any) {
+      setLinkError(err?.message || 'Failed to add listing. Please try again.');
+    } finally {
+      setLinkSubmitting(false);
+    }
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setManualSubmitting(true);
+    setManualError(null);
+    try {
+      const result = await api.agentAddManualListing(token, {
+        title: title.trim(),
+        price: price.trim() || undefined,
+        bedrooms: bedrooms.trim() || undefined,
+        address: address.trim() || undefined,
+        description: description.trim() || undefined,
+      });
+      onAdded(result);
+      onClose();
+    } catch (err: any) {
+      setManualError(err?.message || 'Failed to add listing. Please try again.');
+    } finally {
+      setManualSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        className="relative w-full max-w-[500px] rounded-[20px] bg-white shadow-2xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+          <h3 className="font-display text-[22px] font-black tracking-tight text-black">Add a Listing</h3>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mx-6 mb-5 rounded-[10px] bg-[#F4F5F4] p-1">
+          <button
+            onClick={() => setTab('link')}
+            className={`flex flex-1 items-center justify-center gap-1.5 h-9 rounded-[8px] font-body text-[13px] font-semibold transition-colors ${
+              tab === 'link' ? 'bg-white text-black shadow-sm' : 'text-black/50 hover:text-black/70'
+            }`}
+          >
+            <Link2 size={13} />
+            Paste a link
+          </button>
+          <button
+            onClick={() => setTab('manual')}
+            className={`flex flex-1 items-center justify-center gap-1.5 h-9 rounded-[8px] font-body text-[13px] font-semibold transition-colors ${
+              tab === 'manual' ? 'bg-white text-black shadow-sm' : 'text-black/50 hover:text-black/70'
+            }`}
+          >
+            <Plus size={13} />
+            Fill in details
+          </button>
+        </div>
+
+        {/* Link tab */}
+        {tab === 'link' && (
+          <form onSubmit={handleLinkSubmit} className="px-6 pb-6 space-y-4">
+            <p className="font-body text-[13px] text-black/60 -mt-2">
+              Paste the URL to a single property listing from any portal.
+            </p>
+            <div>
+              <label className={labelCls}>Listing URL</label>
+              <input
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://www.rightmove.co.uk/properties/..."
+                className={inputCls}
+                required
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className={labelCls}>
+                Property name / title <span className="font-normal text-black/40">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={linkTitle}
+                onChange={(e) => setLinkTitle(e.target.value)}
+                placeholder="e.g. 4-bed detached, Bristol"
+                className={inputCls}
+              />
+            </div>
+            {linkError && <p className="font-body text-[13px] text-red-600">{linkError}</p>}
+            <button
+              type="submit"
+              disabled={linkSubmitting || !linkUrl.trim()}
+              className="h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {linkSubmitting ? 'Adding…' : 'Add Listing'}
+            </button>
+          </form>
+        )}
+
+        {/* Manual tab */}
+        {tab === 'manual' && (
+          <form onSubmit={handleManualSubmit} className="px-6 pb-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            <p className="font-body text-[13px] text-black/60 -mt-2">
+              Fill in your property details directly — no portal link needed.
+            </p>
+            <div>
+              <label className={labelCls}>Property title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. 4-bed detached house, Bristol"
+                className={inputCls}
+                required
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>
+                  Listed price <span className="font-normal text-black/40">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="e.g. £875,000"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>
+                  Bedrooms <span className="font-normal text-black/40">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={bedrooms}
+                  onChange={(e) => setBedrooms(e.target.value)}
+                  placeholder="e.g. 4"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>
+                Address <span className="font-normal text-black/40">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="e.g. 12 Cheltenham Road, Bristol BS6 5RW"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>
+                Description <span className="font-normal text-black/40">(optional)</span>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Key features, selling points, etc."
+                rows={4}
+                className="w-full rounded-lg border border-black/5 bg-[#242628]/5 px-4 py-3 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10 resize-none"
+              />
+            </div>
+            {manualError && <p className="font-body text-[13px] text-red-600">{manualError}</p>}
+            <button
+              type="submit"
+              disabled={manualSubmitting || !title.trim()}
+              className="h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {manualSubmitting ? 'Adding…' : 'Add Listing'}
+            </button>
+          </form>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function DashboardBuyerNetwork() {
   const { token } = useAuth();
@@ -495,6 +727,11 @@ export default function DashboardBuyerNetwork() {
   const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
 
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
+  const [showAddListing, setShowAddListing] = useState(false);
+
+  const handleListingAdded = useCallback((listing: AgentListing) => {
+    setListings((prev) => [listing, ...prev]);
+  }, []);
 
   const [paidBanner, setPaidBanner] = useState<{
     listingTitle: string | null;
@@ -698,7 +935,14 @@ export default function DashboardBuyerNetwork() {
         {/* How it works — only before first sync */}
         {listings.length === 0 && !listingsLoading && (
           <div className="rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
-            <h3 className="mb-5 font-display text-[22px] font-black tracking-tight text-black">How it works</h3>
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <h3 className="font-display text-[22px] font-black tracking-tight text-black">How it works</h3>
+              <button onClick={() => setShowAddListing(true)}
+                className="inline-flex shrink-0 h-10 items-center gap-1.5 rounded-full bg-black px-5 font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors">
+                <Plus size={13} />
+                Add a Listing
+              </button>
+            </div>
             <div className="grid gap-5 sm:grid-cols-3">
               {[
                 {
@@ -739,22 +983,29 @@ export default function DashboardBuyerNetwork() {
           </div>
         ) : listings.length > 0 ? (
           <div>
-            <div className="mb-5 flex items-center justify-between">
+            <div className="mb-5 flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-display text-[22px] font-black tracking-tight text-black">Your Listings</h3>
                 <p className="font-body text-[13px] text-black/55 mt-0.5">
-                  {listings.length} listing{listings.length !== 1 ? 's' : ''} imported
+                  {listings.length} listing{listings.length !== 1 ? 's' : ''}
                   {activatedIds.size > 0 && (
                     <> · <span className="font-bold text-[#149D4F]">{activatedIds.size} active campaign{activatedIds.size !== 1 ? 's' : ''}</span></>
                   )}
                   {lastSyncedLabel ? ` · Synced ${lastSyncedLabel}` : ''}
                 </p>
               </div>
-              <button onClick={handleSync} disabled={syncing || !savedUrl}
-                className="inline-flex h-10 items-center gap-1.5 rounded-full border border-black/15 bg-white px-4 font-body text-[12px] font-semibold text-black hover:bg-black/5 disabled:opacity-50 transition-colors">
-                <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
-                Refresh
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={handleSync} disabled={syncing || !savedUrl}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full border border-black/15 bg-white px-4 font-body text-[12px] font-semibold text-black hover:bg-black/5 disabled:opacity-50 transition-colors">
+                  <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+                <button onClick={() => setShowAddListing(true)}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full bg-black px-4 font-body text-[12px] font-semibold text-white hover:bg-black/90 transition-colors">
+                  <Plus size={13} />
+                  Add Listing
+                </button>
+              </div>
             </div>
 
             {syncError && <p className="mb-4 font-body text-[13px] text-red-600">{syncError}</p>}
@@ -779,6 +1030,18 @@ export default function DashboardBuyerNetwork() {
         </p>
 
       </div>
+
+      {/* Add listing modal */}
+      <AnimatePresence>
+        {showAddListing && token && (
+          <AddListingModal
+            token={token}
+            onClose={() => setShowAddListing(false)}
+            onAdded={handleListingAdded}
+          />
+        )}
+      </AnimatePresence>
+
     </DashboardLayout>
   );
 }
