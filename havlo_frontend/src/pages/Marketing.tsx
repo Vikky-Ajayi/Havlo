@@ -696,6 +696,11 @@ export const Marketing: React.FC = () => {
               </ul>
             </div>
           </div>
+
+          <p className="mt-10 text-center font-body text-base font-medium leading-[1.6] text-black/65 sm:text-lg">
+            Portals are where properties go to be seen.<br />
+            Havlo is how you get them sold—especially when they're not moving.
+          </p>
         </div>
       </section>
 
