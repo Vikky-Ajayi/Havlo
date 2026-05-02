@@ -1,5 +1,16 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
+export interface AgentListing {
+  id: string;
+  external_url: string | null;
+  title: string | null;
+  price: string | null;
+  description: string | null;
+  image_url: string | null;
+  bedrooms: string | null;
+  platform: string | null;
+}
+
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
 export function buildWsUrl(path: string): string {
   const base = API_BASE.startsWith('http')
@@ -521,6 +532,66 @@ export const api = {
       `/admin/users/${userId}`,
       { method: 'DELETE', token },
     ),
+
+  // ── Agent Dashboard ───────────────────────────────────────────────────────
+  agentGetProfileLink: (token: string) =>
+    request<{ profile_url: string; platform: string | null; last_synced_at: string | null } | null>(
+      '/agent/profile-link',
+      { token },
+    ),
+
+  agentSaveProfileLink: (token: string, profileUrl: string) =>
+    request<{ profile_url: string; platform: string | null; last_synced_at: string | null }>(
+      '/agent/profile-link',
+      { method: 'PUT', token, body: { profile_url: profileUrl } },
+    ),
+
+  agentSyncListings: (token: string) =>
+    request<{
+      count: number;
+      listings: AgentListing[];
+    }>('/agent/listings/sync', { method: 'POST', token }),
+
+  agentGetListings: (token: string) =>
+    request<AgentListing[]>('/agent/listings', { token }),
+
+  agentGenerateAIReport: (
+    token: string,
+    payload: {
+      listing_id?: string;
+      listing_url?: string;
+      listing_title?: string;
+      listing_price?: string;
+      listing_description?: string;
+      listing_address?: string;
+    },
+  ) => request<{ report: string }>('/agent/ai-report', { method: 'POST', token, body: payload }),
+
+  agentCreateAdvancedCheckout: (
+    token: string,
+    payload: {
+      listing_id?: string;
+      listing_url?: string;
+      listing_title?: string;
+      property_price_raw: string;
+    },
+  ) =>
+    request<{
+      payment_record_id: string;
+      checkout_id: string;
+      checkout_url: string;
+      service_fee_amount: number;
+      currency: string;
+      message: string;
+    }>('/agent/advanced-service/checkout', { method: 'POST', token, body: payload }),
+
+  agentGetAdvancedServiceStatus: (token: string, recordId: string) =>
+    request<{
+      payment_record_id: string;
+      checkout_id: string;
+      status: string;
+      paid: boolean;
+    }>(`/agent/advanced-service/${recordId}/status`, { token }),
 
   // ── Public website forms (no auth) ───────────────────────────────────────
   submitContactForm: (payload: {

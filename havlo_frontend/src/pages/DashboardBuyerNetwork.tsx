@@ -1,838 +1,813 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useNavigate } from 'react-router-dom';
-import { Home as HomeIcon, Star, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  FileText,
+  Home,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  X,
+  Zap,
+} from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
-import { useConfig } from '../hooks/useConfig';
-import { api } from '../lib/api';
-import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
-import { usePaymentReturnPoller } from '../lib/paymentReturn';
-import {
-  addBuyerNetworkListing,
-  defaultRenewalDate,
-  formatRenewalDate,
-  getBuyerNetworkListings,
-  getBuyerNetworkPlan,
-  getBuyerNetworkSkipped,
-  getBuyerNetworkSlotCapacity,
-  setBuyerNetworkPlan,
-  setBuyerNetworkSkipped,
-  type BuyerNetworkListing,
-  type BuyerNetworkPlanState,
-} from '../lib/dashboardState';
+import { api, type AgentListing } from '../lib/api';
 
-interface Package {
-  id: string;
-  name: string;
-  description: string;
-  price: string;
-  priceLabel: string;
-  features: string[];
-  outcome: string;
-  isPopular?: boolean;
-  isNetwork?: boolean;
+// ── Fee calculator (mirrors backend) ──────────────────────────────────────────
+function calculateFee(priceRaw: string): number | null {
+  const clean = priceRaw.replace(/[^\d.]/g, '');
+  const price = parseFloat(clean);
+  if (!price || price <= 0) return null;
+  const raw = price * 0.0025;
+  const rounding = 500;
+  return Math.max(rounding, Math.ceil(raw / rounding) * rounding);
 }
 
-const packages: Package[] = [
-  {
-    id: 'starter',
-    name: 'STARTER',
-    description: 'Activate international buyer demand on selected listings.',
-    price: '£295',
-    priceLabel: '/ branch / month',
-    features: [
-      'Launch up to 2 properties to global audiences',
-      'Initial demand activation across international markets',
-      'Capture and manage qualified buyer enquiries',
-      'Real-time visibility into buyer demand',
-    ],
-    outcome: 'Early-stage demand and consistent enquiry flow to build momentum.',
-  },
-  {
-    id: 'growth',
-    name: 'GROWTH',
-    description: 'Designed to generate sustained demand and buyer competition.',
-    price: '£495',
-    priceLabel: '/ branch / month',
-    features: [
-      'Launch up to 5 properties across multiple international markets',
-      'Expanded global exposure to high-intent buyers',
-      'Priority launch positioning',
-      'Co-branded launch assets to strengthen vendor perception',
-    ],
-    outcome:
-      'Consistent enquiry flow with increasing buyer competition and stronger negotiating leverage.',
-    isPopular: true,
-  },
-  {
-    id: 'network',
-    name: 'NETWORK',
-    description: 'Scale demand generation across your entire network.',
-    price: '£199',
-    priceLabel: '/ branch / month',
-    features: [
-      'Unlimited property launches',
-      'Network-wide demand visibility',
-      'Centralised reporting for performance tracking',
-      'Rollout and onboarding support',
-    ],
-    outcome: 'Scalable demand generation across multiple listings and branches.',
-    isNetwork: true,
-  },
-];
+function formatFee(fee: number): string {
+  return `£${fee.toLocaleString('en-GB')}`;
+}
 
-// Big rings background reused on dark hero blocks.
-const HeroRings: React.FC = () => (
-  <div className="pointer-events-none absolute -right-24 -bottom-48 opacity-20">
-    <svg width="712" height="596" viewBox="0 0 712 596" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g opacity="0.2">
-        <path d="M712 263.5C712 409.027 594.027 527 448.5 527C302.973 527 185 409.027 185 263.5C185 117.973 302.973 0 448.5 0C594.027 0 712 117.973 712 263.5ZM223.847 263.5C223.847 387.573 324.427 488.153 448.5 488.153C572.573 488.153 673.153 387.573 673.153 263.5C673.153 139.427 572.573 38.8467 448.5 38.8467C324.427 38.8467 223.847 139.427 223.847 263.5Z" fill="#D9D9D9"/>
-        <path d="M527 332.5C527 478.027 409.027 596 263.5 596C117.973 596 0 478.027 0 332.5C0 186.973 117.973 69 263.5 69C409.027 69 527 186.973 527 332.5ZM38.8467 332.5C38.8467 456.573 139.427 557.153 263.5 557.153C387.573 557.153 488.153 456.573 488.153 332.5C488.153 208.427 387.573 107.847 263.5 107.847C139.427 107.847 38.8467 208.427 38.8467 332.5Z" fill="#D9D9D9"/>
-      </g>
-    </svg>
-  </div>
-);
+// ── Platform badge label ───────────────────────────────────────────────────────
+function platformLabel(platform: string | null): string {
+  switch (platform?.toLowerCase()) {
+    case 'rightmove': return 'Rightmove';
+    case 'zoopla': return 'Zoopla';
+    case 'onthemarket': return 'OnTheMarket';
+    case 'primelocation': return 'PrimeLocation';
+    default: return 'Portal';
+  }
+}
 
-const FeatureTick: React.FC = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-[3px] flex-shrink-0">
-    <path d="M14.3726 7.16036L13.4659 6.10703C13.2926 5.90703 13.1526 5.5337 13.1526 5.26703V4.1337C13.1526 3.42703 12.5726 2.84703 11.8659 2.84703H10.7326C10.4726 2.84703 10.0926 2.70703 9.8926 2.5337L8.83927 1.62703C8.37927 1.2337 7.62594 1.2337 7.15927 1.62703L6.1126 2.54036C5.9126 2.70703 5.5326 2.84703 5.2726 2.84703H4.11927C3.4126 2.84703 2.8326 3.42703 2.8326 4.1337V5.2737C2.8326 5.5337 2.6926 5.90703 2.52594 6.10703L1.62594 7.16703C1.23927 7.62703 1.23927 8.3737 1.62594 8.8337L2.52594 9.8937C2.6926 10.0937 2.8326 10.467 2.8326 10.727V11.867C2.8326 12.5737 3.4126 13.1537 4.11927 13.1537H5.2726C5.5326 13.1537 5.9126 13.2937 6.1126 13.467L7.16594 14.3737C7.62594 14.767 8.37927 14.767 8.84594 14.3737L9.89927 13.467C10.0993 13.2937 10.4726 13.1537 10.7393 13.1537H11.8726C12.5793 13.1537 13.1593 12.5737 13.1593 11.867V10.7337C13.1593 10.4737 13.2993 10.0937 13.4726 9.8937L14.3793 8.84036C14.7659 8.38036 14.7659 7.62036 14.3726 7.16036ZM10.7726 6.74036L7.5526 9.96036C7.45927 10.0537 7.3326 10.107 7.19927 10.107C7.06594 10.107 6.93927 10.0537 6.84594 9.96036L5.2326 8.34703C5.03927 8.1537 5.03927 7.8337 5.2326 7.64036C5.42594 7.44703 5.74594 7.44703 5.93927 7.64036L7.19927 8.90036L10.0659 6.0337C10.2593 5.84036 10.5793 5.84036 10.7726 6.0337C10.9659 6.22703 10.9659 6.54703 10.7726 6.74036Z" fill="#149D4F"/>
-  </svg>
-);
-
-const ArrowUpRightTiny: React.FC<{ className?: string }> = ({ className }) => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M3.5 10.5L10.5 3.5M10.5 3.5H4.66667M10.5 3.5V9.33333" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-export const DashboardBuyerNetwork: React.FC = () => {
-  const { token, user } = useAuth();
-  const navigate = useNavigate();
-  const config = useConfig();
-  const calendlyLink = config.calendly_link || 'https://calendly.com/havlo';
-
-  // ── state ─────────────────────────────────────────────────────────────
-  const [storedPlan, setStoredPlan] = useState<BuyerNetworkPlanState | null>(getBuyerNetworkPlan());
-  const [skipped, setSkipped] = useState<boolean>(getBuyerNetworkSkipped());
-  const [forcePlansView, setForcePlansView] = useState<boolean>(false);
-  const [listings, setListings] = useState<BuyerNetworkListing[]>(getBuyerNetworkListings());
-  const [boostingFor, setBoostingFor] = useState<BuyerNetworkListing | { placeholder: true } | null>(null);
-  const [isAddListingOpen, setIsAddListingOpen] = useState(false);
-
-  const showMain = (storedPlan !== null || skipped) && !forcePlansView;
-
-  // ── form drawer state ─────────────────────────────────────────────────
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [discountCode, setDiscountCode] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [contactEmail, setContactEmail] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactPhoneCode, setContactPhoneCode] = useState('+44');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-
-  const handleSelectPackage = (pkg: Package) => {
-    if (pkg.isNetwork) {
-      setIsPartnershipModalOpen(true);
-      return;
-    }
-    setSelectedPackage(pkg);
-    setIsDrawerOpen(true);
-  };
-
-  // Persist subscription on payment success.
-  usePaymentReturnPoller({
-    kind: 'buyer_network',
-    token,
-    fetchStatus: (id) => api.getBuyerNetworkPaymentStatus(token!, id),
-    onPaid: () => {
-      try {
-        const persisted = JSON.parse(localStorage.getItem('havlo:buyer_network_pending') || 'null') as Package | null;
-        const planForState: BuyerNetworkPlanState = {
-          id: persisted?.id || 'starter',
-          name: persisted?.name || 'STARTER',
-          price: persisted?.price || '£295',
-          slots: getBuyerNetworkSlotCapacity(persisted?.id || 'starter'),
-          renewsAt: defaultRenewalDate(),
-        };
-        setBuyerNetworkPlan(planForState);
-        setStoredPlan(planForState);
-        setSkipped(false);
-        setForcePlansView(false);
-        // Seed a starter demo listing so the dashboard isn't empty.
-        if (getBuyerNetworkListings().length === 0) {
-          addBuyerNetworkListing({
-            title: '4-bed detached house',
-            address: '12 Cheltenham Road, Bristol BS6 5RW',
-            listedPrice: '£875,000',
-            reach: 247,
-            enquiries: 18,
-            viewings: 4,
-            campaignStartedAt: new Date().toISOString(),
-          });
-          setListings(getBuyerNetworkListings());
-        }
-        localStorage.removeItem('havlo:buyer_network_pending');
-      } catch {
-        /* ignore */
+// ── Markdown-lite renderer ─────────────────────────────────────────────────────
+function renderReport(text: string) {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith('### ')) {
+      elements.push(
+        <h3 key={i} className="text-base font-display font-semibold text-zinc-900 dark:text-white mt-5 mb-1">
+          {line.slice(4)}
+        </h3>,
+      );
+    } else if (line.startsWith('## ')) {
+      elements.push(
+        <h2 key={i} className="text-lg font-display font-bold text-zinc-900 dark:text-white mt-6 mb-2">
+          {line.slice(3)}
+        </h2>,
+      );
+    } else if (line.startsWith('**') && line.endsWith('**')) {
+      elements.push(
+        <p key={i} className="font-semibold text-zinc-900 dark:text-white mt-3 mb-1">
+          {line.slice(2, -2)}
+        </p>,
+      );
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      const bullets: string[] = [];
+      while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+        bullets.push(lines[i].slice(2));
+        i++;
       }
-    },
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !selectedPackage) return;
-    setSubmitting(true);
-    setSubmitError('');
-    try {
-      try { localStorage.setItem('havlo:buyer_network_pending', JSON.stringify(selectedPackage)); } catch { /* ignore */ }
-      const trimmedCode = discountCode.trim();
-      const result = await api.submitBuyerNetwork(token, {
-        package_id: selectedPackage.id,
-        package_name: selectedPackage.name,
-        company_name: companyName,
-        property_types: ['Residential'],
-        target_markets: ['International'],
-        contact_preference: 'agent',
-        discount_code: trimmedCode || undefined,
-      });
-      setIsDrawerOpen(false);
-      if (!result.checkout_id) throw new Error('Missing checkout ID from payment gateway.');
-
-      // AGENT100 (or any 100% off code) — already paid server-side, skip SumUp redirect.
-      if (result.total_amount === 0) {
-        window.location.href = `/dashboard/buyer-network?payment=success&ref=${encodeURIComponent(result.checkout_id)}`;
-        return;
-      }
-
-      const { redirectToCheckout } = await import('../lib/paymentReturn');
-      redirectToCheckout(result.checkout_id, {
-        kind: 'buyer_network',
-        recordId: result.application_id,
-        reference: result.checkout_id,
-      });
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleSkip = () => {
-    setBuyerNetworkSkipped(true);
-    setSkipped(true);
-    setForcePlansView(false);
-  };
-
-  const handleUpgrade = () => {
-    setForcePlansView(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleAddListingClick = () => {
-    if (!storedPlan) {
-      // Skip variant: redirect to plans page.
-      setForcePlansView(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-    setIsAddListingOpen(true);
-  };
-
-  const handleAddListingSubmit = (data: { title: string; address: string; listedPrice: string }) => {
-    addBuyerNetworkListing({
-      ...data,
-      reach: 0,
-      enquiries: 0,
-      viewings: 0,
-      campaignStartedAt: new Date().toISOString(),
-    });
-    setListings(getBuyerNetworkListings());
-    setIsAddListingOpen(false);
-  };
-
-  return (
-    <DashboardLayout title="International Buyer Network">
-      {showMain ? (
-        <BuyerNetworkMain
-          plan={storedPlan}
-          listings={listings}
-          onUpgrade={handleUpgrade}
-          onAddListing={handleAddListingClick}
-          onBoost={(listing) => setBoostingFor(listing)}
-          onBoostPlaceholder={() => setBoostingFor({ placeholder: true })}
-        />
-      ) : (
-        <BuyerNetworkPlansView
-          onSelect={handleSelectPackage}
-          onSkip={storedPlan ? undefined : handleSkip}
-        />
-      )}
-
-      {/* Submission drawer */}
-      <AnimatePresence>
-        {isDrawerOpen && selectedPackage && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-[500px] flex-col bg-[#F4F5F4] shadow-2xl">
-              <div className="flex h-16 items-center justify-between border-b border-[#F1F1F0] bg-white px-6">
-                <h3 className="font-display text-xl font-medium tracking-tight text-black">Activate {selectedPackage.name}</h3>
-                <button onClick={() => setIsDrawerOpen(false)} className="rounded-md bg-[#EFEFEF] p-2 hover:bg-gray-200">
-                  <X size={16} className="text-[#030517]" />
-                </button>
-              </div>
-              <form id="bn-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="space-y-3">
-                  <label className="block font-body text-sm font-bold text-[#001C47]">Company / branch name</label>
-                  <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Enter company name"
-                    className="h-12 w-full rounded-lg border border-black/5 bg-white px-4 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
-                </div>
-                <div className="space-y-3">
-                  <label className="block font-body text-sm font-bold text-[#001C47]">Primary contact name</label>
-                  <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Enter name"
-                    className="h-12 w-full rounded-lg border border-black/5 bg-white px-4 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
-                </div>
-                <div className="space-y-3">
-                  <label className="block font-body text-sm font-bold text-[#001C47]">Email for buyer enquiries</label>
-                  <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="Enter email"
-                    className="h-12 w-full rounded-lg border border-black/5 bg-white px-4 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
-                </div>
-                <div className="space-y-3">
-                  <label className="block font-body text-sm font-bold text-[#001C47]">Contact phone</label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-12 items-center rounded-lg bg-[#DDD] px-2">
-                      <CountryCodeSelect value={contactPhoneCode} onChange={setContactPhoneCode} buttonClassName="bg-transparent hover:bg-black/5" />
-                    </div>
-                    <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)}
-                      placeholder="0000 0000 000"
-                      className="h-12 flex-1 rounded-lg border border-black/5 bg-white px-4 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <label className="block font-body text-sm font-bold text-[#001C47]">Discount code <span className="font-normal text-black/50">(optional)</span></label>
-                  <input type="text" value={discountCode} onChange={(e) => setDiscountCode(e.target.value)}
-                    placeholder="e.g. AGENT100"
-                    autoComplete="off"
-                    className="h-12 w-full rounded-lg border border-black/5 bg-white px-4 font-body text-sm uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-black/5" />
-                </div>
-                <div className="rounded-xl border border-[#A409D2]/20 bg-[#A409D2]/5 p-4">
-                  <p className="font-display text-sm font-bold text-[#A409D2]">Plan summary</p>
-                  <p className="mt-1 font-body text-sm text-black/80">{selectedPackage.name} — {selectedPackage.price}{selectedPackage.priceLabel}</p>
-                  {discountCode.trim().toUpperCase() === 'AGENT100' && (
-                    <p className="mt-2 font-body text-sm font-bold text-[#149d4f]">AGENT100 — 100% off applied at checkout.</p>
-                  )}
-                </div>
-              </form>
-              <div className="border-t border-[#F1F1F0] bg-white p-6">
-                {submitError && <p className="mb-3 font-body text-sm text-red-500">{submitError}</p>}
-                <button type="submit" form="bn-form" disabled={submitting}
-                  className="h-[60px] w-full rounded-full bg-black text-base font-semibold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50">
-                  {submitting ? 'SUBMITTING…' : 'SUBMIT & PROCEED TO PAYMENT'}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Partnership modal */}
-      <AnimatePresence>
-        {isPartnershipModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsPartnershipModalOpen(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-[560px] rounded-[20px] bg-white p-8 shadow-2xl">
-              <button onClick={() => setIsPartnershipModalOpen(false)}
-                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/5 hover:bg-black/10">
-                <X size={16} />
-              </button>
-              <h3 className="pr-8 font-display text-[32px] font-black leading-[1.1] text-black">
-                {user?.first_name ? `${user.first_name}! Let's discuss a partnership.` : `Let's discuss a partnership.`}
-              </h3>
-              <p className="mt-4 font-body text-base text-black/70">
-                A partnership manager will be in touch shortly. Want to speak with us right away?
-              </p>
-              <div className="mt-6 flex flex-col gap-3">
-                <a href="https://wa.me/message/PPPAWIAXBS7YK1" target="_blank" rel="noopener noreferrer"
-                  className="flex h-12 items-center justify-center rounded-full bg-[#60D769] px-6 font-body text-base font-semibold text-white">
-                  Chat with us on WhatsApp
-                </a>
-                <a href={calendlyLink} target="_blank" rel="noopener noreferrer"
-                  className="flex h-12 items-center justify-center rounded-full bg-black px-6 font-body text-base font-semibold text-white">
-                  Book a Calendly call
-                </a>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Boost visibility modal */}
-      <AnimatePresence>
-        {boostingFor && (
-          <BoostVisibilityModal onClose={() => setBoostingFor(null)} />
-        )}
-      </AnimatePresence>
-
-      {/* Add listing modal */}
-      <AnimatePresence>
-        {isAddListingOpen && (
-          <AddListingModal onClose={() => setIsAddListingOpen(false)} onSubmit={handleAddListingSubmit} />
-        )}
-      </AnimatePresence>
-    </DashboardLayout>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Plans view
-// ─────────────────────────────────────────────────────────────────────────────
-const BuyerNetworkPlansView: React.FC<{ onSelect: (pkg: Package) => void; onSkip?: () => void }> = ({ onSelect, onSkip }) => (
-  <div className="mx-auto max-w-[1200px] px-4 py-6 pb-20 sm:px-6 lg:py-10">
-    <div className="relative mb-8 overflow-hidden rounded-[20px] bg-black p-6 sm:p-10 lg:mb-10">
-      <div className="relative z-10 max-w-[800px]">
-        <h2 className="mb-6 font-display text-3xl font-black leading-none tracking-tight text-white sm:text-[40px]">
-          Faster Sales Through Better Exposure
-        </h2>
-        <p className="max-w-[740px] font-body text-base font-medium leading-relaxed text-white/80">
-          By integrating your properties into our exposure network, your listings gain strategic placement across multiple buyer channels. Combined with precision advertising to targeted international buyers, we go beyond traditional portals to increase reach, demand, and deliver faster, higher quality offers.
-        </p>
-      </div>
-      <HeroRings />
-    </div>
-
-    <h3 className="mb-6 font-display text-2xl font-black tracking-tight text-black sm:mb-8 sm:text-[32px]">
-      Choose a Package
-    </h3>
-
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-      {packages.map((pkg) => (
-        <PackageCard key={pkg.id} pkg={pkg} onSelect={() => onSelect(pkg)} />
-      ))}
-    </div>
-
-    {onSkip && (
-      <div className="mt-8 flex justify-center">
-        <button
-          onClick={onSkip}
-          className="font-body text-sm font-medium text-black/60 underline-offset-4 hover:text-black hover:underline"
-        >
-          Skip for now — go to dashboard
-        </button>
-      </div>
-    )}
-  </div>
-);
-
-const PackageCard: React.FC<{ pkg: Package; onSelect: () => void }> = ({ pkg, onSelect }) => {
-  const ringClass = pkg.isPopular ? 'border-[2px] border-[#A409D2]' : 'border border-black/10';
-  const ctaLabel = pkg.isNetwork ? 'Request Partnership' : 'Launch my Properties';
-
-  return (
-    <div className={`flex flex-col rounded-[14px] bg-white p-6 ${ringClass}`}>
-      <div className="flex flex-1 flex-col">
-        <div className="mb-4 flex items-start justify-between gap-2">
-          <h4 className="font-display text-[18px] font-extrabold tracking-tight text-black">{pkg.name}</h4>
-          {pkg.isPopular && (
-            <span className="rounded bg-[#A409D2] px-2 py-1 font-display text-[11px] font-bold uppercase tracking-tight text-white">
-              MOST POPULAR
-            </span>
-          )}
-        </div>
-
-        <div className="mb-2">
-          {pkg.isNetwork && (
-            <p className="mb-1 font-display text-[12px] font-bold uppercase tracking-tight text-black/60">FROM</p>
-          )}
-          <p className={`font-display text-[36px] font-black leading-none tracking-tight ${pkg.isNetwork ? 'text-[#149D4F]' : 'text-[#A409D2]'}`}>
-            {pkg.price}
-          </p>
-          <p className="mt-1 font-body text-[13px] font-medium text-black/65">{pkg.priceLabel}</p>
-        </div>
-
-        <p className={`mt-4 mb-5 font-display text-[14px] font-bold leading-snug ${pkg.isNetwork ? 'text-[#149D4F]' : pkg.isPopular ? 'text-[#A409D2]' : 'text-[#A409D2]'}`}>
-          {pkg.description}
-        </p>
-
-        <ul className="mb-5 space-y-3">
-          {pkg.features.map((f, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <FeatureTick />
-              <span className="font-body text-[14px] leading-snug text-black/85">{f}</span>
+      elements.push(
+        <ul key={`ul-${i}`} className="space-y-1 my-2">
+          {bullets.map((b, bi) => (
+            <li key={bi} className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <span className="mt-1 text-[#C5A57B] shrink-0">✓</span>
+              <span dangerouslySetInnerHTML={{ __html: b.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
             </li>
           ))}
-        </ul>
-
-        <div className={`mt-auto rounded-[8px] p-3 ${pkg.isNetwork ? 'bg-[#149D4F]/10' : 'bg-[#A409D2]/10'}`}>
-          <p className={`font-display text-[13px] font-bold ${pkg.isNetwork ? 'text-[#149D4F]' : 'text-[#A409D2]'}`}>Typical outcome:</p>
-          <p className="mt-1 font-body text-[13px] leading-snug text-black/75">{pkg.outcome}</p>
-        </div>
-      </div>
-
-      <button
-        onClick={onSelect}
-        className="mt-5 w-full rounded-md bg-black px-4 py-3 font-body text-[14px] font-semibold tracking-tight text-white hover:bg-black/90"
-      >
-        {ctaLabel}
-      </button>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main subscribed dashboard view
-// ─────────────────────────────────────────────────────────────────────────────
-interface MainProps {
-  plan: BuyerNetworkPlanState | null;
-  listings: BuyerNetworkListing[];
-  onUpgrade: () => void;
-  onAddListing: () => void;
-  onBoost: (listing: BuyerNetworkListing) => void;
-  onBoostPlaceholder: () => void;
-}
-
-const BuyerNetworkMain: React.FC<MainProps> = ({ plan, listings, onUpgrade, onAddListing, onBoost, onBoostPlaceholder }) => {
-  const slotsRemaining = plan ? Math.max(0, plan.slots - listings.length) : 0;
-  const upgradeLabel = useMemo(() => {
-    if (!plan) return 'SUBSCRIBE NOW';
-    if (plan.id === 'starter') return 'UPGRADE TO GROWTH';
-    if (plan.id === 'growth') return 'UPGRADE TO NETWORK';
-    return 'MANAGE PLAN';
-  }, [plan]);
-
-  return (
-    <div className="mx-auto max-w-[1200px] space-y-6 px-4 py-6 pb-20 sm:px-6 lg:space-y-8 lg:py-10">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-[20px] bg-black p-6 sm:p-10">
-        <div className="relative z-10 max-w-[800px]">
-          <h2 className="mb-6 font-display text-2xl font-black leading-none tracking-tight text-white sm:text-[40px]">
-            Faster Sales Through Better Exposure
-          </h2>
-          <p className="max-w-[740px] font-body text-sm font-medium leading-relaxed text-white/80 sm:text-base">
-            By integrating your properties into our exposure network, your listings gain strategic placement across multiple buyer channels. Combined with precision advertising to targeted international buyers, we go beyond traditional portals to increase reach, demand, and deliver faster, higher quality offers.
-          </p>
-        </div>
-        <HeroRings />
-      </div>
-
-      {/* Subscription bar */}
-      {plan ? (
-        <div className="flex flex-col gap-4 rounded-[14px] border border-black/10 bg-white p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="bg-[#A409D2] px-2 py-1 font-display text-[12px] font-bold uppercase tracking-tight text-white">
-                {plan.name} PLAN
-              </span>
-              <span className="font-display text-[15px] font-semibold tracking-tight text-black">
-                <span className="font-black">{plan.price}</span> / BRANCH / MONTH
-              </span>
-            </div>
-            <p className="font-body text-[14px] text-black/60">
-              {plan.slots >= 999 ? 'Unlimited' : plan.slots} active property slot{plan.slots === 1 ? '' : 's'} · renews {formatRenewalDate(plan.renewsAt)}
-            </p>
-          </div>
-          <button
-            onClick={onUpgrade}
-            className="inline-flex h-12 items-center justify-center gap-2 self-start rounded-full bg-black px-6 font-body text-[13px] font-bold uppercase tracking-tight text-white hover:bg-black/90 lg:self-auto"
-          >
-            {upgradeLabel}
-            <ArrowUpRightTiny />
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4 rounded-[14px] border border-dashed border-black/15 bg-white p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="bg-black/85 px-2 py-1 font-display text-[12px] font-bold uppercase tracking-tight text-white">
-                NO ACTIVE PLAN
-              </span>
-              <span className="font-display text-[15px] font-semibold tracking-tight text-black">
-                Pick a package to start launching listings
-              </span>
-            </div>
-            <p className="font-body text-[14px] text-black/60">
-              Subscribe to activate property slots and reach international buyers.
-            </p>
-          </div>
-          <button
-            onClick={onUpgrade}
-            className="inline-flex h-12 items-center justify-center gap-2 self-start rounded-full bg-black px-6 font-body text-[13px] font-bold uppercase tracking-tight text-white hover:bg-black/90 lg:self-auto"
-          >
-            SUBSCRIBE NOW
-            <ArrowUpRightTiny />
-          </button>
-        </div>
-      )}
-
-      {/* Listings */}
-      <div>
-        <h3 className="mb-4 font-display text-2xl font-black tracking-tight text-black sm:text-[28px]">Listings</h3>
-        <div className="space-y-4">
-          {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} onBoost={() => onBoost(listing)} />
+        </ul>,
+      );
+      continue;
+    } else if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} className="space-y-1 my-2 list-none">
+          {items.map((item, oi) => (
+            <li key={oi} className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <span className="font-semibold text-[#C5A57B] shrink-0 w-5">{oi + 1}.</span>
+              <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+            </li>
           ))}
-
-          {/* Add another / placeholder slot */}
-          {plan ? (
-            slotsRemaining > 0 && (
-              <button
-                onClick={onAddListing}
-                className="flex w-full flex-col items-center gap-3 rounded-[14px] border-2 border-dashed border-black/20 bg-white px-6 py-10 text-center transition-colors hover:border-black/40"
-              >
-                <div className="flex h-10 w-10 items-center justify-center">
-                  <HomeIcon size={28} className="text-black" />
-                </div>
-                <p className="font-display text-[20px] font-black tracking-tight text-black">
-                  {listings.length === 0 ? 'Add your first listing' : `Add your ${ordinal(listings.length + 1)} listing`}
-                </p>
-                <p className="font-body text-[13px] text-black/60">
-                  You have {slotsRemaining} slot{slotsRemaining === 1 ? '' : 's'} remaining on your {plan.name} plan.
-                </p>
-                <span className="mt-1 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-5 font-body text-[13px] font-semibold tracking-tight text-white">
-                  <Star size={14} className="fill-white" />
-                  ADD LISTING
-                </span>
-              </button>
-            )
-          ) : (
-            // Skip variant: a placeholder card whose CTA bounces back to plans.
-            <button
-              onClick={onAddListing}
-              className="flex w-full flex-col items-center gap-3 rounded-[14px] border-2 border-dashed border-black/20 bg-white px-6 py-10 text-center transition-colors hover:border-black/40"
-            >
-              <div className="flex h-10 w-10 items-center justify-center">
-                <HomeIcon size={28} className="text-black" />
-              </div>
-              <p className="font-display text-[20px] font-black tracking-tight text-black">Add your first listing</p>
-              <p className="font-body text-[13px] text-black/60">Choose a package first to activate property slots.</p>
-              <span className="mt-1 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-5 font-body text-[13px] font-semibold tracking-tight text-white">
-                <Star size={14} className="fill-white" />
-                ADD LISTING
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Optional placeholder boost trigger when there are no listings yet */}
-      {plan && listings.length === 0 && (
-        <button
-          onClick={onBoostPlaceholder}
-          className="mx-auto block font-body text-sm font-medium text-black/60 underline-offset-4 hover:text-black hover:underline"
-        >
-          Preview the Boost Visibility experience
-        </button>
-      )}
-    </div>
-  );
-};
-
-const ListingCard: React.FC<{ listing: BuyerNetworkListing; onBoost: () => void }> = ({ listing, onBoost }) => (
-  <div className="rounded-[14px] border border-black/10 bg-white p-5 sm:p-6">
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-      <div className="flex-1">
-        <h4 className="font-display text-[22px] font-black tracking-tight text-black sm:text-[24px]">{listing.title}</h4>
-        <p className="mt-1 font-body text-[14px] text-black/65">
-          {listing.address} · Listed {listing.listedPrice}
-        </p>
-      </div>
-    </div>
-
-    <div className="mt-5 grid grid-cols-3 gap-3 rounded-[10px] sm:max-w-[480px]">
-      <Stat label="Reach" value={listing.reach.toLocaleString()} />
-      <Stat label="Enquiries" value={listing.enquiries.toLocaleString()} />
-      <Stat label="Viewings" value={listing.viewings.toLocaleString()} />
-    </div>
-
-    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <p className="font-body text-[13px] text-black/60">
-        Campaign started {formatRenewalDate(listing.campaignStartedAt)}
-      </p>
-      <button
-        onClick={onBoost}
-        className="inline-flex h-11 items-center justify-center gap-2 self-start rounded-full bg-black px-5 font-body text-[13px] font-semibold tracking-tight text-white hover:bg-black/90 sm:self-auto"
-      >
-        <Star size={14} className="fill-white" />
-        BOOST FOR VISIBILITY
-      </button>
-    </div>
-  </div>
-);
-
-const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="rounded-[8px] bg-[#F4F5F4] px-4 py-3">
-    <div className="font-display text-[20px] font-black leading-none tracking-tight text-black">{value}</div>
-    <div className="mt-1 font-body text-[13px] text-black/65">{label}</div>
-  </div>
-);
-
-function ordinal(n: number): string {
-  const suffixes = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return `${n}${suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0]}`;
+        </ol>,
+      );
+      continue;
+    } else if (line.trim() === '') {
+      elements.push(<div key={i} className="h-2" />);
+    } else {
+      elements.push(
+        <p
+          key={i}
+          className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}
+        />,
+      );
+    }
+    i++;
+  }
+  return elements;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Boost visibility modal
-// ─────────────────────────────────────────────────────────────────────────────
-const BoostVisibilityModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const presets = [150, 150, 150];
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [customAmount, setCustomAmount] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
+// ── AI Report modal ────────────────────────────────────────────────────────────
+interface AIReportModalProps {
+  listing: AgentListing;
+  token: string;
+  onClose: () => void;
+}
 
-  const reachEstimate = useMemo(() => {
-    const amt = customAmount ? Number(customAmount) : presets[selectedIdx];
-    if (!amt || isNaN(amt)) return 0;
-    return Math.round(amt * 8); // ~8 buyers per £1 estimate
-  }, [customAmount, selectedIdx]);
+function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
+  const [report, setReport] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.agentGenerateAIReport(token, {
+        listing_id: listing.id,
+        listing_url: listing.external_url || undefined,
+        listing_title: listing.title || undefined,
+        listing_price: listing.price || undefined,
+        listing_description: listing.description || undefined,
+      });
+      setReport(res.report);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to generate report. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [listing, token]);
+
+  useEffect(() => {
+    generate();
+  }, [generate]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-[480px] rounded-[16px] bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-center justify-between">
-          <h3 className="font-display text-[20px] font-black tracking-tight text-black">Boost visibility</h3>
-          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/5">
-            <X size={16} />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-2xl max-h-[85vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3 p-5 border-b border-zinc-200 dark:border-zinc-700 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#C5A57B]/10 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 text-[#C5A57B]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-body uppercase tracking-wide mb-0.5">
+              AI Property Analysis — Free
+            </p>
+            <h2 className="text-base font-display font-semibold text-zinc-900 dark:text-white truncate">
+              {listing.title || 'Property Report'}
+            </h2>
+            {listing.price && (
+              <p className="text-sm text-[#C5A57B] font-semibold">{listing.price}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {confirmed ? (
-          <div className="py-6 text-center">
-            <p className="font-display text-[18px] font-black tracking-tight text-black">Boost activated</p>
-            <p className="mt-2 font-body text-[14px] text-black/70">
-              Your campaign will start gaining additional visibility within 24 hours.
-            </p>
-            <button onClick={onClose}
-              className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-black px-6 font-body text-[13px] font-bold uppercase text-white">
-              Done
-            </button>
-          </div>
-        ) : (
-          <>
-            <p className="mb-3 font-display text-[14px] font-bold text-black">Select a budget</p>
-            <div className="grid grid-cols-3 gap-3">
-              {presets.map((amt, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setSelectedIdx(i); setCustomAmount(''); }}
-                  className={`flex h-14 items-center justify-center rounded-[10px] border-[2px] font-display text-[18px] font-bold transition-colors ${
-                    selectedIdx === i && !customAmount
-                      ? 'border-[#A409D2] bg-[#A409D2]/5 text-[#A409D2]'
-                      : 'border-black/10 text-black/70 hover:border-black/30'
-                  }`}
-                >
-                  £{amt}
-                </button>
-              ))}
-            </div>
-
-            <p className="mt-5 mb-2 font-display text-[14px] font-bold text-black">Or enter a custom amount</p>
-            <div className="flex h-12 items-center gap-2 rounded-[10px] border border-black/10 bg-[#F4F5F4] px-3">
-              <span className="rounded bg-white px-2 py-1 text-[13px] font-medium text-black/70">£ ▾</span>
-              <input
-                type="number"
-                min={50}
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-                placeholder="e.g 150"
-                className="flex-1 bg-transparent font-body text-[14px] text-black focus:outline-none"
-              />
-            </div>
-
-            <p className="mt-5 font-body text-[14px] text-black">
-              Estimated additional reach:{' '}
-              <span className="font-display font-bold text-[#A409D2]">~{reachEstimate.toLocaleString()} buyers</span>
-            </p>
-
-            <div className="mt-4 rounded-[10px] bg-[#A409D2]/5 p-4">
-              <p className="font-display text-[13px] font-bold text-[#A409D2]">What your boost does</p>
-              <p className="mt-1 font-body text-[13px] leading-snug text-black/80">
-                Targets qualified international buyers across Meta, Google, and partner portals — driving enquiries directly to this listing.
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <Loader2 className="w-8 h-8 text-[#C5A57B] animate-spin" />
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                Analysing your listing with AI…<br />
+                <span className="text-xs">This usually takes 10–20 seconds.</span>
               </p>
             </div>
+          )}
+          {error && !loading && (
+            <div className="flex flex-col items-center gap-3 py-10">
+              <AlertCircle className="w-7 h-7 text-red-400" />
+              <p className="text-sm text-red-600 dark:text-red-400 text-center">{error}</p>
+              <button
+                onClick={generate}
+                className="mt-2 px-4 py-2 bg-[#C5A57B] text-white rounded-lg text-sm font-semibold hover:bg-[#b8936a] transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+          {report && !loading && (
+            <div className="prose-sm max-w-none">
+              {renderReport(report)}
+            </div>
+          )}
+        </div>
 
+        {/* Footer */}
+        {report && !loading && (
+          <div className="border-t border-zinc-200 dark:border-zinc-700 p-4 shrink-0 flex justify-end">
             <button
-              onClick={() => setConfirmed(true)}
-              className="mt-6 h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors"
             >
-              BOOST NOW
+              Close
             </button>
-          </>
+          </div>
         )}
       </motion.div>
     </div>
   );
-};
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Add listing modal
-// ─────────────────────────────────────────────────────────────────────────────
-const AddListingModal: React.FC<{ onClose: () => void; onSubmit: (d: { title: string; address: string; listedPrice: string }) => void }> = ({ onClose, onSubmit }) => {
-  const [title, setTitle] = useState('');
-  const [address, setAddress] = useState('');
-  const [listedPrice, setListedPrice] = useState('');
+// ── Activate Demand modal ──────────────────────────────────────────────────────
+interface ActivateDemandModalProps {
+  listing: AgentListing;
+  token: string;
+  onClose: () => void;
+  onSuccess: (checkoutUrl: string) => void;
+}
 
-  const handle = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !address) return;
-    onSubmit({ title, address, listedPrice: listedPrice || '£—' });
+const BENEFIT_BULLETS = [
+  'Reach local & international buyers',
+  'Extend reach beyond Rightmove & Zoopla',
+  'Generate real enquiries — not just views',
+  'Drive viewing bookings directly to your team',
+  'Relaunch stale listings with fresh demand',
+  'Reduce reliance on price reductions',
+  'Create urgency and competition around your listings',
+  'Recover momentum on properties that have gone quiet',
+  'Win back vendor confidence with visible marketing activity',
+  'Retain instructions that might otherwise be lost',
+  'Turn underperforming stock into active opportunities',
+];
+
+function ActivateDemandModal({ listing, token, onClose, onSuccess }: ActivateDemandModalProps) {
+  const fee = listing.price ? calculateFee(listing.price) : null;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleActivate = async () => {
+    if (!listing.price) {
+      setError('No price found for this listing. Please ensure the listing includes a price.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.agentCreateAdvancedCheckout(token, {
+        listing_id: listing.id,
+        listing_url: listing.external_url || undefined,
+        listing_title: listing.title || undefined,
+        property_price_raw: listing.price,
+      });
+      onSuccess(res.checkout_url || res.checkout_id);
+    } catch (e: any) {
+      setError(e?.message || 'Could not create payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-[460px] rounded-[16px] bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-center justify-between">
-          <h3 className="font-display text-[20px] font-black tracking-tight text-black">Add a listing</h3>
-          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/5">
-            <X size={16} />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+        transition={{ duration: 0.2 }}
+        className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden"
+      >
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#C5A57B]" />
+            <span className="text-xs font-body font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+              Activate Demand
+            </span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <form onSubmit={handle} className="space-y-4">
-          <div className="space-y-2">
-            <label className="block font-body text-[13px] font-bold text-[#001C47]">Property title</label>
-            <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. 4-bed detached house"
-              className="h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
+
+        <div className="px-5 pb-5 space-y-4">
+          {/* Fee display */}
+          <div>
+            {fee !== null ? (
+              <p className="text-4xl font-display font-bold text-zinc-900 dark:text-white tracking-tight">
+                {formatFee(fee)}
+                <span className="text-sm font-body font-normal text-zinc-500 dark:text-zinc-400 ml-2">
+                  one-off campaign fee
+                </span>
+              </p>
+            ) : (
+              <p className="text-sm text-zinc-500 italic">Fee calculated from listing price</p>
+            )}
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+              Reignite demand for your listing at:{' '}
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                {listing.title || 'this property'}
+              </span>
+            </p>
           </div>
-          <div className="space-y-2">
-            <label className="block font-body text-[13px] font-bold text-[#001C47]">Address</label>
-            <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. 12 Cheltenham Road, Bristol BS6 5RW"
-              className="h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
+
+          {/* Benefits */}
+          <ul className="space-y-1.5">
+            {BENEFIT_BULLETS.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                <CheckCircle2 className="w-4 h-4 text-[#C5A57B] shrink-0 mt-0.5" />
+                {b}
+              </li>
+            ))}
+          </ul>
+
+          {/* Typical outcome */}
+          <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3.5">
+            <p className="text-xs font-display font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+              Typical outcome
+            </p>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">
+              More enquiries, renewed interest, and stronger offers — without relying on price cuts.
+            </p>
           </div>
-          <div className="space-y-2">
-            <label className="block font-body text-[13px] font-bold text-[#001C47]">Listed price</label>
-            <input type="text" value={listedPrice} onChange={(e) => setListedPrice(e.target.value)}
-              placeholder="£875,000"
-              className="h-11 w-full rounded-lg border border-black/10 bg-white px-3 font-body text-sm focus:outline-none focus:ring-2 focus:ring-black/5" />
+
+          {/* Advertising investment note */}
+          <div>
+            <p className="text-xs font-display font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+              Advertising Investment
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              The service fee is separate from and fully dedicated to promoting your listings. Your budget is tailored to the outcome you want to achieve and how aggressively you want to generate buyer demand.
+            </p>
           </div>
-          <button type="submit"
-            className="mt-2 h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90">
-            ADD LISTING
+
+          {error && (
+            <p className="text-sm text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          {/* CTA */}
+          <button
+            onClick={handleActivate}
+            disabled={loading || fee === null}
+            className="w-full py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-display font-semibold text-sm tracking-wide hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing…
+              </>
+            ) : (
+              'Activate Demand'
+            )}
           </button>
-        </form>
+        </div>
       </motion.div>
     </div>
   );
-};
+}
 
+// ── Listing card ───────────────────────────────────────────────────────────────
+interface ListingCardProps {
+  listing: AgentListing;
+  token: string;
+}
+
+function ListingCard({ listing, token }: ListingCardProps) {
+  const [showReport, setShowReport] = useState(false);
+  const [showActivate, setShowActivate] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const fee = listing.price ? calculateFee(listing.price) : null;
+
+  const handleActivateSuccess = (checkoutUrl: string) => {
+    setShowActivate(false);
+    if (checkoutUrl && checkoutUrl.startsWith('http')) {
+      window.location.href = checkoutUrl;
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-zinc-800/60 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      >
+        {/* Image */}
+        {listing.image_url && (
+          <div className="relative h-44 bg-zinc-100 dark:bg-zinc-700 overflow-hidden">
+            <img
+              src={listing.image_url}
+              alt={listing.title || 'Property'}
+              className="w-full h-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            {listing.platform && (
+              <span className="absolute top-2.5 right-2.5 px-2.5 py-1 bg-white/90 dark:bg-zinc-900/90 rounded-full text-xs font-semibold text-zinc-700 dark:text-zinc-200 backdrop-blur-sm">
+                {platformLabel(listing.platform)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="p-4 space-y-3">
+          {/* Title + price */}
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-sm font-display font-semibold text-zinc-900 dark:text-white leading-snug line-clamp-2 flex-1">
+                {listing.title || 'Untitled Listing'}
+              </h3>
+              {listing.external_url && (
+                <a
+                  href={listing.external_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 text-zinc-400 hover:text-[#C5A57B] transition-colors shrink-0 mt-0.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+            {listing.price && (
+              <p className="text-base font-display font-bold text-[#C5A57B] mt-0.5">{listing.price}</p>
+            )}
+            {listing.bedrooms && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{listing.bedrooms}</p>
+            )}
+          </div>
+
+          {/* Description (collapsible) */}
+          {listing.description && (
+            <div>
+              <p className={`text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
+                {listing.description}
+              </p>
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 mt-1 transition-colors"
+              >
+                {expanded ? (
+                  <><ChevronUp className="w-3 h-3" /> Show less</>
+                ) : (
+                  <><ChevronDown className="w-3 h-3" /> Show more</>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Fee hint */}
+          {fee !== null && (
+            <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-700/50 rounded-lg px-3 py-2">
+              <Zap className="w-3.5 h-3.5 text-[#C5A57B] shrink-0" />
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Advanced services fee:{' '}
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{formatFee(fee)}</span>
+                <span className="text-zinc-400 ml-1">(0.25% rounded up to nearest £500)</span>
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => setShowReport(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-600 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#C5A57B]" />
+              AI Report
+              <span className="text-zinc-400 font-normal">• Free</span>
+            </button>
+            <button
+              onClick={() => setShowActivate(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Activate Demand
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showReport && (
+          <AIReportModal
+            listing={listing}
+            token={token}
+            onClose={() => setShowReport(false)}
+          />
+        )}
+        {showActivate && (
+          <ActivateDemandModal
+            listing={listing}
+            token={token}
+            onClose={() => setShowActivate(false)}
+            onSuccess={handleActivateSuccess}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ── Main page ──────────────────────────────────────────────────────────────────
+export default function DashboardBuyerNetwork() {
+  const { token } = useAuth();
+
+  const [profileUrl, setProfileUrl] = useState('');
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  const [savedPlatform, setSavedPlatform] = useState<string | null>(null);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+
+  const [listings, setListings] = useState<AgentListing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
+
+  // Load profile link + listings on mount
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      setProfileLoading(true);
+      try {
+        const link = await api.agentGetProfileLink(token);
+        if (link) {
+          setSavedUrl(link.profile_url);
+          setProfileUrl(link.profile_url);
+          setSavedPlatform(link.platform);
+          setLastSynced(link.last_synced_at);
+        }
+      } catch {}
+
+      setListingsLoading(true);
+      try {
+        const data = await api.agentGetListings(token);
+        setListings(data);
+      } catch {} finally {
+        setListingsLoading(false);
+      }
+      setProfileLoading(false);
+    })();
+  }, [token]);
+
+  const handleSaveProfile = async () => {
+    if (!token || !profileUrl.trim()) return;
+    setProfileSaving(true);
+    setProfileError(null);
+    setProfileSuccess(false);
+    try {
+      const res = await api.agentSaveProfileLink(token, profileUrl.trim());
+      setSavedUrl(res.profile_url);
+      setSavedPlatform(res.platform);
+      setProfileSuccess(true);
+      setTimeout(() => setProfileSuccess(false), 3000);
+    } catch (e: any) {
+      setProfileError(e?.message || 'Failed to save profile URL.');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleSync = async () => {
+    if (!token) return;
+    setSyncing(true);
+    setSyncError(null);
+    setSyncSuccess(null);
+    try {
+      const res = await api.agentSyncListings(token);
+      setListings(res.listings);
+      setLastSynced(new Date().toISOString());
+      setSyncSuccess(
+        res.count > 0
+          ? `${res.count} listing${res.count !== 1 ? 's' : ''} imported successfully.`
+          : 'Profile synced — no listings found on this page. Check your profile URL points directly to your listings.',
+      );
+    } catch (e: any) {
+      setSyncError(e?.message || 'Sync failed. Please check your profile URL and try again.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const lastSyncedLabel = lastSynced
+    ? new Date(lastSynced).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+
+        {/* Page header */}
+        <div>
+          <p className="text-xs font-body uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">
+            Agent Dashboard
+          </p>
+          <h1 className="text-2xl font-display font-bold text-zinc-900 dark:text-white">
+            International Buyer Network
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+            Connect your listing portal profile to import your properties. Get a free AI analysis report for any listing, or activate our demand campaign — a one-off 0.25% fee rounded up to the nearest £500.
+          </p>
+        </div>
+
+        {/* Profile URL card */}
+        <div className="bg-white dark:bg-zinc-800/60 rounded-2xl border border-zinc-200/80 dark:border-zinc-700/50 p-5 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center">
+              <Home className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+            </div>
+            <div>
+              <h2 className="text-sm font-display font-semibold text-zinc-900 dark:text-white">
+                Your Listing Portal Profile
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Paste the URL to your agent profile page on Rightmove, Zoopla, OnTheMarket, etc.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={profileUrl}
+              onChange={(e) => setProfileUrl(e.target.value)}
+              placeholder="https://www.rightmove.co.uk/estate-agents/agent/..."
+              className="flex-1 px-3.5 py-2.5 text-sm bg-zinc-50 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded-xl text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#C5A57B]/40 transition-colors"
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveProfile()}
+              disabled={profileLoading}
+            />
+            <button
+              onClick={handleSaveProfile}
+              disabled={profileSaving || profileLoading || !profileUrl.trim()}
+              className="px-4 py-2.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold hover:bg-zinc-700 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shrink-0"
+            >
+              {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+              Save
+            </button>
+          </div>
+
+          {profileError && (
+            <p className="text-xs text-red-500 dark:text-red-400 mt-2">{profileError}</p>
+          )}
+          {profileSuccess && (
+            <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Profile URL saved.
+            </p>
+          )}
+          {savedPlatform && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
+              Platform detected: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{platformLabel(savedPlatform)}</span>
+              {lastSyncedLabel && <> · Last synced: {lastSyncedLabel}</>}
+            </p>
+          )}
+
+          {/* Sync button */}
+          {savedUrl && (
+            <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-700">
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#C5A57B]/50 text-sm font-semibold text-[#C5A57B] hover:bg-[#C5A57B]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {syncing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                {syncing ? 'Syncing listings…' : 'Sync Listings from Portal'}
+              </button>
+              {syncError && (
+                <p className="text-xs text-red-500 dark:text-red-400 mt-2">{syncError}</p>
+              )}
+              {syncSuccess && (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {syncSuccess}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* How it works */}
+        {listings.length === 0 && !listingsLoading && (
+          <div className="bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/40 p-5">
+            <h3 className="text-sm font-display font-semibold text-zinc-900 dark:text-white mb-3">
+              How it works
+            </h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                {
+                  step: '1',
+                  icon: <Home className="w-4 h-4 text-[#C5A57B]" />,
+                  title: 'Connect your portal',
+                  desc: 'Paste your Rightmove, Zoopla or OnTheMarket agent profile URL above.',
+                },
+                {
+                  step: '2',
+                  icon: <FileText className="w-4 h-4 text-[#C5A57B]" />,
+                  title: 'Get AI insights — free',
+                  desc: 'Click "AI Report" on any imported listing for a free property analysis and action plan.',
+                },
+                {
+                  step: '3',
+                  icon: <Zap className="w-4 h-4 text-[#C5A57B]" />,
+                  title: 'Activate demand',
+                  desc: 'Pay a one-off 0.25% fee (min £500) to launch a targeted international buyer campaign.',
+                },
+              ].map((s) => (
+                <div key={s.step} className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-[#C5A57B]/10 flex items-center justify-center shrink-0 mt-0.5">
+                    {s.icon}
+                  </div>
+                  <div>
+                    <p className="text-xs font-display font-semibold text-zinc-900 dark:text-white">{s.title}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">{s.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Listings */}
+        {listingsLoading ? (
+          <div className="flex items-center justify-center py-12 gap-3 text-zinc-400">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm">Loading your listings…</span>
+          </div>
+        ) : listings.length > 0 ? (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-display font-semibold text-zinc-900 dark:text-white">
+                  Your Listings
+                </h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  {listings.length} listing{listings.length !== 1 ? 's' : ''} imported
+                  {lastSyncedLabel ? ` · Last synced ${lastSyncedLabel}` : ''}
+                </p>
+              </div>
+              <button
+                onClick={handleSync}
+                disabled={syncing || !savedUrl}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-600 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                Refresh
+              </button>
+            </div>
+
+            {syncError && (
+              <p className="text-xs text-red-500 dark:text-red-400 mb-3">{syncError}</p>
+            )}
+            {syncSuccess && (
+              <p className="text-xs text-green-600 dark:text-green-400 mb-3 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {syncSuccess}
+              </p>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              {listings.map((listing) => (
+                <ListingCard key={listing.id} listing={listing} token={token!} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Free listing note */}
+        <div className="text-center py-4">
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">
+            Listing on Havlo is <span className="font-semibold text-zinc-600 dark:text-zinc-400">always free</span>. A 0.25% fee applies only when you activate our advanced demand services for a specific property.
+          </p>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

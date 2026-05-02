@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     SUMUP_API_KEY: str = ""
     SUMUP_MERCHANT_CODE: str = ""
 
+    # ── Groq LLM ─────────────────────────────────────────────────────────
+    GROQ_API_KEY: str = ""
+
     # ── Calendly ─────────────────────────────────────────────────────────
     CALENDLY_LINK: str = ""
 

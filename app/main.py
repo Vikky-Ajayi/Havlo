@@ -21,7 +21,9 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.db.database import Base, engine, HAS_DATABASE
 from app.models import models  # noqa: F401 — ensures models are registered with Base
+from app.models import agent_models  # noqa: F401 — registers agent tables with Base
 from app.routers import (
+    agent_dashboard,
     auth,
     bookings,
     buyer_network,
@@ -256,6 +258,48 @@ async def startup() -> None:
                         ALTER TABLE users
                             ALTER COLUMN supabase_uid DROP NOT NULL,
                             ALTER COLUMN password_hash DROP NOT NULL;
+                    """))
+                    # ── Agent dashboard tables ──────────────────────────────
+                    await conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS agent_profile_links (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                            profile_url TEXT NOT NULL,
+                            platform VARCHAR(50),
+                            last_synced_at TIMESTAMPTZ,
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ DEFAULT NOW()
+                        );
+                    """))
+                    await conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS agent_listings (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            external_url TEXT,
+                            title VARCHAR(500),
+                            price VARCHAR(100),
+                            description TEXT,
+                            image_url TEXT,
+                            bedrooms VARCHAR(50),
+                            platform VARCHAR(50),
+                            created_at TIMESTAMPTZ DEFAULT NOW()
+                        );
+                    """))
+                    await conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS agent_advanced_service_payments (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            listing_id UUID REFERENCES agent_listings(id) ON DELETE SET NULL,
+                            listing_url TEXT,
+                            listing_title VARCHAR(500),
+                            property_price_raw VARCHAR(100),
+                            service_fee_amount FLOAT NOT NULL,
+                            currency VARCHAR(10) DEFAULT 'GBP',
+                            sumup_checkout_id VARCHAR(255),
+                            sumup_checkout_url TEXT,
+                            payment_status VARCHAR(50) DEFAULT 'pending',
+                            created_at TIMESTAMPTZ DEFAULT NOW()
+                        );
                     """))
                 else:
                     logger.info(
@@ -537,6 +581,7 @@ app.include_router(sell_faster.router, prefix=API_PREFIX)
 app.include_router(sell_faster.public_router, prefix=API_PREFIX)
 app.include_router(sale_audit.router, prefix=API_PREFIX)
 app.include_router(buyer_network.router, prefix=API_PREFIX)
+app.include_router(agent_dashboard.router, prefix=API_PREFIX)
 app.include_router(buyer_network.public_router, prefix=API_PREFIX)
 app.include_router(public_forms.router, prefix=API_PREFIX)
 
