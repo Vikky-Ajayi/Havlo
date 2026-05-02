@@ -203,17 +203,28 @@ export const CreateAccountModal: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="font-body text-sm font-medium text-black/80">Select your role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4 font-body text-base font-medium tracking-[-0.32px] text-black outline-none"
-              >
-                <option value="" disabled>Select your role</option>
-                <option value="seller">Seller / Homeowner</option>
-                <option value="agent">Estate Agent</option>
-                <option value="buyer">Buyer</option>
-              </select>
+              <label htmlFor="role-select" className="font-body text-sm font-medium text-black/80">Select your role</label>
+              {/* appearance-none strips iOS/Android native dark-mode override;
+                  the wrapper div provides the custom chevron arrow */}
+              <div className="relative">
+                <select
+                  id="role-select"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4 pr-10 font-body text-base font-medium tracking-[-0.32px] text-black outline-none"
+                  style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
+                >
+                  <option value="" disabled>Select your role</option>
+                  <option value="seller">Seller / Homeowner</option>
+                  <option value="agent">Estate Agent</option>
+                  <option value="buyer">Buyer</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-black/50"/>
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <label className="relative flex items-center gap-2 rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4 cursor-text">
