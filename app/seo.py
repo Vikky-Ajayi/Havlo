@@ -147,6 +147,51 @@ PAGE_SEO: dict[str, PageSeo] = {
         ),
         canonical_path="/cookie-policy",
     ),
+    "/countries": PageSeo(
+        title="International Property Markets | Countries We Serve | Havlo",
+        description=(
+            "Explore the international property markets Havlo operates in. "
+            "From the UAE to Singapore, discover where we help buyers and "
+            "sellers succeed across borders."
+        ),
+        canonical_path="/countries",
+    ),
+    "/referrals": PageSeo(
+        title="Refer & Earn | Havlo Referral Programme",
+        description=(
+            "Earn rewards by referring buyers, sellers, and agents to Havlo. "
+            "Join our referral programme and get paid for every successful "
+            "introduction you make."
+        ),
+        canonical_path="/referrals",
+    ),
+    "/buy-home": PageSeo(
+        title="Buy a Home Abroad | End-to-End Buying Support | Havlo",
+        description=(
+            "Looking to buy a home abroad? Havlo guides you through every "
+            "step — from search and legal checks to completion — so you can "
+            "purchase overseas with confidence."
+        ),
+        canonical_path="/buy-home",
+    ),
+    "/complete-home-buying": PageSeo(
+        title="Complete Home Buying Experience | Havlo",
+        description=(
+            "Havlo's complete home buying experience covers everything you "
+            "need to purchase property internationally — advisory, legal "
+            "support, and ongoing guidance from start to finish."
+        ),
+        canonical_path="/complete-home-buying",
+    ),
+    "/property-purchase": PageSeo(
+        title="International Property Purchase Service | Havlo",
+        description=(
+            "Get end-to-end support for your international property purchase "
+            "with Havlo. We manage the process from offer to completion so "
+            "you can buy abroad without the stress."
+        ),
+        canonical_path="/property-purchase",
+    ),
 }
 
 # Old paths from the brief that should resolve to a new canonical page.
