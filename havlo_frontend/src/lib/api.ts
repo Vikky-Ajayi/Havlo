@@ -4,10 +4,17 @@ export interface AgentListing {
   id: string;
   external_url: string | null;
   title: string | null;
+  address: string | null;
   price: string | null;
   description: string | null;
   image_url: string | null;
+  images: string[];
   bedrooms: string | null;
+  bathrooms: string | null;
+  property_type: string | null;
+  listed_date: string | null;
+  features: string[];
+  floor_area: string | null;
   platform: string | null;
 }
 
@@ -599,12 +606,36 @@ export const api = {
       title: string;
       price?: string;
       bedrooms?: string;
+      bathrooms?: string;
       address?: string;
+      property_type?: string;
+      listed_date?: string;
+      floor_area?: string;
       description?: string;
       external_url?: string;
       image_url?: string;
+      images?: string[];
+      features?: string[];
     },
   ) => request<AgentListing>('/agent/listings/manual', { method: 'POST', token, body: payload }),
+
+  agentScrapeListingUrl: (token: string, url: string) =>
+    request<{
+      title: string;
+      address: string;
+      price: string;
+      description: string;
+      images: string[];
+      image_url: string;
+      bedrooms: string;
+      bathrooms: string;
+      property_type: string;
+      listed_date: string;
+      features: string[];
+      floor_area: string;
+      platform: string;
+      external_url: string;
+    }>('/agent/listings/scrape-url', { method: 'POST', token, body: { url } }),
 
   agentGetActivatedListings: (token: string) =>
     request<{

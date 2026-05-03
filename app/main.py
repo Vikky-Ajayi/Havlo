@@ -286,6 +286,16 @@ async def startup() -> None:
                         );
                     """))
                     await conn.execute(text("""
+                        ALTER TABLE agent_listings
+                            ADD COLUMN IF NOT EXISTS address TEXT,
+                            ADD COLUMN IF NOT EXISTS property_type VARCHAR(100),
+                            ADD COLUMN IF NOT EXISTS bathrooms VARCHAR(50),
+                            ADD COLUMN IF NOT EXISTS listed_date VARCHAR(100),
+                            ADD COLUMN IF NOT EXISTS images_json TEXT,
+                            ADD COLUMN IF NOT EXISTS features_json TEXT,
+                            ADD COLUMN IF NOT EXISTS floor_area VARCHAR(100);
+                    """))
+                    await conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS agent_advanced_service_payments (
                             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

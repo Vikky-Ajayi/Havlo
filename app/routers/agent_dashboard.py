@@ -1,6 +1,7 @@
 """Agent dashboard router — listings sync, AI report, advanced services payment."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 import uuid
@@ -52,11 +53,22 @@ class ListingOut(BaseModel):
     id: str
     external_url: str | None
     title: str | None
+    address: str | None
     price: str | None
     description: str | None
     image_url: str | None
+    images: list[str]
     bedrooms: str | None
+    bathrooms: str | None
+    property_type: str | None
+    listed_date: str | None
+    features: list[str]
+    floor_area: str | None
     platform: str | None
+
+
+class ScrapeUrlRequest(BaseModel):
+    url: str = Field(..., min_length=10, max_length=2000)
 
 
 class AIReportRequest(BaseModel):
@@ -83,10 +95,16 @@ class ManualListingRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     price: str | None = Field(None, max_length=100)
     bedrooms: str | None = Field(None, max_length=50)
+    bathrooms: str | None = Field(None, max_length=50)
     address: str | None = Field(None, max_length=500)
+    property_type: str | None = Field(None, max_length=100)
+    listed_date: str | None = Field(None, max_length=100)
+    floor_area: str | None = Field(None, max_length=100)
     description: str | None = None
     external_url: str | None = Field(None, max_length=2000)
     image_url: str | None = Field(None, max_length=2000)
+    images: list[str] | None = None
+    features: list[str] | None = None
 
 
 class AdvancedServiceResponse(BaseModel):
@@ -130,7 +148,6 @@ def _detect_platform(url: str) -> str:
 
 
 def _parse_price_to_float(price_raw: str) -> float | None:
-    """Extract a numeric value from a price string like '£875,000' or '875000'."""
     clean = re.sub(r"[^\d.]", "", price_raw)
     try:
         return float(clean) if clean else None
@@ -139,18 +156,48 @@ def _parse_price_to_float(price_raw: str) -> float | None:
 
 
 def _calculate_service_fee(price_raw: str) -> float:
-    """
-    Calculate 0.25% of the listed price, rounded UP to the nearest £500.
-    E.g. £875,000 → 0.25% = £2,187.50 → rounded up to £2,500.
-    Minimum fee: £500.
-    """
     price = _parse_price_to_float(price_raw)
     if not price or price <= 0:
         raise ValueError(f"Could not parse a valid price from: {price_raw!r}")
     raw_fee = price * 0.0025
     rounding = 500
-    rounded = max(rounding, (int(raw_fee / rounding) + (1 if raw_fee % rounding > 0 else 0)) * rounding)
-    return float(rounded)
+    return float(max(rounding, (int(raw_fee / rounding) + (1 if raw_fee % rounding > 0 else 0)) * rounding))
+
+
+def _listing_to_out(l: AgentListing) -> ListingOut:
+    images: list[str] = []
+    if l.images_json:
+        try:
+            images = json.loads(l.images_json)
+        except Exception:
+            pass
+    if not images and l.image_url:
+        images = [l.image_url]
+
+    features: list[str] = []
+    if l.features_json:
+        try:
+            features = json.loads(l.features_json)
+        except Exception:
+            pass
+
+    return ListingOut(
+        id=str(l.id),
+        external_url=l.external_url,
+        title=l.title,
+        address=l.address,
+        price=l.price,
+        description=l.description,
+        image_url=images[0] if images else l.image_url,
+        images=images,
+        bedrooms=l.bedrooms,
+        bathrooms=l.bathrooms,
+        property_type=l.property_type,
+        listed_date=l.listed_date,
+        features=features,
+        floor_area=l.floor_area,
+        platform=l.platform,
+    )
 
 
 # ── Profile link CRUD ─────────────────────────────────────────────────────────
@@ -235,23 +282,32 @@ async def sync_listings(
             detail="Could not fetch listings. Please check your profile URL and try again.",
         )
 
-    # Delete old listings for this user and re-import
+    # Delete old listings and re-import fresh
     old_result = await db.execute(
         select(AgentListing).where(AgentListing.user_id == current_user.id)
     )
     for old in old_result.scalars().all():
         await db.delete(old)
 
-    new_listings = []
+    new_listings: list[AgentListing] = []
     for item in scraped:
+        images = item.get("images") or []
+        features = item.get("features") or []
         listing = AgentListing(
             user_id=current_user.id,
             external_url=item.get("url") or None,
             title=item.get("title") or None,
+            address=item.get("address") or None,
             price=item.get("price") or None,
             description=item.get("description") or None,
-            image_url=item.get("image") or None,
+            image_url=images[0] if images else (item.get("image") or None),
+            images_json=json.dumps(images) if images else None,
             bedrooms=item.get("bedrooms") or None,
+            bathrooms=item.get("bathrooms") or None,
+            property_type=item.get("property_type") or None,
+            listed_date=item.get("listed_date") or None,
+            features_json=json.dumps(features) if features else None,
+            floor_area=item.get("floor_area") or None,
             platform=item.get("platform") or link.platform,
         )
         db.add(listing)
@@ -259,23 +315,10 @@ async def sync_listings(
 
     link.last_synced_at = datetime.now(timezone.utc)
     await db.commit()
-    for l in new_listings:
-        await db.refresh(l)
+    for lst in new_listings:
+        await db.refresh(lst)
 
-    listings_out = [
-        {
-            "id": str(l.id),
-            "external_url": l.external_url,
-            "title": l.title,
-            "price": l.price,
-            "description": l.description,
-            "image_url": l.image_url,
-            "bedrooms": l.bedrooms,
-            "platform": l.platform,
-        }
-        for l in new_listings
-    ]
-
+    listings_out = [_listing_to_out(lst).model_dump() for lst in new_listings]
     return SyncListingsResponse(count=len(listings_out), listings=listings_out)
 
 
@@ -287,20 +330,7 @@ async def get_listings(
     result = await db.execute(
         select(AgentListing).where(AgentListing.user_id == current_user.id)
     )
-    listings = result.scalars().all()
-    return [
-        ListingOut(
-            id=str(l.id),
-            external_url=l.external_url,
-            title=l.title,
-            price=l.price,
-            description=l.description,
-            image_url=l.image_url,
-            bedrooms=l.bedrooms,
-            platform=l.platform,
-        )
-        for l in listings
-    ]
+    return [_listing_to_out(l) for l in result.scalars().all()]
 
 
 @router.post("/listings/manual", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
@@ -310,29 +340,70 @@ async def add_manual_listing(
     db: AsyncSession = Depends(get_db),
 ):
     """Add a single listing manually (no portal sync required)."""
+    images = payload.images or ([payload.image_url] if payload.image_url else [])
+    features = payload.features or []
     listing = AgentListing(
         user_id=current_user.id,
         external_url=payload.external_url or None,
         title=payload.title,
+        address=payload.address or None,
         price=payload.price or None,
         description=payload.description or None,
-        image_url=payload.image_url or None,
+        image_url=images[0] if images else None,
+        images_json=json.dumps(images) if images else None,
         bedrooms=payload.bedrooms or None,
+        bathrooms=payload.bathrooms or None,
+        property_type=payload.property_type or None,
+        listed_date=payload.listed_date or None,
+        features_json=json.dumps(features) if features else None,
+        floor_area=payload.floor_area or None,
         platform="manual",
     )
     db.add(listing)
     await db.commit()
     await db.refresh(listing)
-    return ListingOut(
-        id=str(listing.id),
-        external_url=listing.external_url,
-        title=listing.title,
-        price=listing.price,
-        description=listing.description,
-        image_url=listing.image_url,
-        bedrooms=listing.bedrooms,
-        platform=listing.platform,
-    )
+    return _listing_to_out(listing)
+
+
+@router.post("/listings/scrape-url", response_model=dict)
+async def scrape_listing_url(
+    payload: ScrapeUrlRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Scrape a single property listing URL and return all extracted details.
+    Used by the 'Paste a link' tab in the Add Listing modal.
+    Does NOT save to the database — call /listings/manual afterwards to save.
+    """
+    from app.services.listing_scraper import scrape_single_listing
+
+    try:
+        data = await scrape_single_listing(payload.url)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    except Exception as e:
+        logger.error("Scrape-url error for user %s url=%s: %s", current_user.id, payload.url, e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not fetch the listing. Please check the URL and try again.",
+        )
+
+    return {
+        "title": data.get("title") or "",
+        "address": data.get("address") or "",
+        "price": data.get("price") or "",
+        "description": data.get("description") or "",
+        "images": data.get("images") or [],
+        "image_url": data.get("image") or (data.get("images") or [""])[0],
+        "bedrooms": data.get("bedrooms") or "",
+        "bathrooms": data.get("bathrooms") or "",
+        "property_type": data.get("property_type") or "",
+        "listed_date": data.get("listed_date") or "",
+        "features": data.get("features") or [],
+        "floor_area": data.get("floor_area") or "",
+        "platform": data.get("platform") or "",
+        "external_url": payload.url,
+    }
 
 
 # ── AI Report ─────────────────────────────────────────────────────────────────
@@ -350,7 +421,6 @@ async def generate_ai_report(
     listing_description = payload.listing_description
     listing_address = payload.listing_address
 
-    # If a listing_id was provided, load from DB
     if payload.listing_id:
         try:
             lid = uuid.UUID(payload.listing_id)
@@ -368,6 +438,7 @@ async def generate_ai_report(
             listing_title = listing_title or listing.title
             listing_price = listing_price or listing.price
             listing_description = listing_description or listing.description
+            listing_address = listing_address or listing.address
 
     if not listing_url:
         raise HTTPException(status_code=400, detail="A listing URL is required to generate a report.")
@@ -402,10 +473,6 @@ async def create_advanced_service_checkout(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Create a SumUp checkout for 0.25% advanced services fee.
-    Fee is rounded UP to the nearest £500 (minimum £500).
-    """
     settings = get_settings()
 
     try:
@@ -441,7 +508,6 @@ async def create_advanced_service_checkout(
     checkout_id = checkout.get("id", "")
     checkout_url = checkout.get("checkout_url", "")
 
-    # Resolve listing_id if provided
     listing_uuid = None
     if payload.listing_id:
         try:
@@ -492,7 +558,6 @@ async def get_activated_listings(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return all listings where the advanced service payment is completed."""
     result = await db.execute(
         select(AgentAdvancedServicePayment).where(
             AgentAdvancedServicePayment.user_id == current_user.id,

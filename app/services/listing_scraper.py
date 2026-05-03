@@ -1,32 +1,89 @@
 """
-Property listing scraper.
-Fetches agent profile pages from listing platforms (Rightmove, Zoopla, OnTheMarket, etc.)
-and extracts individual property listings with their details and images.
+Enterprise-grade property listing scraper.
+
+Extraction strategy (tried in order per platform):
+  1. Embedded JSON — window.jsonModel (Rightmove), __NEXT_DATA__ (Zoopla), JSON-LD
+  2. CSS selectors — robust multi-selector fallback
+  3. Per-listing deep scrape — follows each listing URL for full image gallery,
+     exact added date, features list, floor area, bathrooms
+
+Anti-bot hardening:
+  • Rotating realistic browser User-Agent strings
+  • Full browser-like Accept / Accept-Encoding / Referer / Sec-Fetch headers
+  • Exponential back-off retry (3 attempts, 1 s / 2 s / 4 s + jitter)
+  • Polite per-page delay (0.8 – 1.6 s) between pagination requests
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import random
 import re
-from typing import Optional
-from urllib.parse import urljoin, urlparse
+from datetime import datetime
+from typing import Any
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-GB,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-}
+# ── Rotating User-Agent pool ────────────────────────────────────────────────
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+]
 
 
+def _browser_headers(referer: str | None = None) -> dict[str, str]:
+    h: dict[str, str] = {
+        "User-Agent": random.choice(_USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none" if not referer else "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+        "DNT": "1",
+    }
+    if referer:
+        h["Referer"] = referer
+    return h
+
+
+# ── Retry fetch ─────────────────────────────────────────────────────────────
+async def _fetch(url: str, referer: str | None = None, max_retries: int = 3) -> str:
+    """HTTP GET with browser-like headers and exponential back-off."""
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        if attempt > 0:
+            await asyncio.sleep((2 ** attempt) + random.uniform(0, 0.5))
+        try:
+            async with httpx.AsyncClient(
+                timeout=30,
+                follow_redirects=True,
+                headers=_browser_headers(referer),
+            ) as client:
+                r = await client.get(url)
+                r.raise_for_status()
+                return r.text
+        except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            last_exc = e
+            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (403, 429, 503):
+                logger.warning("Anti-bot block %s on %s (attempt %d/%d)",
+                               e.response.status_code, url, attempt + 1, max_retries)
+    raise last_exc or RuntimeError(f"Failed to fetch {url}")
+
+
+# ── Platform detection ──────────────────────────────────────────────────────
 def _detect_platform(url: str) -> str:
     host = urlparse(url).netloc.lower()
     if "rightmove" in host:
@@ -40,220 +97,834 @@ def _detect_platform(url: str) -> str:
     return "generic"
 
 
-async def _fetch(url: str) -> str:
-    """HTTP GET with anti-bot headers."""
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True, headers=HEADERS) as client:
-        r = await client.get(url)
-        r.raise_for_status()
-        return r.text
+# ── General helpers ─────────────────────────────────────────────────────────
+def _clean(s: Any, maxlen: int = 500) -> str:
+    if not s:
+        return ""
+    return re.sub(r"\s+", " ", str(s)).strip()[:maxlen]
 
 
-def _clean_price(raw: str) -> str:
-    p = re.sub(r"\s+", " ", raw).strip()
-    return p[:60]
+def _fmt_price(amount: Any, currency: str = "GBP") -> str:
+    if amount is None:
+        return ""
+    try:
+        sym = {"GBP": "£", "EUR": "€", "USD": "$"}.get(str(currency).upper(), str(currency) + " ")
+        return f"{sym}{int(float(amount)):,}"
+    except (ValueError, TypeError):
+        return str(amount)
 
 
-def _scrape_rightmove(html: str, base_url: str) -> list[dict]:
-    soup = BeautifulSoup(html, "html.parser")
-    listings = []
+def _parse_iso_date(raw: str) -> str:
+    """Convert ISO date/datetime string to 'Added D Month YYYY'."""
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return f"Added {dt.strftime('%-d %B %Y')}"
+    except Exception:
+        return raw[:40]
 
-    # Property cards are inside <li> elements with class "l-searchResult"
-    cards = soup.select("li.l-searchResult, div[data-test='propertyCard']")
-    if not cards:
-        # Fallback: look for property-header links
-        cards = soup.select("article.propertyCard")
 
-    for card in cards[:20]:
+def _safe_get(data: Any, *keys: str) -> Any:
+    node = data
+    for k in keys:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(k)
+    return node
+
+
+def _dig(data: dict, paths: list[list[str]]) -> list | None:
+    """Try multiple key paths in nested dict; return first non-empty list found."""
+    for path in paths:
+        val = data
+        for key in path:
+            if not isinstance(val, dict):
+                val = None
+                break
+            val = val.get(key)
+        if isinstance(val, list) and val:
+            return val
+    return None
+
+
+def _extract_js_var(html: str, var_name: str) -> dict | None:
+    """Extract `window.VAR = {...};` or `var VAR = {...};` JSON from script tags."""
+    pattern = rf'(?:window\.)?{re.escape(var_name)}\s*=\s*(\{{.*?\}});?\s*(?:</script>|$)'
+    m = re.search(pattern, html, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None
+
+
+def _extract_next_data(html: str) -> dict | None:
+    """Extract __NEXT_DATA__ script tag JSON (Next.js apps)."""
+    soup = BeautifulSoup(html, "lxml")
+    tag = soup.find("script", {"id": "__NEXT_DATA__"})
+    if not tag or not tag.string:
+        return None
+    try:
+        return json.loads(tag.string)
+    except json.JSONDecodeError:
+        return None
+
+
+def _extract_json_ld(html: str) -> list[dict]:
+    """Extract all JSON-LD blocks from the page."""
+    soup = BeautifulSoup(html, "lxml")
+    results: list[dict] = []
+    for tag in soup.find_all("script", {"type": "application/ld+json"}):
+        if not tag.string:
+            continue
         try:
-            # Title / address
-            title_el = (
-                card.select_one("h2.propertyCard-title")
-                or card.select_one(".propertyCard-address")
-                or card.select_one("address")
-            )
-            title = title_el.get_text(strip=True) if title_el else ""
+            data = json.loads(tag.string)
+            if isinstance(data, list):
+                results.extend(data)
+            else:
+                results.append(data)
+        except json.JSONDecodeError:
+            pass
+    return results
 
-            # Price
-            price_el = (
-                card.select_one(".propertyCard-priceValue")
-                or card.select_one("span[data-test='price']")
-            )
-            price = _clean_price(price_el.get_text(strip=True)) if price_el else ""
 
-            # Description
+def _empty_listing(platform: str, url: str = "") -> dict:
+    return {
+        "title": "", "address": "", "price": "", "description": "",
+        "url": url, "images": [], "image": "", "bedrooms": "",
+        "bathrooms": "", "property_type": "", "listed_date": "",
+        "features": [], "floor_area": "", "platform": platform,
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RIGHTMOVE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _rm_json_prop_to_listing(prop: dict) -> dict:
+    price_obj = prop.get("price") or {}
+    display = ""
+    for dp in price_obj.get("displayPrices") or []:
+        display = dp.get("displayPrice") or ""
+        if display:
+            break
+    if not display:
+        display = _fmt_price(price_obj.get("amount"), price_obj.get("currencyCode", "GBP"))
+
+    prop_images = prop.get("propertyImages") or {}
+    images: list[str] = []
+    for img in prop_images.get("images") or []:
+        src = img.get("srcUrl") or img.get("src") or img.get("url") or ""
+        if src and src not in images:
+            images.append(src)
+    if not images:
+        main = prop_images.get("mainImageSrc") or ""
+        if main:
+            images = [main]
+
+    raw_date = prop.get("firstVisibleDate") or prop.get("addedOrReduced") or ""
+    listed_date = _parse_iso_date(raw_date) if raw_date else ""
+
+    prop_url = prop.get("propertyUrl") or ""
+    full_url = prop_url if prop_url.startswith("http") else f"https://www.rightmove.co.uk{prop_url}"
+
+    return {
+        "title": _clean(prop.get("displayAddress")),
+        "address": _clean(prop.get("displayAddress")),
+        "price": display,
+        "description": _clean(prop.get("summary"), 600),
+        "url": full_url,
+        "images": images,
+        "image": images[0] if images else "",
+        "bedrooms": str(prop.get("bedrooms", "")) if prop.get("bedrooms") is not None else "",
+        "bathrooms": str(prop.get("bathrooms", "")) if prop.get("bathrooms") is not None else "",
+        "property_type": _clean(prop.get("propertySubType") or prop.get("propertyType")),
+        "listed_date": listed_date,
+        "features": [],
+        "floor_area": "",
+        "platform": "rightmove",
+    }
+
+
+def _rm_pagination_urls(profile_url: str, json_model: dict) -> list[str]:
+    pagination = json_model.get("pagination") or {}
+    total = int(pagination.get("total") or 0)
+    page_size = 24
+    if total <= page_size:
+        return []
+    parsed = urlparse(profile_url)
+    qs = parse_qs(parsed.query)
+    urls = []
+    for idx in range(page_size, min(total, page_size * 5), page_size):
+        qs2 = {k: v[0] for k, v in qs.items()}
+        qs2["index"] = str(idx)
+        urls.append(urlunparse(parsed._replace(query=urlencode(qs2))))
+    return urls
+
+
+def _scrape_rightmove_html(html: str, base_url: str) -> tuple[list[dict], list[str]]:
+    # Strategy 1: window.jsonModel
+    jm = _extract_js_var(html, "jsonModel")
+    if jm and jm.get("properties"):
+        listings = [_rm_json_prop_to_listing(p) for p in jm["properties"]]
+        return listings, _rm_pagination_urls(base_url, jm)
+
+    # Strategy 2: CSS selectors
+    soup = BeautifulSoup(html, "lxml")
+    cards = (soup.select("li.l-searchResult")
+             or soup.select("div[data-test='propertyCard']")
+             or soup.select("article.propertyCard"))
+    listings: list[dict] = []
+    for card in cards[:24]:
+        try:
+            title_el = (card.select_one("h2.propertyCard-title")
+                        or card.select_one(".propertyCard-address")
+                        or card.select_one("address"))
+            title = _clean(title_el.get_text() if title_el else "")
+            price_el = (card.select_one(".propertyCard-priceValue")
+                        or card.select_one("span[data-test='price']"))
+            price = _clean(price_el.get_text() if price_el else "")
             desc_el = card.select_one(".propertyCard-description")
-            description = desc_el.get_text(strip=True)[:300] if desc_el else ""
-
-            # Link
-            link_el = card.select_one("a.propertyCard-link") or card.select_one("a[href*='/properties/']")
+            description = _clean(desc_el.get_text() if desc_el else "", 400)
+            link_el = (card.select_one("a.propertyCard-link")
+                       or card.select_one("a[href*='/properties/']"))
             link = ""
             if link_el and link_el.get("href"):
                 href = link_el["href"]
-                link = href if href.startswith("http") else urljoin("https://www.rightmove.co.uk", href)
-
-            # Image
-            img_el = card.select_one("img.propertyCard-img") or card.select_one("img[itemprop='image']") or card.select_one("img")
+                link = href if href.startswith("http") else f"https://www.rightmove.co.uk{href}"
+            img_el = (card.select_one("img.propertyCard-img")
+                      or card.select_one("img[itemprop='image']")
+                      or card.select_one("img"))
             image = ""
             if img_el:
                 image = img_el.get("src") or img_el.get("data-src") or img_el.get("data-lazy-src") or ""
-
-            # Bedrooms
-            beds_el = card.select_one(".property-information span") or card.select_one("[class*='bed']")
-            beds = beds_el.get_text(strip=True) if beds_el else ""
-
             if title or link:
-                listings.append({
-                    "title": title,
-                    "price": price,
-                    "description": description,
-                    "url": link,
-                    "image": image,
-                    "bedrooms": beds,
-                    "platform": "rightmove",
-                })
+                lst = _empty_listing("rightmove", link)
+                lst.update({"title": title, "address": title, "price": price,
+                            "description": description, "images": [image] if image else [], "image": image})
+                listings.append(lst)
         except Exception as e:
-            logger.debug("Rightmove card parse error: %s", e)
+            logger.debug("RM CSS card error: %s", e)
+    return listings, []
 
-    return listings
+
+def _rm_enrich_from_detail(html: str) -> dict:
+    """Scrape a Rightmove listing detail page for full data."""
+    enriched: dict = {"images": [], "features": [], "floor_area": "", "listed_date": "", "bathrooms": "", "description": ""}
+
+    pm = _extract_js_var(html, "PAGE_MODEL")
+    if pm:
+        prop = pm.get("propertyData") or {}
+        images = [img.get("url") or img.get("srcUrl") or "" for img in (prop.get("images") or []) if isinstance(img, dict)]
+        enriched["images"] = [i for i in images if i]
+        enriched["features"] = [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10]
+        for tag in prop.get("tags") or []:
+            f = _clean(tag.get("content") or str(tag)) if isinstance(tag, dict) else _clean(str(tag))
+            if f and f not in enriched["features"]:
+                enriched["features"].append(f)
+        if prop.get("bathrooms") is not None:
+            enriched["bathrooms"] = str(prop["bathrooms"])
+        text_obj = prop.get("text") or {}
+        enriched["description"] = _clean(text_obj.get("description") or prop.get("summary") or "", 800)
+        raw = (prop.get("listingHistory") or {}).get("listingDate") or ""
+        if raw:
+            enriched["listed_date"] = _parse_iso_date(raw)
+        for k in ("floorArea", "floor_area", "size"):
+            fa = prop.get(k)
+            if fa:
+                enriched["floor_area"] = _clean(str(fa), 60)
+                break
+        return enriched
+
+    # CSS fallback
+    soup = BeautifulSoup(html, "lxml")
+    for img in soup.select("img[itemprop='image'], img[class*='gallery'], img[class*='propertyImages']"):
+        src = img.get("src") or img.get("data-src") or ""
+        if src and src not in enriched["images"]:
+            enriched["images"].append(src)
+    for li in soup.select("ul[class*='key-features'] li, ul[class*='keyFeatures'] li"):
+        f = _clean(li.get_text())
+        if f:
+            enriched["features"].append(f)
+    enriched["features"] = enriched["features"][:10]
+    date_el = soup.select_one("span[class*='listingUpdate'], p[class*='addedOrReduced']")
+    if date_el:
+        enriched["listed_date"] = _clean(date_el.get_text())
+    return enriched
 
 
-def _scrape_zoopla(html: str, base_url: str) -> list[dict]:
-    soup = BeautifulSoup(html, "html.parser")
-    listings = []
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZOOPLA
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    cards = soup.select("article[data-testid='search-result'], li[data-testid='search-result']")
-    if not cards:
-        cards = soup.select("div[class*='listing-result'], article")
+def _zp_obj_to_listing(obj: dict) -> dict | None:
+    title = address = price = description = url = bedrooms = bathrooms = property_type = listed_date = floor_area = ""
+    images: list[str] = []
+    features: list[str] = []
 
-    for card in cards[:20]:
+    for k in ("title", "listingTitle", "listing_title", "displayAddress"):
+        if obj.get(k) and isinstance(obj[k], str):
+            title = _clean(obj[k])
+            break
+
+    for k in ("displayAddress", "address", "location", "streetAddress"):
+        val = obj.get(k)
+        if val:
+            address = _clean(val) if isinstance(val, str) else _clean(_safe_get(val, "displayAddress") or _safe_get(val, "streetAddress") or "")
+            break
+    if not title and address:
+        title = address
+
+    raw_price = obj.get("price") or obj.get("listingPrice") or obj.get("pricing")
+    if isinstance(raw_price, str):
+        price = _clean(raw_price)
+    elif isinstance(raw_price, dict):
+        dps = raw_price.get("displayPrices")
+        if dps and isinstance(dps, list) and dps:
+            price = dps[0].get("displayPrice") or ""
+        price = price or raw_price.get("label") or _fmt_price(raw_price.get("amount"), raw_price.get("currencyCode", "GBP"))
+    elif isinstance(raw_price, (int, float)):
+        price = _fmt_price(raw_price)
+
+    for k in ("description", "summaryDescription", "summary", "listingDescription"):
+        if obj.get(k):
+            description = _clean(obj[k], 600)
+            break
+
+    for k in ("listingUris", "links"):
+        sub = obj.get(k)
+        if isinstance(sub, dict):
+            href = sub.get("detail") or sub.get("listing") or sub.get("canonical") or ""
+            if href:
+                url = href if href.startswith("http") else f"https://www.zoopla.co.uk{href}"
+            break
+    if not url:
+        for k in ("listingId", "id"):
+            lid = obj.get(k)
+            if lid:
+                url = f"https://www.zoopla.co.uk/for-sale/details/{lid}/"
+                break
+
+    for k in ("image", "mainImage", "primaryImage"):
+        img = obj.get(k)
+        if isinstance(img, str) and img:
+            images.append(img)
+            break
+        elif isinstance(img, dict):
+            src = img.get("src") or img.get("url") or ""
+            if src:
+                images.append(src)
+            break
+    for k in ("images", "media", "photos", "propertyImages"):
+        imgs = obj.get(k)
+        if isinstance(imgs, list):
+            for i in imgs:
+                if isinstance(i, str) and i and i not in images:
+                    images.append(i)
+                elif isinstance(i, dict):
+                    src = i.get("src") or i.get("url") or i.get("srcUrl") or ""
+                    if src and src not in images:
+                        images.append(src)
+            break
+
+    for k in ("numBedrooms", "bedrooms", "bedroomsCount"):
+        v = obj.get(k)
+        if v is not None:
+            bedrooms = str(v)
+            break
+
+    for k in ("numBathrooms", "bathrooms", "bathroomsCount"):
+        v = obj.get(k)
+        if v is not None:
+            bathrooms = str(v)
+            break
+
+    for k in ("propertyType", "property_type", "listingType", "category"):
+        if obj.get(k):
+            property_type = _clean(str(obj[k])).replace("_", " ").title()
+            break
+
+    for k in ("firstPublishedAt", "firstListedAt", "listingDate", "publishedOn", "addedOn"):
+        raw = obj.get(k)
+        if raw:
+            listed_date = _parse_iso_date(str(raw)[:25])
+            break
+
+    if not (title or url):
+        return None
+
+    return {
+        "title": title or address,
+        "address": address or title,
+        "price": price,
+        "description": description,
+        "url": url,
+        "images": images,
+        "image": images[0] if images else "",
+        "bedrooms": bedrooms,
+        "bathrooms": bathrooms,
+        "property_type": property_type,
+        "listed_date": listed_date,
+        "features": features,
+        "floor_area": floor_area,
+        "platform": "zoopla",
+    }
+
+
+def _zp_pagination_urls(nd: dict, base_url: str) -> list[str]:
+    pagination = _dig(nd, [
+        ["props", "pageProps", "listingsData", "pagination"],
+        ["props", "pageProps", "agentListings", "pagination"],
+        ["props", "pageProps", "pagination"],
+    ])
+    if not isinstance(pagination, dict):
+        return []
+    total_pages = int(pagination.get("totalPages") or 1)
+    current = int(pagination.get("page") or pagination.get("currentPage") or 1)
+    parsed = urlparse(base_url)
+    qs = parse_qs(parsed.query)
+    urls = []
+    for page in range(current + 1, min(total_pages + 1, current + 5)):
+        qs2 = {k: v[0] for k, v in qs.items()}
+        qs2["pn"] = str(page)
+        urls.append(urlunparse(parsed._replace(query=urlencode(qs2))))
+    return urls
+
+
+def _scrape_zoopla_html(html: str, base_url: str) -> tuple[list[dict], list[str]]:
+    nd = _extract_next_data(html)
+    if nd:
+        raw_listings = _dig(nd, [
+            ["props", "pageProps", "listingsData", "listings"],
+            ["props", "pageProps", "agentListings", "listings"],
+            ["props", "pageProps", "listings"],
+            ["props", "pageProps", "searchResults", "listings"],
+            ["props", "pageProps", "regularListings"],
+        ])
+        if raw_listings:
+            listings = [r for obj in raw_listings if (r := _zp_obj_to_listing(obj)) is not None]
+            return listings, _zp_pagination_urls(nd, base_url)
+
+    # CSS fallback
+    soup = BeautifulSoup(html, "lxml")
+    cards = (soup.select("article[data-testid='search-result']")
+             or soup.select("li[data-testid='search-result']")
+             or soup.select("div[class*='listing-result']"))
+    listings: list[dict] = []
+    for card in cards[:24]:
         try:
             title_el = card.select_one("h2, h3, [data-testid='listing-title']")
-            title = title_el.get_text(strip=True) if title_el else ""
-
+            title = _clean(title_el.get_text() if title_el else "")
             price_el = card.select_one("[data-testid='price'], p[class*='price']")
-            price = _clean_price(price_el.get_text(strip=True)) if price_el else ""
-
-            link_el = card.select_one("a[href*='/for-sale/'], a[href*='/to-rent/']") or card.select_one("a")
+            price = _clean(price_el.get_text() if price_el else "")
+            link_el = (card.select_one("a[href*='/for-sale/']")
+                       or card.select_one("a[href*='/to-rent/']")
+                       or card.select_one("a"))
             link = ""
             if link_el and link_el.get("href"):
                 href = link_el["href"]
-                link = href if href.startswith("http") else urljoin("https://www.zoopla.co.uk", href)
-
+                link = href if href.startswith("http") else f"https://www.zoopla.co.uk{href}"
             img_el = card.select_one("img")
-            image = ""
-            if img_el:
-                image = img_el.get("src") or img_el.get("data-src") or ""
-
-            desc_el = card.select_one("p[class*='description'], [data-testid='listing-description']")
-            description = desc_el.get_text(strip=True)[:300] if desc_el else ""
-
+            image = (img_el.get("src") or img_el.get("data-src") or "") if img_el else ""
             if title or link:
-                listings.append({
-                    "title": title,
-                    "price": price,
-                    "description": description,
-                    "url": link,
-                    "image": image,
-                    "bedrooms": "",
-                    "platform": "zoopla",
-                })
+                lst = _empty_listing("zoopla", link)
+                lst.update({"title": title, "address": title, "price": price,
+                            "images": [image] if image else [], "image": image})
+                listings.append(lst)
         except Exception as e:
-            logger.debug("Zoopla card parse error: %s", e)
+            logger.debug("ZP CSS card error: %s", e)
+    return listings, []
 
-    return listings
+
+def _zp_enrich_from_detail(html: str) -> dict:
+    enriched: dict = {"images": [], "features": [], "floor_area": "", "listed_date": "", "bathrooms": "", "description": ""}
+    nd = _extract_next_data(html)
+    if nd:
+        listing = (
+            _safe_get(nd, "props", "pageProps", "listingDetails", "listing")
+            or _safe_get(nd, "props", "pageProps", "listing")
+            or _safe_get(nd, "props", "pageProps", "propertyDetails")
+        )
+        if isinstance(listing, dict):
+            for k in ("images", "media", "photos"):
+                imgs = listing.get(k)
+                if isinstance(imgs, list):
+                    enriched["images"] = [i.get("src") or i.get("url") or "" for i in imgs if isinstance(i, dict)]
+                    enriched["images"] = [i for i in enriched["images"] if i]
+                    break
+            for k in ("keyFeatures", "features", "detailedDescription"):
+                feats = listing.get(k)
+                if isinstance(feats, list):
+                    enriched["features"] = [_clean(f if isinstance(f, str) else f.get("text") or "") for f in feats[:10]]
+                    break
+            for k in ("firstPublishedAt", "listingDate", "firstListedAt"):
+                raw = listing.get(k)
+                if raw:
+                    enriched["listed_date"] = _parse_iso_date(str(raw)[:25])
+                    break
+            for k in ("numBathrooms", "bathrooms"):
+                v = listing.get(k)
+                if v is not None:
+                    enriched["bathrooms"] = str(v)
+                    break
+            for k in ("floorArea", "size"):
+                v = listing.get(k)
+                if v:
+                    enriched["floor_area"] = _clean(str(v), 60)
+                    break
+            enriched["description"] = _clean(
+                listing.get("description") or listing.get("summaryDescription") or "", 800
+            )
+    return enriched
 
 
-def _scrape_generic(html: str, base_url: str, platform: str) -> list[dict]:
-    """Generic scraper for other platforms."""
-    soup = BeautifulSoup(html, "html.parser")
-    listings = []
+# ═══════════════════════════════════════════════════════════════════════════════
+# GENERIC (OnTheMarket, PrimeLocation, etc.)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_PROPERTY_JLD_TYPES = frozenset({
+    "Residence", "SingleFamilyResidence", "House", "Apartment",
+    "RealEstateListing", "Product",
+})
+
+
+def _scrape_generic_html(html: str, base_url: str, platform: str) -> tuple[list[dict], list[str]]:
     domain = urlparse(base_url).netloc
+    listings: list[dict] = []
 
-    # Look for any structured property cards
-    card_selectors = [
-        "article",
-        "li[class*='property']",
-        "div[class*='property-card']",
-        "div[class*='listing']",
-        "div[class*='result']",
-    ]
+    # JSON-LD
+    for item in _extract_json_ld(html):
+        if item.get("@type") not in _PROPERTY_JLD_TYPES:
+            continue
+        title = _clean(item.get("name") or "")
+        addr_raw = item.get("address") or {}
+        address = _clean(addr_raw.get("streetAddress") or "") if isinstance(addr_raw, dict) else _clean(str(addr_raw))
+        offers = item.get("offers") or {}
+        price = _fmt_price(offers.get("price"), offers.get("priceCurrency", "GBP")) if offers else ""
+        img_raw = item.get("image")
+        images = img_raw if isinstance(img_raw, list) else ([img_raw] if img_raw else [])
+        url = item.get("url") or ""
+        if url and not url.startswith("http"):
+            url = f"https://{domain}{url}"
+        if title or url:
+            lst = _empty_listing(platform, url)
+            lst.update({"title": title, "address": address or title, "price": price,
+                        "description": _clean(item.get("description") or "", 600),
+                        "images": [i for i in images if i],
+                        "image": images[0] if images else "",
+                        "property_type": _clean(item.get("@type"))})
+            listings.append(lst)
 
-    cards = []
-    for sel in card_selectors:
-        cards = soup.select(sel)
-        if len(cards) >= 2:
+    if listings:
+        return listings, []
+
+    # CSS fallback
+    soup = BeautifulSoup(html, "lxml")
+    cards: list = []
+    for sel in ("article", "li[class*='property']", "div[class*='property-card']",
+                "div[class*='listing']", "div[class*='result']"):
+        found = soup.select(sel)
+        if len(found) >= 2:
+            cards = found
             break
 
-    for card in cards[:20]:
+    for card in cards[:24]:
         try:
             price_el = card.select_one("[class*='price'], [data-test*='price']")
-            price = _clean_price(price_el.get_text(strip=True)) if price_el else ""
+            price = _clean(price_el.get_text() if price_el else "")
             if not price:
                 continue
-
             title_el = card.select_one("h2, h3, h4, [class*='title'], [class*='address']")
-            title = title_el.get_text(strip=True) if title_el else ""
-
+            title = _clean(title_el.get_text() if title_el else "")
             link_el = card.select_one("a")
             link = ""
             if link_el and link_el.get("href"):
                 href = link_el["href"]
                 link = href if href.startswith("http") else f"https://{domain}{href}"
-
             img_el = card.select_one("img")
-            image = ""
-            if img_el:
-                image = img_el.get("src") or img_el.get("data-src") or ""
-
-            desc_el = card.select_one("p, [class*='description']")
-            description = desc_el.get_text(strip=True)[:300] if desc_el else ""
-
-            if price:
-                listings.append({
-                    "title": title,
-                    "price": price,
-                    "description": description,
-                    "url": link,
-                    "image": image,
-                    "bedrooms": "",
-                    "platform": platform,
-                })
+            image = (img_el.get("src") or img_el.get("data-src") or "") if img_el else ""
+            lst = _empty_listing(platform, link)
+            lst.update({"title": title, "address": title, "price": price,
+                        "images": [image] if image else [], "image": image})
+            listings.append(lst)
         except Exception as e:
-            logger.debug("Generic card parse error: %s", e)
+            logger.debug("Generic CSS card error: %s", e)
 
-    return listings
+    return listings, []
 
 
-async def scrape_agent_listings(profile_url: str) -> list[dict]:
+# ═══════════════════════════════════════════════════════════════════════════════
+# Deep scrape — per listing detail page
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _deep_scrape_listing(url: str, platform: str, referer: str) -> dict:
+    """Fetch a single listing detail page and return enrichment data."""
+    try:
+        html = await _fetch(url, referer=referer, max_retries=2)
+    except Exception as e:
+        logger.debug("Deep scrape failed for %s: %s", url, e)
+        return {}
+
+    if platform == "rightmove":
+        return _rm_enrich_from_detail(html)
+    if platform == "zoopla":
+        return _zp_enrich_from_detail(html)
+
+    # Generic
+    soup = BeautifulSoup(html, "lxml")
+    images: list[str] = []
+    for img in soup.select("img[itemprop='image'], img[class*='gallery'], img[class*='property-image']"):
+        src = img.get("src") or img.get("data-src") or ""
+        if src and src not in images:
+            images.append(src)
+    features: list[str] = []
+    for li in soup.select("ul[class*='feature'] li, ul[class*='key-feature'] li, ul[class*='keyFeature'] li"):
+        f = _clean(li.get_text())
+        if f:
+            features.append(f)
+    return {"images": images, "features": features[:10], "floor_area": "", "listed_date": "", "bathrooms": "", "description": ""}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Scrape a single listing URL  (used by the 'Paste a link' feature)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def scrape_single_listing(url: str) -> dict:
+    """Fetch full details for a single property listing URL."""
+    platform = _detect_platform(url)
+    referer = f"https://{urlparse(url).netloc}/"
+    try:
+        html = await _fetch(url, referer=referer)
+    except Exception as e:
+        raise ValueError(f"Could not fetch the listing page: {e}")
+
+    result: dict | None = None
+
+    if platform == "rightmove":
+        pm = _extract_js_var(html, "PAGE_MODEL")
+        if pm:
+            prop = pm.get("propertyData") or {}
+            images = [img.get("url") or img.get("srcUrl") or "" for img in (prop.get("images") or []) if isinstance(img, dict)]
+            images = [i for i in images if i]
+            price_obj = prop.get("prices") or prop.get("price") or {}
+            price_str = price_obj.get("primaryPrice") or _fmt_price(price_obj.get("amount"), price_obj.get("currencyCode", "GBP"))
+            addr = (prop.get("address") or {})
+            addr_str = _clean(addr.get("displayAddress") or prop.get("displayAddress") or "")
+            raw_date = (prop.get("listingHistory") or {}).get("listingDate") or ""
+            result = {
+                "title": addr_str,
+                "address": addr_str,
+                "price": price_str,
+                "description": _clean((prop.get("text") or {}).get("description") or prop.get("summary") or "", 800),
+                "url": url,
+                "images": images,
+                "image": images[0] if images else "",
+                "bedrooms": str(prop.get("bedrooms") or ""),
+                "bathrooms": str(prop.get("bathrooms") or ""),
+                "property_type": _clean(prop.get("propertySubType") or prop.get("propertyType") or ""),
+                "listed_date": _parse_iso_date(raw_date) if raw_date else "",
+                "features": [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10],
+                "floor_area": "",
+                "platform": "rightmove",
+            }
+
+    elif platform == "zoopla":
+        nd = _extract_next_data(html)
+        if nd:
+            ld = (
+                _safe_get(nd, "props", "pageProps", "listingDetails", "listing")
+                or _safe_get(nd, "props", "pageProps", "listing")
+                or _safe_get(nd, "props", "pageProps", "propertyDetails")
+            )
+            if isinstance(ld, dict):
+                images = []
+                for k in ("images", "media", "photos"):
+                    imgs = ld.get(k)
+                    if isinstance(imgs, list):
+                        images = [i.get("src") or i.get("url") or "" for i in imgs if isinstance(i, dict)]
+                        images = [i for i in images if i]
+                        break
+                addr_raw = ld.get("displayAddress") or ld.get("address") or {}
+                addr_str = addr_raw if isinstance(addr_raw, str) else _clean(_safe_get(addr_raw, "displayAddress") or _safe_get(addr_raw, "streetAddress") or "")
+                price_raw = ld.get("price") or ld.get("listingPrice") or {}
+                price_str = ""
+                if isinstance(price_raw, dict):
+                    dps = price_raw.get("displayPrices")
+                    price_str = (dps[0].get("displayPrice") or "") if dps else _fmt_price(price_raw.get("amount"))
+                elif isinstance(price_raw, (int, float)):
+                    price_str = _fmt_price(price_raw)
+                features: list[str] = []
+                for k in ("keyFeatures", "features"):
+                    feats = ld.get(k)
+                    if isinstance(feats, list):
+                        features = [_clean(f if isinstance(f, str) else f.get("text") or "") for f in feats[:10]]
+                        break
+                listed_date = ""
+                for k in ("firstPublishedAt", "firstListedAt", "listingDate"):
+                    raw = ld.get(k)
+                    if raw:
+                        listed_date = _parse_iso_date(str(raw)[:25])
+                        break
+                result = {
+                    "title": _clean(ld.get("title") or addr_str),
+                    "address": _clean(addr_str),
+                    "price": price_str,
+                    "description": _clean(ld.get("description") or ld.get("summaryDescription") or "", 800),
+                    "url": url,
+                    "images": images,
+                    "image": images[0] if images else "",
+                    "bedrooms": str(ld.get("numBedrooms") or ld.get("bedrooms") or ""),
+                    "bathrooms": str(ld.get("numBathrooms") or ld.get("bathrooms") or ""),
+                    "property_type": _clean(str(ld.get("propertyType") or "")).replace("_", " ").title(),
+                    "listed_date": listed_date,
+                    "features": features,
+                    "floor_area": str(ld.get("floorArea") or ""),
+                    "platform": "zoopla",
+                }
+
+    # Generic fallback (JSON-LD + CSS)
+    if not result:
+        jld = _extract_json_ld(html)
+        soup = BeautifulSoup(html, "lxml")
+        prop_jld = next((d for d in jld if d.get("@type") in _PROPERTY_JLD_TYPES), None)
+
+        images = []
+        for img in soup.select("img[itemprop='image'], img[class*='gallery'], img[class*='property'], img[class*='photo']"):
+            src = img.get("src") or img.get("data-src") or ""
+            if src and src not in images:
+                images.append(src)
+
+        features = []
+        for li in soup.select("ul[class*='feature'] li, ul[class*='key-feature'] li, ul[class*='keyFeature'] li"):
+            f = _clean(li.get_text())
+            if f:
+                features.append(f)
+
+        h1_el = soup.select_one("h1")
+        title = _clean(h1_el.get_text() if h1_el else "")
+        price_el = soup.select_one("[itemprop='price'], [class*='price'], [data-testid*='price']")
+        price = _clean(price_el.get_text() if price_el else "")
+        desc_el = soup.select_one("[itemprop='description'], [class*='description'] p")
+        description = _clean(desc_el.get_text() if desc_el else "", 800)
+
+        if prop_jld:
+            title = _clean(prop_jld.get("name") or title)
+            addr_raw = prop_jld.get("address") or {}
+            if isinstance(addr_raw, dict):
+                title = title or _clean(addr_raw.get("streetAddress") or "")
+            img_raw = prop_jld.get("image")
+            if isinstance(img_raw, list):
+                images = [i for i in img_raw if isinstance(i, str)] + images
+            elif isinstance(img_raw, str):
+                images = [img_raw] + images
+            offers = prop_jld.get("offers") or {}
+            price = price or _fmt_price(offers.get("price"), offers.get("priceCurrency", "GBP"))
+
+        images = list(dict.fromkeys([i for i in images if i]))[:15]
+        result = {
+            "title": title,
+            "address": title,
+            "price": price,
+            "description": description,
+            "url": url,
+            "images": images,
+            "image": images[0] if images else "",
+            "bedrooms": "",
+            "bathrooms": "",
+            "property_type": "",
+            "listed_date": "",
+            "features": features[:10],
+            "floor_area": "",
+            "platform": platform,
+        }
+
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Agent profile scrape — main entry point
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def scrape_agent_listings(profile_url: str, deep_scrape: bool = True) -> list[dict]:
     """
-    Given an agent profile URL on any listing platform,
-    fetch and return a list of their property listings.
-    Each listing dict contains: title, price, description, url, image, bedrooms, platform.
+    Scrape all listings from an agent's profile page.
+
+    Steps:
+      1. Fetch profile HTML (3 retries, rotating User-Agent, browser headers)
+      2. Extract listings via embedded JSON or CSS selectors
+      3. Follow pagination links (up to 5 pages, max 100 listings)
+      4. Enrich listings missing images / date / features via individual detail
+         pages scraped in parallel (semaphore: 4 concurrent, cap: first 20)
+
+    Returns list of dicts with full listing data.
     """
     logger.info("Scraping agent listings from: %s", profile_url)
+    platform = _detect_platform(profile_url)
+    logger.info("Platform detected: %s", platform)
+    referer = f"https://{urlparse(profile_url).netloc}/"
 
     try:
-        html = await _fetch(profile_url)
+        html = await _fetch(profile_url, referer=referer)
     except httpx.HTTPStatusError as e:
-        logger.error("HTTP error scraping %s: %s", profile_url, e)
-        raise ValueError(f"Could not access the profile page (HTTP {e.response.status_code}). Please check the URL.")
+        raise ValueError(
+            f"Could not access the profile page (HTTP {e.response.status_code}). "
+            "Please check the URL and try again."
+        )
     except Exception as e:
-        logger.error("Error fetching %s: %s", profile_url, e)
         raise ValueError(f"Could not fetch the profile page: {e}")
 
-    platform = _detect_platform(profile_url)
-    logger.info("Detected platform: %s", platform)
+    # Parse page 1
+    if platform == "rightmove":
+        listings, next_pages = _scrape_rightmove_html(html, profile_url)
+    elif platform == "zoopla":
+        listings, next_pages = _scrape_zoopla_html(html, profile_url)
+    else:
+        listings, next_pages = _scrape_generic_html(html, profile_url, platform)
 
-    try:
-        if platform == "rightmove":
-            listings = _scrape_rightmove(html, profile_url)
-        elif platform == "zoopla":
-            listings = _scrape_zoopla(html, profile_url)
-        else:
-            listings = _scrape_generic(html, profile_url, platform)
-    except Exception as e:
-        logger.error("Scrape parse error for %s: %s", profile_url, e)
-        listings = []
+    # Paginate (pages 2-5, polite delay between each)
+    for next_url in next_pages[:4]:
+        if len(listings) >= 100:
+            break
+        await asyncio.sleep(random.uniform(0.8, 1.6))
+        try:
+            page_html = await _fetch(next_url, referer=profile_url)
+            if platform == "rightmove":
+                more, _ = _scrape_rightmove_html(page_html, next_url)
+            elif platform == "zoopla":
+                more, _ = _scrape_zoopla_html(page_html, next_url)
+            else:
+                more, _ = _scrape_generic_html(page_html, next_url, platform)
+            listings.extend(more)
+            logger.info("Pagination page scraped: +%d listings (total=%d)", len(more), len(listings))
+        except Exception as e:
+            logger.warning("Pagination failed for %s: %s", next_url, e)
+            break
 
-    logger.info("Scraped %d listings from %s", len(listings), profile_url)
+    listings = listings[:100]
+    logger.info("Pre-enrichment listing count: %d", len(listings))
+
+    # Deep scrape detail pages for enrichment (parallel, rate-limited)
+    if deep_scrape:
+        needs = [
+            (i, lst) for i, lst in enumerate(listings[:20])
+            if lst.get("url") and (
+                not lst.get("images") or not lst.get("listed_date") or not lst.get("features")
+            )
+        ]
+        if needs:
+            sem = asyncio.Semaphore(4)
+
+            async def _enrich(idx: int, lst: dict) -> None:
+                async with sem:
+                    await asyncio.sleep(random.uniform(0.3, 0.9))
+                    patch = await _deep_scrape_listing(lst["url"], platform, referer=profile_url)
+                    for key, val in patch.items():
+                        if val and not listings[idx].get(key):
+                            listings[idx][key] = val
+                    if listings[idx].get("images"):
+                        listings[idx]["image"] = listings[idx]["images"][0]
+
+            await asyncio.gather(*[_enrich(i, lst) for i, lst in needs])
+
+    logger.info("Final listing count after enrichment: %d", len(listings))
     return listings

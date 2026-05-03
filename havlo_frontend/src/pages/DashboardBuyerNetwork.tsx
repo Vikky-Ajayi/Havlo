@@ -365,35 +365,107 @@ interface ListingCardProps {
 function ListingCard({ listing, token, activated }: ListingCardProps) {
   const [showReport, setShowReport] = useState(false);
   const [showActivate, setShowActivate] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
 
   const fee = listing.price ? calculateFee(listing.price) : null;
+  const images = listing.images?.length ? listing.images : (listing.image_url ? [listing.image_url] : []);
+  const currentImg = images[imgIdx] ?? null;
+  const hasMultipleImages = images.length > 1;
+
+  const beds = listing.bedrooms ? `${listing.bedrooms} bed` : null;
+  const baths = listing.bathrooms ? `${listing.bathrooms} bath` : null;
+  const roomLine = [beds, baths].filter(Boolean).join(' · ');
+
+  const features = listing.features ?? [];
+  const shownFeatures = features.slice(0, 4);
 
   return (
     <>
       <div className={`rounded-[14px] border bg-white overflow-hidden ${activated ? 'border-[#149D4F]/40' : 'border-black/10'}`}>
-        {/* Property image */}
-        {listing.image_url && (
-          <div className="relative h-40 bg-black/5 overflow-hidden">
-            <img src={listing.image_url} alt={listing.title || 'Property'}
+        {/* Image area */}
+        {currentImg ? (
+          <div className="relative h-44 bg-black/5 overflow-hidden group">
+            <img src={currentImg} alt={listing.title || 'Property'}
               className="w-full h-full object-cover"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-            {listing.platform && (
-              <span className="absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-0.5 font-body text-[11px] font-semibold text-black/70 backdrop-blur-sm">
-                {platformLabel(listing.platform)}
+
+            {/* Carousel controls */}
+            {hasMultipleImages && (
+              <>
+                <button
+                  onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                  aria-label="Previous image"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L3.5 6L7.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                <button
+                  onClick={() => setImgIdx(i => (i + 1) % images.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                  aria-label="Next image"
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2L8.5 6L4.5 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                {/* Dots */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {images.slice(0, 6).map((_, i) => (
+                    <button key={i} onClick={() => setImgIdx(i)}
+                      className={`h-1.5 rounded-full transition-all ${i === imgIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/50'}`} />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Image count badge */}
+            {hasMultipleImages && (
+              <span className="absolute bottom-2 right-2.5 rounded-full bg-black/55 px-2 py-0.5 font-body text-[10px] font-semibold text-white backdrop-blur-sm">
+                {imgIdx + 1}/{images.length}
               </span>
             )}
+
+            {/* Platform badge */}
+            <div className="absolute top-2.5 left-2.5 flex gap-1.5 flex-wrap">
+              {listing.platform && listing.platform !== 'manual' && (
+                <span className="rounded-full bg-white/90 px-2.5 py-0.5 font-body text-[11px] font-semibold text-black/70 backdrop-blur-sm">
+                  {platformLabel(listing.platform)}
+                </span>
+              )}
+              {listing.property_type && (
+                <span className="rounded-full bg-white/90 px-2.5 py-0.5 font-body text-[11px] font-semibold text-black/60 backdrop-blur-sm">
+                  {listing.property_type}
+                </span>
+              )}
+            </div>
+
+            {/* Listed date */}
+            {listing.listed_date && (
+              <span className="absolute top-2.5 right-2.5 rounded-full bg-black/55 px-2.5 py-0.5 font-body text-[10px] font-medium text-white/90 backdrop-blur-sm">
+                {listing.listed_date}
+              </span>
+            )}
+
+            {/* Activated badge */}
             {activated && (
-              <span className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-[#149D4F] px-2.5 py-0.5 font-body text-[11px] font-bold text-white">
+              <span className="absolute bottom-7 right-2.5 flex items-center gap-1 rounded-full bg-[#149D4F] px-2.5 py-0.5 font-body text-[11px] font-bold text-white">
                 <Zap size={10} className="fill-white" />
                 Demand Activated
               </span>
             )}
           </div>
+        ) : (
+          /* No image placeholder */
+          <div className="h-20 bg-[#F4F5F4] flex items-center justify-center">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" className="text-black/20">
+              <rect x="3" y="5" width="22" height="18" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+              <circle cx="10" cy="11" r="2" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M3 19l5-5 4 4 4-5 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
         )}
 
         <div className="p-5">
-          {/* No image — show badge inline */}
-          {!listing.image_url && activated && (
+          {/* No image — show activated badge inline */}
+          {!currentImg && activated && (
             <div className="flex items-center gap-1.5 mb-3">
               <span className="flex items-center gap-1 rounded-full bg-[#149D4F] px-2.5 py-0.5 font-body text-[11px] font-bold text-white">
                 <Zap size={10} className="fill-white" />
@@ -402,18 +474,50 @@ function ListingCard({ listing, token, activated }: ListingCardProps) {
             </div>
           )}
 
-          {/* Title + price */}
-          <h4 className="font-display text-[18px] font-black tracking-tight text-black leading-snug line-clamp-2">
+          {/* Title */}
+          <h4 className="font-display text-[17px] font-black tracking-tight text-black leading-snug line-clamp-2">
             {listing.title || 'Untitled Listing'}
           </h4>
-          {(listing.price || listing.bedrooms) && (
-            <p className="mt-1 font-body text-[13px] text-black/65">
-              {[listing.bedrooms, listing.price].filter(Boolean).join(' · ')}
+
+          {/* Address (if distinct from title) */}
+          {listing.address && listing.address !== listing.title && (
+            <p className="mt-0.5 font-body text-[12px] text-black/50 line-clamp-1">
+              {listing.address}
             </p>
           )}
+
+          {/* Price + rooms */}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            {listing.price && (
+              <span className="font-display text-[15px] font-black tracking-tight text-black">{listing.price}</span>
+            )}
+            {roomLine && (
+              <span className="font-body text-[12px] text-black/55">{roomLine}</span>
+            )}
+            {listing.floor_area && (
+              <span className="font-body text-[12px] text-black/45">{listing.floor_area}</span>
+            )}
+          </div>
+
+          {/* Feature chips */}
+          {shownFeatures.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1">
+              {shownFeatures.map((f, i) => (
+                <span key={i} className="rounded-full bg-[#F4F5F4] px-2.5 py-0.5 font-body text-[11px] text-black/60">
+                  {f}
+                </span>
+              ))}
+              {features.length > 4 && (
+                <span className="rounded-full bg-[#F4F5F4] px-2.5 py-0.5 font-body text-[11px] text-black/40">
+                  +{features.length - 4} more
+                </span>
+              )}
+            </div>
+          )}
+
           {listing.external_url && (
             <a href={listing.external_url} target="_blank" rel="noopener noreferrer"
-              className="inline-block mt-0.5 font-body text-[12px] text-black/40 hover:text-black/70 underline underline-offset-2 transition-colors">
+              className="inline-block mt-2 font-body text-[12px] text-black/40 hover:text-black/70 underline underline-offset-2 transition-colors">
               View on portal ↗
             </a>
           )}
@@ -484,12 +588,21 @@ interface AddListingModalProps {
 
 type AddTab = 'link' | 'manual';
 
+type ScrapedPreview = {
+  title: string; address: string; price: string; description: string;
+  images: string[]; image_url: string; bedrooms: string; bathrooms: string;
+  property_type: string; listed_date: string; features: string[];
+  floor_area: string; platform: string; external_url: string;
+};
+
 function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
   const [tab, setTab] = useState<AddTab>('link');
 
   // Link tab state
   const [linkUrl, setLinkUrl] = useState('');
-  const [linkTitle, setLinkTitle] = useState('');
+  const [scraping, setScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [scraped, setScraped] = useState<ScrapedPreview | null>(null);
   const [linkSubmitting, setLinkSubmitting] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
@@ -507,15 +620,40 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
   const inputCls = 'h-12 w-full rounded-lg border border-black/5 bg-[#242628]/5 px-4 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10';
   const labelCls = 'block font-body text-[13px] font-bold text-[#001C47] mb-1.5';
 
-  const handleLinkSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFetchListing = async () => {
     if (!linkUrl.trim()) return;
+    setScraping(true);
+    setScrapeError(null);
+    setScraped(null);
+    try {
+      const result = await api.agentScrapeListingUrl(token, linkUrl.trim());
+      setScraped(result);
+    } catch (err: any) {
+      setScrapeError(err?.message || 'Could not fetch listing details. Check the URL and try again.');
+    } finally {
+      setScraping(false);
+    }
+  };
+
+  const handleSaveScraped = async () => {
+    if (!scraped) return;
     setLinkSubmitting(true);
     setLinkError(null);
     try {
       const result = await api.agentAddManualListing(token, {
-        title: linkTitle.trim() || linkUrl.trim(),
-        external_url: linkUrl.trim(),
+        title: scraped.title || scraped.address || scraped.external_url,
+        address: scraped.address || undefined,
+        price: scraped.price || undefined,
+        bedrooms: scraped.bedrooms || undefined,
+        bathrooms: scraped.bathrooms || undefined,
+        property_type: scraped.property_type || undefined,
+        listed_date: scraped.listed_date || undefined,
+        floor_area: scraped.floor_area || undefined,
+        description: scraped.description || undefined,
+        external_url: scraped.external_url,
+        image_url: scraped.image_url || undefined,
+        images: scraped.images.length > 0 ? scraped.images : undefined,
+        features: scraped.features.length > 0 ? scraped.features : undefined,
       });
       onAdded(result);
       onClose();
@@ -589,43 +727,111 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
 
         {/* Link tab */}
         {tab === 'link' && (
-          <form onSubmit={handleLinkSubmit} className="px-6 pb-6 space-y-4">
+          <div className="px-6 pb-6 space-y-4">
             <p className="font-body text-[13px] text-black/60 -mt-2">
-              Paste the URL to a single property listing from any portal.
+              Paste the URL to any property listing and we'll extract all the details automatically.
             </p>
-            <div>
-              <label className={labelCls}>Listing URL</label>
-              <input
-                type="url"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="https://www.rightmove.co.uk/properties/..."
-                className={inputCls}
-                required
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className={labelCls}>
-                Property name / title <span className="font-normal text-black/40">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={linkTitle}
-                onChange={(e) => setLinkTitle(e.target.value)}
-                placeholder="e.g. 4-bed detached, Bristol"
-                className={inputCls}
-              />
-            </div>
-            {linkError && <p className="font-body text-[13px] text-red-600">{linkError}</p>}
-            <button
-              type="submit"
-              disabled={linkSubmitting || !linkUrl.trim()}
-              className="h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {linkSubmitting ? 'Adding…' : 'Add Listing'}
-            </button>
-          </form>
+
+            {/* URL input + fetch button */}
+            {!scraped && (
+              <>
+                <div>
+                  <label className={labelCls}>Listing URL</label>
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) => { setLinkUrl(e.target.value); setScrapeError(null); }}
+                    onKeyDown={(e) => e.key === 'Enter' && !scraping && linkUrl.trim() && handleFetchListing()}
+                    placeholder="https://www.rightmove.co.uk/properties/..."
+                    className={inputCls}
+                    autoFocus
+                    disabled={scraping}
+                  />
+                </div>
+                {scrapeError && <p className="font-body text-[13px] text-red-600">{scrapeError}</p>}
+                <button
+                  onClick={handleFetchListing}
+                  disabled={scraping || !linkUrl.trim()}
+                  className="h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {scraping ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <RefreshCw size={14} className="animate-spin" />
+                      Fetching details…
+                    </span>
+                  ) : 'Fetch Listing Details'}
+                </button>
+                {scraping && (
+                  <p className="font-body text-[12px] text-black/40 text-center">
+                    This may take 10–20 seconds while we extract the full listing.
+                  </p>
+                )}
+              </>
+            )}
+
+            {/* Scraped preview */}
+            {scraped && (
+              <div className="space-y-4">
+                {/* Preview card */}
+                <div className="rounded-[12px] border border-black/10 overflow-hidden">
+                  {scraped.images.length > 0 && (
+                    <img src={scraped.images[0]} alt={scraped.title}
+                      className="w-full h-36 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  )}
+                  <div className="p-4 space-y-1">
+                    <p className="font-display text-[16px] font-black tracking-tight text-black line-clamp-2">
+                      {scraped.title || scraped.address || '(No title extracted)'}
+                    </p>
+                    {scraped.address && scraped.address !== scraped.title && (
+                      <p className="font-body text-[12px] text-black/50 line-clamp-1">{scraped.address}</p>
+                    )}
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
+                      {scraped.price && (
+                        <span className="font-display text-[14px] font-black text-black">{scraped.price}</span>
+                      )}
+                      {scraped.bedrooms && (
+                        <span className="font-body text-[12px] text-black/55">{scraped.bedrooms} bed</span>
+                      )}
+                      {scraped.bathrooms && (
+                        <span className="font-body text-[12px] text-black/55">{scraped.bathrooms} bath</span>
+                      )}
+                      {scraped.floor_area && (
+                        <span className="font-body text-[12px] text-black/45">{scraped.floor_area}</span>
+                      )}
+                    </div>
+                    {scraped.property_type && (
+                      <span className="inline-block rounded-full bg-[#F4F5F4] px-2.5 py-0.5 font-body text-[11px] text-black/60 mt-1">
+                        {scraped.property_type}
+                      </span>
+                    )}
+                    {scraped.images.length > 1 && (
+                      <p className="font-body text-[11px] text-black/40 mt-1">
+                        {scraped.images.length} photos extracted
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {linkError && <p className="font-body text-[13px] text-red-600">{linkError}</p>}
+
+                <button
+                  onClick={handleSaveScraped}
+                  disabled={linkSubmitting}
+                  className="h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {linkSubmitting ? 'Adding…' : 'Add This Listing'}
+                </button>
+
+                <button
+                  onClick={() => { setScraped(null); setScrapeError(null); }}
+                  className="w-full font-body text-[13px] text-black/50 hover:text-black/70 transition-colors"
+                >
+                  ← Try a different URL
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Manual tab */}
