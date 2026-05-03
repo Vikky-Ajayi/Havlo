@@ -1188,101 +1188,46 @@ export default function DashboardBuyerNetwork() {
           <HeroRings />
         </div>
 
-        {/* Profile URL card */}
+        {/* How it works — always visible */}
         <div className="rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
-          <h3 className="mb-1 font-display text-[22px] font-black tracking-tight text-black">
-            Your Listing Portal Profile
-          </h3>
-          <p className="mb-5 font-body text-[14px] text-black/60">
-            Paste the URL to your agent profile on Rightmove, Zoopla, OnTheMarket, etc. We'll import all your listings automatically.
-          </p>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              type="url"
-              value={profileUrl}
-              onChange={(e) => setProfileUrl(e.target.value)}
-              placeholder="https://www.rightmove.co.uk/estate-agents/agent/..."
-              className="h-12 flex-1 rounded-lg border border-black/5 bg-[#242628]/5 px-4 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10"
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveProfile()}
-              disabled={profileLoading}
-            />
-            <button
-              onClick={handleSaveProfile}
-              disabled={profileSaving || profileLoading || !profileUrl.trim()}
-              className="h-12 rounded-full bg-black px-6 font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-            >
-              {profileSaving ? 'Saving…' : 'Save'}
+          <div className="flex items-start justify-between gap-4 mb-5">
+            <h3 className="font-display text-[22px] font-black tracking-tight text-black">How it works</h3>
+            <button onClick={() => setShowAddListing(true)}
+              className="inline-flex shrink-0 h-10 items-center gap-1.5 rounded-full bg-black px-5 font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors">
+              <Plus size={13} />
+              Add a Listing
             </button>
           </div>
-
-          {profileError && <p className="mt-2 font-body text-[13px] text-red-600">{profileError}</p>}
-          {profileSuccess && <p className="mt-2 font-body text-[13px] font-medium text-[#149D4F]">Profile URL saved.</p>}
-          {savedPlatform && (
-            <p className="mt-2 font-body text-[13px] text-black/50">
-              Platform detected: <span className="font-semibold text-black/70">{platformLabel(savedPlatform)}</span>
-              {lastSyncedLabel && <> · Last synced: {lastSyncedLabel}</>}
-            </p>
-          )}
-
-          {savedUrl && (
-            <div className="mt-5 pt-5 border-t border-black/5">
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-black/20 bg-white px-5 font-body text-[13px] font-semibold text-black hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'Syncing listings…' : 'Sync Listings from Portal'}
-              </button>
-              {syncError && <p className="mt-2 font-body text-[13px] text-red-600">{syncError}</p>}
-              {syncSuccess && <p className="mt-2 font-body text-[13px] font-medium text-[#149D4F]">{syncSuccess}</p>}
-            </div>
-          )}
-        </div>
-
-        {/* How it works — only before first sync */}
-        {listings.length === 0 && !listingsLoading && (
-          <div className="rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <h3 className="font-display text-[22px] font-black tracking-tight text-black">How it works</h3>
-              <button onClick={() => setShowAddListing(true)}
-                className="inline-flex shrink-0 h-10 items-center gap-1.5 rounded-full bg-black px-5 font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors">
-                <Plus size={13} />
-                Add a Listing
-              </button>
-            </div>
-            <div className="grid gap-5 sm:grid-cols-3">
-              {[
-                {
-                  num: '1',
-                  title: 'Connect your portal',
-                  desc: 'Paste your Rightmove, Zoopla or OnTheMarket agent profile URL above and sync your listings.',
-                },
-                {
-                  num: '2',
-                  title: 'Get AI insights — free',
-                  desc: 'Click AI Report on any listing for a free property analysis and action plan powered by AI.',
-                },
-                {
-                  num: '3',
-                  title: 'Activate demand',
-                  desc: 'Activate a targeted international buyer demand campaign for any listing to generate fresh enquiries and renewed interest.',
-                },
-              ].map((s) => (
-                <div key={s.num} className="flex gap-4">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black font-display text-[14px] font-black text-white mt-0.5">
-                    {s.num}
-                  </div>
-                  <div>
-                    <p className="font-display text-[15px] font-black tracking-tight text-black">{s.title}</p>
-                    <p className="mt-1 font-body text-[13px] text-black/60 leading-relaxed">{s.desc}</p>
-                  </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            {[
+              {
+                num: '1',
+                title: 'Upload your listing URL',
+                desc: 'Paste the URL of any property your agency has listed and we\'ll instantly import its details.',
+              },
+              {
+                num: '2',
+                title: 'Get a free Listing Audit',
+                desc: 'Request a free Listing Audit on any property for a detailed analysis and actionable recommendations.',
+              },
+              {
+                num: '3',
+                title: 'Activate buyer demand',
+                desc: 'Launch targeted local and international buyer demand campaigns to generate fresh interest and accelerate the sale.',
+              },
+            ].map((s) => (
+              <div key={s.num} className="flex gap-4">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black font-display text-[14px] font-black text-white mt-0.5">
+                  {s.num}
                 </div>
-              ))}
-            </div>
+                <div>
+                  <p className="font-display text-[15px] font-black tracking-tight text-black">{s.title}</p>
+                  <p className="mt-1 font-body text-[13px] text-black/60 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
         {/* Listings */}
         {listingsLoading ? (
