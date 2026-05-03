@@ -380,11 +380,14 @@ interface ListingCardProps {
   token: string;
   activated: boolean;
   onViewReport: (listing: AgentListing) => void;
+  onRemove: (listingId: string) => void;
 }
 
-function ListingCard({ listing, token, activated, onViewReport }: ListingCardProps) {
+function ListingCard({ listing, token, activated, onViewReport, onRemove }: ListingCardProps) {
   const [showActivate, setShowActivate] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fee = listing.price ? calculateFee(listing.price) : null;
   const images = listing.images?.length ? listing.images : (listing.image_url ? [listing.image_url] : []);
@@ -583,6 +586,39 @@ function ListingCard({ listing, token, activated, onViewReport }: ListingCardPro
               </button>
             )}
           </div>
+
+          {/* Delete row */}
+          {confirmDelete ? (
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2">
+              <p className="font-body text-[12px] text-red-700 font-medium">Remove this listing?</p>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => setConfirmDelete(false)}
+                  className="h-7 rounded-full border border-black/15 px-3 font-body text-[11px] font-semibold text-black/60 hover:bg-black/5 transition-colors">
+                  Cancel
+                </button>
+                <button
+                  disabled={deleting}
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      await api.agentDeleteListing(token, listing.id);
+                      onRemove(listing.id);
+                    } catch {
+                      setDeleting(false);
+                      setConfirmDelete(false);
+                    }
+                  }}
+                  className="h-7 rounded-full bg-red-600 px-3 font-body text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
+                  {deleting ? 'Removing…' : 'Remove'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setConfirmDelete(true)}
+              className="mt-2 w-full text-center font-body text-[11px] text-black/30 hover:text-red-500 transition-colors py-1">
+              Remove listing
+            </button>
+          )}
         </div>
       </div>
 
@@ -1292,6 +1328,7 @@ export default function DashboardBuyerNetwork() {
                   token={token!}
                   activated={activatedIds.has(listing.id)}
                   onViewReport={(l) => setSelectedReportListing(l)}
+                  onRemove={(id) => setListings((prev) => prev.filter((l) => l.id !== id))}
                 />
               ))}
             </div>

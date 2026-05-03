@@ -337,6 +337,26 @@ async def get_listings(
     return [_listing_to_out(l) for l in result.scalars().all()]
 
 
+@router.delete("/listings/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_listing(
+    listing_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a listing owned by the current agent."""
+    result = await db.execute(
+        select(AgentListing).where(
+            AgentListing.id == listing_id,
+            AgentListing.user_id == current_user.id,
+        )
+    )
+    listing = result.scalar_one_or_none()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found.")
+    await db.delete(listing)
+    await db.commit()
+
+
 @router.post("/listings/manual", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
 async def add_manual_listing(
     payload: ManualListingRequest,
