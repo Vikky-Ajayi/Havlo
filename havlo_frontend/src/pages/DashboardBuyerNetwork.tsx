@@ -1058,6 +1058,11 @@ export default function DashboardBuyerNetwork() {
     }
   };
 
+  const setSyncErrorTimed = (msg: string, ms = 7000) => {
+    setSyncError(msg);
+    setTimeout(() => setSyncError(null), ms);
+  };
+
   const handleSync = async () => {
     if (!token) return;
     setSyncing(true);
@@ -1070,14 +1075,14 @@ export default function DashboardBuyerNetwork() {
       if (res.count > 0) {
         setSyncSuccess(`${res.count} listing${res.count !== 1 ? 's' : ''} imported successfully.`);
       } else {
-        setSyncError(
+        setSyncErrorTimed(
           'No listings were found at that URL. If you use Rightmove or Zoopla, ' +
           'please add listings individually using the "Paste a link" tab — ' +
           'paste each property URL and all details will be imported automatically.',
         );
       }
     } catch (e: any) {
-      setSyncError(e?.message || 'Sync failed. Please check your profile URL and try again.');
+      setSyncErrorTimed(e?.message || 'Sync failed. Please check your profile URL and try again.');
     } finally {
       setSyncing(false);
     }
