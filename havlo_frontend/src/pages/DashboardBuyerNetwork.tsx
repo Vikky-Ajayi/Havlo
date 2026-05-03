@@ -781,7 +781,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
         {tab === 'link' && (
           <div className="px-6 pb-6 space-y-4">
             <p className="font-body text-[13px] text-black/60 -mt-2">
-              Paste the URL to any property listing and we'll extract all the details automatically.
+              Paste the URL of your property listing and we'll instantly extract all the details.
             </p>
 
             {/* URL input + fetch button */}
