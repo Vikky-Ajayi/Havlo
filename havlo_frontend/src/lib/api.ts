@@ -567,6 +567,22 @@ export const api = {
   agentDeleteListing: (token: string, listingId: string) =>
     request<void>(`/agent/listings/${listingId}`, { method: 'DELETE', token }),
 
+  agentUpdateListing: (
+    token: string,
+    listingId: string,
+    payload: {
+      title?: string;
+      price?: string;
+      bedrooms?: string;
+      bathrooms?: string;
+      address?: string;
+      description?: string;
+      external_url?: string;
+      image_url?: string;
+    },
+  ) =>
+    request<AgentListing>(`/agent/listings/${listingId}`, { method: 'PATCH', token, body: payload }),
+
   agentGenerateAIReport: (
     token: string,
     payload: {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Link2, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
+import { ArrowLeft, Link2, Pencil, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { api, type AgentListing } from '../lib/api';
@@ -381,9 +381,10 @@ interface ListingCardProps {
   activated: boolean;
   onViewReport: (listing: AgentListing) => void;
   onRemove: (listingId: string) => void;
+  onEdit: (listing: AgentListing) => void;
 }
 
-function ListingCard({ listing, token, activated, onViewReport, onRemove }: ListingCardProps) {
+function ListingCard({ listing, token, activated, onViewReport, onRemove, onEdit }: ListingCardProps) {
   const [showActivate, setShowActivate] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -587,11 +588,18 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove }: List
             )}
           </div>
 
-          {/* Delete row */}
-          {confirmDelete ? (
-            <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2">
-              <p className="font-body text-[12px] text-red-700 font-medium">Remove this listing?</p>
-              <div className="flex gap-2 shrink-0">
+          {/* Edit + Delete row */}
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <button
+              onClick={() => onEdit(listing)}
+              className="inline-flex items-center gap-1.5 font-body text-[11px] text-black/40 hover:text-black/70 transition-colors py-1"
+            >
+              <Pencil size={11} />
+              Edit listing
+            </button>
+
+            {confirmDelete ? (
+              <div className="flex items-center gap-2">
                 <button onClick={() => setConfirmDelete(false)}
                   className="h-7 rounded-full border border-black/15 px-3 font-body text-[11px] font-semibold text-black/60 hover:bg-black/5 transition-colors">
                   Cancel
@@ -612,13 +620,13 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove }: List
                   {deleting ? 'Removing…' : 'Remove'}
                 </button>
               </div>
-            </div>
-          ) : (
-            <button onClick={() => setConfirmDelete(true)}
-              className="mt-2 w-full text-center font-body text-[11px] text-black/30 hover:text-red-500 transition-colors py-1">
-              Remove listing
-            </button>
-          )}
+            ) : (
+              <button onClick={() => setConfirmDelete(true)}
+                className="font-body text-[11px] text-black/30 hover:text-red-500 transition-colors py-1">
+                Remove
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -628,6 +636,128 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove }: List
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// ── Edit Listing modal ─────────────────────────────────────────────────────────
+interface EditListingModalProps {
+  listing: AgentListing;
+  token: string;
+  onClose: () => void;
+  onSaved: (updated: AgentListing) => void;
+}
+
+function EditListingModal({ listing, token, onClose, onSaved }: EditListingModalProps) {
+  const [title, setTitle] = useState(listing.title || '');
+  const [price, setPrice] = useState(listing.price || '');
+  const [bedrooms, setBedrooms] = useState(listing.bedrooms || '');
+  const [bathrooms, setBathrooms] = useState(listing.bathrooms || '');
+  const [address, setAddress] = useState(listing.address || '');
+  const [description, setDescription] = useState(listing.description || '');
+  const [externalUrl, setExternalUrl] = useState(listing.external_url || '');
+  const [imageUrl, setImageUrl] = useState(listing.image_url || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const inputCls = 'w-full h-11 rounded-lg border border-black/5 bg-[#242628]/5 px-4 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10';
+  const labelCls = 'mb-1.5 block font-body text-[12px] font-semibold uppercase tracking-wide text-black/50';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.agentUpdateListing(token, listing.id, {
+        title: title.trim(),
+        price: price.trim() || undefined,
+        bedrooms: bedrooms.trim() || undefined,
+        bathrooms: bathrooms.trim() || undefined,
+        address: address.trim() || undefined,
+        description: description.trim() || undefined,
+        external_url: externalUrl.trim() || undefined,
+        image_url: imageUrl.trim() || undefined,
+      });
+      onSaved(updated);
+      onClose();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save changes.');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.18 }}
+        className="relative w-full max-w-[500px] rounded-[20px] bg-white shadow-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-black/5">
+          <h2 className="font-display text-[20px] font-black tracking-tight text-black">Edit Listing</h2>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+          <div>
+            <label className={labelCls}>Property title</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. 4-bed detached house, Bristol"
+              className={inputCls} required autoFocus />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Listed price</label>
+              <input type="text" value={price} onChange={(e) => setPrice(e.target.value)}
+                placeholder="e.g. £875,000" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Bedrooms</label>
+              <input type="text" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)}
+                placeholder="e.g. 4" className={inputCls} />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Address</label>
+            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
+              placeholder="e.g. 12 Cheltenham Road, Bristol" className={inputCls} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Description</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+              placeholder="Key features, selling points, etc." rows={3}
+              className="w-full rounded-lg border border-black/5 bg-[#242628]/5 px-4 py-3 font-body text-sm font-medium text-black outline-none placeholder:text-black/40 focus:ring-2 focus:ring-black/10 resize-none" />
+          </div>
+
+          <div>
+            <label className={labelCls}>Listing URL</label>
+            <input type="url" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)}
+              placeholder="https://www.rightmove.co.uk/properties/..." className={inputCls} />
+          </div>
+
+          <div>
+            <label className={labelCls}>Property image URL</label>
+            <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://..." className={inputCls} />
+          </div>
+
+          {error && <p className="font-body text-[13px] text-red-600">{error}</p>}
+
+          <button type="submit" disabled={saving || !title.trim()}
+            className="h-[52px] w-full rounded-full bg-black font-body text-[14px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed">
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </form>
+      </motion.div>
+    </div>
   );
 }
 
@@ -1003,6 +1133,7 @@ export default function DashboardBuyerNetwork() {
 
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
   const [showAddListing, setShowAddListing] = useState(false);
+  const [editingListing, setEditingListing] = useState<AgentListing | null>(null);
   const [selectedReportListing, setSelectedReportListing] = useState<AgentListing | null>(null);
 
   const handleListingAdded = useCallback((listing: AgentListing) => {
@@ -1263,6 +1394,7 @@ export default function DashboardBuyerNetwork() {
                   activated={activatedIds.has(listing.id)}
                   onViewReport={(l) => setSelectedReportListing(l)}
                   onRemove={(id) => setListings((prev) => prev.filter((l) => l.id !== id))}
+                  onEdit={(l) => setEditingListing(l)}
                 />
               ))}
             </div>
@@ -1283,6 +1415,21 @@ export default function DashboardBuyerNetwork() {
             token={token}
             onClose={() => setShowAddListing(false)}
             onAdded={handleListingAdded}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit listing modal */}
+      <AnimatePresence>
+        {editingListing && token && (
+          <EditListingModal
+            listing={editingListing}
+            token={token}
+            onClose={() => setEditingListing(null)}
+            onSaved={(updated) => {
+              setListings((prev) => prev.map((l) => l.id === updated.id ? updated : l));
+              setEditingListing(null);
+            }}
           />
         )}
       </AnimatePresence>

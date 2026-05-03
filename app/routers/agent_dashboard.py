@@ -109,6 +109,20 @@ class ManualListingRequest(BaseModel):
     features: list[str] | None = None
 
 
+class UpdateListingRequest(BaseModel):
+    title: str | None = Field(None, min_length=1, max_length=500)
+    price: str | None = Field(None, max_length=100)
+    bedrooms: str | None = Field(None, max_length=50)
+    bathrooms: str | None = Field(None, max_length=50)
+    address: str | None = Field(None, max_length=500)
+    property_type: str | None = Field(None, max_length=100)
+    listed_date: str | None = Field(None, max_length=100)
+    floor_area: str | None = Field(None, max_length=100)
+    description: str | None = None
+    external_url: str | None = Field(None, max_length=2000)
+    image_url: str | None = Field(None, max_length=2000)
+
+
 class AdvancedServiceResponse(BaseModel):
     payment_record_id: str
     checkout_id: str
@@ -355,6 +369,42 @@ async def delete_listing(
         raise HTTPException(status_code=404, detail="Listing not found.")
     await db.delete(listing)
     await db.commit()
+
+
+@router.patch("/listings/{listing_id}", response_model=ListingOut)
+async def update_listing(
+    listing_id: str,
+    payload: UpdateListingRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update editable fields on an existing listing."""
+    try:
+        lid = uuid.UUID(listing_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid listing ID.")
+    result = await db.execute(
+        select(AgentListing).where(
+            AgentListing.id == lid,
+            AgentListing.user_id == current_user.id,
+        )
+    )
+    listing = result.scalar_one_or_none()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found.")
+
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if field == "image_url" and value:
+            listing.image_url = value
+            import json as _json
+            listing.images_json = _json.dumps([value])
+        else:
+            setattr(listing, field, value or None)
+
+    await db.commit()
+    await db.refresh(listing)
+    return _listing_to_out(listing)
 
 
 @router.post("/listings/manual", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
