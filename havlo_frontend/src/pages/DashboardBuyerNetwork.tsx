@@ -1283,7 +1283,7 @@ export default function DashboardBuyerNetwork() {
 
         {/* Free listing note */}
         <p className="text-center font-body text-[12px] text-black/40">
-          Listing on Havlo is <span className="font-semibold text-black/60">always free</span>. A fee only applies when you activate our advanced demand services for a specific property.
+          Listing Audits on Havlo are always free. Fees only apply when you activate buyer demand for a specific listing
         </p>
 
       </div>
