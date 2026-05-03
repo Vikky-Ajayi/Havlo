@@ -1190,7 +1190,7 @@ export default function DashboardBuyerNetwork() {
 
         {/* How it works — always visible */}
         <div className="rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-4 mb-5">
+          <div className="flex items-start justify-between gap-4 mb-2">
             <h3 className="font-display text-[22px] font-black tracking-tight text-black">How it works</h3>
             <button onClick={() => setShowAddListing(true)}
               className="inline-flex shrink-0 h-10 items-center gap-1.5 rounded-full bg-black px-5 font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors">
@@ -1198,22 +1198,23 @@ export default function DashboardBuyerNetwork() {
               Add a Listing
             </button>
           </div>
+          <p className="mb-5 font-body text-[14px] text-black/60">Paste the URL of your property listing and we'll instantly extract all the details</p>
           <div className="grid gap-5 sm:grid-cols-3">
             {[
               {
                 num: '1',
-                title: 'Upload your listing URL',
-                desc: 'Paste the URL of any property your agency has listed and we\'ll instantly import its details.',
+                title: 'Import listings',
+                desc: 'Paste the URL of any property you\'ve listed on Rightmove, Zoopla, OnTheMarket, or any other platform—we\'ll automatically import the details.',
               },
               {
                 num: '2',
-                title: 'Get a free Listing Audit',
-                desc: 'Request a free Listing Audit on any property for a detailed analysis and actionable recommendations.',
+                title: 'Get listing audit — free',
+                desc: 'We run a detailed audit of your listing to identify why it\'s not selling and uncover what may be holding it back.',
               },
               {
                 num: '3',
-                title: 'Activate buyer demand',
-                desc: 'Launch targeted local and international buyer demand campaigns to generate fresh interest and accelerate the sale.',
+                title: 'Activate Buyer Demand',
+                desc: 'Activate buyer demand on your listings with targeted local and international campaigns designed to generate fresh enquiries, renewed interest, and drive more sales beyond relying solely on property portals.',
               },
             ].map((s) => (
               <div key={s.num} className="flex gap-4">
