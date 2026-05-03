@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link2, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
+import { ArrowLeft, Link2, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { api, type AgentListing } from '../lib/api';
@@ -120,14 +120,14 @@ function renderReport(text: string) {
   return elements;
 }
 
-// ── AI Report modal ────────────────────────────────────────────────────────────
-interface AIReportModalProps {
+// ── AI Report page (full-page view) ───────────────────────────────────────────
+interface AIReportPageProps {
   listing: AgentListing;
   token: string;
-  onClose: () => void;
+  onBack: () => void;
 }
 
-function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
+function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   const [report, setReport] = useState<string | null>(listing.ai_report || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,75 +160,81 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
     : null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-[680px] max-h-[85vh] rounded-[20px] bg-white shadow-2xl flex flex-col overflow-hidden">
+    <div className="mx-auto max-w-[860px] px-4 py-6 pb-20 sm:px-6 lg:py-10">
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="mb-6 inline-flex items-center gap-2 font-body text-[13px] font-semibold text-black/60 hover:text-black transition-colors"
+      >
+        <ArrowLeft size={15} />
+        Back to listings
+      </button>
 
-        <div className="flex items-start justify-between p-6 border-b border-black/5 shrink-0">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles size={14} className="text-[#A409D2]" />
-              <span className="font-body text-[11px] font-bold uppercase tracking-widest text-[#A409D2]">AI Property Analysis — Free</span>
+      {/* Header */}
+      <div className="mb-8 rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles size={14} className="text-[#A409D2]" />
+          <span className="font-body text-[11px] font-bold uppercase tracking-widest text-[#A409D2]">AI Property Analysis — Free</span>
+        </div>
+        <h2 className="font-display text-[26px] sm:text-[32px] font-black tracking-tight text-black leading-tight">
+          {listing.title || 'Property Report'}
+        </h2>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          {listing.price && (
+            <span className="font-body text-[15px] font-bold text-black/60">{listing.price}</span>
+          )}
+          {listing.address && (
+            <span className="font-body text-[14px] text-black/40">{listing.address}</span>
+          )}
+        </div>
+        {generatedDate && !loading && (
+          <p className="mt-2 font-body text-[12px] text-black/40">Report generated {generatedDate}</p>
+        )}
+      </div>
+
+      {/* Report body */}
+      <div className="rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
+        {loading && (
+          <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#A409D2] text-white">
+              <Sparkles size={24} />
             </div>
-            <h3 className="font-display text-[22px] font-black tracking-tight text-black leading-tight">
-              {listing.title || 'Property Report'}
-            </h3>
-            {listing.price && (
-              <p className="font-body text-[14px] font-bold text-black/60 mt-0.5">{listing.price}</p>
-            )}
-            {generatedDate && !loading && (
-              <p className="font-body text-[11px] text-black/40 mt-1">Report saved {generatedDate}</p>
-            )}
+            <p className="font-display text-[22px] font-black tracking-tight text-black">Analysing your listing…</p>
+            <p className="font-body text-[14px] text-black/60">This usually takes 10–20 seconds.</p>
+            <div className="w-full max-w-[360px] h-1.5 bg-black/10 rounded-full overflow-hidden mt-2">
+              <motion.div className="h-full bg-[#A409D2] rounded-full"
+                initial={{ width: '0%' }} animate={{ width: '90%' }}
+                transition={{ duration: 15, ease: 'easeInOut' }} />
+            </div>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 shrink-0 ml-4">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading && (
-            <div className="flex flex-col items-center gap-4 py-16 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#A409D2] text-white">
-                <Sparkles size={24} />
-              </div>
-              <p className="font-display text-[20px] font-black tracking-tight text-black">Analysing your listing…</p>
-              <p className="font-body text-[14px] text-black/60">This usually takes 10–20 seconds.</p>
-              <div className="w-full max-w-[360px] h-1.5 bg-black/10 rounded-full overflow-hidden mt-2">
-                <motion.div className="h-full bg-[#A409D2] rounded-full"
-                  initial={{ width: '0%' }} animate={{ width: '90%' }}
-                  transition={{ duration: 15, ease: 'easeInOut' }} />
-              </div>
-            </div>
-          )}
-          {error && !loading && (
-            <div className="flex flex-col items-center gap-4 py-12 text-center">
-              <p className="font-body text-[14px] text-red-600">{error}</p>
-              <button onClick={generate}
-                className="h-11 rounded-full bg-black px-6 font-body text-[13px] font-bold uppercase tracking-tight text-white hover:bg-black/90">
-                Try Again
-              </button>
-            </div>
-          )}
-          {report && !loading && (
-            <div>{renderReport(report)}</div>
-          )}
-        </div>
-
-        {report && !loading && (
-          <div className="border-t border-black/5 p-4 shrink-0 flex items-center justify-between gap-3">
+        )}
+        {error && !loading && (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <p className="font-body text-[14px] text-red-600">{error}</p>
             <button onClick={generate}
-              className="h-10 rounded-full border border-black/10 px-5 font-body text-[13px] font-medium text-black/60 hover:bg-black/5 transition-colors">
-              Regenerate
-            </button>
-            <button onClick={onClose}
-              className="h-10 rounded-full bg-black px-5 font-body text-[13px] font-bold uppercase tracking-tight text-white hover:bg-black/90">
-              Close
+              className="h-11 rounded-full bg-black px-6 font-body text-[13px] font-bold uppercase tracking-tight text-white hover:bg-black/90">
+              Try Again
             </button>
           </div>
         )}
-      </motion.div>
+        {report && !loading && (
+          <div>{renderReport(report)}</div>
+        )}
+      </div>
+
+      {/* Footer actions */}
+      {report && !loading && (
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <button onClick={onBack}
+            className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-semibold text-black hover:bg-black/5 transition-colors">
+            ← Back to listings
+          </button>
+          <button onClick={generate}
+            className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-medium text-black/60 hover:bg-black/5 transition-colors">
+            Regenerate
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -373,10 +379,10 @@ interface ListingCardProps {
   listing: AgentListing;
   token: string;
   activated: boolean;
+  onViewReport: (listing: AgentListing) => void;
 }
 
-function ListingCard({ listing, token, activated }: ListingCardProps) {
-  const [showReport, setShowReport] = useState(false);
+function ListingCard({ listing, token, activated, onViewReport }: ListingCardProps) {
   const [showActivate, setShowActivate] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
 
@@ -557,7 +563,7 @@ function ListingCard({ listing, token, activated }: ListingCardProps) {
 
           {/* Action buttons */}
           <div className="mt-5 flex gap-2">
-            <button onClick={() => setShowReport(true)}
+            <button onClick={() => onViewReport(listing)}
               className="flex flex-1 h-11 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white font-body text-[13px] font-semibold text-black hover:bg-black/5 transition-colors">
               <Sparkles size={13} className="text-[#A409D2]" />
               AI Report
@@ -581,9 +587,6 @@ function ListingCard({ listing, token, activated }: ListingCardProps) {
       </div>
 
       <AnimatePresence>
-        {showReport && (
-          <AIReportModal listing={listing} token={token} onClose={() => setShowReport(false)} />
-        )}
         {showActivate && (
           <ActivateDemandModal listing={listing} token={token} onClose={() => setShowActivate(false)} />
         )}
@@ -976,6 +979,7 @@ export default function DashboardBuyerNetwork() {
 
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
   const [showAddListing, setShowAddListing] = useState(false);
+  const [selectedReportListing, setSelectedReportListing] = useState<AgentListing | null>(null);
 
   const handleListingAdded = useCallback((listing: AgentListing) => {
     setListings((prev) => [listing, ...prev]);
@@ -1082,6 +1086,18 @@ export default function DashboardBuyerNetwork() {
   const lastSyncedLabel = lastSynced
     ? new Date(lastSynced).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null;
+
+  if (selectedReportListing) {
+    return (
+      <DashboardLayout title="AI Property Report">
+        <AIReportPage
+          listing={selectedReportListing}
+          token={token!}
+          onBack={() => setSelectedReportListing(null)}
+        />
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="International Buyer Network">
@@ -1205,7 +1221,7 @@ export default function DashboardBuyerNetwork() {
                 {
                   num: '2',
                   title: 'Get AI insights — free',
-                  desc: 'Click AI Report on any listing for a free property analysis and action plan powered by Groq.',
+                  desc: 'Click AI Report on any listing for a free property analysis and action plan powered by AI.',
                 },
                 {
                   num: '3',
@@ -1270,6 +1286,7 @@ export default function DashboardBuyerNetwork() {
                   listing={listing}
                   token={token!}
                   activated={activatedIds.has(listing.id)}
+                  onViewReport={(l) => setSelectedReportListing(l)}
                 />
               ))}
             </div>
