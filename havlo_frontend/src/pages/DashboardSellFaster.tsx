@@ -52,7 +52,7 @@ const plans: Plan[] = [
     monthlyPrice: '£1,500',
     setupAmount: 2000,
     monthlyAmount: 1500,
-    ongoing: 'Ongoing buyer demand generation and exposure from £1,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure',
     features: [
       'Targeted exposure across key international buyer markets',
       'High-impact campaign designed to capture attention quickly',
@@ -79,7 +79,7 @@ const plans: Plan[] = [
     monthlyPrice: '£2,500',
     setupAmount: 3000,
     monthlyAmount: 2500,
-    ongoing: 'Ongoing buyer demand generation and exposure from £2,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure',
     features: [
       'Expanded reach across multiple high-intent global markets',
       'Multi-format campaign engineered to drive engagement and enquiries',
@@ -107,7 +107,7 @@ const plans: Plan[] = [
     monthlyPrice: '£3,500',
     setupAmount: 5000,
     monthlyAmount: 3500,
-    ongoing: 'Ongoing buyer demand generation and exposure from £3,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure',
     features: [
       'Extensive worldwide exposure across 30+ countries',
       'Full-scale campaign strategy designed for maximum visibility',

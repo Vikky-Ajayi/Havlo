@@ -97,7 +97,7 @@ const tiers: Tier[] = [
     tagline: 'For generating initial international interest',
     setup: '£2,000',
     setupLabel: 'Initial Launch Investment',
-    ongoing: 'Ongoing buyer demand generation and exposure from £1,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure',
     features: [
       'Targeted exposure across key international buyer markets',
       'High-impact campaign designed to capture attention quickly',
@@ -120,7 +120,7 @@ const tiers: Tier[] = [
     tagline: 'Designed to create strong buyer demand and competition',
     setup: '£3,000',
     setupLabel: 'Initial Launch Investment',
-    ongoing: 'Ongoing buyer demand generation and exposure from £2,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure',
     features: [
       'Expanded reach across multiple high-intent global markets',
       'Multi-format campaign engineered to drive engagement and enquiries',
@@ -143,7 +143,7 @@ const tiers: Tier[] = [
     tagline: 'Maximum global exposure to drive premium offers',
     setup: '£5,000',
     setupLabel: 'Initial Launch Investment',
-    ongoing: 'Ongoing buyer demand generation and exposure from £3,500 / month',
+    ongoing: 'Ongoing buyer demand generation and exposure',
     features: [
       'Extensive worldwide exposure across 30+ countries',
       'Full-scale campaign strategy designed for maximum visibility',
