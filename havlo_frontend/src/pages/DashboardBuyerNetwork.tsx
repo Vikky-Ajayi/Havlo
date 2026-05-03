@@ -1182,7 +1182,7 @@ export default function DashboardBuyerNetwork() {
               Faster Sales Through Better Exposure
             </h2>
             <p className="max-w-[620px] font-body text-sm font-medium leading-relaxed text-white/80 sm:text-base">
-              Connect your listing portal profile to import your properties. Get a free AI analysis report on any listing, or activate a targeted international buyer demand campaign to generate fresh buyer interest.
+              Upload your property listing URL to instantly import its details. Get a free Listing Audit on any property your agency has listed, or activate targeted local and international buyer demand to generate fresh interest and accelerate the sale.
             </p>
           </div>
           <HeroRings />
