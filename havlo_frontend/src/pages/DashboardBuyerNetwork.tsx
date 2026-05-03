@@ -889,7 +889,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
         {/* Manual tab */}
         {tab === 'manual' && (
           <form onSubmit={handleManualSubmit} className="px-6 pb-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            <p className="font-body text-[13px] text-black/60 -mt-2">
+            <p className="font-body text-[13px] text-black/60">
               Fill in your property details directly — no portal link needed.
             </p>
             <div>
@@ -906,9 +906,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>
-                  Listed price <span className="font-normal text-black/40">(optional)</span>
-                </label>
+                <label className={labelCls}>Listed price</label>
                 <input
                   type="text"
                   value={price}
@@ -918,9 +916,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
                 />
               </div>
               <div>
-                <label className={labelCls}>
-                  Bedrooms <span className="font-normal text-black/40">(optional)</span>
-                </label>
+                <label className={labelCls}>Bedrooms</label>
                 <input
                   type="text"
                   value={bedrooms}
@@ -931,9 +927,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
               </div>
             </div>
             <div>
-              <label className={labelCls}>
-                Address <span className="font-normal text-black/40">(optional)</span>
-              </label>
+              <label className={labelCls}>Address</label>
               <input
                 type="text"
                 value={address}
@@ -943,9 +937,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
               />
             </div>
             <div>
-              <label className={labelCls}>
-                Description <span className="font-normal text-black/40">(optional)</span>
-              </label>
+              <label className={labelCls}>Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -955,9 +947,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
               />
             </div>
             <div>
-              <label className={labelCls}>
-                Listing link <span className="font-normal text-black/40">(optional)</span>
-              </label>
+              <label className={labelCls}>Listing link</label>
               <input
                 type="url"
                 value={manualLink}
@@ -967,9 +957,7 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
               />
             </div>
             <div>
-              <label className={labelCls}>
-                Property image URL <span className="font-normal text-black/40">(optional)</span>
-              </label>
+              <label className={labelCls}>Property image URL</label>
               <input
                 type="url"
                 value={manualImageUrl}
