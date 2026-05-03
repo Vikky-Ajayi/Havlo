@@ -128,7 +128,7 @@ interface AIReportModalProps {
 }
 
 function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
-  const [report, setReport] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(listing.ai_report || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,7 +151,13 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
     }
   }, [listing, token]);
 
-  useEffect(() => { generate(); }, [generate]);
+  useEffect(() => {
+    if (!listing.ai_report) generate();
+  }, []);
+
+  const generatedDate = listing.ai_report_generated_at
+    ? new Date(listing.ai_report_generated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -171,6 +177,9 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
             </h3>
             {listing.price && (
               <p className="font-body text-[14px] font-bold text-black/60 mt-0.5">{listing.price}</p>
+            )}
+            {generatedDate && !loading && (
+              <p className="font-body text-[11px] text-black/40 mt-1">Report saved {generatedDate}</p>
             )}
           </div>
           <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/5 shrink-0 ml-4">
@@ -208,7 +217,11 @@ function AIReportModal({ listing, token, onClose }: AIReportModalProps) {
         </div>
 
         {report && !loading && (
-          <div className="border-t border-black/5 p-4 shrink-0 flex justify-end">
+          <div className="border-t border-black/5 p-4 shrink-0 flex items-center justify-between gap-3">
+            <button onClick={generate}
+              className="h-10 rounded-full border border-black/10 px-5 font-body text-[13px] font-medium text-black/60 hover:bg-black/5 transition-colors">
+              Regenerate
+            </button>
             <button onClick={onClose}
               className="h-10 rounded-full bg-black px-5 font-body text-[13px] font-bold uppercase tracking-tight text-white hover:bg-black/90">
               Close

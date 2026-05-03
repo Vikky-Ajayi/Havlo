@@ -65,6 +65,8 @@ class ListingOut(BaseModel):
     features: list[str]
     floor_area: str | None
     platform: str | None
+    ai_report: str | None
+    ai_report_generated_at: str | None
 
 
 class ScrapeUrlRequest(BaseModel):
@@ -197,6 +199,8 @@ def _listing_to_out(l: AgentListing) -> ListingOut:
         features=features,
         floor_area=l.floor_area,
         platform=l.platform,
+        ai_report=l.ai_report,
+        ai_report_generated_at=l.ai_report_generated_at.isoformat() if l.ai_report_generated_at else None,
     )
 
 
@@ -421,6 +425,7 @@ async def generate_ai_report(
     listing_description = payload.listing_description
     listing_address = payload.listing_address
 
+    db_listing = None
     if payload.listing_id:
         try:
             lid = uuid.UUID(payload.listing_id)
@@ -432,18 +437,19 @@ async def generate_ai_report(
                 AgentListing.user_id == current_user.id,
             )
         )
-        listing = result.scalar_one_or_none()
-        if listing:
-            listing_url = listing_url or listing.external_url
-            listing_title = listing_title or listing.title
-            listing_price = listing_price or listing.price
-            listing_description = listing_description or listing.description
-            listing_address = listing_address or listing.address
+        db_listing = result.scalar_one_or_none()
+        if db_listing:
+            listing_url = listing_url or db_listing.external_url
+            listing_title = listing_title or db_listing.title
+            listing_price = listing_price or db_listing.price
+            listing_description = listing_description or db_listing.description
+            listing_address = listing_address or db_listing.address
 
     if not listing_url:
         raise HTTPException(status_code=400, detail="A listing URL is required to generate a report.")
 
     from app.services.groq_service import generate_property_report
+    from datetime import datetime, timezone
 
     try:
         report = await generate_property_report(
@@ -461,6 +467,11 @@ async def generate_ai_report(
             status_code=503,
             detail="AI report generation failed. Please try again shortly.",
         )
+
+    if db_listing is not None:
+        db_listing.ai_report = report
+        db_listing.ai_report_generated_at = datetime.now(timezone.utc)
+        await db.commit()
 
     return AIReportResponse(report=report)
 

@@ -45,6 +45,8 @@ class AgentListing(Base):
     features_json: Mapped[Optional[str]] = mapped_column(Text)
     floor_area: Mapped[Optional[str]] = mapped_column(String(100))
     platform: Mapped[Optional[str]] = mapped_column(String(50))
+    ai_report: Mapped[Optional[str]] = mapped_column(Text)
+    ai_report_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

@@ -16,6 +16,8 @@ export interface AgentListing {
   features: string[];
   floor_area: string | null;
   platform: string | null;
+  ai_report: string | null;
+  ai_report_generated_at: string | null;
 }
 
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */

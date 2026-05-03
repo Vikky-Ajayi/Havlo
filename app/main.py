@@ -293,7 +293,9 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS listed_date VARCHAR(100),
                             ADD COLUMN IF NOT EXISTS images_json TEXT,
                             ADD COLUMN IF NOT EXISTS features_json TEXT,
-                            ADD COLUMN IF NOT EXISTS floor_area VARCHAR(100);
+                            ADD COLUMN IF NOT EXISTS floor_area VARCHAR(100),
+                            ADD COLUMN IF NOT EXISTS ai_report TEXT,
+                            ADD COLUMN IF NOT EXISTS ai_report_generated_at TIMESTAMPTZ;
                     """))
                     await conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS agent_advanced_service_payments (
