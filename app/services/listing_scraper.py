@@ -147,15 +147,38 @@ def _dig(data: dict, paths: list[list[str]]) -> list | None:
 
 
 def _extract_js_var(html: str, var_name: str) -> dict | None:
-    """Extract `window.VAR = {...};` or `var VAR = {...};` JSON from script tags."""
-    pattern = rf'(?:window\.)?{re.escape(var_name)}\s*=\s*(\{{.*?\}});?\s*(?:</script>|$)'
-    m = re.search(pattern, html, re.DOTALL)
+    """Extract `window.VAR = {...};` JSON using brace-counting — handles deeply nested objects."""
+    pattern = rf'(?:window\.)?{re.escape(var_name)}\s*=\s*\{{'
+    m = re.search(pattern, html)
     if not m:
         return None
-    try:
-        return json.loads(m.group(1))
-    except json.JSONDecodeError:
-        return None
+    start = m.end() - 1  # position of the opening '{'
+    depth = 0
+    in_string = False
+    escape_next = False
+    for i in range(start, len(html)):
+        ch = html[i]
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+        if ch == '"' and not escape_next:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(html[start:i + 1])
+                except json.JSONDecodeError:
+                    return None
+    return None
 
 
 def _extract_next_data(html: str) -> dict | None:
@@ -186,6 +209,42 @@ def _extract_json_ld(html: str) -> list[dict]:
         except json.JSONDecodeError:
             pass
     return results
+
+
+def _is_bot_blocked(html: str, platform: str) -> bool:
+    """Return True if the response is a bot-detection / JS-required wall, not real content."""
+    if platform == "rightmove":
+        # Rightmove serves an identical 144 KB shell for all blocked requests.
+        # Their SPA shell always contains this noscript banner and no property data.
+        return (
+            "Javascript is disabled" in html
+            and "jsonModel" not in html
+            and "__NEXT_DATA__" not in html
+        )
+    if platform == "zoopla":
+        return len(html) < 5000  # Zoopla returns a tiny 403 page
+    return False
+
+
+def _normalize_rightmove_url(url: str) -> str:
+    """
+    Convert Rightmove agent profile URLs to the estate-agents/find.html search URL.
+
+    Profile pattern:  …/estate-agents/agent/Name/Branch-12345.html
+                      …/estate-agents/Name-12345.html
+    Search pattern:   …/estate-agents/find.html?locationIdentifier=BRANCH^12345
+    """
+    if "locationIdentifier" in url or "find.html" in url:
+        return url  # already a search URL
+
+    m = re.search(r"[-/](\d{4,8})(?:\.html|$|/|\?|&)", url)
+    if m:
+        branch_id = m.group(1)
+        return (
+            f"https://www.rightmove.co.uk/estate-agents/find.html"
+            f"?locationIdentifier=BRANCH%5E{branch_id}&index=0"
+        )
+    return url
 
 
 def _empty_listing(platform: str, url: str = "") -> dict:
@@ -861,10 +920,19 @@ async def scrape_agent_listings(profile_url: str, deep_scrape: bool = True) -> l
     logger.info("Scraping agent listings from: %s", profile_url)
     platform = _detect_platform(profile_url)
     logger.info("Platform detected: %s", platform)
-    referer = f"https://{urlparse(profile_url).netloc}/"
+
+    # Normalise Rightmove agent-profile URLs → estate-agents/find.html search URL
+    if platform == "rightmove":
+        fetch_url = _normalize_rightmove_url(profile_url)
+        if fetch_url != profile_url:
+            logger.info("Rightmove URL normalised → %s", fetch_url)
+    else:
+        fetch_url = profile_url
+
+    referer = f"https://{urlparse(fetch_url).netloc}/"
 
     try:
-        html = await _fetch(profile_url, referer=referer)
+        html = await _fetch(fetch_url, referer=referer)
     except httpx.HTTPStatusError as e:
         raise ValueError(
             f"Could not access the profile page (HTTP {e.response.status_code}). "
@@ -873,13 +941,38 @@ async def scrape_agent_listings(profile_url: str, deep_scrape: bool = True) -> l
     except Exception as e:
         raise ValueError(f"Could not fetch the profile page: {e}")
 
+    # Detect anti-bot wall early and give the user an actionable message
+    if _is_bot_blocked(html, platform):
+        platform_name = {"rightmove": "Rightmove", "zoopla": "Zoopla"}.get(platform, platform.title())
+        raise ValueError(
+            f"{platform_name} blocks automated access to agent listing pages from cloud servers. "
+            "Please add your listings individually using the 'Paste a link' tab — "
+            "paste each property URL and we'll import the full details automatically."
+        )
+
     # Parse page 1
     if platform == "rightmove":
-        listings, next_pages = _scrape_rightmove_html(html, profile_url)
+        listings, next_pages = _scrape_rightmove_html(html, fetch_url)
+        # Rightmove loads listings via client-side JS after page render.
+        # The estate-agents/find.html page has NEXT_DATA but no listing data in HTML.
+        # Detect this and tell the user to use paste-a-link instead.
+        if not listings and "__NEXT_DATA__" in html:
+            raise ValueError(
+                "Rightmove loads property listings via JavaScript after the page renders — "
+                "they cannot be extracted automatically from your agent profile page. "
+                "Please add your listings individually using the 'Paste a link' tab: "
+                "paste each Rightmove property URL and all details will be imported automatically."
+            )
     elif platform == "zoopla":
-        listings, next_pages = _scrape_zoopla_html(html, profile_url)
+        listings, next_pages = _scrape_zoopla_html(html, fetch_url)
+        if not listings and len(html) < 10000:
+            raise ValueError(
+                "Zoopla blocked automated access to your profile page. "
+                "Please add your listings individually using the 'Paste a link' tab: "
+                "paste each Zoopla property URL and all details will be imported automatically."
+            )
     else:
-        listings, next_pages = _scrape_generic_html(html, profile_url, platform)
+        listings, next_pages = _scrape_generic_html(html, fetch_url, platform)
 
     # Paginate (pages 2-5, polite delay between each)
     for next_url in next_pages[:4]:

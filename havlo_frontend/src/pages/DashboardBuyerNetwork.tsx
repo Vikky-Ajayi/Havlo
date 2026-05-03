@@ -1050,11 +1050,15 @@ export default function DashboardBuyerNetwork() {
       const res = await api.agentSyncListings(token);
       setListings(res.listings);
       setLastSynced(new Date().toISOString());
-      setSyncSuccess(
-        res.count > 0
-          ? `${res.count} listing${res.count !== 1 ? 's' : ''} imported successfully.`
-          : 'Profile synced — no listings found. Check your profile URL points directly to your listings.',
-      );
+      if (res.count > 0) {
+        setSyncSuccess(`${res.count} listing${res.count !== 1 ? 's' : ''} imported successfully.`);
+      } else {
+        setSyncError(
+          'No listings were found at that URL. If you use Rightmove or Zoopla, ' +
+          'please add listings individually using the "Paste a link" tab — ' +
+          'paste each property URL and all details will be imported automatically.',
+        );
+      }
     } catch (e: any) {
       setSyncError(e?.message || 'Sync failed. Please check your profile URL and try again.');
     } finally {
