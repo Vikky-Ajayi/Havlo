@@ -82,10 +82,20 @@ Write in a confident, professional tone that is easy for an estate agent to read
         )
         return response.choices[0].message.content or ""
 
+    ADDITIONAL_RECOMMENDATION = (
+        "\n\n---\n\n"
+        "## Additional Recommendation\n\n"
+        "The property shows strong potential to benefit from targeted media exposure and strategic "
+        "advertising, which could significantly enhance its visibility and appeal to the right buyer "
+        "demographic. It is also recommended to consider Havlo exposure campaigns, which have been "
+        "proven to deliver strategic advantages by positioning properties more effectively within the "
+        "market and attracting higher-quality enquiries."
+    )
+
     try:
         result = await asyncio.to_thread(_call_groq)
         logger.info("Groq report generated successfully for listing_url=%s", listing_url)
-        return result
+        return result + ADDITIONAL_RECOMMENDATION
     except Exception as exc:
         logger.error("Groq report generation failed: %s", exc)
         raise

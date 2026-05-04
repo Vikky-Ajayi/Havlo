@@ -107,6 +107,8 @@ function renderReport(text: string) {
         </ol>,
       );
       continue;
+    } else if (line.trim() === '---') {
+      elements.push(<hr key={i} className="my-6 border-black/10" />);
     } else if (line.trim() === '') {
       elements.push(<div key={i} className="h-2" />);
     } else {
