@@ -231,7 +231,7 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
           </button>
           <button onClick={generate}
             className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-medium text-black/60 hover:bg-black/5 transition-colors">
-            Regenerate
+            Refresh Audit
           </button>
         </div>
       )}
