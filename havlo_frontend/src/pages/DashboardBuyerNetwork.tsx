@@ -525,7 +525,7 @@ function ActivateDemandModal({ listing, token, onClose }: ActivateDemandModalPro
             disabled={loading || fee === null}
             className="h-[56px] w-full rounded-full bg-black font-body text-[15px] font-bold uppercase tracking-tight text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Redirecting to payment…' : 'Activate Demand'}
+            {loading ? 'Redirecting to payment…' : 'Activate Buyer Demand'}
           </button>
         </div>
       </motion.div>
