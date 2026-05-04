@@ -273,12 +273,12 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* Brand logos strip */}
-      <section className="bg-white py-12 px-6 lg:px-[150px]">
-        <div className="mx-auto max-w-[900px] text-center">
+      <section className="bg-white py-12 px-2.5 lg:px-[60px]">
+        <div className="mx-auto max-w-[1200px] text-center">
           <p className="font-body text-[12px] font-semibold uppercase tracking-[0.15em] text-black/35 mb-8">
             We've supported agents affiliated with leading real estate brands
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-8">
+          <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-x-8 gap-y-8 lg:gap-x-10">
             {[
               { src: '/brand-logos/knightfrank.svg', alt: 'Knight Frank' },
               { src: '/brand-logos/sothebys.svg', alt: "Sotheby's International Realty" },
@@ -288,11 +288,11 @@ export const BuyerNetwork: React.FC = () => {
               { src: '/brand-logos/belvoir.svg', alt: 'Belvoir' },
               { src: '/brand-logos/yopa.svg', alt: 'Yopa' },
             ].map(({ src, alt }) => (
-              <div key={alt} className="flex items-center justify-center" style={{ width: 140, height: 52 }}>
+              <div key={alt} className="flex shrink-0 items-center justify-center" style={{ width: 120, height: 52 }}>
                 <img
                   src={src}
                   alt={alt}
-                  style={{ filter: 'grayscale(1)', opacity: 0.4, maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
+                  style={{ filter: 'grayscale(1) brightness(0.15)', opacity: 0.85, maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
                 />
               </div>
             ))}
