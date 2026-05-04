@@ -193,7 +193,7 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   <div class="meta">${[listing.price, listing.address].filter(Boolean).join(' · ')} &nbsp;·&nbsp; Generated ${date}</div>
 </div>
 ${toHtml(report)}
-<div class="footer"><span>Havlo — havlo.co.uk</span><span>Confidential — for agent use only</span></div>
+<div class="footer"><span>Havlo — heyhavlo.com</span><span>Confidential — for agent use only</span></div>
 </body></html>`;
 
     const win = window.open('', '_blank');
