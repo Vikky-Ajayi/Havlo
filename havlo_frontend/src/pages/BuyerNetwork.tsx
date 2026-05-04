@@ -283,8 +283,8 @@ export const BuyerNetwork: React.FC = () => {
               { src: '/brand-logos/knightfrank.svg', alt: 'Knight Frank' },
               { src: '/brand-logos/sothebys.svg', alt: "Sotheby's International Realty" },
               { src: '/brand-logos/savills.svg', alt: 'Savills' },
-              { src: '/brand-logos/finecountry.svg', alt: 'Fine & Country' },
-              { src: '/brand-logos/hamptons.svg', alt: 'Hamptons' },
+              { src: '/brand-logos/finecountry.png', alt: 'Fine & Country' },
+              { src: '/brand-logos/hamptons.png', alt: 'Hamptons' },
               { src: '/brand-logos/belvoir.svg', alt: 'Belvoir' },
               { src: '/brand-logos/yopa.svg', alt: 'Yopa' },
             ].map(({ src, alt }) => (
