@@ -273,7 +273,7 @@ export const BuyerNetwork: React.FC = () => {
       </section>
 
       {/* Brand logos strip */}
-      <section className="bg-white py-12 px-2.5 lg:px-[60px]">
+      <section className="bg-white py-12 px-3 lg:px-[72px]">
         <div className="mx-auto max-w-[1200px] text-center">
           <p className="font-body text-[12px] font-semibold uppercase tracking-[0.15em] text-black/35 mb-8">
             We've supported agents affiliated with leading real estate brands
