@@ -512,7 +512,7 @@ function ActivateDemandModal({ listing, token, onClose }: ActivateDemandModalPro
           <div className="mb-5">
             <p className="font-display text-[12px] font-bold uppercase tracking-wide text-black/50 mb-1">Advertising Investment</p>
             <p className="font-body text-[12px] text-black/55 leading-relaxed">
-              The service fee is separate from and fully dedicated to promoting your listings. Your budget is tailored to the outcome you want to achieve and how aggressively you want to generate buyer demand.
+              The Buyer Activation service fee covers end-to-end campaign management, optimisation, and strategic exposure of your listing across our extensive local and international buyer network. This investment is separate from your advertising budget, which is paid separately and set independently based on your objectives and desired level of buyer demand. We'll advise you on the optimal budget to achieve the best results.
             </p>
           </div>
 
