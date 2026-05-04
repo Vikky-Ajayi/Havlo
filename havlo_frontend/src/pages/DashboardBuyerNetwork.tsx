@@ -583,7 +583,7 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove, onEdit
               <button onClick={() => setShowActivate(true)}
                 className="flex flex-1 h-11 items-center justify-center gap-1.5 rounded-md bg-black font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors">
                 <Zap size={13} />
-                Activate Demand
+                Activate Buyer Demand
               </button>
             )}
           </div>
