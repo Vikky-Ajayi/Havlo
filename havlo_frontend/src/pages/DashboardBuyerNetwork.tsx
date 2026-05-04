@@ -141,6 +141,66 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [msgIdx, setMsgIdx] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadPdf = () => {
+    if (!report) return;
+    setDownloading(true);
+
+    const toHtml = (text: string) => {
+      const lines = text.split('\n');
+      return lines.map((line) => {
+        const inline = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        if (line.startsWith('## ')) return `<h2>${inline(line.slice(3))}</h2>`;
+        if (line.startsWith('### ')) return `<h3>${inline(line.slice(4))}</h3>`;
+        if (line.startsWith('**') && line.endsWith('**')) return `<p class="bold">${inline(line.slice(2, -2))}</p>`;
+        if (line.startsWith('- ') || line.startsWith('* ')) return `<li>${inline(line.slice(2))}</li>`;
+        if (/^\d+\.\s/.test(line)) return `<li class="numbered">${inline(line.replace(/^\d+\.\s/, ''))}</li>`;
+        if (line.trim() === '') return '<br/>';
+        return `<p>${inline(line)}</p>`;
+      }).join('\n');
+    };
+
+    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<title>Listing Audit — ${listing.title || 'Property'}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,serif;font-size:13px;line-height:1.65;color:#111;padding:40px 52px;max-width:780px;margin:auto}
+  .header{border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:28px}
+  .brand{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#A409D2;font-weight:700;margin-bottom:8px}
+  h1{font-size:22px;font-weight:900;margin-bottom:4px}
+  .meta{font-size:11px;color:#555;margin-top:4px}
+  h2{font-size:16px;font-weight:900;margin:24px 0 6px}
+  h3{font-size:13px;font-weight:900;margin:16px 0 4px}
+  p{margin:4px 0;color:#222}
+  p.bold{font-weight:700;margin:10px 0 2px}
+  li{margin:4px 0 4px 20px;color:#222}
+  li.numbered{list-style:decimal}
+  ul,ol{margin:6px 0}
+  strong{font-weight:700}
+  .footer{margin-top:40px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#999;display:flex;justify-content:space-between}
+  @media print{body{padding:30px 40px}@page{margin:1cm;size:A4}}
+</style></head><body>
+<div class="header">
+  <div class="brand">Havlo Listing Intelligence — Complimentary</div>
+  <h1>${listing.title || 'Property Report'}</h1>
+  <div class="meta">${[listing.price, listing.address].filter(Boolean).join(' · ')} &nbsp;·&nbsp; Generated ${date}</div>
+</div>
+${toHtml(report)}
+<div class="footer"><span>Havlo — havlo.co.uk</span><span>Confidential — for agent use only</span></div>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => { win.print(); setDownloading(false); }, 400);
+    } else {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading) return;
@@ -259,7 +319,13 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
             className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-semibold text-black hover:bg-black/5 transition-colors">
             ← Back to listings
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="h-11 rounded-full bg-black px-6 font-body text-[13px] font-semibold text-white hover:bg-black/90 disabled:opacity-60 transition-colors">
+              {downloading ? 'Opening…' : 'Download PDF'}
+            </button>
             <button
               onClick={() => {
                 const link = listing.external_url || window.location.href;
@@ -268,7 +334,7 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
                   setTimeout(() => setCopied(false), 2500);
                 });
               }}
-              className="h-11 rounded-full bg-black px-6 font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors flex items-center gap-2">
+              className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-semibold text-black hover:bg-black/5 transition-colors">
               <AnimatePresence mode="wait">
                 <motion.span
                   key={copied ? 'copied' : 'share'}
