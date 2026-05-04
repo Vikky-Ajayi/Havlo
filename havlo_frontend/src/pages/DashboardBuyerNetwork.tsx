@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Link2, Pencil, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
+import { ArrowLeft, Info, Link2, Pencil, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useAuth } from '../context/AuthContext';
 import { api, type AgentListing } from '../lib/api';
@@ -388,6 +388,7 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove, onEdit
   const [showActivate, setShowActivate] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showFeeInfo, setShowFeeInfo] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const fee = listing.price ? calculateFee(listing.price) : null;
@@ -547,11 +548,28 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove, onEdit
 
           {/* Fee hint */}
           {fee !== null && !activated && (
-            <div className="mt-4 rounded-[8px] bg-[#F4F5F4] px-4 py-3">
-              <p className="font-body text-[12px] text-black/60">
-                Buyer Acquisition Service:{' '}
-                <span className="font-display font-bold text-black">{formatFee(fee)}</span>
-              </p>
+            <div className="mt-4 rounded-[8px] bg-[#F4F5F4] px-4 py-3 relative">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-body text-[12px] text-black/60">
+                  Buyer Acquisition Service:{' '}
+                  <span className="font-display font-bold text-black">{formatFee(fee)}</span>
+                </p>
+                <button
+                  onClick={() => setShowFeeInfo((v) => !v)}
+                  className="shrink-0 text-black/30 hover:text-black/60 transition-colors"
+                  aria-label="About Buyer Acquisition Service"
+                >
+                  <Info size={14} />
+                </button>
+              </div>
+
+              {showFeeInfo && (
+                <div className="mt-2 pt-2 border-t border-black/8">
+                  <p className="font-body text-[11.5px] leading-[1.55] text-black/55">
+                    Our Buyer Acquisition Service is a managed marketing solution designed to attract serious local and international buyers. We run targeted advertising and strategic outreach to maximise your property's visibility, generate qualified interest, and help you secure a faster, stronger sale.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
