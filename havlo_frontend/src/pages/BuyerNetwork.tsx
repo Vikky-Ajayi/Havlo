@@ -278,7 +278,7 @@ export const BuyerNetwork: React.FC = () => {
           <p className="font-body text-[12px] font-semibold uppercase tracking-[0.15em] text-black/35 mb-8">
             We've supported agents affiliated with leading real estate brands
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-8">
             {[
               { src: '/brand-logos/knightfrank.svg', alt: 'Knight Frank' },
               { src: '/brand-logos/sothebys.svg', alt: "Sotheby's International Realty" },
@@ -288,13 +288,13 @@ export const BuyerNetwork: React.FC = () => {
               { src: '/brand-logos/belvoir.svg', alt: 'Belvoir' },
               { src: '/brand-logos/yopa.svg', alt: 'Yopa' },
             ].map(({ src, alt }) => (
-              <img
-                key={alt}
-                src={src}
-                alt={alt}
-                className="h-8 w-auto object-contain"
-                style={{ filter: 'grayscale(1)', opacity: 0.35 }}
-              />
+              <div key={alt} className="flex items-center justify-center" style={{ width: 140, height: 52 }}>
+                <img
+                  src={src}
+                  alt={alt}
+                  style={{ filter: 'grayscale(1)', opacity: 0.4, maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
+                />
+              </div>
             ))}
           </div>
         </div>
