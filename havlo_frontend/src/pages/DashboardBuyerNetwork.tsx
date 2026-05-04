@@ -549,7 +549,7 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove, onEdit
           {fee !== null && !activated && (
             <div className="mt-4 rounded-[8px] bg-[#F4F5F4] px-4 py-3">
               <p className="font-body text-[12px] text-black/60">
-                Advanced services fee:{' '}
+                Buyer Acquisition Service:{' '}
                 <span className="font-display font-bold text-black">{formatFee(fee)}</span>
               </p>
             </div>
