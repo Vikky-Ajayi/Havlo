@@ -570,7 +570,7 @@ function ListingCard({ listing, token, activated, onViewReport, onRemove, onEdit
             <button onClick={() => onViewReport(listing)}
               className="flex flex-1 h-11 items-center justify-center gap-1.5 rounded-md border border-black/10 bg-white font-body text-[13px] font-semibold text-black hover:bg-black/5 transition-colors">
               <Sparkles size={13} className="text-[#A409D2]" />
-              AI Report
+              Listing Audit
               <span className="text-black/40 font-normal text-[11px]">• Free</span>
             </button>
 
