@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Info, Link2, Pencil, Plus, RefreshCw, Sparkles, Star, X, Zap } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
@@ -143,6 +143,11 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const pendingReport = useRef<string | null>(null);
+  const pendingError = useRef<string | null>(null);
+  const allMsgsShown = useRef(false);
+  const cycleInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const handleDownloadPdf = () => {
     if (!report) return;
     setDownloading(true);
@@ -202,18 +207,47 @@ ${toHtml(report)}
     }
   };
 
-  useEffect(() => {
-    if (!loading) return;
+  const finalizeReport = useCallback(() => {
+    if (cycleInterval.current) {
+      clearInterval(cycleInterval.current);
+      cycleInterval.current = null;
+    }
+    if (pendingError.current) {
+      setError(pendingError.current);
+      pendingError.current = null;
+    } else if (pendingReport.current !== null) {
+      setReport(pendingReport.current);
+      pendingReport.current = null;
+    }
+    setLoading(false);
+  }, []);
+
+  const startMessageCycle = useCallback(() => {
+    if (cycleInterval.current) clearInterval(cycleInterval.current);
     setMsgIdx(0);
-    const interval = setInterval(() => {
-      setMsgIdx((i) => Math.min(i + 1, LOADING_MESSAGES.length - 1));
+    allMsgsShown.current = false;
+    let idx = 0;
+    cycleInterval.current = setInterval(() => {
+      idx++;
+      if (idx >= LOADING_MESSAGES.length) {
+        clearInterval(cycleInterval.current!);
+        cycleInterval.current = null;
+        allMsgsShown.current = true;
+        if (pendingReport.current !== null || pendingError.current !== null) {
+          finalizeReport();
+        }
+      } else {
+        setMsgIdx(idx);
+      }
     }, 3000);
-    return () => clearInterval(interval);
-  }, [loading]);
+  }, [finalizeReport]);
 
   const generate = useCallback(async () => {
     setLoading(true);
     setError(null);
+    pendingReport.current = null;
+    pendingError.current = null;
+    startMessageCycle();
     try {
       const res = await api.agentGenerateAIReport(token, {
         listing_id: listing.id,
@@ -222,13 +256,14 @@ ${toHtml(report)}
         listing_price: listing.price || undefined,
         listing_description: listing.description || undefined,
       });
-      setReport(res.report);
+      pendingReport.current = res.report;
     } catch (e: any) {
-      setError(e?.message || 'Failed to generate report. Please try again.');
-    } finally {
-      setLoading(false);
+      pendingError.current = e?.message || 'Failed to generate report. Please try again.';
     }
-  }, [listing, token]);
+    if (allMsgsShown.current) {
+      finalizeReport();
+    }
+  }, [listing, token, startMessageCycle, finalizeReport]);
 
   useEffect(() => {
     if (!listing.ai_report) generate();
