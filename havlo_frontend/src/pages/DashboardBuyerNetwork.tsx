@@ -127,10 +127,28 @@ interface AIReportPageProps {
   onBack: () => void;
 }
 
+const LOADING_MESSAGES = [
+  'Analysing your listing against current market demand…',
+  'Identifying what may be limiting buyer interest…',
+  'Comparing your property with similar active listings…',
+  'Uncovering opportunities to increase enquiries and visibility…',
+  'Preparing tailored insights to help you secure a faster sale…',
+];
+
 function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   const [report, setReport] = useState<string | null>(listing.ai_report || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [msgIdx, setMsgIdx] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    setMsgIdx(0);
+    const interval = setInterval(() => {
+      setMsgIdx((i) => Math.min(i + 1, LOADING_MESSAGES.length - 1));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const generate = useCallback(async () => {
     setLoading(true);
@@ -200,7 +218,18 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
               <Sparkles size={24} />
             </div>
             <p className="font-display text-[22px] font-black tracking-tight text-black">Analysing your listing…</p>
-            <p className="font-body text-[14px] text-black/60">This usually takes 10–20 seconds.</p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={msgIdx}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.35 }}
+                className="font-body text-[14px] text-black/60 max-w-[320px]"
+              >
+                {LOADING_MESSAGES[msgIdx]}
+              </motion.p>
+            </AnimatePresence>
             <div className="w-full max-w-[360px] h-1.5 bg-black/10 rounded-full overflow-hidden mt-2">
               <motion.div className="h-full bg-[#A409D2] rounded-full"
                 initial={{ width: '0%' }} animate={{ width: '90%' }}
