@@ -140,6 +140,7 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [msgIdx, setMsgIdx] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!loading) return;
@@ -253,15 +254,38 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
 
       {/* Footer actions */}
       {report && !loading && (
-        <div className="mt-5 flex items-center justify-between gap-3">
+        <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
           <button onClick={onBack}
             className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-semibold text-black hover:bg-black/5 transition-colors">
             ← Back to listings
           </button>
-          <button onClick={generate}
-            className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-medium text-black/60 hover:bg-black/5 transition-colors">
-            Refresh Audit
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const link = listing.external_url || window.location.href;
+                navigator.clipboard.writeText(link).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2500);
+                });
+              }}
+              className="h-11 rounded-full bg-black px-6 font-body text-[13px] font-semibold text-white hover:bg-black/90 transition-colors flex items-center gap-2">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={copied ? 'copied' : 'share'}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {copied ? '✓ Link copied!' : 'Share Audit'}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+            <button onClick={generate}
+              className="h-11 rounded-full border border-black/15 px-6 font-body text-[13px] font-medium text-black/60 hover:bg-black/5 transition-colors">
+              Refresh Audit
+            </button>
+          </div>
         </div>
       )}
     </div>
