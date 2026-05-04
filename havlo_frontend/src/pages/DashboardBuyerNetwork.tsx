@@ -396,19 +396,22 @@ ${toHtml(report)}
 }
 
 // ── Activate Demand modal ──────────────────────────────────────────────────────
-const BENEFIT_BULLETS = [
-  'Reach local & international buyers',
-  'Extend reach beyond Rightmove & Zoopla',
-  'Generate real enquiries — not just views',
-  'Drive viewing bookings directly to your team',
-  'Relaunch stale listings with fresh demand',
-  'Reduce reliance on price reductions',
-  'Create urgency and competition around your listings',
-  'Recover momentum on properties that have gone quiet',
-  'Win back vendor confidence with visible marketing activity',
-  'Retain instructions that might otherwise be lost',
-  'Turn underperforming stock into active opportunities',
-];
+const getBenefitBullets = (title?: string | null) => {
+  const name = title?.trim() || 'this listing';
+  return [
+    'Reach local & international buyers',
+    'Extend reach beyond Rightmove, Zoopla, etc',
+    'Generate real offers for this property — not just views',
+    'Drive viewing bookings directly to your team',
+    `Relaunch ${name} with fresh demand`,
+    'Reduce reliance on price reductions',
+    'Create urgency and competition around this listing',
+    'Recover momentum on this property that has gone quiet',
+    'Win back vendor confidence with visible marketing activity',
+    `Retain instruction on ${name} that might otherwise be lost`,
+    'Turn this underperforming listing into active opportunities',
+  ];
+};
 
 interface ActivateDemandModalProps {
   listing: AgentListing;
@@ -489,7 +492,7 @@ function ActivateDemandModal({ listing, token, onClose }: ActivateDemandModalPro
 
           {/* Benefits */}
           <ul className="space-y-2.5 mb-5">
-            {BENEFIT_BULLETS.map((b, i) => (
+            {getBenefitBullets(listing.title).map((b, i) => (
               <li key={i} className="flex items-start gap-2">
                 <FeatureTick />
                 <span className="font-body text-[14px] leading-snug text-black/85">{b}</span>
