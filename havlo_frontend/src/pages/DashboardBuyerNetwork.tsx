@@ -476,7 +476,7 @@ function ActivateDemandModal({ listing, token, onClose }: ActivateDemandModalPro
                 <p className="font-display text-[48px] font-black leading-none tracking-tight text-black">
                   {formatFee(fee)}
                 </p>
-                <p className="mt-1 font-body text-[13px] font-medium text-black/60">one-off campaign fee</p>
+                <p className="mt-1 font-body text-[13px] font-medium text-black/60">One-Time Buyer Activation Setup</p>
               </>
             ) : (
               <p className="font-body text-[14px] text-black/60 italic">Fee calculated from listing price</p>
