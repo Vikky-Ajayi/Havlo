@@ -272,6 +272,34 @@ export const BuyerNetwork: React.FC = () => {
         </div>
       </section>
 
+      {/* Brand logos strip */}
+      <section className="bg-white py-12 px-6 lg:px-[150px]">
+        <div className="mx-auto max-w-[900px] text-center">
+          <p className="font-body text-[12px] font-semibold uppercase tracking-[0.15em] text-black/35 mb-8">
+            We've supported agents affiliated with leading real estate brands
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
+            {[
+              { src: '/brand-logos/knightfrank.svg', alt: 'Knight Frank' },
+              { src: '/brand-logos/sothebys.svg', alt: "Sotheby's International Realty" },
+              { src: '/brand-logos/savills.svg', alt: 'Savills' },
+              { src: '/brand-logos/finecountry.svg', alt: 'Fine & Country' },
+              { src: '/brand-logos/hamptons.svg', alt: 'Hamptons' },
+              { src: '/brand-logos/belvoir.svg', alt: 'Belvoir' },
+              { src: '/brand-logos/yopa.svg', alt: 'Yopa' },
+            ].map(({ src, alt }) => (
+              <img
+                key={alt}
+                src={src}
+                alt={alt}
+                className="h-8 w-auto object-contain"
+                style={{ filter: 'grayscale(1)', opacity: 0.35 }}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 5. Bottom CTA Section */}
       <section className="relative flex flex-col items-center px-6 lg:px-[150px] bg-white overflow-hidden md:min-h-[400px] justify-center py-10 my-0 pt-[20px]">
         <div className="relative z-20 flex flex-col items-center text-center max-w-[700px] mx-auto gap-14">
