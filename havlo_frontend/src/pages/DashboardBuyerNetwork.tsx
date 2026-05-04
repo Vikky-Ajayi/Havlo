@@ -174,7 +174,7 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
       <div className="mb-8 rounded-[20px] border border-black/10 bg-white p-6 sm:p-8">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles size={14} className="text-[#A409D2]" />
-          <span className="font-body text-[11px] font-bold uppercase tracking-widest text-[#A409D2]">AI Property Analysis — Free</span>
+          <span className="font-body text-[11px] font-bold uppercase tracking-widest text-[#A409D2]">Listing Audit</span>
         </div>
         <h2 className="font-display text-[26px] sm:text-[32px] font-black tracking-tight text-black leading-tight">
           {listing.title || 'Property Report'}
