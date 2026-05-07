@@ -246,6 +246,7 @@ def inject(html: str, seo: PageSeo) -> str:
     else:
         html = _HEAD_CLOSE_RE.sub(new_title + "\n</head>", html, count=1)
 
+    og_image = f"{SITE_BASE}/apple-touch-icon.png"
     block = (
         f'<meta name="description" content="{desc}" />\n'
         f'<link rel="canonical" href="{url}" />\n'
@@ -253,9 +254,11 @@ def inject(html: str, seo: PageSeo) -> str:
         f'<meta property="og:description" content="{desc}" />\n'
         f'<meta property="og:type" content="website" />\n'
         f'<meta property="og:url" content="{url}" />\n'
+        f'<meta property="og:image" content="{og_image}" />\n'
         f'<meta name="twitter:card" content="summary_large_image" />\n'
         f'<meta name="twitter:title" content="{title}" />\n'
         f'<meta name="twitter:description" content="{desc}" />\n'
+        f'<meta name="twitter:image" content="{og_image}" />\n'
     )
     html = _HEAD_CLOSE_RE.sub(block + "</head>", html, count=1)
     return html
