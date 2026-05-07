@@ -748,18 +748,134 @@ async def _deep_scrape_listing(url: str, platform: str, referer: str) -> dict:
 # Scrape a single listing URL  (used by the 'Paste a link' feature)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _rm_decode_page_model_v2(data: list) -> dict | None:
+    """
+    Decode Rightmove's compressed flat-index PAGE_MODEL format (encoding='on').
+
+    Structure: data[0] is a top-level schema mapping field names to integer indices.
+    Each index points into data[]; values can be primitives, nested schemas (dicts),
+    or lists of indices.  We resolve recursively.
+    """
+    if not isinstance(data, list) or len(data) < 2:
+        return None
+
+    def r(idx: Any) -> Any:
+        """Resolve index → value from the flat data array."""
+        if isinstance(idx, int) and 0 <= idx < len(data):
+            return data[idx]
+        return idx
+
+    try:
+        top_schema = data[0]
+        if not isinstance(top_schema, dict) or "propertyData" not in top_schema:
+            return None
+
+        prop_schema = r(top_schema["propertyData"])
+        if not isinstance(prop_schema, dict):
+            return None
+
+        # ── Address ──────────────────────────────────────────────────────────
+        addr_str = ""
+        addr_schema = r(prop_schema.get("address"))
+        if isinstance(addr_schema, dict):
+            addr_str = _clean(r(addr_schema.get("displayAddress")) or "")
+
+        # ── Price ─────────────────────────────────────────────────────────────
+        price_str = ""
+        prices_schema = r(prop_schema.get("prices"))
+        if isinstance(prices_schema, dict):
+            price_str = _clean(str(r(prices_schema.get("primaryPrice")) or ""))
+
+        # ── Description (may contain HTML tags) ───────────────────────────────
+        description = ""
+        text_schema = r(prop_schema.get("text"))
+        if isinstance(text_schema, dict):
+            raw_desc = r(text_schema.get("description")) or ""
+            description = _clean(re.sub(r"<[^>]+>", " ", str(raw_desc)), 800)
+
+        # ── Bedrooms / bathrooms ───────────────────────────────────────────────
+        bedrooms = str(r(prop_schema.get("bedrooms")) or "")
+        bathrooms = str(r(prop_schema.get("bathrooms")) or "")
+
+        # ── Key features ──────────────────────────────────────────────────────
+        features: list[str] = []
+        kf_list = r(prop_schema.get("keyFeatures"))
+        if isinstance(kf_list, list):
+            features = [_clean(str(r(i))) for i in kf_list if r(i)][:10]
+
+        # ── Images ────────────────────────────────────────────────────────────
+        images: list[str] = []
+        img_list = r(prop_schema.get("images"))
+        if isinstance(img_list, list):
+            for img_schema_idx in img_list:
+                img_schema = r(img_schema_idx)
+                if isinstance(img_schema, dict):
+                    img_url = str(r(img_schema.get("url")) or "")
+                    if img_url and img_url.startswith("http"):
+                        images.append(img_url)
+
+        # ── Property type (extracted from page title) ─────────────────────────
+        property_type = ""
+        if isinstance(text_schema, dict):
+            page_title = str(r(text_schema.get("pageTitle")) or "")
+            m = re.search(
+                r"\d+\s+bedroom\s+(.+?)\s+for\s+(?:sale|rent)",
+                page_title, re.IGNORECASE,
+            )
+            if m:
+                property_type = m.group(1).strip().title()
+
+        # ── Listed / reduced date ─────────────────────────────────────────────
+        listed_date = ""
+        hist_schema = r(prop_schema.get("listingHistory"))
+        if isinstance(hist_schema, dict):
+            for k in ("listingDate", "dateFirstListed", "addedOrReduced",
+                      "listingUpdateReason"):
+                raw = r(hist_schema.get(k))
+                if raw:
+                    raw_str = str(raw)
+                    if re.match(r"\d{4}-\d{2}-\d{2}", raw_str):
+                        listed_date = _parse_iso_date(raw_str)
+                    else:
+                        listed_date = _clean(raw_str)
+                    break
+
+        return {
+            "title": addr_str,
+            "address": addr_str,
+            "price": price_str,
+            "description": description,
+            "url": "",  # filled in by caller
+            "images": images,
+            "image": images[0] if images else "",
+            "bedrooms": bedrooms,
+            "bathrooms": bathrooms,
+            "property_type": property_type,
+            "listed_date": listed_date,
+            "features": features,
+            "floor_area": "",
+            "platform": "rightmove",
+        }
+    except Exception as exc:
+        logger.debug("PAGE_MODEL v2 decode error: %s", exc)
+        return None
+
+
 async def scrape_single_listing(url: str) -> dict:
     """Fetch full details for a single property listing URL."""
-    platform = _detect_platform(url)
-    referer = f"https://{urlparse(url).netloc}/"
+    # Strip URL fragment before fetching (fragments are not sent to the server
+    # and can cause issues with URL parsing on some portals).
+    clean_url = url.split("#")[0]
+    platform = _detect_platform(clean_url)
+    referer = f"https://{urlparse(clean_url).netloc}/"
     try:
-        html = await _fetch(url, referer=referer, max_retries=2)
+        html = await _fetch(clean_url, referer=referer, max_retries=2)
     except httpx.HTTPStatusError as e:
         status_code = e.response.status_code
         if status_code in (403, 429, 503):
             logger.warning(
                 "Portal blocked scrape for %s (HTTP %s) — returning partial result",
-                url, status_code,
+                clean_url, status_code,
             )
             empty = _empty_listing(platform, url)
             empty["blocked"] = True
@@ -773,30 +889,44 @@ async def scrape_single_listing(url: str) -> dict:
     if platform == "rightmove":
         pm = _extract_js_var(html, "PAGE_MODEL")
         if pm:
-            prop = pm.get("propertyData") or {}
-            images = [img.get("url") or img.get("srcUrl") or "" for img in (prop.get("images") or []) if isinstance(img, dict)]
-            images = [i for i in images if i]
-            price_obj = prop.get("prices") or prop.get("price") or {}
-            price_str = price_obj.get("primaryPrice") or _fmt_price(price_obj.get("amount"), price_obj.get("currencyCode", "GBP"))
-            addr = (prop.get("address") or {})
-            addr_str = _clean(addr.get("displayAddress") or prop.get("displayAddress") or "")
-            raw_date = (prop.get("listingHistory") or {}).get("listingDate") or ""
-            result = {
-                "title": addr_str,
-                "address": addr_str,
-                "price": price_str,
-                "description": _clean((prop.get("text") or {}).get("description") or prop.get("summary") or "", 800),
-                "url": url,
-                "images": images,
-                "image": images[0] if images else "",
-                "bedrooms": str(prop.get("bedrooms") or ""),
-                "bathrooms": str(prop.get("bathrooms") or ""),
-                "property_type": _clean(prop.get("propertySubType") or prop.get("propertyType") or ""),
-                "listed_date": _parse_iso_date(raw_date) if raw_date else "",
-                "features": [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10],
-                "floor_area": "",
-                "platform": "rightmove",
-            }
+            # ── New compressed format (encoding='on') ────────────────────────
+            if pm.get("encoding") == "on" and pm.get("data"):
+                try:
+                    data_arr = json.loads(pm["data"])
+                    result = _rm_decode_page_model_v2(data_arr)
+                    if result:
+                        result["url"] = url
+                except Exception as exc:
+                    logger.debug("PAGE_MODEL v2 parse failed: %s", exc)
+                    result = None
+
+            # ── Legacy flat format ────────────────────────────────────────────
+            if not result:
+                prop = pm.get("propertyData") or {}
+                images = [img.get("url") or img.get("srcUrl") or "" for img in (prop.get("images") or []) if isinstance(img, dict)]
+                images = [i for i in images if i]
+                price_obj = prop.get("prices") or prop.get("price") or {}
+                price_str = price_obj.get("primaryPrice") or _fmt_price(price_obj.get("amount"), price_obj.get("currencyCode", "GBP"))
+                addr = (prop.get("address") or {})
+                addr_str = _clean(addr.get("displayAddress") or prop.get("displayAddress") or "")
+                raw_date = (prop.get("listingHistory") or {}).get("listingDate") or ""
+                if addr_str or price_str or images:
+                    result = {
+                        "title": addr_str,
+                        "address": addr_str,
+                        "price": price_str,
+                        "description": _clean((prop.get("text") or {}).get("description") or prop.get("summary") or "", 800),
+                        "url": url,
+                        "images": images,
+                        "image": images[0] if images else "",
+                        "bedrooms": str(prop.get("bedrooms") or ""),
+                        "bathrooms": str(prop.get("bathrooms") or ""),
+                        "property_type": _clean(prop.get("propertySubType") or prop.get("propertyType") or ""),
+                        "listed_date": _parse_iso_date(raw_date) if raw_date else "",
+                        "features": [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10],
+                        "floor_area": "",
+                        "platform": "rightmove",
+                    }
 
     elif platform == "zoopla":
         nd = _extract_next_data(html)
