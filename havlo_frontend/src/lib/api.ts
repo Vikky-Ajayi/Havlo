@@ -35,10 +35,11 @@ interface RequestOptions {
   body?: unknown;
   token?: string | null;
   queryParams?: Record<string, string>;
+  timeout?: number;
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, token, queryParams } = opts;
+  const { method = 'GET', body, token, queryParams, timeout = 15000 } = opts;
   const headers: Record<string, string> = {};
 
   if (body) headers['Content-Type'] = 'application/json';
@@ -51,7 +52,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   let res: Response;
   try {
@@ -656,7 +657,8 @@ export const api = {
       floor_area: string;
       platform: string;
       external_url: string;
-    }>('/agent/listings/scrape-url', { method: 'POST', token, body: { url } }),
+      blocked: boolean;
+    }>('/agent/listings/scrape-url', { method: 'POST', token, body: { url }, timeout: 45000 }),
 
   agentGetActivatedListings: (token: string) =>
     request<{

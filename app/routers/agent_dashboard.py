@@ -477,6 +477,7 @@ async def scrape_listing_url(
         "floor_area": data.get("floor_area") or "",
         "platform": data.get("platform") or "",
         "external_url": payload.url,
+        "blocked": bool(data.get("blocked")),
     }
 
 

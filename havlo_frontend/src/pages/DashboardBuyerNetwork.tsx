@@ -952,6 +952,7 @@ type ScrapedPreview = {
   images: string[]; image_url: string; bedrooms: string; bathrooms: string;
   property_type: string; listed_date: string; features: string[];
   floor_area: string; platform: string; external_url: string;
+  blocked: boolean;
 };
 
 function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
@@ -986,7 +987,15 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
     setScraped(null);
     try {
       const result = await api.agentScrapeListingUrl(token, linkUrl.trim());
-      setScraped(result);
+      if (result.blocked) {
+        setManualLink(linkUrl.trim());
+        setTab('manual');
+        setScrapeError(
+          'This portal blocks automatic imports — your link has been saved. Fill in the details below and add your listing.',
+        );
+      } else {
+        setScraped(result);
+      }
     } catch (err: any) {
       setScrapeError(err?.message || 'Could not fetch listing details. Check the URL and try again.');
     } finally {
@@ -1196,9 +1205,15 @@ function AddListingModal({ token, onClose, onAdded }: AddListingModalProps) {
         {/* Manual tab */}
         {tab === 'manual' && (
           <form onSubmit={handleManualSubmit} className="px-6 pb-6 space-y-4 max-h-[60vh] overflow-y-auto">
-            <p className="font-body text-[13px] text-black/60">
-              Fill in your property details directly — no portal link needed.
-            </p>
+            {scrapeError ? (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                <p className="font-body text-[13px] text-amber-800">{scrapeError}</p>
+              </div>
+            ) : (
+              <p className="font-body text-[13px] text-black/60">
+                Fill in your property details directly — no portal link needed.
+              </p>
+            )}
             <div>
               <label className={labelCls}>Property title</label>
               <input

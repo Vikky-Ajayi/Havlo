@@ -753,7 +753,18 @@ async def scrape_single_listing(url: str) -> dict:
     platform = _detect_platform(url)
     referer = f"https://{urlparse(url).netloc}/"
     try:
-        html = await _fetch(url, referer=referer)
+        html = await _fetch(url, referer=referer, max_retries=2)
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code
+        if status_code in (403, 429, 503):
+            logger.warning(
+                "Portal blocked scrape for %s (HTTP %s) — returning partial result",
+                url, status_code,
+            )
+            empty = _empty_listing(platform, url)
+            empty["blocked"] = True
+            return empty
+        raise ValueError(f"Could not fetch the listing page: {e}")
     except Exception as e:
         raise ValueError(f"Could not fetch the listing page: {e}")
 
