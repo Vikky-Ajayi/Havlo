@@ -127,6 +127,7 @@ interface AIReportPageProps {
   listing: AgentListing;
   token: string;
   onBack: () => void;
+  onReportGenerated?: (listingId: string, report: string, generatedAt: string) => void;
 }
 
 const LOADING_MESSAGES = [
@@ -137,7 +138,7 @@ const LOADING_MESSAGES = [
   'Preparing tailored insights to help you secure a faster sale…',
 ];
 
-function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
+function AIReportPage({ listing, token, onBack, onReportGenerated }: AIReportPageProps) {
   const [report, setReport] = useState<string | null>(listing.ai_report || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +150,8 @@ function AIReportPage({ listing, token, onBack }: AIReportPageProps) {
   const pendingError = useRef<string | null>(null);
   const allMsgsShown = useRef(false);
   const cycleInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onReportGeneratedRef = useRef(onReportGenerated);
+  onReportGeneratedRef.current = onReportGenerated;
 
   const handleDownloadPdf = () => {
     if (!report) return;
@@ -218,11 +221,14 @@ ${toHtml(report)}
       setError(pendingError.current);
       pendingError.current = null;
     } else if (pendingReport.current !== null) {
-      setReport(pendingReport.current);
+      const generatedReport = pendingReport.current;
+      const generatedAt = new Date().toISOString();
+      setReport(generatedReport);
       pendingReport.current = null;
+      onReportGeneratedRef.current?.(listing.id, generatedReport, generatedAt);
     }
     setLoading(false);
-  }, []);
+  }, [listing.id]);
 
   const startMessageCycle = useCallback(() => {
     if (cycleInterval.current) clearInterval(cycleInterval.current);
@@ -1439,6 +1445,21 @@ export default function DashboardBuyerNetwork() {
     ? new Date(lastSynced).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null;
 
+  const handleReportGenerated = useCallback((listingId: string, report: string, generatedAt: string) => {
+    setListings((prev) =>
+      prev.map((l) =>
+        l.id === listingId
+          ? { ...l, ai_report: report, ai_report_generated_at: generatedAt }
+          : l,
+      ),
+    );
+    setSelectedReportListing((prev) =>
+      prev && prev.id === listingId
+        ? { ...prev, ai_report: report, ai_report_generated_at: generatedAt }
+        : prev,
+    );
+  }, []);
+
   if (selectedReportListing) {
     return (
       <DashboardLayout title="AI Property Report">
@@ -1446,6 +1467,7 @@ export default function DashboardBuyerNetwork() {
           listing={selectedReportListing}
           token={token!}
           onBack={() => setSelectedReportListing(null)}
+          onReportGenerated={handleReportGenerated}
         />
       </DashboardLayout>
     );
