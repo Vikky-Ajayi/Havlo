@@ -745,6 +745,107 @@ async def _deep_scrape_listing(url: str, platform: str, referer: str) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# OnTheMarket extractor
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _otm_extract_from_redux(html: str, url: str) -> dict | None:
+    """
+    Extract property details from OnTheMarket's initialReduxState JSON blob.
+
+    OTM embeds all listing data inside a <script> tag as:
+      {"props": {"initialReduxState": { "property": { ... } } } }
+    The property object contains flat fields: displayAddress, price, bedrooms,
+    bathrooms, humanisedPropertyType, features (list of dicts), images (list of
+    dicts with largeUrl), description (HTML), summary (plain text).
+    """
+    scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, re.DOTALL)
+    for s in scripts:
+        if "initialReduxState" not in s:
+            continue
+        m = re.search(r'"initialReduxState"\s*:\s*(\{)', s)
+        if not m:
+            continue
+        start = m.start(1)
+        depth = 0
+        end = start
+        for i, ch in enumerate(s[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        try:
+            state = json.loads(s[start : end + 1])
+        except json.JSONDecodeError:
+            continue
+
+        prop = state.get("property") or {}
+        if not prop:
+            continue
+
+        addr_str = _clean(prop.get("displayAddress") or "")
+        price_str = _clean(str(prop.get("price") or ""))
+
+        # Beds / baths
+        bedrooms = str(prop.get("bedrooms") or "")
+        bathrooms = str(prop.get("bathrooms") or "")
+
+        # Property type
+        property_type = _clean(str(prop.get("humanisedPropertyType") or ""))
+
+        # Features — list of {"id": N, "feature": "text"} dicts
+        features: list[str] = []
+        for f in (prop.get("features") or [])[:10]:
+            if isinstance(f, dict):
+                txt = _clean(f.get("feature") or "")
+            else:
+                txt = _clean(str(f))
+            if txt:
+                features.append(txt)
+
+        # Images — list of dicts with largeUrl / url keys
+        images: list[str] = []
+        for img in prop.get("images") or []:
+            if isinstance(img, dict):
+                src = img.get("largeUrl") or img.get("url") or ""
+                if src and src.startswith("http") and src not in images:
+                    images.append(src)
+        # Hero images as fallback
+        if not images:
+            for k in ("heroImage1", "heroImage2", "heroImage3"):
+                img = prop.get(k)
+                if isinstance(img, dict):
+                    src = img.get("largeUrl") or img.get("url") or ""
+                    if src and src.startswith("http"):
+                        images.append(src)
+
+        # Description — HTML stripped; fall back to plain summary
+        raw_desc = prop.get("description") or prop.get("summary") or ""
+        description = _clean(re.sub(r"<[^>]+>", " ", str(raw_desc)), 800)
+
+        if addr_str or price_str:
+            return {
+                "title": addr_str,
+                "address": addr_str,
+                "price": price_str,
+                "description": description,
+                "url": url,
+                "images": images,
+                "image": images[0] if images else "",
+                "bedrooms": bedrooms,
+                "bathrooms": bathrooms,
+                "property_type": property_type,
+                "listed_date": "",
+                "features": features,
+                "floor_area": "",
+                "platform": "onthemarket",
+            }
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Scrape a single listing URL  (used by the 'Paste a link' feature)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -929,6 +1030,16 @@ async def scrape_single_listing(url: str) -> dict:
                     }
 
     elif platform == "zoopla":
+        # Zoopla is protected by Cloudflare — detect challenge/block pages
+        if (len(html) < 50_000
+                or "Just a moment" in html
+                or "__cf_chl_" in html
+                or "cf-browser-verification" in html):
+            logger.warning("Zoopla Cloudflare block detected for %s", url)
+            empty = _empty_listing(platform, url)
+            empty["blocked"] = True
+            return empty
+
         nd = _extract_next_data(html)
         if nd:
             ld = (
@@ -981,6 +1092,20 @@ async def scrape_single_listing(url: str) -> dict:
                     "floor_area": str(ld.get("floorArea") or ""),
                     "platform": "zoopla",
                 }
+
+    elif platform == "onthemarket":
+        result = _otm_extract_from_redux(html, url)
+
+    elif platform == "primelocation":
+        # Primelocation (Zoopla Group) — detect Cloudflare / bot wall
+        if (len(html) < 80_000
+                or "Just a moment" in html
+                or "__cf_chl_" in html):
+            logger.warning("Primelocation bot-wall detected for %s", url)
+            empty = _empty_listing(platform, url)
+            empty["blocked"] = True
+            return empty
+        # Otherwise fall through to generic extractor below
 
     # Generic fallback (JSON-LD + CSS)
     if not result:
