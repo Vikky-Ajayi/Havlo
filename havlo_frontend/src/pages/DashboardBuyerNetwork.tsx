@@ -1462,7 +1462,7 @@ export default function DashboardBuyerNetwork() {
 
   if (selectedReportListing) {
     return (
-      <DashboardLayout title="AI Property Report">
+      <DashboardLayout title="Listing Audit">
         <AIReportPage
           listing={selectedReportListing}
           token={token!}
