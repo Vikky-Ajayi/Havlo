@@ -13,6 +13,7 @@ const EliteProperty = React.lazy(() => import('./pages/EliteProperty').then(m =>
 const BuyHome = React.lazy(() => import('./pages/BuyHome').then(m => ({ default: m.BuyHome })));
 const CompleteHomeBuying = React.lazy(() => import('./pages/CompleteHomeBuying').then(m => ({ default: m.CompleteHomeBuying })));
 const Marketing = React.lazy(() => import('./pages/Marketing').then(m => ({ default: m.Marketing })));
+const SellFasterAssessment = React.lazy(() => import('./pages/SellFasterAssessment').then(m => ({ default: m.SellFasterAssessment })));
 const Contact = React.lazy(() => import('./pages/Contact').then(m => ({ default: m.Contact })));
 const FAQ = React.lazy(() => import('./pages/FAQ').then(m => ({ default: m.FAQ })));
 const Countries = React.lazy(() => import('./pages/Countries').then(m => ({ default: m.Countries })));
@@ -186,6 +187,7 @@ export default function App() {
               <Route path="/buy-home" element={<BuyHome />} />
               <Route path="/complete-home-buying" element={<CompleteHomeBuying />} />
               <Route path="/sell-your-property" element={<Marketing />} />
+              <Route path="/sell-your-property/report" element={<SellFasterAssessment />} />
               <Route path="/sell-faster" element={<Navigate to="/sell-your-property" replace />} />
               <Route path="/marketing" element={<Navigate to="/sell-your-property" replace />} />
               <Route path="/contact-us" element={<Contact />} />

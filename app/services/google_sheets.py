@@ -393,6 +393,21 @@ def record_property_demand_check(user_data: dict[str, Any], form_data: dict[str,
     _append_row("Property Demand Checks", row)
 
 
+def record_public_assessment(form_data: dict[str, Any]) -> None:
+    row = [
+        datetime.utcnow().isoformat(),
+        form_data.get("email", ""),
+        form_data.get("phone_country_code", "") + form_data.get("phone", ""),
+        form_data.get("property_url", ""),
+        form_data.get("property_address", ""),
+        form_data.get("scraped_title", ""),
+        form_data.get("scraped_price", ""),
+        form_data.get("recommended_plan", ""),
+        form_data.get("setup_fee", ""),
+    ]
+    _append_row("Public Property Assessments", row)
+
+
 def record_session_booking(user_data: dict[str, Any], booking_data: dict[str, Any]) -> None:
     row = [
         datetime.utcnow().isoformat(),

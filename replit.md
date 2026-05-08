@@ -139,3 +139,18 @@ Applied the "corrections_4" PDF change list:
   - `DashboardBuyerNetwork.tsx` adds an optional "Discount code" input in the activation drawer with live AGENT100 confirmation, and skips the SumUp redirect (sending the user straight to `/dashboard/buyer-network?payment=success&ref=…`) when the server returns `total_amount === 0`.
 - **FAQ opt-out modal (`havlo_frontend/src/components/modals/OptOutModal.tsx`)** — "Email" label and placeholder replaced with "Property Address" / "Enter your property address"; input switched from `type="email"` to `type="text"`; success message and validation updated accordingly.
 - **Buyer Network public page pricing (T006)** — pending; awaiting new prices from the user before updating `BuyerNetwork.tsx` pricing strings.
+
+## 2026-05-08 — Assess My Property funnel
+
+Replaced the static pricing section on `/sell-your-property` with a full AI-powered lead capture + property assessment funnel:
+
+- **CTAs updated**: Both "Start My Relaunch Plan" buttons (hero + final CTA) changed to "Assess My Property". Footer copy updated to "Free assessment • No commitment required".
+- **Static pricing section removed**: The 4-tier plan grid (Launch / Amplify / Dominate / Private Clients) is no longer shown on the public page. Plans are now revealed dynamically after the AI report, personalised to the property value.
+- **Assessment drawer** (`Marketing.tsx`): Slides in from the right when CTA is clicked. Two input modes (tab toggle): "Listing URL" (Rightmove/Zoopla/OTM) or "Property Address". Collects email + phone (with country code selector). On submit: shows animated loading state with rotating messages and progress bar (~20–40 s). On success: stores result in `localStorage` keyed by session UUID and navigates to `/sell-your-property/report?s=<uuid>`.
+- **Results page** (`havlo_frontend/src/pages/SellFasterAssessment.tsx`, route `/sell-your-property/report`): Public page with Navbar/Footer. Shows property header (title, address, price, beds/baths), full AI report (markdown-rendered), recommended plan card with dynamic pricing, and a "Get Started" purple CTA that opens the `create-account` modal. If session not found, shows a friendly error with a link back.
+- **Backend endpoint**: `POST /api/v1/sell-faster/public-assess` (no auth, in `sell_faster.public_router`). Accepts `property_url` and/or `property_address`, `email`, `phone`, `phone_country_code`. Scrapes listing URL if provided, calls `generate_public_property_report` (new homeowner-focused Groq prompt in `app/services/groq_service.py`), calculates dynamic pricing via `_dynamic_pricing()`, logs to Google Sheets `Public Property Assessments` tab in background, returns `{ session_id, report, property, pricing }`.
+- **Dynamic pricing** (`_dynamic_pricing` in `sell_faster.py`): < £500k → Launch (£2k); £500k–£1M → Amplify (£3k, default); £1M–£2M → Dominate (£5k); £2M+ → Private Clients (custom).
+- **New schemas**: `PublicAssessRequest`, `PublicAssessProperty`, `PublicAssessPricing`, `PublicAssessResponse` in `app/schemas/schemas.py`.
+- **New Groq function**: `generate_public_property_report` in `app/services/groq_service.py` — homeowner-focused prompt (not estate agent) covering: why property may not be selling, what's holding buyers back, what to do right now, international buyer opportunity, upsell close.
+- **Google Sheets**: `record_public_assessment` in `app/services/google_sheets.py` — logs to "Public Property Assessments" tab.
+- **API client**: `publicPropertyAssess` + `PublicAssessPayload` / `PublicAssessResult` interfaces added to `havlo_frontend/src/lib/api.ts`.

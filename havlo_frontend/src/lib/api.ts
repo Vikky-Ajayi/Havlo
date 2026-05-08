@@ -260,6 +260,35 @@ export interface PropertyDemandCheckResult {
   markets: string[];
 }
 
+export interface PublicAssessPayload {
+  property_url?: string;
+  property_address?: string;
+  email: string;
+  phone: string;
+  phone_country_code?: string;
+}
+
+export interface PublicAssessResult {
+  session_id: string;
+  report: string;
+  property: {
+    title: string;
+    address: string;
+    price: string;
+    image: string;
+    bedrooms: string;
+    bathrooms: string;
+    property_type: string;
+  };
+  pricing: {
+    plan_id: string;
+    plan_name: string;
+    setup_fee: string;
+    monthly_from: string;
+    is_custom: boolean;
+  };
+}
+
 export interface Conversation {
   id: string;
   team_member_name: string;
@@ -388,6 +417,9 @@ export const api = {
     }),
 
   // ── Public pricing (no auth) ─────────────────────────────────────────────
+  publicPropertyAssess: (payload: PublicAssessPayload) =>
+    request<PublicAssessResult>('/sell-faster/public-assess', { method: 'POST', body: payload }),
+
   getSellFasterPlans: () =>
     request<Record<string, { name: string; setup: number; monthly: number; currency: string }>>('/sell-faster/plans'),
   getBuyerNetworkPackages: () =>

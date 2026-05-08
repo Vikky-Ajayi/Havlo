@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re as _re
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -16,6 +17,10 @@ from app.schemas.schemas import (
     PaymentStatusResponse,
     PropertyDemandCheckRequest,
     PropertyDemandCheckResponse,
+    PublicAssessPricing,
+    PublicAssessProperty,
+    PublicAssessRequest,
+    PublicAssessResponse,
     SellFasterRequest,
     SellFasterResponse,
 )
@@ -41,6 +46,114 @@ public_router = APIRouter(prefix="/sell-faster", tags=["Sell Faster"])
 async def list_sell_faster_plans() -> dict:
     """Return the public price list. Frontend MUST use these for display."""
     return SELL_FASTER_PLANS
+
+
+def _dynamic_pricing(price_str: str | None) -> dict:
+    """Return recommended plan and pricing based on scraped property price."""
+    if price_str:
+        digits_only = _re.sub(r"[^\d]", "", price_str)
+        if digits_only:
+            try:
+                value = int(digits_only)
+                if value < 500_000:
+                    return {"plan_id": "launch", "plan_name": "Launch", "setup_fee": "£2,000", "monthly_from": "£1,500/month", "is_custom": False}
+                elif value < 1_000_000:
+                    return {"plan_id": "amplify", "plan_name": "Amplify", "setup_fee": "£3,000", "monthly_from": "£2,000/month", "is_custom": False}
+                elif value < 2_000_000:
+                    return {"plan_id": "dominate", "plan_name": "Dominate", "setup_fee": "£5,000", "monthly_from": "£3,500/month", "is_custom": False}
+                else:
+                    return {"plan_id": "private-clients", "plan_name": "Private Clients", "setup_fee": "Custom", "monthly_from": "Custom", "is_custom": True}
+            except ValueError:
+                pass
+    return {"plan_id": "amplify", "plan_name": "Amplify", "setup_fee": "£3,000", "monthly_from": "£2,000/month", "is_custom": False}
+
+
+@public_router.post("/public-assess", response_model=PublicAssessResponse)
+async def public_property_assess(
+    payload: PublicAssessRequest,
+    background_tasks: BackgroundTasks,
+) -> PublicAssessResponse:
+    """
+    Public endpoint: scrape listing URL or use provided address,
+    generate a homeowner-focused AI report, calculate dynamic pricing,
+    and log to Google Sheets.
+    """
+    from app.services.groq_service import generate_public_property_report
+    from app.services.listing_scraper import scrape_single_listing
+
+    if not payload.property_url and not payload.property_address:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please provide a property URL or address.",
+        )
+
+    scraped: dict = {}
+    if payload.property_url:
+        try:
+            scraped = await scrape_single_listing(payload.property_url)
+        except Exception as exc:
+            logger.warning("Scrape failed for public-assess url=%s: %s", payload.property_url, exc)
+
+    title = str(scraped.get("title") or "")
+    price = str(scraped.get("price") or "")
+    description = str(scraped.get("description") or "")
+    address = str(scraped.get("address") or payload.property_address or "")
+    image = str(scraped.get("image") or "")
+    bedrooms = str(scraped.get("bedrooms") or "")
+    bathrooms = str(scraped.get("bathrooms") or "")
+    property_type = str(scraped.get("property_type") or "")
+
+    property_info = f"Property listing URL: {payload.property_url or 'not provided'}"
+    if payload.property_address:
+        property_info += f"\nProperty address: {payload.property_address}"
+
+    try:
+        report = await generate_public_property_report(
+            property_info=property_info,
+            listing_title=title or None,
+            listing_price=price or None,
+            listing_description=description or None,
+            listing_address=address or None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as exc:
+        logger.error("Public-assess AI report failed: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="Assessment generation failed. Please try again shortly.",
+        )
+
+    pricing_data = _dynamic_pricing(price)
+    session_id = str(uuid.uuid4())
+
+    form_data = {
+        "email": payload.email,
+        "phone": payload.phone,
+        "phone_country_code": payload.phone_country_code,
+        "property_url": payload.property_url or "",
+        "property_address": payload.property_address or "",
+        "scraped_title": title,
+        "scraped_price": price,
+        "recommended_plan": pricing_data["plan_name"],
+        "setup_fee": pricing_data["setup_fee"],
+    }
+    background_tasks.add_task(google_sheets.record_public_assessment, form_data)
+
+    return PublicAssessResponse(
+        session_id=session_id,
+        report=report,
+        property=PublicAssessProperty(
+            title=title or (payload.property_address or "Your Property"),
+            address=address,
+            price=price,
+            image=image,
+            bedrooms=bedrooms,
+            bathrooms=bathrooms,
+            property_type=property_type,
+        ),
+        pricing=PublicAssessPricing(**pricing_data),
+    )
 
 
 router = APIRouter(

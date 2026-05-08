@@ -375,3 +375,36 @@ class BuyerNetworkResponse(BaseModel):
     total_amount: float
     currency: str
     message: str
+
+
+class PublicAssessRequest(BaseModel):
+    property_url: Optional[str] = Field(None, max_length=2000)
+    property_address: Optional[str] = Field(None, max_length=500)
+    email: str = Field(..., min_length=1, max_length=320)
+    phone: str = Field(..., min_length=1, max_length=30)
+    phone_country_code: str = Field("+44", max_length=10)
+
+
+class PublicAssessProperty(BaseModel):
+    title: str
+    address: str
+    price: str
+    image: str
+    bedrooms: str
+    bathrooms: str
+    property_type: str
+
+
+class PublicAssessPricing(BaseModel):
+    plan_id: str
+    plan_name: str
+    setup_fee: str
+    monthly_from: str
+    is_custom: bool = False
+
+
+class PublicAssessResponse(BaseModel):
+    session_id: str
+    report: str
+    property: PublicAssessProperty
+    pricing: PublicAssessPricing
