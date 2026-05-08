@@ -9,6 +9,7 @@ import { cn } from '../lib/utils';
 import heroImage from '../../Rectangle 5.png';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { api } from '../lib/api';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 const sellFasterReviews = [
   { title: 'Finally sold after months of no progress', content: 'Our property had been on the market for over 6 months with very little interest. Havlo Relaunch completely changed that and brought in serious buyers.', author: 'Ben, Reading' },
@@ -638,22 +639,16 @@ export const Marketing: React.FC = () => {
 
               <div>
                 <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Phone Number</label>
-                <div className="flex gap-2">
-                  <select
-                    value={phoneCode}
-                    onChange={(e) => setPhoneCode(e.target.value)}
-                    className="shrink-0 rounded-lg border border-black/15 bg-white px-3 py-3 font-body text-sm text-black focus:border-[#a409d2] focus:outline-none"
-                  >
-                    {['+44', '+1', '+971', '+65', '+852', '+61', '+33', '+49', '+34', '+39'].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                <div className="flex h-[46px] items-center gap-2 rounded-lg border border-black/15 bg-white px-2 focus-within:border-[#a409d2]">
+                  <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <CountryCodeSelect value={phoneCode} onChange={setPhoneCode} />
+                  </div>
                   <input
                     type="tel"
                     placeholder="07700 900000"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1 rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                    className="flex-1 bg-transparent font-body text-sm text-black placeholder-black/35 outline-none"
                   />
                 </div>
               </div>
