@@ -94,18 +94,26 @@ async def public_property_assess(
         except Exception as exc:
             logger.warning("Scrape failed for public-assess url=%s: %s", payload.property_url, exc)
 
-    title = str(scraped.get("title") or "")
-    price = str(scraped.get("price") or "")
-    description = str(scraped.get("description") or "")
+    title = str(scraped.get("title") or payload.property_title or "")
+    price = str(scraped.get("price") or payload.property_price or "")
+    description = str(scraped.get("description") or payload.property_description or "")
     address = str(scraped.get("address") or payload.property_address or "")
-    image = str(scraped.get("image") or "")
-    bedrooms = str(scraped.get("bedrooms") or "")
+    image = str(scraped.get("image") or payload.property_image_url or "")
+    bedrooms = str(scraped.get("bedrooms") or payload.property_bedrooms or "")
     bathrooms = str(scraped.get("bathrooms") or "")
     property_type = str(scraped.get("property_type") or "")
 
-    property_info = f"Property listing URL: {payload.property_url or 'not provided'}"
+    property_info = f"Property listing URL: {payload.property_url or payload.property_listing_link or 'not provided'}"
     if payload.property_address:
         property_info += f"\nProperty address: {payload.property_address}"
+    if title:
+        property_info += f"\nProperty title: {title}"
+    if price:
+        property_info += f"\nListed price: {price}"
+    if bedrooms:
+        property_info += f"\nBedrooms: {bedrooms}"
+    if description:
+        property_info += f"\nDescription: {description}"
 
     try:
         report = await generate_public_property_report(

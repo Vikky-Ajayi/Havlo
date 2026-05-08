@@ -383,6 +383,12 @@ class PublicAssessRequest(BaseModel):
     email: str = Field(..., min_length=1, max_length=320)
     phone: str = Field(..., min_length=1, max_length=30)
     phone_country_code: str = Field("+44", max_length=10)
+    property_title: Optional[str] = Field(None, max_length=500)
+    property_price: Optional[str] = Field(None, max_length=100)
+    property_bedrooms: Optional[str] = Field(None, max_length=50)
+    property_description: Optional[str] = Field(None, max_length=5000)
+    property_listing_link: Optional[str] = Field(None, max_length=2000)
+    property_image_url: Optional[str] = Field(None, max_length=2000)
 
 
 class PublicAssessProperty(BaseModel):

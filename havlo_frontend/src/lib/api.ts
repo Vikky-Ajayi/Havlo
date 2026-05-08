@@ -266,6 +266,12 @@ export interface PublicAssessPayload {
   email: string;
   phone: string;
   phone_country_code?: string;
+  property_title?: string;
+  property_price?: string;
+  property_bedrooms?: string;
+  property_description?: string;
+  property_listing_link?: string;
+  property_image_url?: string;
 }
 
 export interface PublicAssessResult {

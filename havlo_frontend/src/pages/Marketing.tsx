@@ -174,6 +174,12 @@ export const Marketing: React.FC = () => {
   const [inputMode, setInputMode] = useState<'url' | 'address'>('url');
   const [propertyUrl, setPropertyUrl] = useState('');
   const [propertyAddress, setPropertyAddress] = useState('');
+  const [propertyTitle, setPropertyTitle] = useState('');
+  const [propertyPrice, setPropertyPrice] = useState('');
+  const [propertyBedrooms, setPropertyBedrooms] = useState('');
+  const [propertyDescription, setPropertyDescription] = useState('');
+  const [propertyListingLink, setPropertyListingLink] = useState('');
+  const [propertyImageUrl, setPropertyImageUrl] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [phoneCode, setPhoneCode] = useState('+44');
@@ -214,6 +220,14 @@ export const Marketing: React.FC = () => {
         email: email.trim(),
         phone: phone.trim(),
         phone_country_code: phoneCode,
+        ...(inputMode === 'address' && {
+          property_title: propertyTitle.trim() || undefined,
+          property_price: propertyPrice.trim() || undefined,
+          property_bedrooms: propertyBedrooms.trim() || undefined,
+          property_description: propertyDescription.trim() || undefined,
+          property_listing_link: propertyListingLink.trim() || undefined,
+          property_image_url: propertyImageUrl.trim() || undefined,
+        }),
       });
       localStorage.setItem(STORAGE_PREFIX + result.session_id, JSON.stringify(result));
       setDrawerOpen(false);
@@ -613,15 +627,80 @@ export const Marketing: React.FC = () => {
                     <p className="mt-1.5 font-body text-[11px] text-black/45">Paste your Rightmove, Zoopla, or OnTheMarket listing URL</p>
                   </div>
                 ) : (
-                  <div>
-                    <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Property Address</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 12 Oak Road, London, SW1A 1AA"
-                      value={propertyAddress}
-                      onChange={(e) => setPropertyAddress(e.target.value)}
-                      className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Property title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 4-bed detached house, Bristol"
+                        value={propertyTitle}
+                        onChange={(e) => setPropertyTitle(e.target.value)}
+                        className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Listed price</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. £875,000"
+                          value={propertyPrice}
+                          onChange={(e) => setPropertyPrice(e.target.value)}
+                          className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Bedrooms</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 4"
+                          value={propertyBedrooms}
+                          onChange={(e) => setPropertyBedrooms(e.target.value)}
+                          className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Property Address</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 12 Oak Road, London, SW1A 1AA"
+                        value={propertyAddress}
+                        onChange={(e) => setPropertyAddress(e.target.value)}
+                        className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Description</label>
+                      <textarea
+                        placeholder="Key features, selling points, etc."
+                        value={propertyDescription}
+                        onChange={(e) => setPropertyDescription(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none resize-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Listing link</label>
+                      <input
+                        type="url"
+                        placeholder="https://www.rightmove.co.uk/properties/..."
+                        value={propertyListingLink}
+                        onChange={(e) => setPropertyListingLink(e.target.value)}
+                        className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block font-body text-[13px] font-semibold text-black">Property image URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={propertyImageUrl}
+                        onChange={(e) => setPropertyImageUrl(e.target.value)}
+                        className="w-full rounded-lg border border-black/15 bg-white px-4 py-3 font-body text-sm text-black placeholder-black/35 focus:border-[#a409d2] focus:outline-none"
+                      />
+                      <p className="mt-1 font-body text-[11px] text-black/45">Paste a direct link to a photo of the property.</p>
+                    </div>
                   </div>
                 )}
               </div>
