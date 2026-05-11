@@ -261,7 +261,7 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Stale listings"
                     description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                    href="/property-audit"
+                    href="/stale-listings"
                     className="bg-white"
                   />
                   <ServiceCard
@@ -308,7 +308,7 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Stale listings"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
-                href="/property-audit"
+                href="/stale-listings"
                 className="flex-[2] bg-white"
               />
               <ServiceCard
