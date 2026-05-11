@@ -37,6 +37,12 @@ const DashboardUsers = React.lazy(() => import('./pages/DashboardUsers').then(m 
 const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const AdminPanel = React.lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const CheckoutPage = React.lazy(() => import('./pages/Checkout').then(m => ({ default: m.CheckoutPage })));
+const StaleListingsLanding = React.lazy(() => import('./pages/StaleListingsLanding').then(m => ({ default: m.StaleListingsLanding })));
+const StaleListingsQuestions = React.lazy(() => import('./pages/StaleListingsQuestions').then(m => ({ default: m.StaleListingsQuestions })));
+const StaleListingsPlan = React.lazy(() => import('./pages/StaleListingsPlan').then(m => ({ default: m.StaleListingsPlan })));
+const StaleListingsComplete = React.lazy(() => import('./pages/StaleListingsComplete').then(m => ({ default: m.StaleListingsComplete })));
+const StaleListingsReport = React.lazy(() => import('./pages/StaleListingsReport').then(m => ({ default: m.StaleListingsReport })));
+const DashboardStaleListings = React.lazy(() => import('./pages/DashboardStaleListings').then(m => ({ default: m.DashboardStaleListings })));
 
 // Shared Components
 import { Navbar } from './components/shared/Navbar';
@@ -152,8 +158,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isOnboarding = pathname.startsWith('/get-started');
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin = pathname.startsWith('/admin');
+  const isStaleListings = pathname.startsWith('/stale-listings');
 
-  if (isDashboard || isAdmin) {
+  if (isDashboard || isAdmin || isStaleListings) {
     return <main className="flex-grow">{children}</main>;
   }
 
@@ -214,6 +221,12 @@ export default function App() {
               <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+              <Route path="/stale-listings" element={<StaleListingsLanding />} />
+              <Route path="/stale-listings/questions" element={<StaleListingsQuestions />} />
+              <Route path="/stale-listings/plan" element={<StaleListingsPlan />} />
+              <Route path="/stale-listings/complete" element={<StaleListingsComplete />} />
+              <Route path="/stale-listings/report/:reference" element={<StaleListingsReport />} />
+              <Route path="/dashboard/stale-listings" element={<AdminRoute><DashboardStaleListings /></AdminRoute>} />
             </Routes>
           </Suspense>
         </Layout>

@@ -416,3 +416,43 @@ class BuyerNetworkApplication(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="buyer_network_applications")
+
+
+class StaleListingAssessment(Base):
+    __tablename__ = "stale_listing_assessments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    phone_country_code: Mapped[str] = mapped_column(String(10), default="+44")
+    phone: Mapped[str] = mapped_column(String(30), nullable=False)
+    package: Mapped[str] = mapped_column(String(50), nullable=False)
+    property_address: Mapped[Optional[str]] = mapped_column(String(500))
+    listing_url: Mapped[Optional[str]] = mapped_column(Text)
+    questions_data: Mapped[Optional[str]] = mapped_column(Text)
+    ai_report_json: Mapped[Optional[str]] = mapped_column(Text)
+    ai_report_generated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    agent_notes: Mapped[Optional[str]] = mapped_column(Text)
+    agent_edited_report_json: Mapped[Optional[str]] = mapped_column(Text)
+    report_status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )
+    payment_status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )
+    sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
+    sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
+    reference: Mapped[str] = mapped_column(
+        String(20), nullable=False, unique=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

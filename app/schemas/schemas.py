@@ -414,3 +414,90 @@ class PublicAssessResponse(BaseModel):
     report: str
     property: PublicAssessProperty
     pricing: PublicAssessPricing
+
+
+# ── Stale Listings ──────────────────────────────────────────────────────────────
+
+class StaleListingSubmitRequest(BaseModel):
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field(..., min_length=1, max_length=100)
+    email: EmailStr
+    phone_country_code: str = Field("+44", max_length=10)
+    phone: str = Field(..., min_length=4, max_length=30)
+    package: str = Field(..., pattern="^(quick_insight|professional_review|premium_strategy)$")
+    property_address: Optional[str] = Field(None, max_length=500)
+    listing_url: Optional[str] = Field(None, max_length=2000)
+    questions_data: dict = Field(default_factory=dict)
+    redirect_url: Optional[str] = Field(None, max_length=2000)
+
+
+class StaleListingSubmitResponse(BaseModel):
+    assessment_id: str
+    reference: str
+    checkout_url: str
+    checkout_id: str
+    amount: float
+    message: str
+
+
+class StaleListingScores(BaseModel):
+    photos: int = 50
+    pricing: int = 50
+    description: int = 50
+    positioning: int = 50
+
+
+class StaleListingKeyFinding(BaseModel):
+    title: str
+    description: str
+    type: str
+
+
+class StaleListingActionItem(BaseModel):
+    priority: str
+    title: str
+    description: str
+
+
+class StaleListingReportData(BaseModel):
+    overall_score: int = 50
+    scores: StaleListingScores = Field(default_factory=StaleListingScores)
+    key_findings: list[StaleListingKeyFinding] = Field(default_factory=list)
+    action_plan: list[StaleListingActionItem] = Field(default_factory=list)
+    pricing_recommendation: str = ""
+    executive_summary: str = ""
+
+
+class StaleListingReportResponse(BaseModel):
+    assessment_id: str
+    reference: str
+    email: str
+    package: str
+    property_address: Optional[str]
+    listing_url: Optional[str]
+    report_status: str
+    payment_status: str
+    report_data: Optional[StaleListingReportData]
+    created_at: str
+
+
+class StaleListingAdminItem(BaseModel):
+    assessment_id: str
+    reference: str
+    email: str
+    first_name: str
+    last_name: str
+    package: str
+    property_address: Optional[str]
+    listing_url: Optional[str]
+    report_status: str
+    payment_status: str
+    created_at: str
+    ai_report_json: Optional[str]
+    agent_notes: Optional[str]
+
+
+class StaleListingAdminFinalizeRequest(BaseModel):
+    agent_notes: Optional[str] = None
+    agent_edited_report_json: Optional[str] = None
+    report_status: str = "completed"

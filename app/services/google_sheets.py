@@ -78,6 +78,11 @@ SHEET_TABS: dict[str, list[str]] = {
         "Timestamp", "User ID", "Full Name", "Email",
         "Property Address", "City", "Postcode", "Listing URL",
     ],
+    "Stale Listings": [
+        "Timestamp", "Assessment ID", "Reference", "Email",
+        "First Name", "Last Name", "Phone", "Package",
+        "Property Address", "Listing URL", "Payment Status", "Report Status",
+    ],
 }
 
 
@@ -391,6 +396,24 @@ def record_property_demand_check(user_data: dict[str, Any], form_data: dict[str,
         form_data.get("listing_url", ""),
     ]
     _append_row("Property Demand Checks", row)
+
+
+def record_stale_listing(form_data: dict[str, Any]) -> None:
+    row = [
+        datetime.utcnow().isoformat(),
+        str(form_data.get("assessment_id", "")),
+        form_data.get("reference", ""),
+        form_data.get("email", ""),
+        form_data.get("first_name", ""),
+        form_data.get("last_name", ""),
+        f"{form_data.get('phone_country_code', '')}{form_data.get('phone', '')}".strip(),
+        form_data.get("package", ""),
+        form_data.get("property_address", ""),
+        form_data.get("listing_url", ""),
+        form_data.get("payment_status", "pending"),
+        form_data.get("report_status", "pending"),
+    ]
+    _append_row("Stale Listings", row)
 
 
 def record_public_assessment(form_data: dict[str, Any]) -> None:

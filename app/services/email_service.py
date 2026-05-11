@@ -676,6 +676,67 @@ def send_test_email(to_email: str) -> bool:
     )
 
 
+def send_stale_listing_report_ready_sync(
+    to_email: str,
+    first_name: str,
+    reference: str,
+) -> bool:
+    """Send a report-ready notification to the homeowner."""
+    report_url = f"https://heyhavlo.com/stale-listings/report/{reference}"
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your StaleListings Report is Ready</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
+      <tr><td style="background:#000000;padding:24px 32px;">
+        <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">StaleListings</span>
+        <span style="color:#9ca3af;font-size:13px;margin-left:8px;">by HAVLO</span>
+      </td></tr>
+      <tr><td style="padding:40px 32px;">
+        <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#111827;">Your report is ready, {_html_lib.escape(first_name)}.</h1>
+        <p style="margin:0 0 24px;color:#6b7280;line-height:1.6;">Your StaleListings property assessment has been reviewed and your personalised report is now available. Click below to view your full report, including your listing score, key findings, and prioritised action plan.</p>
+        <p style="margin:0 0 8px;color:#9ca3af;font-size:13px;">Reference: <strong style="color:#111827;">{_html_lib.escape(reference)}</strong></p>
+        <div style="margin:32px 0;">
+          <a href="{report_url}" style="background:#000000;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-weight:600;font-size:15px;display:inline-block;">View My Report →</a>
+        </div>
+        <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.5;">If the button doesn't work, copy and paste this link into your browser:<br><a href="{report_url}" style="color:#6d28d9;">{report_url}</a></p>
+      </td></tr>
+      <tr><td style="padding:24px 32px;border-top:1px solid #e5e7eb;">
+        <p style="margin:0;color:#9ca3af;font-size:12px;">© 2026 Havlo Ltd. All rights reserved. StaleListings is a service by Havlo.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    plain_body = (
+        f"Hi {first_name},\n\n"
+        f"Your StaleListings property assessment report is ready.\n\n"
+        f"Reference: {reference}\n\n"
+        f"View your report here:\n{report_url}\n\n"
+        f"© 2026 Havlo Ltd. StaleListings by Havlo."
+    )
+
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[StaleListings] Your report is ready — {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+
+async def send_stale_listing_report_ready(
+    to_email: str,
+    first_name: str,
+    reference: str,
+) -> bool:
+    return await asyncio.to_thread(
+        send_stale_listing_report_ready_sync, to_email, first_name, reference
+    )
+
+
 # Sync helpers exposed for FastAPI BackgroundTasks (which prefer sync callables).
 __all__ = [
     "send_welcome_email",

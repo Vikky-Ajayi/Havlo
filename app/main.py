@@ -313,6 +313,37 @@ async def startup() -> None:
                             created_at TIMESTAMPTZ DEFAULT NOW()
                         );
                     """))
+                    await conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS stale_listing_assessments (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            email VARCHAR(320) NOT NULL,
+                            first_name VARCHAR(100) NOT NULL,
+                            last_name VARCHAR(100) NOT NULL,
+                            phone_country_code VARCHAR(10) DEFAULT '+44',
+                            phone VARCHAR(30) NOT NULL,
+                            package VARCHAR(50) NOT NULL,
+                            property_address VARCHAR(500),
+                            listing_url TEXT,
+                            questions_data TEXT,
+                            ai_report_json TEXT,
+                            ai_report_generated_at TIMESTAMPTZ,
+                            agent_notes TEXT,
+                            agent_edited_report_json TEXT,
+                            report_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+                            payment_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+                            sumup_checkout_id VARCHAR(255),
+                            sumup_checkout_url TEXT,
+                            reference VARCHAR(20) NOT NULL,
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ DEFAULT NOW()
+                        );
+                    """))
+                    await conn.execute(text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ix_sl_reference ON stale_listing_assessments (reference);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_sl_email ON stale_listing_assessments (email);"
+                    ))
                 else:
                     logger.info(
                         "Skipping Postgres-only schema sync on dialect=%s",
@@ -602,6 +633,10 @@ app.include_router(admin_debug.router, prefix=API_PREFIX)
 
 from app.routers import admin_users  # noqa: E402
 app.include_router(admin_users.router, prefix=API_PREFIX)
+
+from app.routers import stale_listings  # noqa: E402
+app.include_router(stale_listings.public_router, prefix=API_PREFIX)
+app.include_router(stale_listings.admin_router, prefix=API_PREFIX)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 

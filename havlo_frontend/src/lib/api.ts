@@ -730,4 +730,83 @@ export const api = {
       method: 'POST',
       body: { email, notes },
     }),
+
+  // ── Stale Listings (public, no auth) ─────────────────────────────────────────
+  staleListingsSubmit: (payload: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_country_code: string;
+    phone: string;
+    package: 'quick_insight' | 'professional_review' | 'premium_strategy';
+    property_address?: string;
+    listing_url?: string;
+    questions_data: Record<string, string | string[]>;
+    redirect_url?: string;
+  }) =>
+    request<{
+      assessment_id: string;
+      reference: string;
+      checkout_url: string;
+      checkout_id: string;
+      amount: number;
+      message: string;
+    }>('/stale-listings/submit', { method: 'POST', body: payload }),
+
+  staleListingsGetReport: (reference: string) =>
+    request<{
+      assessment_id: string;
+      reference: string;
+      email: string;
+      package: string;
+      property_address?: string;
+      listing_url?: string;
+      report_status: string;
+      payment_status: string;
+      report_data?: {
+        overall_score: number;
+        scores: { photos: number; pricing: number; description: number; positioning: number };
+        key_findings: { title: string; description: string; type: string }[];
+        action_plan: { priority: string; title: string; description: string }[];
+        pricing_recommendation: string;
+        executive_summary: string;
+      };
+      created_at: string;
+    }>(`/stale-listings/report/${encodeURIComponent(reference)}`),
+
+  staleListingsVerifyPayment: (reference: string) =>
+    request<{ payment_status: string; reference: string }>(
+      `/stale-listings/payment-verify/${encodeURIComponent(reference)}`,
+      { method: 'POST' }
+    ),
+
+  staleListingsAdminList: (token: string) =>
+    request<{
+      assessment_id: string;
+      reference: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+      package: string;
+      property_address?: string;
+      listing_url?: string;
+      report_status: string;
+      payment_status: string;
+      created_at: string;
+      ai_report_json?: string;
+      agent_notes?: string;
+    }[]>('/stale-listings/admin', { token }),
+
+  staleListingsAdminFinalize: (
+    assessmentId: string,
+    payload: { agent_notes?: string; agent_edited_report_json?: string; report_status: string },
+    token: string
+  ) =>
+    request<{ ok: boolean; report_status: string }>(
+      `/stale-listings/admin/${assessmentId}/finalize`,
+      { method: 'PUT', body: payload, token }
+    ),
+
+  staleListingsAdminDelete: (assessmentId: string, token: string) =>
+    request<{ ok: boolean }>(`/stale-listings/admin/${assessmentId}`, { method: 'DELETE', token }),
 };
