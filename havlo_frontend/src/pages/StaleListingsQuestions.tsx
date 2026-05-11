@@ -1,66 +1,76 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+const PURPLE = '#8B05D3';
+
 const QUESTIONS = [
   {
     id: 'q1_viewings',
     title: 'How many viewings has the property had since being listed?',
-    options: ['0–5 viewings', '6–15 viewings', '16–30 viewings', '30+ viewings', 'No viewings yet'],
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
+    options: ['0–5 viewings', '6–15 viewings', '16-20 viewings', '30+ viewings', 'None yet'],
     multiSelect: false,
   },
   {
     id: 'q2_feedback',
     title: 'What feedback are buyers giving after viewings?',
-    subtitle: 'Select all that apply',
-    options: ['Too expensive / overpriced', 'Rooms feel smaller than expected', 'Concerns about condition or work needed', 'Location or access concerns', 'No feedback provided', 'Mostly positive, but no offers yet'],
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
+    options: ['Too expensive / overpriced', 'Rooms feel smaller than expected', 'Condition or works needed', 'Location or surrounding area concerns', 'No feedback received', 'Mostly positive — no clear objections'],
     multiSelect: true,
   },
   {
-    id: 'q3_time_on_market',
-    title: 'How long has the property been on the market?',
-    options: ['Less than 1 month', '1–3 months', '3–6 months', '6–12 months', 'Over 12 months'],
+    id: 'q3_under_offer',
+    title: 'Has the property previously gone under offer and fallen through?',
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
+    options: ['No, not under offer yet', 'Yes, once', 'Yes, more than once'],
     multiSelect: false,
   },
   {
     id: 'q4_price_reduction',
-    title: 'Has the asking price been reduced since listing?',
-    options: ['No, the price is unchanged', 'Yes, reduced once', 'Yes, reduced multiple times', 'The price has been increased'],
+    title: 'Have you reduced the asking price since launch?',
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
+    options: ['No, price unchanged since launch', 'Yes, reduced once', 'Yes, reduced more than once'],
     multiSelect: false,
   },
   {
-    id: 'q5_marketing',
+    id: 'q5_flexibility',
+    title: 'Are you open to adjusting your pricing or marketing strategy?',
+    subtitle: 'This helps us understand how flexible you are and tailor recommendations accordingly.',
+    options: ['Yes, open to recommendations', 'Price is fixed, but open on marketing', 'Not sure — depends on the advice', 'Prefer to keep things as they are for now'],
+    multiSelect: false,
+  },
+  {
+    id: 'q6_marketing',
     title: 'How is the property currently being marketed?',
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
     options: ['Rightmove only', 'Rightmove and Zoopla', 'Multiple portals including OnTheMarket', 'Through a local estate agent only', 'Portals plus social media'],
     multiSelect: false,
   },
   {
-    id: 'q6_listing_features',
+    id: 'q7_listing_features',
     title: 'Which of the following apply to your listing?',
-    subtitle: 'Select all that apply',
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
     options: ['Professional photos were taken', 'A virtual tour is available', 'A floor plan is included', 'The property description is detailed', 'None of the above'],
     multiSelect: true,
   },
   {
-    id: 'q7_property_type',
+    id: 'q8_property_type',
     title: 'What type of property is it?',
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
     options: ['Detached house', 'Semi-detached house', 'Terraced house', 'Flat / apartment', 'Bungalow', 'Other'],
     multiSelect: false,
   },
   {
-    id: 'q8_asking_price',
+    id: 'q9_asking_price',
     title: 'What is the approximate asking price?',
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
     options: ['Under £200,000', '£200,000 – £350,000', '£350,000 – £500,000', '£500,000 – £750,000', '£750,000 – £1,000,000', 'Over £1,000,000'],
-    multiSelect: false,
-  },
-  {
-    id: 'q9_primary_goal',
-    title: 'What is your primary goal?',
-    options: ['Sell as quickly as possible', 'Achieve the best possible price', 'Find the right buyer (not just any buyer)', 'Relocating and need certainty'],
     multiSelect: false,
   },
   {
     id: 'q10_challenge',
     title: "What is the biggest challenge you're currently facing?",
+    subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
     options: ['Not enough viewings', 'Getting viewings but no offers', 'Offers are too low', 'Uncertain about what to do next', "My agent isn't communicating enough"],
     multiSelect: false,
   },
@@ -110,30 +120,46 @@ export function StaleListingsQuestions() {
     navigate('/stale-listings/plan');
   };
 
-  const progress = ((currentQ + 1) / QUESTIONS.length) * 100;
+  const handleBack = () => {
+    if (currentQ === 0) {
+      navigate('/stale-listings');
+    } else {
+      setCurrentQ(prev => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F8F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F5F5F5', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .sl-q-back-btn { display: inline-flex; }
+        .sl-q-continue-btn { padding: 14px 32px !important; border-radius: 8px !important; }
+        .sl-q-nav-desktop { display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; }
+        .sl-q-nav-mobile { display: none; margin-top: 24px; }
+        @media (max-width: 768px) {
+          .sl-q-nav-desktop { display: none !important; }
+          .sl-q-nav-mobile { display: flex !important; flex-direction: column; gap: 10px; }
+          .sl-stepper-label { display: none !important; }
+        }
+      `}</style>
 
       {/* HEADER */}
       <header style={{ background: '#fff', borderBottom: '1px solid #F0F0F0' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px', height: 72, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1F1F1E', letterSpacing: '-0.4px', lineHeight: 1 }}>StaleListings</span>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 10, color: '#aaa', letterSpacing: 0.2 }}>by HAVLO</span>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 20, color: '#1F1F1E', letterSpacing: '-0.5px', lineHeight: 1 }}>StaleListings</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 10, color: '#aaa', letterSpacing: 0.3 }}>By HAVLO</span>
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#888' }}>
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>Secure assessment · SSL encrypted</span>
+            <span style={{ fontSize: 13 }}>🔒</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: '#888' }}>Secure assessment · SSL encrypted</span>
           </div>
         </div>
       </header>
 
       {/* STEPPER */}
       <div style={{ background: '#fff', borderBottom: '1px solid #F0F0F0' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px 24px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '18px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
             {[
               { num: 1, label: 'Your property' },
@@ -141,54 +167,48 @@ export function StaleListingsQuestions() {
               { num: 3, label: 'Completed' },
             ].map((step, i) => {
               const isActive = step.num === 1;
-              const isDone = step.num < 1;
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
-                      width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: isActive ? '#1F1F1E' : isDone ? '#1F1F1E' : '#F0F0F0',
-                      color: isActive || isDone ? '#fff' : '#aaa',
-                      fontWeight: 700, fontSize: 13, flexShrink: 0,
+                      width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: isActive ? PURPLE : 'transparent',
+                      border: isActive ? `2px solid ${PURPLE}` : '2px solid #D0D0D0',
+                      color: isActive ? '#fff' : '#B0B0B0',
+                      fontWeight: 700, fontSize: 14, flexShrink: 0,
                     }}>
-                      {isDone ? (
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                      ) : step.num}
+                      {step.num}
                     </div>
-                    <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#1F1F1E' : '#aaa' }}>{step.label}</span>
+                    <span className="sl-stepper-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#1F1F1E' : '#B0B0B0' }}>{step.label}</span>
                   </div>
                   {i < 2 && (
-                    <div style={{ width: 80, height: 1, background: '#E8E8E8', margin: '0 16px' }} />
+                    <div style={{ width: 64, height: 1, background: '#E0E0E0', margin: '0 16px' }} />
                   )}
                 </div>
               );
             })}
           </div>
         </div>
-        {/* Progress bar */}
-        <div style={{ height: 3, background: '#F0F0F0' }}>
-          <div style={{ height: 3, background: '#1F1F1E', width: `${progress}%`, transition: 'width 0.4s ease' }} />
-        </div>
       </div>
 
-      {/* QUESTION */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 24px 80px' }}>
-        <div style={{ width: '100%', maxWidth: 640 }}>
+      {/* QUESTION AREA */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '48px 24px 80px' }}>
+        <div style={{ width: '100%', maxWidth: 600 }}>
 
-          {/* Question counter */}
-          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 11, color: '#aaa', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 20 }}>
-            Question {currentQ + 1} of {QUESTIONS.length}
+          {/* Question label */}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 12, color: PURPLE, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 }}>
+            QUESTION {currentQ + 1} OF {QUESTIONS.length}
           </div>
 
           {/* Question title */}
-          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(18px, 3vw, 26px)', color: '#1F1F1E', letterSpacing: '-0.5px', lineHeight: 1.3, margin: '0 0 8px' }}>
+          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 800, fontSize: 'clamp(18px, 3vw, 24px)', color: '#1F1F1E', letterSpacing: '-0.5px', lineHeight: 1.3, margin: '0 0 10px' }}>
             {question.title}
           </h2>
 
+          {/* Subtitle */}
           {question.subtitle && (
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#A409D2', fontWeight: 500, marginBottom: 24, marginTop: 0 }}>{question.subtitle}</p>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#666', lineHeight: 1.6, marginBottom: 28, marginTop: 0 }}>{question.subtitle}</p>
           )}
-          {!question.subtitle && <div style={{ height: 24 }} />}
 
           {/* Options */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -202,25 +222,26 @@ export function StaleListingsQuestions() {
                     width: '100%',
                     textAlign: 'left',
                     padding: '16px 20px',
-                    borderRadius: 12,
-                    border: selected ? '2px solid #1F1F1E' : '1.5px solid #E8E8E8',
-                    background: selected ? '#1F1F1E' : '#fff',
+                    borderRadius: 10,
+                    border: selected ? `2px solid ${PURPLE}` : '1.5px solid #E0E0E0',
+                    background: '#fff',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 14,
-                    transition: 'all 0.15s ease',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
+                  {/* Radio / Checkbox circle */}
                   <div style={{
-                    width: 20, height: 20, borderRadius: question.multiSelect ? 4 : '50%',
-                    border: selected ? '2px solid #fff' : '2px solid #D0D0D0',
-                    background: selected ? '#fff' : 'transparent',
+                    width: 22, height: 22, borderRadius: question.multiSelect ? 6 : '50%',
+                    border: selected ? `2px solid ${PURPLE}` : '2px solid #C8C8C8',
+                    background: selected ? PURPLE : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0, transition: 'all 0.15s ease',
                   }}>
                     {selected && (
-                      <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="#1F1F1E" strokeWidth={3}>
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -229,9 +250,8 @@ export function StaleListingsQuestions() {
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: selected ? 600 : 400,
                     fontSize: 15,
-                    color: selected ? '#fff' : '#1F1F1E',
+                    color: '#1F1F1E',
                     lineHeight: 1.4,
-                    transition: 'color 0.15s ease',
                   }}>
                     {option}
                   </span>
@@ -240,48 +260,87 @@ export function StaleListingsQuestions() {
             })}
           </div>
 
-          {/* Navigation */}
-          <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
+          {/* Desktop nav: Back (left) + Continue (right) */}
+          <div className="sl-q-nav-desktop">
             {currentQ > 0 && (
               <button
-                onClick={() => { setCurrentQ(prev => prev - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                onClick={handleBack}
                 style={{
-                  padding: '14px 24px',
-                  border: '1.5px solid #E0E0E0',
-                  borderRadius: 48,
+                  padding: '13px 28px',
+                  border: '1.5px solid #D0D0D0',
+                  borderRadius: 8,
                   background: '#fff',
                   fontFamily: 'Inter, sans-serif',
                   fontWeight: 600,
                   fontSize: 14,
                   color: '#444',
                   cursor: 'pointer',
-                  letterSpacing: '-0.1px',
                 }}
               >
-                ← Back
+                Back
               </button>
             )}
             <button
               onClick={handleContinue}
               disabled={!isAnswered}
               style={{
-                flex: 1,
-                padding: '14px',
-                borderRadius: 48,
+                padding: '13px 36px',
+                borderRadius: 8,
                 border: 'none',
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 700,
                 fontSize: 15,
                 cursor: isAnswered ? 'pointer' : 'not-allowed',
-                background: isAnswered ? '#1F1F1E' : '#EBEBEB',
-                color: isAnswered ? '#fff' : '#aaa',
-                transition: 'background 0.2s, color 0.2s',
-                letterSpacing: '-0.2px',
+                background: isAnswered ? '#1F1F1E' : '#D0D0D0',
+                color: '#fff',
+                transition: 'background 0.2s',
               }}
             >
-              {currentQ === QUESTIONS.length - 1 ? 'See Pricing →' : 'Continue →'}
+              Continue
             </button>
           </div>
+
+          {/* Mobile nav: full-width Continue, then Back below */}
+          <div className="sl-q-nav-mobile">
+            <button
+              onClick={handleContinue}
+              disabled={!isAnswered}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: 10,
+                border: 'none',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 16,
+                cursor: isAnswered ? 'pointer' : 'not-allowed',
+                background: isAnswered ? '#1F1F1E' : '#D0D0D0',
+                color: '#fff',
+              }}
+            >
+              Continue
+            </button>
+            {currentQ > 0 && (
+              <button
+                onClick={handleBack}
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  border: '1.5px solid #D0D0D0',
+                  borderRadius: 10,
+                  background: '#fff',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600,
+                  fontSize: 16,
+                  color: '#444',
+                  cursor: 'pointer',
+                }}
+              >
+                Back
+              </button>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
