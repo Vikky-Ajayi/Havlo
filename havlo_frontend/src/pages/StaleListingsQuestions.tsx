@@ -101,6 +101,7 @@ export function StaleListingsQuestions() {
     if (!isAnswered) return;
     if (currentQ < QUESTIONS.length - 1) {
       setCurrentQ(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     sessionStorage.setItem('sl_answers', JSON.stringify(answers));
@@ -109,101 +110,153 @@ export function StaleListingsQuestions() {
     navigate('/stale-listings/plan');
   };
 
+  const progress = ((currentQ + 1) / QUESTIONS.length) * 100;
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/stale-listings')}>
-            <span className="font-bold text-black text-lg tracking-tight">StaleListings</span>
-            <span className="text-gray-400 text-sm">by HAVLO</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-1.5 text-gray-400 text-xs font-medium">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div style={{ minHeight: '100vh', background: '#F7F8F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+
+      {/* HEADER */}
+      <header style={{ background: '#fff', borderBottom: '1px solid #F0F0F0' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px', height: 72, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1F1F1E', letterSpacing: '-0.4px', lineHeight: 1 }}>StaleListings</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 10, color: '#aaa', letterSpacing: 0.2 }}>by HAVLO</span>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#888' }}>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Secure assessment · SSL encrypted
+            <span style={{ fontSize: 12, fontWeight: 500 }}>Secure assessment · SSL encrypted</span>
           </div>
         </div>
       </header>
 
-      {/* Stepper */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-center">
+      {/* STEPPER */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #F0F0F0' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '16px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0 }}>
             {[
               { num: 1, label: 'Your property' },
               { num: 2, label: 'Choose Plan' },
               { num: 3, label: 'Completed' },
-            ].map((step, i) => (
-              <div key={i} className="flex items-center">
-                <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step.num === 1 ? 'bg-black text-white' : 'bg-gray-100 text-gray-400'}`}>
-                    {step.num}
+            ].map((step, i) => {
+              const isActive = step.num === 1;
+              const isDone = step.num < 1;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: isActive ? '#1F1F1E' : isDone ? '#1F1F1E' : '#F0F0F0',
+                      color: isActive || isDone ? '#fff' : '#aaa',
+                      fontWeight: 700, fontSize: 13, flexShrink: 0,
+                    }}>
+                      {isDone ? (
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      ) : step.num}
+                    </div>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#1F1F1E' : '#aaa' }}>{step.label}</span>
                   </div>
-                  <span className={`text-sm font-medium hidden sm:block ${step.num === 1 ? 'text-black' : 'text-gray-400'}`}>{step.label}</span>
+                  {i < 2 && (
+                    <div style={{ width: 80, height: 1, background: '#E8E8E8', margin: '0 16px' }} />
+                  )}
                 </div>
-                {i < 2 && <div className="w-8 sm:w-16 h-px bg-gray-200 mx-3" />}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-      </div>
-
-      {/* Progress bar */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="h-1 bg-gray-100">
-          <div
-            className="h-1 bg-black transition-all duration-500"
-            style={{ width: `${((currentQ + 1) / QUESTIONS.length) * 100}%` }}
-          />
+        {/* Progress bar */}
+        <div style={{ height: 3, background: '#F0F0F0' }}>
+          <div style={{ height: 3, background: '#1F1F1E', width: `${progress}%`, transition: 'width 0.4s ease' }} />
         </div>
       </div>
 
-      {/* Question */}
-      <div className="flex-1 flex items-start justify-center px-4 sm:px-6 py-10">
-        <div className="w-full max-w-2xl">
-          <div className="text-xs text-gray-400 font-medium mb-3 uppercase tracking-wide">
+      {/* QUESTION */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '48px 24px 80px' }}>
+        <div style={{ width: '100%', maxWidth: 640 }}>
+
+          {/* Question counter */}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 11, color: '#aaa', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 20 }}>
             Question {currentQ + 1} of {QUESTIONS.length}
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-black mb-2">{question.title}</h2>
-          {question.subtitle && <p className="text-sm text-violet-600 font-medium mb-6">{question.subtitle}</p>}
-          {!question.subtitle && <div className="mb-6" />}
 
-          <div className="space-y-3">
+          {/* Question title */}
+          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(18px, 3vw, 26px)', color: '#1F1F1E', letterSpacing: '-0.5px', lineHeight: 1.3, margin: '0 0 8px' }}>
+            {question.title}
+          </h2>
+
+          {question.subtitle && (
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#A409D2', fontWeight: 500, marginBottom: 24, marginTop: 0 }}>{question.subtitle}</p>
+          )}
+          {!question.subtitle && <div style={{ height: 24 }} />}
+
+          {/* Options */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {question.options.map((option, i) => {
               const selected = isSelected(option);
               return (
                 <button
                   key={i}
                   onClick={() => handleSelect(option)}
-                  className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
-                    selected
-                      ? 'border-violet-500 bg-violet-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                  }`}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '16px 20px',
+                    borderRadius: 12,
+                    border: selected ? '2px solid #1F1F1E' : '1.5px solid #E8E8E8',
+                    background: selected ? '#1F1F1E' : '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    transition: 'all 0.15s ease',
+                  }}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                    selected ? 'border-violet-500 bg-violet-500' : 'border-gray-300 bg-white'
-                  }`}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: question.multiSelect ? 4 : '50%',
+                    border: selected ? '2px solid #fff' : '2px solid #D0D0D0',
+                    background: selected ? '#fff' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, transition: 'all 0.15s ease',
+                  }}>
                     {selected && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="#1F1F1E" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-                  <span className={`text-sm font-medium leading-snug ${selected ? 'text-violet-700' : 'text-gray-800'}`}>{option}</span>
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: selected ? 600 : 400,
+                    fontSize: 15,
+                    color: selected ? '#fff' : '#1F1F1E',
+                    lineHeight: 1.4,
+                    transition: 'color 0.15s ease',
+                  }}>
+                    {option}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Nav buttons */}
-          <div className="flex gap-3 mt-8">
+          {/* Navigation */}
+          <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
             {currentQ > 0 && (
               <button
-                onClick={() => setCurrentQ(prev => prev - 1)}
-                className="px-6 py-3.5 border-2 border-gray-200 rounded-xl font-semibold text-sm text-gray-700 hover:border-gray-300 transition-colors"
+                onClick={() => { setCurrentQ(prev => prev - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                style={{
+                  padding: '14px 24px',
+                  border: '1.5px solid #E0E0E0',
+                  borderRadius: 48,
+                  background: '#fff',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  color: '#444',
+                  cursor: 'pointer',
+                  letterSpacing: '-0.1px',
+                }}
               >
                 ← Back
               </button>
@@ -211,11 +264,20 @@ export function StaleListingsQuestions() {
             <button
               onClick={handleContinue}
               disabled={!isAnswered}
-              className={`flex-1 py-3.5 rounded-xl font-bold text-sm transition-colors ${
-                isAnswered
-                  ? 'bg-black text-white hover:bg-gray-900 cursor-pointer'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: 48,
+                border: 'none',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: isAnswered ? 'pointer' : 'not-allowed',
+                background: isAnswered ? '#1F1F1E' : '#EBEBEB',
+                color: isAnswered ? '#fff' : '#aaa',
+                transition: 'background 0.2s, color 0.2s',
+                letterSpacing: '-0.2px',
+              }}
             >
               {currentQ === QUESTIONS.length - 1 ? 'See Pricing →' : 'Continue →'}
             </button>

@@ -1,354 +1,505 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function FAQItem({ q, a }: { q: string; a: string }) {
+function FAQItem({ q, a }: { q: string; a: string | React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+    <div style={{ borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full px-6 py-4 text-left flex items-center justify-between gap-4"
+        className="w-full py-5 text-left flex items-center justify-between gap-4"
       >
-        <span className="font-medium text-black text-sm">{q}</span>
-        <svg className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: '#1F1F1E', letterSpacing: '-0.3px' }}>{q}</span>
+        <span style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#666', transition: 'transform 0.2s', transform: open ? 'rotate(45deg)' : 'rotate(0deg)' }}>
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
+        </span>
       </button>
       {open && (
-        <div className="px-6 pb-5">
-          <p className="text-sm text-gray-500 leading-relaxed">{a}</p>
+        <div className="pb-5">
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#666', lineHeight: 1.65 }}>{a}</p>
         </div>
       )}
     </div>
   );
 }
 
-const FAQS = [
-  { q: 'How quickly will I receive my report?', a: 'Quick Insight reports are typically ready within 24 hours. Professional Review takes up to 48 hours as it includes human agent review. Premium Strategy includes a consultation call and is delivered within 5 business days.' },
-  { q: 'Do I need to switch estate agent?', a: 'No. Our reports are designed to complement your existing arrangement. Share the findings with your current agent or use the insights to have a more informed conversation about your sale strategy.' },
-  { q: 'Will this tell me to reduce my price?', a: "Only if the data supports it. Many stale listings have fixable issues that don't require a price reduction — such as poor photography, weak descriptions, or insufficient marketing reach. We tell you what the evidence says." },
-  { q: 'What information do I need to provide?', a: 'Just your listing URL or property address, plus answers to 10 quick questions about your situation. The whole process takes under 3 minutes.' },
-  { q: 'Is my information kept confidential?', a: 'Yes. Your data is handled securely and never sold to third parties. We use your information only to generate your report and to communicate with you about the assessment service.' },
-  { q: 'Can I share my report with my agent?', a: 'Yes, and we encourage it. Your report is designed to be actionable — you can forward it directly to your estate agent with specific recommendations they can act on immediately.' },
+const SL_FAQS = [
+  {
+    q: '1. What is StaleListings.com?',
+    a: 'StaleListings.com helps homeowners identify what may be slowing down their home sale, with personalised recommendations powered by property data and experienced local agent insights.',
+  },
+  {
+    q: '2. Who is this for?',
+    a: (
+      <span>The platform is designed for:<br />• homeowners preparing to sell<br />• sellers already on the market<br />• homeowners whose listings have gone stale<br />• anyone wanting a second opinion on their sale strategy</span>
+    ),
+  },
+  {
+    q: '3. How does it work?',
+    a: 'Simply enter your property details or upload your listing link. We analyse your home and provide actionable recommendations to improve buyer appeal and selling potential.',
+  },
+  {
+    q: '4. Do I need to switch estate agents?',
+    a: 'No. Our recommendations are designed to work alongside your current estate agent.',
+  },
+  {
+    q: '5. Can I use this before listing my home?',
+    a: 'Yes. Many homeowners use StaleListings.com before going live to avoid common listing mistakes.',
+  },
 ];
+
+const TESTIMONIALS = [
+  { text: 'After 3 months with barely any viewings, StaleListings helped us spot issues with our photos and pricing strategy. We updated the listing and received two offers within weeks', name: '— Sarah M.' },
+  { text: 'Our estate agent was great, but having an extra layer of analysis made a huge difference. The recommendations were detailed, practical, and easy to implement.', name: '— James & Olivia R.' },
+  { text: "We used StaleListings before putting our house on the market and avoided mistakes that probably would've cost us months. The report was incredibly helpful.", name: '— Daniel P.' },
+  { text: 'The insights felt like having a second opinion from someone who actually understood buyer behaviour. Small changes made a surprisingly big impact.', name: '— Priya K.' },
+  { text: 'Our listing had gone stale after 10 weeks. StaleListings identified presentation and description issues our agent never mentioned. Viewings picked up almost immediately', name: '— Emma L.' },
+  { text: "What I liked most was that we didn't need to change agents. We simply used the recommendations alongside our current estate agent and improved the listing.", name: '— Michael T.' },
+];
+
+const PurpleHouseIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+    <path d="M5 19.9825V24.1665C5 29.6662 5 32.416 6.70855 34.1247C8.41708 35.8332 11.1669 35.8332 16.6667 35.8332H23.3333C28.833 35.8332 31.5828 35.8332 33.2915 34.1247C35 32.416 35 29.6662 35 24.1665V19.9825C35 17.1803 35 15.7794 34.4068 14.5666C33.8137 13.3538 32.7078 12.4936 30.496 10.7734L27.1627 8.18075C23.7218 5.50459 22.0015 4.1665 20 4.1665C17.9985 4.1665 16.2782 5.50459 12.8374 8.18075L9.50402 10.7734C7.29222 12.4936 6.18632 13.3538 5.59317 14.5666C5 15.7794 5 17.1803 5 19.9825Z" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M28.333 29.1667V22.5" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const PurpleLightbulbIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+    <path d="M10.149 24.9986C9.51836 23.5809 9.16675 22.0038 9.16675 20.3418C9.16675 14.1692 14.017 9.16528 20.0001 9.16528C25.9832 9.16528 30.8334 14.1692 30.8334 20.3418C30.8334 22.0038 30.4818 23.5809 29.8511 24.9986" stroke="#A409D2" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M20 3.33191V4.99858" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M36.6667 19.9988H35" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4.99992 19.9988H3.33325" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M31.784 8.21313L30.6055 9.39165" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M9.39458 9.39324L8.21606 8.21472" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M24.1951 32.1759C25.8791 31.6313 26.5544 30.0899 26.7444 28.5396C26.8011 28.0764 26.4201 27.6923 25.9534 27.6923L14.1282 27.6926C13.6455 27.6926 13.2579 28.1023 13.3155 28.5814C13.5016 30.1288 13.9713 31.2591 15.7558 32.1759M24.1951 32.1759C24.1951 32.1759 16.0496 32.1759 15.7558 32.1759M24.1951 32.1759C23.9926 35.4176 23.0564 36.7014 20.0114 36.6654C16.7544 36.7256 16.0051 35.1388 15.7558 32.1759" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const PurpleHandshakeIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+    <path d="M36.6663 11.2498H32.0182C31.0163 11.2498 30.5153 11.2498 30.043 11.1068C29.5707 10.9638 29.1538 10.6859 28.3202 10.1302C27.0698 9.29655 25.6433 8.34559 24.9347 8.13104C24.2262 7.9165 23.4747 7.9165 21.9718 7.9165C19.9282 7.9165 18.6108 7.9165 17.692 8.2971C16.7732 8.6777 16.0506 9.40029 14.6055 10.8454L13.3337 12.1172C13.008 12.4429 12.8451 12.6058 12.7446 12.7665C12.3719 13.3625 12.4132 14.1283 12.8478 14.6807C12.9651 14.8297 13.1445 14.9741 13.5033 15.2629C14.8296 16.3302 16.7417 16.2237 17.9427 15.0155L19.9997 12.9463H21.6663L31.6663 23.0058C32.5868 23.9318 32.5868 25.433 31.6663 26.359C30.7458 27.285 29.2535 27.285 28.333 26.359L27.4997 25.5206M22.4997 27.1973L24.1663 28.8738C25.0868 29.7998 26.5792 29.7998 27.4997 28.8738C28.4202 27.948 28.4202 26.4466 27.4997 25.5206L22.4997 20.491M19.1663 23.864L22.4997 27.1973C23.4202 28.1231 23.4202 29.6245 22.4997 30.5505C21.5792 31.4763 20.0868 31.4763 19.1663 30.5505L16.6663 28.0355M3.33301 24.5831H3.86457C5.24647 24.5831 5.93744 24.5831 6.55692 24.8435C7.17641 25.104 7.65992 25.5975 8.62696 26.5846L13.333 31.3888C14.2535 32.3146 15.7459 32.3146 16.6663 31.3888C17.5868 30.4628 17.5868 28.9615 16.6663 28.0355L15.833 27.1973" stroke="#A409D2" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M36.6667 24.5835H32.5" stroke="#A409D2" strokeWidth="3" strokeLinecap="round"/>
+    <path d="M14.1663 11.25H3.33301" stroke="#A409D2" strokeWidth="3" strokeLinecap="round"/>
+  </svg>
+);
+
+const TrustpilotStars = () => (
+  <svg width="100" height="20" viewBox="0 0 160 30" fill="none">
+    <rect width="30" height="30" fill="#00B67A"/>
+    <rect x="32.5" width="30" height="30" fill="#00B67A"/>
+    <rect x="65" width="30" height="30" fill="#00B67A"/>
+    <rect x="97.5" width="30" height="30" fill="#00B67A"/>
+    <rect x="130" width="30" height="30" fill="#00B67A"/>
+    <path d="M15 20.2183L19.5625 19.062L21.4687 24.937L15 20.2183ZM25.5 12.6245H17.4688L15 5.06201L12.5312 12.6245H4.5L11 17.312L8.53125 24.8745L15.0312 20.187L19.0312 17.312L25.5 12.6245Z" fill="white"/>
+    <path d="M47.5 20.2183L52.0625 19.062L53.9687 24.937L47.5 20.2183ZM58 12.6245H49.9687L47.5 5.06201L45.0313 12.6245H37L43.5 17.312L41.0312 24.8745L47.5312 20.187L51.5312 17.312L58 12.6245Z" fill="white"/>
+    <path d="M80 20.2183L84.5625 19.062L86.4688 24.937L80 20.2183ZM90.5 12.6245H82.4687L80 5.06201L77.5313 12.6245H69.5L76 17.312L73.5313 24.8745L80.0313 20.187L84.0312 17.312L90.5 12.6245Z" fill="white"/>
+    <path d="M112.5 20.2183L117.063 19.062L118.969 24.937L112.5 20.2183ZM123 12.6245H114.969L112.5 5.06201L110.031 12.6245H102L108.5 17.312L106.031 24.8745L112.531 20.187L116.531 17.312L123 12.6245Z" fill="white"/>
+    <path d="M145 20.2183L149.563 19.062L151.469 24.937L145 20.2183ZM155.5 12.6245H147.469L145 5.06201L142.531 12.6245H134.5L141 17.312L138.531 24.8745L145.031 20.187L149.031 17.312L155.5 12.6245Z" fill="white"/>
+  </svg>
+);
+
+const QuoteIcon = () => (
+  <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
+    <path d="M0 22V13.2C0 5.86667 3.46667 1.46667 10.4 0L11.6 2.4C8.66667 3.2 6.93333 5.06667 6.4 8H12V22H0ZM16 22V13.2C16 5.86667 19.4667 1.46667 26.4 0L27.6 2.4C24.6667 3.2 22.9333 5.06667 22.4 8H28V22H16Z" fill="#A409D2" fillOpacity="0.15"/>
+  </svg>
+);
+
+const CheckIcon = ({ purple = false }: { purple?: boolean }) => (
+  <svg className="flex-shrink-0 mt-0.5" width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path d="M4 10L8 14L16 6" stroke={purple ? '#A409D2' : '#313131'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 export function StaleListingsLanding() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<'url' | 'address'>('url');
-  const [url, setUrl] = useState('');
-  const [address, setAddress] = useState('');
+  const [input, setInput] = useState('');
+  const [faqCount, setFaqCount] = useState(3);
 
   const handleStart = () => {
     const params = new URLSearchParams();
-    if (tab === 'url' && url.trim()) params.set('url', url.trim());
-    else if (tab === 'address' && address.trim()) params.set('address', address.trim());
+    const v = input.trim();
+    if (v) {
+      if (v.startsWith('http') || v.includes('rightmove') || v.includes('zoopla') || v.includes('onthemarket')) {
+        params.set('url', v);
+      } else {
+        params.set('address', v);
+      }
+    }
     navigate(`/stale-listings/questions${params.toString() ? '?' + params.toString() : ''}`);
   };
 
+  const PLANS = [
+    {
+      id: 'quick_insight',
+      name: 'Quick Insight',
+      price: '£79.99',
+      tagline: 'Vendors wanting a fast professional opinion.',
+      features: [
+        'Data-driven property market analysis',
+        'Human estate agent review',
+        'Local comparable sales review',
+        'Pricing position check',
+        'Online listing performance review',
+        'Summary report with key issues slowing the sale',
+        '3–5 actionable recommendations',
+        'Turnaround: 24–48 hours',
+      ],
+      featured: false,
+    },
+    {
+      id: 'professional_review',
+      name: 'Professional Review',
+      price: '£299.99',
+      tagline: 'Serious sellers wanting expert guidance to improve saleability.',
+      preNote: 'Includes everything in Quick Insight, plus',
+      features: [
+        'Buyer appeal analysis',
+        'Listing photography & description review',
+        'Local competition benchmarking',
+        '"Why buyers may be overlooking this property" section',
+        'Recommended pricing strategy',
+        'Priority turnaround',
+        'Turnaround: 24 hours',
+      ],
+      featured: false,
+      bestValue: true,
+    },
+    {
+      id: 'premium_strategy',
+      name: 'Premium Strategy',
+      price: '£1,499.99',
+      tagline: 'High-value homes or properties stuck on the market for months.',
+      preNote: 'Includes everything in professional review plus:',
+      features: [
+        'Detailed property positioning strategy',
+        'Multi-platform listing audit',
+        'Area demand and buyer demographic analysis',
+        'Home presentation/staging recommendations',
+        'Marketing improvement roadmap',
+        'Re-launch strategy',
+        'Estate agent strategy review with improvement recommendations',
+        'Follow-up review after changes are implemented',
+        'Direct access for Q&A support for 14–30 days',
+        '24 hours + follow-up support',
+      ],
+      featured: false,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-white font-sans">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/stale-listings')}>
-            <span className="font-bold text-black text-xl tracking-tight">StaleListings</span>
-            <span className="text-gray-400 text-sm font-normal">by HAVLO</span>
+    <div style={{ fontFamily: 'Inter, sans-serif', background: '#fff', minHeight: '100vh' }}>
+
+      {/* NAVBAR */}
+      <header style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 22, color: '#313131', letterSpacing: '-0.5px', lineHeight: 1 }}>StaleListings</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 11, color: '#888', letterSpacing: 0.2 }}>by HAVLO</span>
           </div>
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-sm text-gray-500 hover:text-black transition-colors">How it works</a>
-            <a href="#pricing" className="text-sm text-gray-500 hover:text-black transition-colors">Pricing</a>
-            <a href="#faq" className="text-sm text-gray-500 hover:text-black transition-colors">FAQ</a>
-            <button onClick={handleStart} className="bg-black text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-gray-900 transition-colors">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
+            <a href="#how-it-works" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 15, color: '#313131', textDecoration: 'none', opacity: 0.8 }}>How it works</a>
+            <a href="#faq" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 15, color: '#313131', textDecoration: 'none', opacity: 0.8 }}>Faq</a>
+            <a href="#pricing" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 15, color: '#313131', textDecoration: 'none', opacity: 0.8 }}>Pricing</a>
+            <button onClick={handleStart} style={{ background: '#313131', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, padding: '12px 24px', borderRadius: 48, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px' }}>
               Start Assessment
             </button>
           </nav>
-          <button onClick={handleStart} className="md:hidden bg-black text-white text-sm font-semibold px-4 py-2 rounded-lg">
-            Start
-          </button>
         </div>
+        {/* Mobile nav */}
+        <style>{`
+          @media (max-width: 768px) {
+            .sl-desktop-nav { display: none !important; }
+            .sl-mobile-btn { display: flex !important; }
+          }
+          @media (min-width: 769px) {
+            .sl-mobile-btn { display: none !important; }
+          }
+        `}</style>
       </header>
 
-      {/* Hero */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-24 text-center">
-        <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-100 text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-8 uppercase tracking-wide">
-          <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse" />
-          Trusted by 10,000+ UK homeowners
-        </div>
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black tracking-tight max-w-4xl mx-auto leading-[1.1] mb-6">
-          Don't Let Your Home<br className="hidden sm:block" /> Sit on the Market
-        </h1>
-        <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-12 leading-relaxed">
-          Thousands of UK properties stall each year — not because of market conditions, but because of fixable issues buyers won't tell you about. Get a data-backed assessment in minutes.
-        </p>
+      {/* HERO */}
+      <section style={{ background: '#fff', overflow: 'hidden', position: 'relative', padding: '80px 24px 64px' }}>
+        {/* Pink blur blob */}
+        <div style={{ position: 'absolute', right: -200, top: -160, width: 700, height: 580, borderRadius: '50%', background: '#FFB0E6', filter: 'blur(180px)', opacity: 0.55, pointerEvents: 'none' }} />
 
-        <div className="max-w-2xl mx-auto">
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-5 w-fit mx-auto">
-            {(['url', 'address'] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)} className={`px-5 py-2 text-sm font-medium rounded-md transition-all ${tab === t ? 'bg-white text-black shadow-sm' : 'text-gray-500'}`}>
-                {t === 'url' ? 'Listing URL' : 'Property Address'}
-              </button>
-            ))}
-          </div>
-          {tab === 'url' ? (
-            <div className="flex gap-3 flex-col sm:flex-row">
-              <input
-                type="url"
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleStart()}
-                placeholder="Paste your Rightmove, Zoopla or OTM listing URL…"
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-              />
-              <button onClick={handleStart} className="bg-black text-white font-bold px-7 py-4 rounded-xl hover:bg-gray-900 transition-colors whitespace-nowrap text-sm">
-                Assess My Listing →
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-3 flex-col sm:flex-row">
+        <div style={{ maxWidth: 1240, margin: '0 auto', position: 'relative' }}>
+          <div style={{ maxWidth: 760, margin: '0 auto', textAlign: 'center' }}>
+            <h1 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(40px, 6vw, 72px)', color: '#1F1F1E', lineHeight: 1.08, letterSpacing: '-2px', marginBottom: 24, marginTop: 0 }}>
+              Don't Let Your Home<br />Sit on the Market
+            </h1>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 18, color: '#444', lineHeight: 1.65, letterSpacing: '-0.3px', marginBottom: 40, maxWidth: 620, margin: '0 auto 40px' }}>
+              Whether you're preparing to sell or already on the market, get personalised insights combining data-driven analysis with experienced local agent expertise to help your home sell faster — all while working with your current agent, no switching required.
+            </p>
+
+            {/* Input */}
+            <div style={{ display: 'flex', alignItems: 'center', background: '#EEF0F2', borderRadius: 12, padding: '6px 6px 6px 16px', maxWidth: 620, margin: '0 auto 16px', gap: 8 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.5 }}>
+                <path d="M3 11.9896V14.5C3 17.7998 3 19.4497 4.02513 20.4749C5.05025 21.5 6.70017 21.5 10 21.5H14C17.2998 21.5 18.9497 21.5 19.9749 20.4749C21 19.4497 21 17.7998 21 14.5V11.9896C21 10.3083 21 9.46773 20.6441 8.74005C20.2882 8.01237 19.6247 7.49628 18.2976 6.46411L16.2976 4.90855C14.2331 3.30285 13.2009 2.5 12 2.5C10.7991 2.5 9.76689 3.30285 7.70242 4.90855L5.70241 6.46411C4.37533 7.49628 3.71179 8.01237 3.3559 8.74005C3 9.46773 3 10.3083 3 11.9896Z" stroke="#313131" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M17 17.5V13.5" stroke="#313131" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
               <input
                 type="text"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
+                value={input}
+                onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleStart()}
-                placeholder="e.g. 14 Ashford Road, Bristol, BS3 4TH"
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                placeholder="Enter property address or listing url"
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#1F1F1E', letterSpacing: '-0.2px' }}
               />
-              <button onClick={handleStart} className="bg-black text-white font-bold px-7 py-4 rounded-xl hover:bg-gray-900 transition-colors whitespace-nowrap text-sm">
-                Assess My Listing →
-              </button>
-            </div>
-          )}
-          <p className="text-xs text-gray-400 mt-4">Free to start · Paid reports from £79.99 · No commitment required</p>
-        </div>
-      </section>
-
-      {/* Trust badges */}
-      <div className="bg-gray-50 border-y border-gray-100 py-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: '4.8/5', label: '⭐ Trustpilot rating' },
-              { value: '10K+', label: 'Sellers helped' },
-              { value: '250K+', label: 'Reports delivered' },
-              { value: '94%', label: 'Would recommend' },
-            ].map((b, i) => (
-              <div key={i}>
-                <div className="text-2xl font-bold text-black">{b.value}</div>
-                <div className="text-sm text-gray-500 mt-1">{b.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Why listings stale */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl font-bold text-black">Homes that sit too long lose buyer attention.</h2>
-          <p className="text-gray-500 mt-3 text-lg">Yours doesn't have to.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-8">
-          {[
-            { icon: '🔍', title: 'Spot What Buyers Notice', desc: 'Our analysis identifies the exact issues making buyers scroll past your listing — from photos and pricing to description quality and portal visibility.' },
-            { icon: '📊', title: 'Expert-Backed Insights', desc: 'Each report draws on current market data and UK property sales expertise to give you a prioritised action plan, not vague generic advice.' },
-            { icon: '🤝', title: 'Works With Your Agent', desc: "You don't need to switch agent. Share the report with your existing agent or use it to have a more informed, productive conversation about your sale." },
-          ].map((c, i) => (
-            <div key={i} className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-4xl mb-5">{c.icon}</div>
-              <h3 className="font-bold text-lg text-black mb-3">{c.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{c.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how-it-works" className="bg-gray-50 py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-black">How it works</h2>
-            <p className="text-gray-500 mt-3">Three steps to a clearer picture of your sale</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            {[
-              { n: '1', title: 'Tell us about your home', desc: 'Share your listing URL or property address and answer 10 quick questions. Takes under 3 minutes.' },
-              { n: '2', title: 'Get personalised insights', desc: 'Our system generates a scored assessment with specific findings tailored to your property and situation.' },
-              { n: '3', title: 'Improve your chances', desc: 'Act on your prioritised action plan. Most homeowners see measurable improvement in enquiry rates within 30 days.' },
-            ].map((s, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-black text-white rounded-full flex items-center justify-center font-bold text-sm">{s.n}</div>
-                <div>
-                  <h3 className="font-bold text-black mb-2">{s.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Report preview */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
-        <div className="grid md:grid-cols-2 gap-14 items-center">
-          <div>
-            <h2 className="text-3xl font-bold text-black mb-4">Your report includes</h2>
-            <p className="text-gray-500 mb-8 text-sm leading-relaxed">Everything you need to understand why your property isn't selling — and exactly what to do about it.</p>
-            <ul className="space-y-3">
-              {['Overall listing score (0–100) with category breakdown', 'Photo and presentation analysis', 'Pricing positioning vs. current market', 'Marketing channel and portal exposure gaps', 'Listing description effectiveness', 'Prioritised action plan with urgency levels', 'International buyer opportunity assessment'].map((item, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-violet-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-gray-700 text-sm">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-2xl p-7 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <div className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-1">Overall Score</div>
-                <div className="text-5xl font-bold text-black">54<span className="text-gray-300 text-3xl">/100</span></div>
-              </div>
-              <div className="text-right">
-                <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full">Needs Attention</span>
-              </div>
-            </div>
-            {[
-              { label: 'Photos', score: 40, color: 'bg-red-400' },
-              { label: 'Pricing', score: 65, color: 'bg-orange-400' },
-              { label: 'Description', score: 58, color: 'bg-yellow-400' },
-              { label: 'Positioning', score: 72, color: 'bg-green-400' },
-            ].map((s, i) => (
-              <div key={i} className="mb-4">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-600 font-medium">{s.label}</span>
-                  <span className="font-bold text-gray-900">{s.score}</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2.5">
-                  <div className={`${s.color} h-2.5 rounded-full transition-all`} style={{ width: `${s.score}%` }} />
-                </div>
-              </div>
-            ))}
-            <div className="mt-5 pt-5 border-t border-gray-100">
-              <div className="text-xs text-gray-400 font-medium mb-3">KEY FINDINGS</div>
-              {['Photos need significant improvement', 'Pricing slightly above comparable sales', 'Limited international buyer exposure'].map((f, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-gray-700 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
-                  {f}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="bg-gray-50 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-black">See why sellers trust our insights</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { name: 'Sarah T.', loc: 'Bristol', text: 'After 4 months of nothing, the report told me exactly what was wrong. Two weeks after making the changes I had two offers above asking.' },
-              { name: 'James M.', loc: 'Manchester', text: 'Worth every penny. The pricing analysis alone saved me from dropping my price by £15k unnecessarily. The market just needed a different approach.' },
-              { name: 'Priya K.', loc: 'London', text: "My agent had no idea why it wasn't selling. The report pinpointed three specific issues and gave me a clear action plan. Sold in 3 weeks." },
-            ].map((r, i) => (
-              <div key={i} className="bg-white rounded-2xl p-7 border border-gray-100 shadow-sm">
-                <div className="flex gap-0.5 mb-4">{[...Array(5)].map((_, j) => <span key={j} className="text-yellow-400 text-sm">★</span>)}</div>
-                <p className="text-gray-700 text-sm leading-relaxed mb-5">"{r.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-violet-100 rounded-full flex items-center justify-center text-violet-700 font-bold text-sm">{r.name[0]}</div>
-                  <div>
-                    <div className="font-semibold text-sm text-black">{r.name}</div>
-                    <div className="text-xs text-gray-400">{r.loc}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl font-bold text-black">Choose your assessment</h2>
-          <p className="text-gray-500 mt-3">One-time report. No subscriptions. No hidden fees.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {[
-            { id: 'quick_insight', name: 'Quick Insight', price: '£79.99', desc: 'A concise, data-driven assessment highlighting the 3 critical issues holding your sale back.', features: ['Overall listing score', 'Top 3 critical issues', 'Essential action steps', '24hr delivery'], featured: false },
-            { id: 'professional_review', name: 'Professional Review', price: '£299.99', desc: 'A thorough analysis reviewed by a property expert with a detailed action plan and pricing strategy.', features: ['Full score breakdown', '6+ key findings', 'Detailed action plan', 'Human agent review', 'Pricing analysis', '48hr delivery'], featured: true },
-            { id: 'premium_strategy', name: 'Premium Strategy', price: '£1,499.99', desc: 'Comprehensive strategic analysis with comparable market data and a personalised strategy consultation.', features: ['Everything in Professional', 'Comparable sales analysis', 'International buyer strategy', '1hr strategy consultation', 'Follow-up review call', 'Priority delivery'], featured: false },
-          ].map((plan, i) => (
-            <div key={i} className={`rounded-2xl p-8 border-2 relative ${plan.featured ? 'border-violet-500 shadow-lg shadow-violet-100/50' : 'border-gray-200'}`}>
-              {plan.featured && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="bg-violet-600 text-white text-xs font-bold px-4 py-1 rounded-full">BEST VALUE</span>
-                </div>
-              )}
-              <div className="mb-7">
-                <h3 className="font-bold text-lg text-black mb-2">{plan.name}</h3>
-                <div className="text-4xl font-bold text-black mb-3">{plan.price}</div>
-                <p className="text-sm text-gray-500 leading-relaxed">{plan.desc}</p>
-              </div>
-              <ul className="space-y-2.5 mb-8">
-                {plan.features.map((f, j) => (
-                  <li key={j} className="flex items-center gap-2 text-sm text-gray-700">
-                    <svg className={`w-4 h-4 flex-shrink-0 ${plan.featured ? 'text-violet-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
               <button
                 onClick={handleStart}
-                className={`w-full py-3.5 rounded-xl font-bold text-sm transition-colors ${plan.featured ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-black text-white hover:bg-gray-900'}`}
+                style={{ background: '#313131', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, padding: '12px 22px', borderRadius: 8, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '-0.2px' }}
               >
-                Get {plan.name} →
+                Assess my home
               </button>
             </div>
-          ))}
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#999', letterSpacing: '-0.1px' }}>Free to start · Paid reports from £79.99 · No commitment required</p>
+
+            {/* Trustpilot */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 32 }}>
+              <TrustpilotStars />
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: '#1F1F1E' }}>Excellent</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#666' }}>Based on verified customer feedback</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap', marginTop: 64 }}>
+            {[
+              { value: '10K+', label: 'Listings Analyzed' },
+              { value: '91K+', label: 'Seller Recommendations Generated' },
+              { value: '250K+', label: 'Property Data Points Analyzed' },
+            ].map((s, i) => (
+              <div key={i} style={{ textAlign: 'center', minWidth: 140 }}>
+                <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 32, color: '#1F1F1E', letterSpacing: '-1px', lineHeight: 1.1 }}>{s.value}</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#666', marginTop: 6, letterSpacing: '-0.1px' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section style={{ padding: '40px 24px 64px', background: '#fff' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ background: '#EEF0F2', borderRadius: 32, padding: '56px 56px 48px', border: '1px solid rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(26px, 3.5vw, 40px)', color: '#1F1F1E', letterSpacing: '-1px', lineHeight: 1.15, marginBottom: 48, maxWidth: 620 }}>
+              Homes that sit too long lose buyer attention. Yours doesn't have to.
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 40 }}>
+              {[
+                {
+                  icon: <PurpleHouseIcon />,
+                  title: 'Spot What Buyers Notice',
+                  desc: 'Uncover the small issues that can reduce buyer interest and slow down your sale.',
+                },
+                {
+                  icon: <PurpleLightbulbIcon />,
+                  title: 'Expert-Backed Selling Insights',
+                  desc: 'Combine data-driven analysis with experienced local property expertise.',
+                },
+                {
+                  icon: <PurpleHandshakeIcon />,
+                  title: 'Works With Your Current Agent',
+                  desc: 'Use our recommendations alongside your existing estate agent, no switching required.',
+                },
+              ].map((f, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  {f.icon}
+                  <div>
+                    <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 22, color: '#1F1F1E', letterSpacing: '-0.5px', marginBottom: 12 }}>{f.title}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: '#444', lineHeight: 1.6, letterSpacing: '-0.2px' }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section id="how-it-works" style={{ padding: '24px 24px 64px', background: '#fff' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+
+          {/* Step 1 */}
+          <div style={{ flex: '1 1 300px', background: '#EEF0F2', borderRadius: 32, padding: '48px 40px', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div>
+              <div style={{ background: '#000', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 12, padding: '4px 12px', borderRadius: 20, display: 'inline-block', marginBottom: 20, letterSpacing: 0.3 }}>Step 1</div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 28, color: '#1F1F1E', letterSpacing: '-0.7px', lineHeight: 1.2 }}>Tell Us About Your Home</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#666', marginTop: 12, lineHeight: 1.6 }}>Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {['Enter property address…', 'Paste Rightmove / Zoopla URL…', 'Upload listing document'].map((p, i) => (
+                <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10, border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 12V14.5C3 17.8 3 19.45 4.025 20.475C5.05 21.5 6.7 21.5 10 21.5H14C17.3 21.5 18.95 21.5 19.975 20.475C21 19.45 21 17.8 21 14.5V12C21 10.31 21 9.47 20.644 8.74C20.288 8.01 19.625 7.5 18.298 6.464L16.298 4.909C14.233 3.303 13.201 2.5 12 2.5C10.799 2.5 9.767 3.303 7.702 4.909L5.702 6.464C4.375 7.5 3.712 8.01 3.356 8.74C3 9.47 3 10.31 3 12Z" stroke="#313131" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#888' }}>{p}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Step 2 */}
+          <div style={{ flex: '1 1 300px', background: '#EEF0F2', borderRadius: 32, padding: '48px 40px', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div>
+              <div style={{ background: '#000', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 12, padding: '4px 12px', borderRadius: 20, display: 'inline-block', marginBottom: 20, letterSpacing: 0.3 }}>Step 2</div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 28, color: '#1F1F1E', letterSpacing: '-0.7px', lineHeight: 1.2 }}>Get personalised selling insights</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#666', marginTop: 12, lineHeight: 1.6 }}>We analyse your home using property data, buyer trends, and experienced local agent expertise to uncover what could improve your sale.</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { title: 'Property data', sub: 'Pricing trends & comparables' },
+                { title: 'Buyer trends', sub: 'What buyers are searching for' },
+                { title: 'Local agent expertise', sub: 'Human insight, not just algorithms' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#A409D2', flexShrink: 0, marginTop: 5 }} />
+                  <div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#1F1F1E' }}>{item.title}</div>
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#888', marginTop: 2 }}>{item.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div style={{ flex: '1 1 300px', background: '#EEF0F2', borderRadius: 32, padding: '48px 40px', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 32 }}>
+            <div>
+              <div style={{ background: '#000', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 12, padding: '4px 12px', borderRadius: 20, display: 'inline-block', marginBottom: 20, letterSpacing: 0.3 }}>Step 3</div>
+              <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 28, color: '#1F1F1E', letterSpacing: '-0.7px', lineHeight: 1.2 }}>Improve your chances of a faster sale</div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#666', marginTop: 12, lineHeight: 1.6 }}>Receive your expert report within 6–12 hours, with actionable recommendations you can implement alongside your current estate agent.</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#1F1F1E', marginBottom: 14 }}>Your report includes</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['Pricing insights', 'Photo improvements', 'Listing description feedback', 'Buyer appeal suggestions', 'Market positioning recommendations'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <CheckIcon />
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#444' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section style={{ padding: '64px 24px', background: '#fff' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ background: '#EEF0F2', borderRadius: 32, padding: '56px 48px', border: '1px solid rgba(0,0,0,0.05)' }}>
+            <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(24px, 3vw, 36px)', color: '#1F1F1E', letterSpacing: '-0.8px', marginBottom: 40, textAlign: 'center' }}>
+              See why sellers trust our insights
+            </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+              {TESTIMONIALS.map((t, i) => (
+                <div key={i} style={{ background: '#fff', borderRadius: 20, padding: '28px 28px 24px', border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <QuoteIcon />
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#444', lineHeight: 1.65, margin: '16px 0 20px', letterSpacing: '-0.2px' }}>"{t.text}"</p>
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 13, color: '#1F1F1E' }}>{t.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="bg-gray-50 py-20">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-black">Frequently asked questions</h2>
+      <section id="faq" style={{ padding: '64px 24px', background: '#fff' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(24px, 3vw, 36px)', color: '#1F1F1E', letterSpacing: '-0.8px', marginBottom: 8, textAlign: 'center' }}>
+            Everything you need to know
+          </h2>
+          <div style={{ marginTop: 40 }}>
+            {SL_FAQS.slice(0, faqCount).map((faq, i) => (
+              <FAQItem key={i} q={faq.q} a={faq.a} />
+            ))}
           </div>
-          <div className="space-y-3">
-            {FAQS.map((faq, i) => <FAQItem key={i} {...faq} />)}
+          {faqCount < SL_FAQS.length && (
+            <div style={{ textAlign: 'center', marginTop: 24 }}>
+              <button onClick={() => setFaqCount(SL_FAQS.length)} style={{ background: 'transparent', border: '1px solid rgba(0,0,0,0.2)', borderRadius: 48, padding: '10px 28px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#313131', cursor: 'pointer' }}>
+                Load more
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section id="pricing" style={{ padding: '64px 24px', background: '#EEF0F2' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(24px, 3vw, 40px)', color: '#1F1F1E', letterSpacing: '-1px', marginBottom: 8 }}>
+              Choose your assessment
+            </h2>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: '#666', letterSpacing: '-0.2px' }}>One-time report. No subscriptions. No hidden fees.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, maxWidth: 1100, margin: '0 auto' }}>
+            {PLANS.map((plan, i) => (
+              <div key={i} style={{ background: '#fff', borderRadius: 24, padding: '40px 36px', border: plan.bestValue ? '2px solid #A409D2' : '1px solid rgba(0,0,0,0.08)', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                {plan.bestValue && (
+                  <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: '#A409D2', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 0.8, padding: '5px 16px', borderRadius: 20 }}>
+                    BEST VALUE
+                  </div>
+                )}
+                <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 22, color: '#1F1F1E', letterSpacing: '-0.5px', marginBottom: 8 }}>{plan.name}</div>
+                <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 32, color: '#1F1F1E', letterSpacing: '-1px', marginBottom: 12 }}>{plan.price}</div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#666', lineHeight: 1.5, marginBottom: 24 }}>{plan.tagline}</div>
+                {plan.preNote && (
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#888', marginBottom: 16, fontStyle: 'italic' }}>{plan.preNote}</div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, marginBottom: 28 }}>
+                  {plan.features.map((f, j) => (
+                    <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <CheckIcon purple={plan.bestValue} />
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#444', lineHeight: 1.4 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, color: '#313131', marginBottom: 16, textAlign: 'center' }}>{plan.price} per report</div>
+                <button
+                  onClick={handleStart}
+                  style={{ width: '100%', padding: '14px', borderRadius: 48, border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 15, background: '#313131', color: '#fff', letterSpacing: '-0.2px' }}
+                >
+                  Start Assessment
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-24 text-center">
-        <h2 className="text-3xl font-bold text-black mb-4">Ready to find out what's really holding your sale back?</h2>
-        <p className="text-gray-500 mb-10 max-w-xl mx-auto">Get your personalised listing assessment and start making changes that actually move buyers to act.</p>
-        <button onClick={handleStart} className="bg-black text-white font-bold px-10 py-5 rounded-xl text-lg hover:bg-gray-900 transition-colors inline-block">
-          Start My Free Assessment →
-        </button>
-        <p className="text-xs text-gray-400 mt-5">Free to start · Paid reports from £79.99 · No commitment required</p>
+      {/* FOOTER CTA */}
+      <section style={{ padding: '80px 24px', background: '#fff' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 'clamp(24px, 3.5vw, 40px)', color: '#1F1F1E', letterSpacing: '-1px', lineHeight: 1.2, marginBottom: 20 }}>
+            Find out why your property isn't selling and what you can do to improve it.
+          </h2>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: '#666', lineHeight: 1.65, marginBottom: 40, maxWidth: 640, margin: '0 auto 40px' }}>
+            Get expert insights, market analysis, and professional recommendations designed to help position your property more effectively and attract the right buyers faster.
+          </p>
+
+          {/* Placeholder grey square image (from Figma) */}
+          <div style={{ background: '#EEF0F2', borderRadius: 24, width: '100%', maxWidth: 700, height: 220, margin: '0 auto 40px', border: '1px solid rgba(0,0,0,0.06)' }} />
+
+          <button
+            onClick={handleStart}
+            style={{ background: '#313131', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, padding: '16px 40px', borderRadius: 48, border: 'none', cursor: 'pointer', letterSpacing: '-0.2px' }}
+          >
+            Start Assessment →
+          </button>
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-black">StaleListings</span>
-            <span className="text-gray-400 text-sm">by HAVLO</span>
-          </div>
-          <div className="text-sm text-gray-400">© 2026 Havlo Ltd. All rights reserved.</div>
-          <div className="flex gap-6 text-sm text-gray-400">
-            <a href="/privacy-policy" className="hover:text-black">Privacy</a>
-            <a href="/terms" className="hover:text-black">Terms</a>
-            <a href="/contact-us" className="hover:text-black">Contact</a>
+      {/* FOOTER */}
+      <footer style={{ background: '#fff', borderTop: '1px solid #F4F4F4', padding: '28px 24px' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#999' }}>© 2025 StaleListings. All rights reserved.</div>
+          <div style={{ display: 'flex', gap: 24 }}>
+            <a href="/privacy-policy" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#999', textDecoration: 'none' }}>Privacy Policy</a>
+            <a href="/terms" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#999', textDecoration: 'none' }}>Terms</a>
           </div>
         </div>
       </footer>
