@@ -540,11 +540,18 @@ export function StaleListingsLanding() {
             font-size:16px !important;
           }
           .sl-pricing-cols {
-            flex-direction:column !important;
-            gap:24px !important;
+            flex-direction:row !important;
+            overflow-x:auto !important;
+            -webkit-overflow-scrolling:touch !important;
+            gap:16px !important;
+            padding-bottom:8px !important;
+            scroll-snap-type:x mandatory !important;
           }
           .sl-plan-card {
             border-radius:32px !important;
+            min-width:280px !important;
+            flex:0 0 280px !important;
+            scroll-snap-align:start !important;
           }
 
           /* Footer */
