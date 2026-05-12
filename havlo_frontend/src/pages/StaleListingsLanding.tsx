@@ -727,19 +727,8 @@ export function StaleListingsLanding() {
             </div>
 
             {/* Hero image — mobile only, sits below stats */}
-            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', position:'relative', flexShrink:0 }}>
-              {/* Concave notch overlay at top-left corner */}
-              <div style={{
-                position:'absolute', top:0, left:0,
-                width:28, height:28,
-                background:'#FEFEFE',
-                borderRadius:'0 0 100% 0',
-                zIndex:2,
-                pointerEvents:'none',
-              }} />
-              <div style={{ borderRadius:'0 16px 16px 16px', overflow:'hidden' }}>
-                <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:260, objectFit:'cover', objectPosition:'center', display:'block' }} />
-              </div>
+            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', borderRadius:16, overflow:'hidden', flexShrink:0 }}>
+              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:220, objectFit:'cover', display:'block' }} />
             </div>
           </div>
 
