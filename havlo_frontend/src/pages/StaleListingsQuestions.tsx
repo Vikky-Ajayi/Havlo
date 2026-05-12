@@ -180,6 +180,8 @@ export function StaleListingsQuestions() {
         .sl-q-step-label { display: inline; }
         .sl-q-stepper-inner { padding: 20px 56px; }
         .sl-q-step-line { width: 80px; }
+        .sl-q-stepper-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .sl-q-stepper-scroll::-webkit-scrollbar { display: none; }
 
         /* ── CONTENT ── */
         .sl-q-content-inner { padding: 64px 56px 80px; }
@@ -234,7 +236,7 @@ export function StaleListingsQuestions() {
       </header>
 
       {/* ── STEPPER ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
+      <div className="sl-q-stepper-scroll" style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
         <div className="sl-q-stepper-inner" style={{ maxWidth: '100%', margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 'max-content', padding: '0 16px' }}>
           {[
             { num: 1, label: 'Your property' },
