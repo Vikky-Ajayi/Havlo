@@ -367,11 +367,6 @@ export function StaleListingsLanding() {
             height:80px !important;
             padding:0 !important;
           }
-          .sl-nav-logo-wrap {
-            flex-direction:column !important;
-            gap:2px !important;
-            align-items:flex-start !important;
-          }
 
           /* Hero */
           .sl-hero-section {
@@ -387,6 +382,9 @@ export function StaleListingsLanding() {
           }
           .sl-hero-right {
             display:none !important;
+          }
+          .sl-hero-img-mobile {
+            display:block !important;
           }
           .sl-hero-heading {
             font-size:40px !important;
@@ -580,15 +578,8 @@ export function StaleListingsLanding() {
       >
         <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', padding:'0 100px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
-          <div
-            className="sl-nav-logo-wrap"
-            style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-start' }}
-          >
-            <StaleListingsLogo />
-            <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-              <span style={{ fontFamily:'Inter, sans-serif', fontSize:12, color:'#000', fontWeight:400, letterSpacing:'-0.02em' }}>By</span>
-              <HavloLogo />
-            </div>
+          <div className="sl-nav-logo-wrap" style={{ display:'flex', alignItems:'center' }}>
+            <img src="/stale-logo.png" alt="StaleListings" style={{ height:40, width:'auto', flexShrink:0, display:'block' }} />
           </div>
 
           {/* Nav + CTA (desktop) */}
@@ -641,6 +632,11 @@ export function StaleListingsLanding() {
               <p className="sl-hero-desc" style={{ fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:400, color:'#000000', lineHeight:'150%', letterSpacing:'-0.02em', margin:0 }}>
                 Whether you're preparing to sell or already on the market, get personalised insights combining data-driven analysis with experienced local agent expertise to help your home sell faster — all while working with your current agent, no switching required.
               </p>
+            </div>
+
+            {/* Hero image — mobile only, sits between heading and input */}
+            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', borderRadius:16, overflow:'hidden', flexShrink:0 }}>
+              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:220, objectFit:'cover', display:'block' }} />
             </div>
 
             {/* Input + trust */}
@@ -886,9 +882,9 @@ export function StaleListingsLanding() {
       {/* ── FAQ ── */}
       <section id="faq" className="sl-faq-section" style={{ padding:'80px 200px', background:'#FEFFFF' }}>
         <div style={{ maxWidth:1440, margin:'0 auto' }}>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:40, maxWidth:'100%' }}>
-            <h2 className="sl-faq-heading" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:900, fontSize:44, color:'#050405', lineHeight:'110%', margin:0 }}>Everything you need to know</h2>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:0, alignSelf:'stretch' }}>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:40, maxWidth:'100%' }}>
+            <h2 className="sl-faq-heading" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:900, fontSize:44, color:'#050405', lineHeight:'110%', margin:0, textAlign:'center' }}>Everything you need to know</h2>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'stretch', gap:0, alignSelf:'stretch' }}>
               {faqsToShow.map((faq, i) => (
                 <FAQItem key={i} q={faq.q} a={faq.a} defaultOpen={i < 2} />
               ))}
