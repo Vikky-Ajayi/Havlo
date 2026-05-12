@@ -140,22 +140,85 @@ const PLANS = [
   {
     id: 'quick_insight', name: 'Quick Insight', price: '£79.99',
     tagline: 'Vendors wanting a fast professional opinion.',
-    features: ['Data-driven property market analysis','Human estate agent review','Local comparable sales review','Pricing position check','Online listing performance review','Summary report with key issues slowing the sale','3–5 actionable recommendations','Turnaround: 24–48 hours'],
+    turnaround: 'Turnaround: 24–48 hours',
+    features: ['Data-driven property market analysis','Human estate agent review','Local comparable sales review','Pricing position check','Online listing performance review','Summary report with key issues slowing the sale','3–5 actionable recommendations'],
+    popular: false,
   },
   {
     id: 'professional_review', name: 'Professional Review', price: '£299.99',
     tagline: 'Serious sellers wanting expert guidance to improve saleability.',
     preNote: 'Includes everything in Quick Insight, plus',
-    features: ['Buyer appeal analysis','Listing photography & description review','Local competition benchmarking','"Why buyers may be overlooking this property" section','Recommended pricing strategy','Priority turnaround','Turnaround: 24 hours'],
+    preNoteDetail: 'a detailed review by an estate agent actively selling similar properties in the local area.',
+    turnaround: 'Turnaround: 24 hours',
+    features: ['Buyer appeal analysis','Listing photography & description review','Local competition benchmarking','"Why buyers may be overlooking this property" section','Recommended pricing strategy','Priority turnaround'],
     popular: true,
   },
   {
     id: 'premium_strategy', name: 'Premium Strategy', price: '£1,499.99',
     tagline: 'High-value homes or properties stuck on the market for months.',
     preNote: 'Includes everything in professional review plus:',
-    features: ['Detailed property positioning strategy','Multi-platform listing audit','Area demand and buyer demographic analysis','Home presentation/staging recommendations','Marketing improvement roadmap','Re-launch strategy','Estate agent strategy review with improvement recommendations','Follow-up review after changes are implemented','Direct access for Q&A support for 14–30 days','24 hours + follow-up support'],
+    turnaround: '24 hours + follow-up support',
+    features: ['Detailed property positioning strategy','Multi-platform listing audit','Area demand and buyer demographic analysis','Home presentation/staging recommendations','Marketing improvement roadmap','Re-launch strategy','Estate agent strategy review with improvement recommendations','Follow-up review after changes are implemented','Direct access for Q&A support for 14–30 days'],
+    popular: false,
   },
 ];
+
+/* ── HOUSE ILLUSTRATIONS ── */
+const HouseBlue = () => (
+  <svg width="157" height="122" viewBox="0 0 157 122" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="18" y="52" width="121" height="70" rx="4" fill="#4A90D9"/>
+    <polygon points="78.5,8 8,55 149,55" fill="#2D6BB5"/>
+    <rect x="64" y="72" width="29" height="50" rx="3" fill="#1A4A80"/>
+    <rect x="30" y="65" width="22" height="22" rx="2" fill="#A8D4F5"/>
+    <rect x="35" y="70" width="12" height="12" rx="1" fill="#7ABDE8"/>
+    <rect x="105" y="65" width="22" height="22" rx="2" fill="#A8D4F5"/>
+    <rect x="110" y="70" width="12" height="12" rx="1" fill="#7ABDE8"/>
+    <circle cx="77" cy="97" r="3" fill="#A8D4F5"/>
+    <rect x="14" y="50" width="5" height="8" rx="2" fill="#F5A623"/>
+    <rect x="138" y="50" width="5" height="8" rx="2" fill="#F5A623"/>
+    <rect x="52" y="30" width="12" height="20" rx="2" fill="#4A90D9"/>
+    <rect x="55" y="27" width="6" height="6" rx="1" fill="#2D6BB5"/>
+  </svg>
+);
+const HouseOrange = () => (
+  <svg width="157" height="122" viewBox="0 0 157 122" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="18" y="52" width="121" height="70" rx="4" fill="#F5A623"/>
+    <polygon points="78.5,8 8,55 149,55" fill="#D4831A"/>
+    <rect x="64" y="72" width="29" height="50" rx="3" fill="#8B5209"/>
+    <rect x="30" y="65" width="22" height="22" rx="2" fill="#FDE8BB"/>
+    <rect x="35" y="70" width="12" height="12" rx="1" fill="#F5C870"/>
+    <rect x="105" y="65" width="22" height="22" rx="2" fill="#FDE8BB"/>
+    <rect x="110" y="70" width="12" height="12" rx="1" fill="#F5C870"/>
+    <circle cx="77" cy="97" r="3" fill="#FDE8BB"/>
+    <rect x="14" y="50" width="5" height="8" rx="2" fill="#E84393"/>
+    <rect x="138" y="50" width="5" height="8" rx="2" fill="#E84393"/>
+    <circle cx="120" cy="22" r="10" fill="#F5E642" opacity="0.9"/>
+    <circle cx="120" cy="22" r="6" fill="#F5E642"/>
+    <rect x="52" y="30" width="12" height="20" rx="2" fill="#F5A623"/>
+    <rect x="55" y="27" width="6" height="6" rx="1" fill="#D4831A"/>
+  </svg>
+);
+const HouseTeal = () => (
+  <svg width="157" height="122" viewBox="0 0 157 122" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="18" y="52" width="121" height="70" rx="4" fill="#2ABFBF"/>
+    <polygon points="78.5,8 8,55 149,55" fill="#1A9090"/>
+    <rect x="64" y="72" width="29" height="50" rx="3" fill="#0D5A5A"/>
+    <rect x="30" y="65" width="22" height="22" rx="2" fill="#AAEAEA"/>
+    <rect x="35" y="70" width="12" height="12" rx="1" fill="#5DCFCF"/>
+    <rect x="105" y="65" width="22" height="22" rx="2" fill="#AAEAEA"/>
+    <rect x="110" y="70" width="12" height="12" rx="1" fill="#5DCFCF"/>
+    <circle cx="77" cy="97" r="3" fill="#AAEAEA"/>
+    <rect x="14" y="50" width="5" height="8" rx="2" fill="#F5D742"/>
+    <rect x="138" y="50" width="5" height="8" rx="2" fill="#F5D742"/>
+    <circle cx="120" cy="20" r="8" fill="#F5D742" opacity="0.8"/>
+    <line x1="120" y1="10" x2="120" y2="4" stroke="#F5D742" strokeWidth="2"/>
+    <line x1="126" y1="13" x2="130" y2="9" stroke="#F5D742" strokeWidth="2"/>
+    <line x1="130" y1="20" x2="136" y2="20" stroke="#F5D742" strokeWidth="2"/>
+    <rect x="52" y="30" width="12" height="20" rx="2" fill="#2ABFBF"/>
+    <rect x="55" y="27" width="6" height="6" rx="1" fill="#1A9090"/>
+  </svg>
+);
+const HOUSE_ICONS = [HouseBlue, HouseOrange, HouseTeal];
 
 /* ─── FAQ ITEM ─── */
 function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: boolean }) {
@@ -562,46 +625,69 @@ export function StaleListingsLanding() {
             Find out why your property isn't selling and what you can do to improve it.
           </h2>
           <p style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%', margin:0, maxWidth:734, textAlign:'center' }}>
-            Get a personalised expert report combining data-driven insights with experienced local agent expertise.
+            Get expert insights, market analysis, and professional recommendations designed to help position your property more effectively and attract the right buyers faster.
           </p>
           {/* Plan cards */}
           <div className="sl-pricing-cols" style={{ display:'flex', flexDirection:'row', gap:24, alignSelf:'stretch', alignItems:'stretch' }}>
-            {PLANS.map((plan, i) => (
-              <div key={i} style={{ display:'flex', flexDirection:'column', justifyContent:'space-between', padding:24, gap:32, flex:'1 0 0', background:'#FFFFFF', border:'1px solid rgba(0,0,0,0.05)', borderRadius:32, boxSizing:'border-box' }}>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:32 }}>
-                  {/* Placeholder image — 157×122 grey */}
-                  <div style={{ width:157, height:122, background:'#D9D9D9', borderRadius:8, flexShrink:0 }} />
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, alignSelf:'stretch' }}>
-                    <div style={{ display:'flex', flexDirection:'column', gap:20, alignSelf:'stretch' }}>
-                      <div style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%' }}>{plan.name}</div>
-                      <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%' }}>{plan.tagline}</div>
+            {PLANS.map((plan, i) => {
+              const HouseIcon = HOUSE_ICONS[i];
+              const isPopular = plan.popular;
+              return (
+                <div key={i} style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'space-between', padding:24, gap:32, flex:'1 0 0', background:'#FFFFFF', border: isPopular ? '2px solid #1A6B6B' : '1px solid rgba(0,0,0,0.05)', borderRadius:32, boxSizing:'border-box' }}>
+                  {/* BEST VALUE badge */}
+                  {isPopular && (
+                    <div style={{ position:'absolute', top:20, right:20, background:'#E53935', color:'#fff', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:11, letterSpacing:'0.5px', padding:'4px 10px', borderRadius:20, textTransform:'uppercase' }}>
+                      BEST VALUE
                     </div>
-                    {/* Features list */}
-                    <div style={{ display:'flex', flexDirection:'column', gap:16, paddingTop:16, borderTop:'1px solid rgba(0,0,0,0.1)', alignSelf:'stretch' }}>
-                      {plan.preNote && (
-                        <div style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:14, color:'#050405', letterSpacing:'-0.03em', lineHeight:'120%', opacity:0.6 }}>{plan.preNote}</div>
-                      )}
-                      {plan.features.map((feat, j) => (
-                        <div key={j} style={{ display:'flex', flexDirection:'row', alignItems:'center', gap:8 }}>
-                          <VerifyIcon />
-                          <span style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:14, color:'#050405', letterSpacing:'-0.03em', lineHeight:'120%', flex:1 }}>{feat}</span>
-                        </div>
-                      ))}
+                  )}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:32 }}>
+                    {/* House illustration */}
+                    <HouseIcon />
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, alignSelf:'stretch' }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:20, alignSelf:'stretch' }}>
+                        <div style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%' }}>{plan.name}</div>
+                        <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%' }}>{plan.tagline}</div>
+                      </div>
+                      {/* Features list */}
+                      <div style={{ display:'flex', flexDirection:'column', gap:16, paddingTop:16, borderTop:'1px solid rgba(0,0,0,0.1)', alignSelf:'stretch' }}>
+                        {(plan as any).preNote && (
+                          <div style={{ fontFamily:'Inter, sans-serif', fontSize:14, letterSpacing:'-0.03em', lineHeight:'130%' }}>
+                            <span style={{ fontWeight:700, color:'#050405' }}>{(plan as any).preNote}:</span>
+                            {(plan as any).preNoteDetail && (
+                              <span style={{ fontWeight:400, color:'#050405' }}> {(plan as any).preNoteDetail}</span>
+                            )}
+                          </div>
+                        )}
+                        {plan.features.map((feat, j) => (
+                          <div key={j} style={{ display:'flex', flexDirection:'row', alignItems:'flex-start', gap:8 }}>
+                            <VerifyIcon />
+                            <span style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:14, color:'#050405', letterSpacing:'-0.03em', lineHeight:'120%', flex:1 }}>{feat}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  {/* Turnaround + Price + CTA */}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
+                    {/* Purple turnaround pill */}
+                    <div style={{ display:'inline-flex', padding:'10px 12px', borderRadius:10, background:'#FAEBFE', alignSelf:'stretch' }}>
+                      <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#602ED3', letterSpacing:'-0.02em', lineHeight:'130%' }}>{(plan as any).turnaround}</span>
+                    </div>
+                    {/* Price */}
+                    <div style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch' }}>
+                      {plan.price} per report
+                    </div>
+                    {/* CTA button */}
+                    <button
+                      onClick={handleStart}
+                      style={{ display:'flex', height:44, padding:'8px', justifyContent:'center', alignItems:'center', gap:8, borderRadius:10, background: isPopular ? '#F5A623' : '#000000', color: isPopular ? '#000' : '#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:16, letterSpacing:'-0.02em', border:'none', cursor:'pointer', alignSelf:'stretch' }}
+                    >
+                      Start Assessment
+                    </button>
+                  </div>
                 </div>
-                {/* Price + CTA */}
-                <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                  <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:32, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{plan.price}</div>
-                  <button
-                    onClick={handleStart}
-                    style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:12, background:'#000000', color:'#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, letterSpacing:'-0.02em', border:'none', cursor:'pointer', alignSelf:'stretch' }}
-                  >
-                    Get Started
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
