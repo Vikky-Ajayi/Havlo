@@ -77,26 +77,7 @@ const QUESTIONS = [
   },
 ];
 
-/* ─── NAV LOGO ─── */
-const StaleListingsLogo = () => (
-  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: 215, height: 52 }}>
-    <svg width="215" height="33" viewBox="0 0 215 33" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="26" fontFamily='"Plus Jakarta Sans", sans-serif' fontWeight="800" fontSize="26" fill="#313131" letterSpacing="-0.5">StaleListings</text>
-    </svg>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: '#000', fontWeight: 400, letterSpacing: '-0.32px' }}>By</span>
-      <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 13, color: '#313131', letterSpacing: '-0.3px' }}>HAVLO</span>
-    </div>
-  </div>
-);
-
-const LockIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 7V5C4 2.79086 5.79086 1 8 1C10.2091 1 12 2.79086 12 5V7M3.2 15H12.8C13.4627 15 14 14.4627 14 13.8V8.2C14 7.53726 13.4627 7 12.8 7H3.2C2.53726 7 2 7.53726 2 8.2V13.8C2 14.4627 2.53726 15 3.2 15Z" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-/* ─── RADIO BUTTON (exact Figma SVG) ─── */
+/* ─── RADIO BUTTON ─── */
 function RadioCircle({ selected }: { selected: boolean }) {
   if (selected) {
     return (
@@ -113,7 +94,7 @@ function RadioCircle({ selected }: { selected: boolean }) {
   );
 }
 
-/* ─── CHECKBOX (for multi-select) ─── */
+/* ─── CHECKBOX ─── */
 function CheckboxCircle({ selected }: { selected: boolean }) {
   if (selected) {
     return (
@@ -184,33 +165,77 @@ export function StaleListingsQuestions() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflowX: 'hidden', width: '100%', boxSizing: 'border-box' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
         .sl-q-option:hover { border-color: #D0A0E0 !important; }
-        @media (max-width: 640px) {
-          .sl-q-navbar { padding: 12px 20px !important; }
-          .sl-q-stepper { padding: 16px 20px !important; }
-          .sl-q-content { padding: 32px 20px 60px !important; }
-          .sl-q-nav-row { flex-direction: column-reverse !important; gap: 12px !important; }
-          .sl-q-nav-row button { width: 100% !important; }
+
+        /* ── NAVBAR ── */
+        .sl-q-nav-secure { display: flex; }
+        .sl-q-nav-hamburger { display: none; }
+        .sl-q-navbar-inner { padding: 0 56px; }
+
+        /* ── STEPPER ── */
+        .sl-q-step-label { display: inline; }
+        .sl-q-stepper-inner { padding: 20px 56px; }
+        .sl-q-step-line { width: 80px; }
+
+        /* ── CONTENT ── */
+        .sl-q-content-inner { padding: 64px 56px 80px; }
+
+        /* ── NAV BUTTONS (desktop) ── */
+        .sl-q-nav-desktop { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 40px; }
+        .sl-q-nav-mobile { display: none; }
+
+        @media (max-width: 768px) {
+          /* Navbar */
+          .sl-q-nav-secure { display: none !important; }
+          .sl-q-nav-hamburger { display: flex !important; }
+          .sl-q-navbar-inner { padding: 0 20px !important; height: 72px !important; }
+
+          /* Stepper */
+          .sl-q-step-line { width: 24px !important; margin: 0 8px !important; }
+          .sl-q-stepper-inner { padding: 14px 20px !important; }
+
+          /* Content */
+          .sl-q-content-inner { padding: 28px 20px 32px !important; }
+
+          /* Desktop nav hidden, mobile nav shown */
+          .sl-q-nav-desktop { display: none !important; }
+          .sl-q-nav-mobile { display: flex !important; flex-direction: column; gap: 12px; margin-top: 32px; }
         }
       `}</style>
 
-      {/* NAVBAR */}
-      <header className="sl-q-navbar" style={{ display: 'flex', height: 80, padding: '12px 56px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F4F4F4', background: '#FFF', backdropFilter: 'blur(5px)', boxSizing: 'border-box', flexShrink: 0 }}>
-        <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <StaleListingsLogo />
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <LockIcon />
-          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16, color: '#000', letterSpacing: '-0.32px' }}>Secure assessment · SSL encrypted</span>
+      {/* ── NAVBAR ── */}
+      <header style={{ background: '#FFF', borderBottom: '1px solid #F4F4F4', flexShrink: 0 }}>
+        <div className="sl-q-navbar-inner" style={{ maxWidth: '100%', margin: '0 auto', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Logo */}
+          <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+            <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 22, color: '#1F1F1E', letterSpacing: '-0.5px', lineHeight: 1 }}>StaleListings</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, color: '#555', letterSpacing: 0 }}>By HAVLO</span>
+          </button>
+
+          {/* Desktop: secure badge */}
+          <div className="sl-q-nav-secure" style={{ alignItems: 'center', gap: 6 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 7V5C4 2.79086 5.79086 1 8 1C10.2091 1 12 2.79086 12 5V7M3.2 15H12.8C13.4627 15 14 14.4627 14 13.8V8.2C14 7.53726 13.4627 7 12.8 7H3.2C2.53726 7 2 7.53726 2 8.2V13.8C2 14.4627 2.53726 15 3.2 15Z" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16, color: '#000', letterSpacing: '-0.32px' }}>Secure assessment · SSL encrypted</span>
+          </div>
+
+          {/* Mobile: hamburger */}
+          <button className="sl-q-nav-hamburger" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 6H21M3 12H21M3 18H21" stroke="#1F1F1E" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
       </header>
 
-      {/* STEPPER */}
-      <div className="sl-q-stepper" style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', padding: '20px 56px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+      {/* ── STEPPER ── */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #F4F4F4' }}>
+        <div className="sl-q-stepper-inner" style={{ maxWidth: '100%', margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           {[
             { num: 1, label: 'Your property' },
             { num: 2, label: 'Choose Plan' },
@@ -220,39 +245,38 @@ export function StaleListingsQuestions() {
             const isInactive = step.num > 1;
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{
-                    width: 32, height: 32, borderRadius: '50%',
+                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                     background: isActive ? PURPLE : 'transparent',
                     border: isInactive ? '2px solid #D0D0D0' : 'none',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
                   }}>
                     <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: isActive ? '#fff' : '#B0B0B0' }}>{step.num}</span>
                   </div>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#000' : '#B0B0B0' }}>{step.label}</span>
+                  <span className="sl-q-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#000' : '#B0B0B0', whiteSpace: 'nowrap' }}>{step.label}</span>
                 </div>
-                {i < 2 && <div style={{ width: 80, height: 1, background: '#E0E0E0', margin: '0 20px' }} />}
+                {i < 2 && <div className="sl-q-step-line" style={{ height: 1, background: '#E0E0E0', margin: '0 20px', flexShrink: 0 }} />}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* QUESTION CONTENT */}
-      <div className="sl-q-content" style={{ flex: 1, padding: '64px 56px 80px', display: 'flex', justifyContent: 'center', boxSizing: 'border-box' }}>
-        <div style={{ width: '100%', maxWidth: 720 }}>
+      {/* ── QUESTION CONTENT ── */}
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', width: '100%' }}>
+        <div className="sl-q-content-inner" style={{ width: '100%', maxWidth: 720 }}>
 
-          {/* Question counter + title */}
-          <div style={{ marginBottom: 40 }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: PURPLE, letterSpacing: '-0.32px', lineHeight: '150%', marginBottom: 16 }}>
-              Question {currentQ + 1} of {QUESTIONS.length}
+          {/* Counter + title + subtitle */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: PURPLE, letterSpacing: '-0.32px', lineHeight: '150%', textTransform: 'uppercase', marginBottom: 12 }}>
+              QUESTION {currentQ + 1} OF {QUESTIONS.length}
             </div>
-            <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 700, fontSize: 28, color: '#000', letterSpacing: '-0.5px', lineHeight: '130%', margin: '0 0 12px' }}>
+            <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 700, fontSize: 'clamp(22px, 4vw, 28px)', color: '#000', letterSpacing: '-0.5px', lineHeight: '130%', margin: '0 0 10px' }}>
               {question.title}
             </h2>
             {question.subtitle && (
-              <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16, color: '#666', lineHeight: '150%', margin: 0 }}>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 15, color: '#555', lineHeight: '150%', margin: 0 }}>
                 {question.subtitle}
               </p>
             )}
@@ -269,11 +293,11 @@ export function StaleListingsQuestions() {
                   onClick={() => handleSelect(option)}
                   style={{
                     display: 'flex',
-                    height: 72,
-                    padding: '16px 24px',
+                    minHeight: 64,
+                    padding: '16px 20px',
                     alignItems: 'center',
-                    gap: 8,
-                    alignSelf: 'stretch',
+                    gap: 12,
+                    width: '100%',
                     borderRadius: 8,
                     border: selected ? `1.5px solid ${PURPLE}` : '1.5px solid #E8E8E8',
                     background: '#fff',
@@ -294,22 +318,40 @@ export function StaleListingsQuestions() {
             })}
           </div>
 
-          {/* Navigation */}
-          <div className="sl-q-nav-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
+          {/* ── DESKTOP nav (right-aligned, side by side) ── */}
+          <div className="sl-q-nav-desktop">
             <button
               onClick={handleBack}
-              style={{ display: 'flex', width: 160, height: 52, padding: '16px 24px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 8, border: '1px solid rgba(0,0,0,0.15)', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, color: '#000', cursor: 'pointer', letterSpacing: '-0.32px', boxSizing: 'border-box' }}
+              style={{ display: 'flex', width: 160, height: 52, padding: '16px 24px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 8, border: '1px solid rgba(0,0,0,0.15)', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, color: '#000', cursor: 'pointer', letterSpacing: '-0.32px', flexShrink: 0 }}
             >
               ← Back
             </button>
             <button
               onClick={handleNext}
               disabled={!isAnswered}
-              style={{ display: 'flex', width: 160, height: 52, padding: '16px 24px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 8, background: isAnswered ? '#020202' : '#C0C0C0', border: 'none', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, color: '#fff', cursor: isAnswered ? 'pointer' : 'not-allowed', letterSpacing: '-0.32px', boxSizing: 'border-box', transition: 'background 0.15s' }}
+              style={{ display: 'flex', width: 160, height: 52, padding: '16px 24px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 8, background: isAnswered ? '#020202' : '#C0C0C0', border: 'none', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, color: '#fff', cursor: isAnswered ? 'pointer' : 'not-allowed', letterSpacing: '-0.32px', flexShrink: 0, transition: 'background 0.15s' }}
             >
               {currentQ < QUESTIONS.length - 1 ? 'Next →' : 'Finish →'}
             </button>
           </div>
+
+          {/* ── MOBILE nav (full-width stacked: Continue on top, Back below) ── */}
+          <div className="sl-q-nav-mobile">
+            <button
+              onClick={handleNext}
+              disabled={!isAnswered}
+              style={{ width: '100%', height: 56, borderRadius: 8, border: 'none', background: isAnswered ? '#020202' : '#C0C0C0', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: '#fff', cursor: isAnswered ? 'pointer' : 'not-allowed', letterSpacing: '-0.32px', transition: 'background 0.15s' }}
+            >
+              {currentQ < QUESTIONS.length - 1 ? 'Continue' : 'Finish'}
+            </button>
+            <button
+              onClick={handleBack}
+              style={{ width: '100%', height: 56, borderRadius: 8, border: '1px solid rgba(0,0,0,0.15)', background: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, color: '#000', cursor: 'pointer', letterSpacing: '-0.32px' }}
+            >
+              Back
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
