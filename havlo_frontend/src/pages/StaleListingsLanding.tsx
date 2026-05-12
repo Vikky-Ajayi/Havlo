@@ -4,6 +4,36 @@ import { useNavigate } from 'react-router-dom';
 const PURPLE = '#A409D2';
 
 /* ─── SVG ICONS ─── */
+const StaleListingsLogo = () => (
+  <svg width="165" height="28" viewBox="0 0 165 28" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0}}>
+    <path d="M8.63887 21.9613C5.91631 21.9613 3.79349 21.3187 2.27038 20.0336C0.756793 18.7485 0 16.9493 0 14.6361H4.2409C4.26946 15.807 4.67403 16.7208 5.45462 17.3777C6.23521 18.025 7.30615 18.3487 8.66742 18.3487C9.88591 18.3487 10.8664 18.1012 11.6089 17.6062C12.3514 17.1111 12.7227 16.4495 12.7227 15.6214C12.7227 14.936 12.4228 14.3791 11.8231 13.9507C11.2329 13.5223 10.2619 13.1606 8.91017 12.8655L6.66835 12.38C2.49885 11.4756 0.414094 9.50513 0.414094 6.46844C0.414094 5.1738 0.752033 4.04575 1.42791 3.08429C2.10379 2.11331 3.04621 1.35652 4.25518 0.81391C5.46414 0.271303 6.87777 0 8.49607 0C10.9426 0 12.8798 0.609242 14.3077 1.82773C15.7451 3.04621 16.4971 4.72639 16.5638 6.86826H12.4514C12.3752 5.8592 11.9849 5.06433 11.2805 4.48364C10.5761 3.90296 9.65268 3.61262 8.51035 3.61262C7.42514 3.61262 6.53508 3.86012 5.84016 4.35513C5.15476 4.85014 4.81206 5.48318 4.81206 6.25425C4.81206 6.91109 5.09764 7.43942 5.66881 7.83924C6.23997 8.23905 7.17764 8.58175 8.4818 8.86733L10.5237 9.30998C12.7893 9.79547 14.4457 10.5237 15.4928 11.4947C16.5495 12.4562 17.0778 13.7365 17.0778 15.3358C17.0778 17.3824 16.3258 19.0007 14.8217 20.1907C13.3177 21.3711 11.2567 21.9613 8.63887 21.9613Z" fill="#313131"/>
+    <path d="M27.3525 6.53984V9.83831H24.2682V16.9636C24.2682 17.4776 24.3682 17.8346 24.5681 18.0345C24.7775 18.2249 25.1678 18.3201 25.739 18.3201H27.3525V21.6186H24.8965C23.2401 21.6186 22.0169 21.2949 21.2268 20.6476C20.4462 20.0003 20.0559 18.9912 20.0559 17.6204V9.83831H17.4571V6.53984H20.0559V2.42745H24.2682V6.53984H27.3525Z" fill="#313131"/>
+    <path d="M33.5005 21.8756C31.9965 21.8756 30.7542 21.4996 29.7737 20.7476C28.8027 19.9955 28.3172 18.8675 28.3172 17.3634C28.3172 16.2306 28.5885 15.3453 29.1311 14.7075C29.6737 14.0602 30.3924 13.589 31.2873 13.2939C32.1821 12.9988 33.1531 12.8036 34.2002 12.7084C35.5805 12.5656 36.5467 12.4228 37.0989 12.28C37.651 12.1372 37.927 11.8231 37.927 11.3376V11.2377C37.927 10.6855 37.7081 10.2334 37.2702 9.88115C36.8323 9.52893 36.2278 9.35282 35.4568 9.35282C34.6762 9.35282 34.0431 9.53369 33.5576 9.89543C33.0721 10.2572 32.8056 10.7284 32.758 11.3091H28.8027C28.8979 9.7574 29.5357 8.52463 30.7161 7.61077C31.8965 6.68739 33.5196 6.2257 35.5853 6.2257C37.651 6.2257 39.2502 6.68739 40.3831 7.61077C41.5159 8.52463 42.0823 9.78595 42.0823 11.3947V21.6186H37.9699V19.491H37.9128C37.513 20.224 36.9656 20.8047 36.2707 21.233C35.5758 21.6614 34.6524 21.8756 33.5005 21.8756ZM34.6714 18.9484C35.6805 18.9484 36.4801 18.6818 37.0703 18.1488C37.6605 17.6062 37.9556 16.9255 37.9556 16.1068V14.5933C37.7176 14.7265 37.3226 14.8503 36.7704 14.9645C36.2183 15.0692 35.6043 15.1739 34.9284 15.2787C34.205 15.3929 33.591 15.6023 33.0864 15.9069C32.5914 16.202 32.3439 16.6495 32.3439 17.2492C32.3439 17.7823 32.5533 18.2011 32.9722 18.5057C33.4006 18.8008 33.967 18.9484 34.6714 18.9484Z" fill="#313131"/>
+    <path d="M48.3874 0.342699V21.6186H44.175V0.342699H48.3874Z" fill="#313131"/>
+    <path d="M57.3769 21.9613C55.8538 21.9613 54.5259 21.6233 53.393 20.9475C52.2698 20.2716 51.394 19.3434 50.7657 18.163C50.1469 16.9731 49.8375 15.6166 49.8375 14.0935C49.8375 12.5609 50.1517 11.1996 50.78 10.0097C51.4178 8.81973 52.2935 7.88683 53.4073 7.21095C54.5211 6.53508 55.7967 6.19714 57.2341 6.19714C58.7192 6.19714 60.0138 6.53032 61.118 7.19667C62.2318 7.85351 63.0981 8.77214 63.7168 9.95254C64.3451 11.1234 64.6593 12.4752 64.6593 14.0078V15.1359H53.9356C53.9737 16.2496 54.3021 17.1397 54.9209 17.8061C55.5397 18.4724 56.4012 18.8056 57.5054 18.8056C58.3241 18.8056 59.0047 18.6295 59.5473 18.2773C60.0995 17.9251 60.4707 17.4586 60.6611 16.8779H64.5022C64.3213 17.8775 63.8977 18.758 63.2314 19.5196C62.565 20.2811 61.7273 20.8808 60.7182 21.3187C59.7092 21.7471 58.5954 21.9613 57.3769 21.9613ZM53.9642 12.4514H60.6897C60.585 11.509 60.2327 10.7665 59.633 10.2238C59.0428 9.67172 58.2717 9.39566 57.3198 9.39566C56.3774 9.39566 55.6111 9.67172 55.0209 10.2238C54.4307 10.7665 54.0784 11.509 53.9642 12.4514Z" fill="#313131"/>
+    <path d="M66.138 21.6186V0.342699H70.536V17.8489H80.2029V21.6186H66.138Z" fill="#313131"/>
+    <path d="M81.4389 21.6186V6.53984H85.6513V21.6186H81.4389ZM83.538 4.64071C82.843 4.64071 82.2671 4.43129 81.8102 4.01243C81.3533 3.58406 81.1248 3.04621 81.1248 2.39889C81.1248 1.75157 81.3533 1.21848 81.8102 0.799631C82.2671 0.371257 82.843 0.15707 83.538 0.15707C84.2234 0.15707 84.7945 0.371257 85.2515 0.799631C85.7084 1.21848 85.9369 1.75157 85.9369 2.39889C85.9369 3.04621 85.7084 3.58406 85.2515 4.01243C84.7945 4.43129 84.2234 4.64071 83.538 4.64071Z" fill="#313131"/>
+    <path d="M94.0268 21.9898C92.0658 21.9898 90.4428 21.5424 89.1577 20.6476C87.8821 19.7528 87.1776 18.4962 87.0443 16.8779H91.1853C91.2614 17.5348 91.5375 18.0488 92.0135 18.4201C92.4894 18.7913 93.1368 18.9769 93.9554 18.9769C94.736 18.9769 95.35 18.8294 95.7974 18.5343C96.2449 18.2392 96.4686 17.8584 96.4686 17.392C96.4686 16.9921 96.2925 16.6732 95.9402 16.4353C95.5975 16.1878 95.1216 16.0021 94.5123 15.8784L91.8707 15.3643C88.8816 14.7932 87.387 13.3272 87.387 10.9664C87.387 9.53845 87.963 8.39136 89.1148 7.52509C90.2667 6.65883 91.8231 6.2257 93.7841 6.2257C95.7356 6.2257 97.3063 6.68263 98.4962 7.59649C99.6861 8.51035 100.3 9.75264 100.338 11.3233H96.44C96.4305 10.7236 96.1877 10.2238 95.7118 9.82403C95.2453 9.4147 94.6408 9.21003 93.8983 9.21003C93.1749 9.21003 92.6084 9.3671 92.1991 9.68124C91.7898 9.98586 91.5851 10.3619 91.5851 10.8093C91.5851 11.1996 91.7422 11.5185 92.0563 11.766C92.38 12.0135 92.8321 12.1991 93.4128 12.3229L96.2687 12.8798C97.7918 13.1749 98.9103 13.6604 99.6242 14.3362C100.348 15.0026 100.709 15.8927 100.709 17.0064C100.709 18.006 100.424 18.8818 99.8527 19.6338C99.2911 20.3763 98.5057 20.957 97.4967 21.3758C96.4971 21.7852 95.3405 21.9898 94.0268 21.9898Z" fill="#313131"/>
+    <path d="M111.056 6.53984V9.83831H107.971V16.9636C107.971 17.4776 108.071 17.8346 108.271 18.0345C108.481 18.2249 108.871 18.3201 109.442 18.3201H111.056V21.6186H108.6C106.943 21.6186 105.72 21.2949 104.93 20.6476C104.149 20.0003 103.759 18.9912 103.759 17.6204V9.83831H101.16V6.53984H103.759V2.42745H107.971V6.53984H111.056Z" fill="#313131"/>
+    <path d="M112.306 21.6186V6.53984H116.518V21.6186H112.306ZM114.405 4.64071C113.71 4.64071 113.134 4.43129 112.677 4.01243C112.22 3.58406 111.992 3.04621 111.992 2.39889C111.992 1.75157 112.22 1.21848 112.677 0.799631C113.134 0.371257 113.71 0.15707 114.405 0.15707C115.09 0.15707 115.661 0.371257 116.118 0.799631C116.575 1.21848 116.804 1.75157 116.804 2.39889C116.804 3.04621 116.575 3.58406 116.118 4.01243C115.661 4.43129 115.09 4.64071 114.405 4.64071Z" fill="#313131"/>
+    <path d="M122.838 13.2367V21.6186H118.625V6.53984H122.766V8.91017C123.28 8.05342 123.923 7.39182 124.694 6.92537C125.465 6.45892 126.393 6.2257 127.478 6.2257C129.077 6.2257 130.358 6.7445 131.319 7.78212C132.281 8.81021 132.762 10.2762 132.762 12.1801V21.6186H128.563V12.9512C128.563 11.9421 128.321 11.1758 127.835 10.6522C127.35 10.1191 126.669 9.85259 125.793 9.85259C124.927 9.85259 124.218 10.1239 123.666 10.6665C123.114 11.2091 122.838 12.0659 122.838 13.2367Z" fill="#313131"/>
+    <path d="M142.008 27.7872C139.866 27.7872 138.21 27.3397 137.039 26.4449C135.868 25.5501 135.178 24.3697 134.968 22.9037H139.024C139.176 23.4749 139.514 23.9128 140.038 24.2174C140.561 24.5315 141.218 24.6886 142.008 24.6886C143.036 24.6886 143.826 24.4078 144.378 23.8461C144.94 23.2845 145.221 22.4611 145.221 21.3758V19.0626H145.207C144.759 19.9479 144.15 20.6 143.379 21.0189C142.617 21.4282 141.742 21.6329 140.752 21.6329C139.438 21.6329 138.291 21.3044 137.31 20.6476C136.33 19.9908 135.568 19.0912 135.026 17.9489C134.493 16.797 134.226 15.469 134.226 13.965C134.226 12.4514 134.497 11.1139 135.04 9.95254C135.592 8.79118 136.354 7.88207 137.325 7.22523C138.305 6.55887 139.438 6.2257 140.723 6.2257C141.694 6.2257 142.56 6.43512 143.322 6.85398C144.093 7.26331 144.721 7.88683 145.207 8.72454H145.221V6.53984H149.376V21.0331C149.376 22.6229 149.062 23.9128 148.434 24.9028C147.815 25.9023 146.953 26.6306 145.849 27.0875C144.745 27.5539 143.465 27.7872 142.008 27.7872ZM141.837 18.263C142.903 18.263 143.76 17.8679 144.407 17.0778C145.054 16.2877 145.378 15.2311 145.378 13.9079C145.378 12.5942 145.054 11.5423 144.407 10.7522C143.76 9.96206 142.903 9.56701 141.837 9.56701C140.818 9.56701 139.999 9.94778 139.381 10.7093C138.771 11.4614 138.467 12.5275 138.467 13.9079C138.467 15.2977 138.771 16.3734 139.381 17.1349C139.999 17.887 140.818 18.263 141.837 18.263Z" fill="#313131"/>
+    <path d="M157.752 21.9898C155.791 21.9898 154.168 21.5424 152.882 20.6476C151.607 19.7528 150.902 18.4962 150.769 16.8779H154.91C154.986 17.5348 155.262 18.0488 155.738 18.4201C156.214 18.7913 156.862 18.9769 157.68 18.9769C158.461 18.9769 159.075 18.8294 159.522 18.5343C159.97 18.2392 160.193 17.8584 160.193 17.392C160.193 16.9921 160.017 16.6732 159.665 16.4353C159.322 16.1878 158.846 16.0021 158.237 15.8784L155.596 15.3643C152.606 14.7932 151.112 13.3272 151.112 10.9664C151.112 9.53845 151.688 8.39136 152.84 7.52509C153.991 6.65883 155.548 6.2257 157.509 6.2257C159.46 6.2257 161.031 6.68263 162.221 7.59649C163.411 8.51035 164.025 9.75264 164.063 11.3233H160.165C160.155 10.7236 159.913 10.2238 159.437 9.82403C158.97 9.4147 158.366 9.21003 157.623 9.21003C156.9 9.21003 156.333 9.3671 155.924 9.68124C155.515 9.98586 155.31 10.3619 155.31 10.8093C155.31 11.1996 155.467 11.5185 155.781 11.766C156.105 12.0135 156.557 12.1991 157.138 12.3229L159.993 12.8798C161.517 13.1749 162.635 13.6604 163.349 14.3362C164.073 15.0026 164.434 15.8927 164.434 17.0064C164.434 18.006 164.149 18.8818 163.578 19.6338C163.016 20.3763 162.231 20.957 161.221 21.3758C160.222 21.7852 159.065 21.9898 157.752 21.9898Z" fill="#313131"/>
+  </svg>
+);
+
+const HavloLogo = () => (
+  <svg width="39" height="10" viewBox="0 0 78 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <text x="0" y="14" fontFamily='"Plus Jakarta Sans", sans-serif' fontWeight="800" fontSize="14" fill="#313131" letterSpacing="-0.3">HAVLO</text>
+  </svg>
+);
+
+const HamburgerIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path fillRule="evenodd" clipRule="evenodd" d="M2.4 5.7C2.4 5.4613 2.49472 5.23239 2.66351 5.0636C2.83229 4.89482 3.06121 4.8 3.3 4.8H20.7C20.9387 4.8 21.1676 4.89482 21.3364 5.0636C21.5052 5.23239 21.6 5.4613 21.6 5.7C21.6 5.93869 21.5052 6.16761 21.3364 6.3364C21.1676 6.50518 20.9387 6.6 20.7 6.6H3.3C3.06121 6.6 2.83229 6.50518 2.66351 6.3364C2.49472 6.16761 2.4 5.93869 2.4 5.7ZM2.4 12C2.4 11.7613 2.49472 11.5324 2.66351 11.3636C2.83229 11.1948 3.06121 11.1 3.3 11.1H20.7C20.9387 11.1 21.1676 11.1948 21.3364 11.3636C21.5052 11.5324 21.6 11.7613 21.6 12C21.6 12.2387 21.5052 12.4676 21.3364 12.6364C21.1676 12.8052 20.9387 12.9 20.7 12.9H3.3C3.06121 12.9 2.83229 12.8052 2.66351 12.6364C2.49472 12.4676 2.4 12.2387 2.4 12ZM2.4 18.3C2.4 18.0613 2.49472 17.8324 2.66351 17.6636C2.83229 17.4948 3.06121 17.4 3.3 17.4H20.7C20.9387 17.4 21.1676 17.4948 21.3364 17.6636C21.5052 17.8324 21.6 18.0613 21.6 18.3C21.6 18.5387 21.5052 18.7676 21.3364 18.9364C21.1676 19.1052 20.9387 19.2 20.7 19.2H3.3C3.06121 19.2 2.83229 19.1052 2.66351 18.9364C2.49472 18.7676 2.4 18.5387 2.4 18.3Z" fill="black"/>
+  </svg>
+);
+
 const HouseIcon = () => (
   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{overflow:'hidden',flexShrink:0}}>
     <path d="M5 19.9825V24.1665C5 29.6662 5 32.416 6.70855 34.1247C8.41708 35.8332 11.1669 35.8332 16.6667 35.8332H23.3333C28.833 35.8332 31.5828 35.8332 33.2915 34.1247C35 32.416 35 29.6662 35 24.1665V19.9825C35 17.1803 35 15.7794 34.4068 14.5666C33.8137 13.3538 32.7078 12.4936 30.496 10.7734L27.1627 8.18075C23.7218 5.50459 22.0015 4.1665 20 4.1665C17.9985 4.1665 16.2782 5.50459 12.8374 8.18075L9.50402 10.7734C7.29222 12.4936 6.18632 13.3538 5.59317 14.5666C5 15.7794 5 17.1803 5 19.9825Z" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -224,16 +254,16 @@ const HOUSE_ICONS = [HouseBlue, HouseOrange, HouseTeal];
 function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   return (
-    <div style={{ display:'flex', padding:'24px 0', justifyContent:'center', alignItems:'center', gap:8, alignSelf:'stretch', borderBottom:'1px solid rgba(0,0,0,0.10)' }}>
+    <div className="sl-faq-item">
       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, flex:'1 0 0' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', alignSelf:'stretch' }}>
-          <div style={{ color:'#000', fontFamily:'"Plus Jakarta Sans", sans-serif', fontSize:20, fontWeight:700, lineHeight:'150%', letterSpacing:'-0.02em' }}>{q}</div>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', alignSelf:'stretch', gap:8 }}>
+          <div className="sl-faq-q">{q}</div>
           <button onClick={() => setOpen(!open)} style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex', flexShrink:0 }}>
             {open ? <MinusIcon /> : <PlusIcon />}
           </button>
         </div>
         {open && (
-          <div style={{ alignSelf:'stretch', color:'#000', fontFamily:'Inter, sans-serif', fontSize:18, fontWeight:400, lineHeight:'150%', letterSpacing:'-0.003em', whiteSpace:'pre-line' }}>{a}</div>
+          <div className="sl-faq-a">{a}</div>
         )}
       </div>
     </div>
@@ -266,11 +296,44 @@ export function StaleListingsLanding() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=Libre+Franklin:wght@400;500;600;700&display=swap');
 
+        /* ── DESKTOP-ONLY ELEMENTS ── */
         .sl-nav-links { display:flex; }
+        .sl-nav-cta-desktop { display:flex; }
         .sl-hero-right { display:flex !important; }
         .sl-features-cols { display:flex; flex-direction:row; }
         .sl-testimonial-row { display:flex; flex-direction:row; }
+        .sl-hamburger { display:none !important; }
 
+        /* ── FAQ ITEM SHARED ── */
+        .sl-faq-item {
+          display:flex;
+          padding:24px 0;
+          justify-content:center;
+          align-items:center;
+          gap:8px;
+          align-self:stretch;
+          border-bottom:1px solid rgba(0,0,0,0.10);
+        }
+        .sl-faq-q {
+          color:#000;
+          font-family:'Plus Jakarta Sans', sans-serif;
+          font-size:20px;
+          font-weight:700;
+          line-height:150%;
+          letter-spacing:-0.02em;
+        }
+        .sl-faq-a {
+          align-self:stretch;
+          color:#000;
+          font-family:Inter, sans-serif;
+          font-size:18px;
+          font-weight:400;
+          line-height:150%;
+          letter-spacing:-0.003em;
+          white-space:pre-line;
+        }
+
+        /* ── TABLET ── */
         @media(max-width:1024px) {
           .sl-hero-right { display:none !important; }
           .sl-features-cols { flex-direction:column !important; }
@@ -286,84 +349,291 @@ export function StaleListingsLanding() {
           .sl-step-card { padding:32px !important; }
           .sl-step-float { display:none !important; }
           .sl-input-bar { max-width:100% !important; }
+          .sl-hamburger { display:flex !important; }
+          .sl-nav-cta-desktop { display:none !important; }
         }
+
+        /* ── MOBILE ── */
         @media(max-width:640px) {
-          .sl-hero-heading { font-size:30px !important; }
-          .sl-hero-section { padding:40px 20px !important; }
-          .sl-features-section { padding:40px 20px !important; }
-          .sl-how-section { padding:32px 20px !important; }
-          .sl-testimonials-section { padding:40px 20px !important; }
-          .sl-faq-section { padding:40px 20px !important; }
-          .sl-pricing-section { padding:40px 20px !important; }
-          .sl-pricing-cols { flex-direction:column !important; }
+          /* Inner containers — remove 100px side padding */
+          .sl-inner-container {
+            padding-left:16px !important;
+            padding-right:16px !important;
+          }
+
+          /* Navbar */
+          .sl-navbar {
+            height:80px !important;
+            padding:0 !important;
+          }
+          .sl-nav-logo-wrap {
+            flex-direction:column !important;
+            gap:2px !important;
+            align-items:flex-start !important;
+          }
+
+          /* Hero */
+          .sl-hero-section {
+            padding:32px 16px 40px !important;
+          }
+          .sl-hero-inner {
+            flex-direction:column !important;
+            gap:0 !important;
+          }
+          .sl-hero-left {
+            width:100% !important;
+            gap:32px !important;
+          }
+          .sl-hero-right {
+            display:none !important;
+          }
+          .sl-hero-heading {
+            font-size:40px !important;
+            letter-spacing:-0.03em !important;
+            line-height:120% !important;
+          }
+          .sl-hero-desc {
+            font-size:14px !important;
+            letter-spacing:-0.02em !important;
+          }
+          .sl-hero-head-group {
+            gap:28px !important;
+          }
+          .sl-input-bar {
+            width:100% !important;
+            max-width:100% !important;
+            height:56px !important;
+            padding:4px 4px 4px 12px !important;
+          }
+          .sl-input-btn {
+            width:auto !important;
+            font-size:14px !important;
+            padding:12px 14px !important;
+            border-radius:10px !important;
+          }
+          .sl-trustpilot-row {
+            flex-direction:column !important;
+            align-items:flex-start !important;
+            gap:8px !important;
+          }
+          .sl-trustpilot-inner {
+            flex-direction:row !important;
+            align-items:center !important;
+            gap:8px !important;
+          }
+          .sl-trustpilot-excellent {
+            font-size:16px !important;
+          }
+          .sl-trustpilot-label {
+            font-size:14px !important;
+          }
+          .sl-stats-row {
+            gap:12px !important;
+          }
+          .sl-stat-item {
+            gap:20px !important;
+          }
+          .sl-stat-val {
+            font-size:24px !important;
+            letter-spacing:-0.03em !important;
+          }
+          .sl-stat-label {
+            font-size:12px !important;
+            width:76px !important;
+          }
+
+          /* Features */
+          .sl-features-section {
+            padding:40px 16px !important;
+          }
+          .sl-features-heading {
+            font-size:28px !important;
+            letter-spacing:-0.02em !important;
+            line-height:130% !important;
+          }
+          .sl-features-cols {
+            flex-direction:column !important;
+          }
+          .sl-features-inner {
+            gap:48px !important;
+          }
+          .sl-feature-item {
+            gap:24px !important;
+          }
+          .sl-feature-title-large {
+            font-size:24px !important;
+          }
+          .sl-feature-title-small {
+            font-size:20px !important;
+          }
+          .sl-feature-desc {
+            font-size:16px !important;
+          }
+
+          /* How it works */
+          .sl-how-section {
+            padding:24px 16px !important;
+          }
+          .sl-step-card {
+            padding:24px 20px !important;
+            border-radius:24px !important;
+            gap:20px !important;
+          }
+          .sl-step-badge {
+            height:40px !important;
+            padding:10px 16px !important;
+            font-size:14px !important;
+          }
+          .sl-step-title {
+            font-size:28px !important;
+            letter-spacing:-0.02em !important;
+          }
+          .sl-step-desc {
+            font-size:16px !important;
+          }
+          .sl-step-float { display:none !important; }
+
+          /* Testimonials */
+          .sl-testimonials-section {
+            padding:40px 16px !important;
+          }
+          .sl-testimonials-heading {
+            font-size:28px !important;
+            letter-spacing:-0.03em !important;
+          }
+          .sl-testimonial-row {
+            flex-direction:column !important;
+            gap:32px !important;
+          }
+          .sl-testimonial-card {
+            min-height:unset !important;
+          }
+
+          /* FAQ */
+          .sl-faq-section {
+            padding:40px 16px !important;
+          }
+          .sl-faq-heading {
+            font-size:44px !important;
+            line-height:110% !important;
+          }
+
+          /* Pricing */
+          .sl-pricing-section {
+            padding:40px 16px !important;
+          }
+          .sl-pricing-heading {
+            font-size:28px !important;
+            letter-spacing:-0.02em !important;
+          }
+          .sl-pricing-desc {
+            font-size:16px !important;
+          }
+          .sl-pricing-cols {
+            flex-direction:column !important;
+            gap:24px !important;
+          }
+          .sl-plan-card {
+            border-radius:32px !important;
+          }
+
+          /* Footer */
+          .sl-footer {
+            padding:24px 16px !important;
+            flex-direction:column !important;
+            gap:12px !important;
+            align-items:flex-start !important;
+          }
+          .sl-footer-links {
+            gap:16px !important;
+          }
         }
       `}</style>
 
       {/* ── NAVBAR ── */}
-      <header style={{
-        background:'#FFF',
-        borderBottom:'1px solid #F4F4F4',
-        backdropFilter:'blur(5px)',
-        position:'sticky',
-        top:0,
-        zIndex:50,
-        height:80,
-        display:'flex',
-        alignItems:'center',
-      }}>
-        <div style={{ width:'100%', maxWidth:1440, margin:'0 auto', padding:'0 100px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <header
+        className="sl-navbar"
+        style={{
+          background:'#FFF',
+          borderBottom:'1px solid #F4F4F4',
+          backdropFilter:'blur(5px)',
+          position:'sticky',
+          top:0,
+          zIndex:50,
+          height:80,
+          display:'flex',
+          alignItems:'center',
+          boxSizing:'border-box',
+        }}
+      >
+        <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', padding:'0 100px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
-          <div style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-start' }}>
-            <svg width="215" height="36" viewBox="0 0 215 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <text x="0" y="28" fontFamily='"Plus Jakarta Sans", sans-serif' fontWeight="800" fontSize="28" fill="#313131" letterSpacing="-0.5">StaleListings</text>
-            </svg>
-            <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-              <span style={{ fontFamily:'Inter, sans-serif', fontSize:16, color:'#000', fontWeight:400, letterSpacing:'-0.02em' }}>By</span>
-              <span style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:16, color:'#313131', letterSpacing:'-0.3px' }}>HAVLO</span>
+          <div
+            className="sl-nav-logo-wrap"
+            style={{ display:'flex', flexDirection:'column', gap:4, alignItems:'flex-start' }}
+          >
+            <StaleListingsLogo />
+            <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+              <span style={{ fontFamily:'Inter, sans-serif', fontSize:12, color:'#000', fontWeight:400, letterSpacing:'-0.02em' }}>By</span>
+              <HavloLogo />
             </div>
           </div>
 
-          {/* Nav + CTA */}
+          {/* Nav + CTA (desktop) */}
           <div style={{ display:'flex', alignItems:'center', gap:32 }}>
             <nav className="sl-nav-links" style={{ display:'flex', alignItems:'center', gap:40 }}>
               {[['How it works','#how-it-works'],['Faq','#faq'],['Pricing','#pricing']].map(([label, href], i) => (
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
-            <button onClick={handleStart} style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em', border:'none', cursor:'pointer', whiteSpace:'nowrap' }}>
+            <button
+              className="sl-nav-cta-desktop"
+              onClick={handleStart}
+              style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em', border:'none', cursor:'pointer', whiteSpace:'nowrap' }}
+            >
               Start Assessment
             </button>
           </div>
+
+          {/* Hamburger (mobile/tablet) */}
+          <button
+            className="sl-hamburger"
+            style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'none', alignItems:'center' }}
+          >
+            <HamburgerIcon />
+          </button>
         </div>
       </header>
 
       {/* ── HERO ── */}
-      <section style={{ background:'#FFF', overflow:'hidden', position:'relative', minHeight:733 }}>
-        {/* Pink blob — exact Figma position: left:701px top:-221px width:895px height:736px blur:213.468px */}
-        <div style={{ position:'absolute', left:701, top:-221, width:895, height:736, borderRadius:'50%', background:'#FFB0E6', filter:'blur(213.468px)', pointerEvents:'none', zIndex:0 }} />
+      <section style={{ background:'#FEFEFE', overflow:'hidden', position:'relative' }}>
+        {/* Pink blob — matches Figma: left:-67px top:-99px size 524x736 blur:213px */}
+        <div style={{ position:'absolute', left:-67, top:-99, width:524, height:736, borderRadius:'50%', background:'#FFB0E6', filter:'blur(213.468px)', pointerEvents:'none', zIndex:0 }} />
 
-        <div className="sl-hero-section" style={{ maxWidth:1440, margin:'0 auto', padding:'92px 100px 73px', position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+        <div
+          className="sl-hero-section sl-hero-inner sl-inner-container"
+          style={{ maxWidth:1440, margin:'0 auto', padding:'92px 100px 73px', position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}
+        >
+          {/* Left column */}
+          <div className="sl-hero-left" style={{ width:657, display:'flex', flexDirection:'column', gap:43 }}>
 
-          {/* Left column — 657px wide */}
-          <div style={{ width:657, display:'flex', flexDirection:'column', gap:43 }}>
-
-            {/* Heading + input + trustpilot block */}
-            <div style={{ display:'flex', flexDirection:'column', gap:48 }}>
+            {/* Heading + description */}
+            <div className="sl-hero-head-group" style={{ display:'flex', flexDirection:'column', gap:48 }}>
               <h1
                 className="sl-hero-heading"
-                style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:56, color:'#1F1F1E', lineHeight:'110%', letterSpacing:'-0.03em', margin:0 }}
+                style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:56, lineHeight:'110%', letterSpacing:'-0.03em', margin:0 }}
               >
-                Don't Let Your Home Sit<br/>on the Market
+                <span style={{ color:'#1F1F1E' }}>Don't Let Your Home Sit </span>
+                <span style={{ color:PURPLE }}>on the Market</span>
               </h1>
-
-              {/* Description */}
-              <p style={{ fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:400, color:'#000000', lineHeight:'150%', letterSpacing:'-0.02em', margin:0, maxWidth:657 }}>
+              <p className="sl-hero-desc" style={{ fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:400, color:'#000000', lineHeight:'150%', letterSpacing:'-0.02em', margin:0 }}>
                 Whether you're preparing to sell or already on the market, get personalised insights combining data-driven analysis with experienced local agent expertise to help your home sell faster — all while working with your current agent, no switching required.
               </p>
             </div>
 
-            {/* Input bar — 570px wide × 56px tall */}
-            <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
+            {/* Input + trust */}
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              {/* Input bar */}
               <div
                 className="sl-input-bar"
                 style={{
@@ -372,7 +642,7 @@ export function StaleListingsLanding() {
                   alignItems:'center',
                   width:570,
                   height:56,
-                  padding:'16px 4px 16px 16px',
+                  padding:'4px 4px 4px 16px',
                   boxSizing:'border-box',
                   background:'#EEF0F2',
                   borderBottom:'1px solid rgba(0,0,0,0.05)',
@@ -386,7 +656,7 @@ export function StaleListingsLanding() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleStart()}
-                  placeholder="Enter property address…"
+                  placeholder="Enter property address or Rightmove/Zoopla URL…"
                   style={{
                     flex:1,
                     background:'transparent',
@@ -398,9 +668,11 @@ export function StaleListingsLanding() {
                     color:'#1F1F1E',
                     letterSpacing:'-0.03em',
                     lineHeight:'17px',
+                    minWidth:0,
                   }}
                 />
                 <button
+                  className="sl-input-btn"
                   onClick={handleStart}
                   style={{
                     display:'flex',
@@ -427,32 +699,32 @@ export function StaleListingsLanding() {
                 </button>
               </div>
 
-              {/* Trustpilot row — all on one line: Excellent + stars + based on */}
-              <div style={{ display:'flex', alignItems:'center', gap:12, width:549, height:30 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <span style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:20, color:'#040504', letterSpacing:'-0.02em', lineHeight:'100%', whiteSpace:'nowrap' }}>Excellent</span>
+              {/* Trustpilot row */}
+              <div className="sl-trustpilot-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div className="sl-trustpilot-inner" style={{ display:'flex', alignItems:'center', gap:12 }}>
                   <TrustpilotStars />
+                  <span className="sl-trustpilot-excellent" style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:20, color:'#040504', letterSpacing:'-0.02em', lineHeight:'100%', whiteSpace:'nowrap' }}>Excellent</span>
                 </div>
-                <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'100%', whiteSpace:'nowrap' }}>Based on verified customer feedback</span>
+                <span className="sl-trustpilot-label" style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%' }}>Based on verified customer feedback</span>
               </div>
             </div>
 
-            {/* Stats row — gap:23px */}
-            <div style={{ display:'flex', alignItems:'flex-start', gap:23 }}>
+            {/* Stats row */}
+            <div className="sl-stats-row" style={{ display:'flex', alignItems:'flex-start', gap:23 }}>
               {[
                 ['10K+','Listings Analyzed'],
                 ['91K+','Seller Recommendations Generated'],
                 ['250K+','Property Data Points Analyzed'],
               ].map(([val, label], i) => (
-                <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4 }}>
-                  <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:32, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{val}</div>
-                  <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:14, color:'#000000', letterSpacing:'-0.02em' }}>{label}</div>
+                <div key={i} className="sl-stat-item" style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4, flex:1 }}>
+                  <div className="sl-stat-val" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:32, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{val}</div>
+                  <div className="sl-stat-label" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:14, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%' }}>{label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right column — Mask group 582.27px × 568px */}
+          {/* Right column — hero image (desktop only) */}
           <div
             className="sl-hero-right"
             style={{ width:582, height:568, borderRadius:30.45, overflow:'hidden', flexShrink:0 }}
@@ -466,23 +738,29 @@ export function StaleListingsLanding() {
         </div>
       </section>
 
-      {/* ── FEATURES — white bg, padding 80px 100px, gap 78px, 3 columns directly on white ── */}
+      {/* ── FEATURES ── */}
       <section className="sl-features-section" style={{ padding:'80px 100px', background:'#FFFFFF' }}>
-        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:78, alignItems:'flex-start' }}>
-          <h2 style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:48, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:713 }}>
+        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:48, alignItems:'flex-start' }}>
+          <h2
+            className="sl-features-heading"
+            style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:48, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:713 }}
+          >
             Homes that sit too long lose buyer attention. Yours doesn't have to.
           </h2>
-          <div className="sl-features-cols" style={{ display:'flex', flexDirection:'row', gap:24, alignSelf:'stretch', width:'100%' }}>
+          <div
+            className="sl-features-cols sl-features-inner"
+            style={{ display:'flex', flexDirection:'row', gap:24, alignSelf:'stretch', width:'100%' }}
+          >
             {[
-              { Icon: HouseIcon, title:'Spot What Buyers Notice', titleSize:32, desc:'Uncover the small issues that can reduce buyer interest and slow down your sale.' },
-              { Icon: BulbIcon, title:'Expert-Backed Selling Insights', titleSize:28, desc:'Combine data-driven analysis with experienced local property expertise.' },
-              { Icon: HandshakeIcon, title:'Works With Your Current Agent', titleSize:28, desc:'Use our recommendations alongside your existing estate agent, no switching required.' },
-            ].map(({ Icon, title, titleSize, desc }, i) => (
-              <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:50, flex:'1 0 0' }}>
+              { Icon: HouseIcon, title:'Spot What Buyers Notice', titleClass:'sl-feature-title-large', desc:'Uncover the small issues that can reduce buyer interest and slow down your sale.' },
+              { Icon: BulbIcon, title:'Expert-Backed Selling Insights', titleClass:'sl-feature-title-small', desc:'Combine data-driven analysis with experienced local property expertise.' },
+              { Icon: HandshakeIcon, title:'Works With Your Current Agent', titleClass:'sl-feature-title-small', desc:'Use our recommendations alongside your existing estate agent, no switching required.' },
+            ].map(({ Icon, title, titleClass, desc }, i) => (
+              <div key={i} className="sl-feature-item" style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:50, flex:'1 0 0' }}>
                 <Icon />
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, alignSelf:'stretch' }}>
-                  <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:titleSize, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{title}</div>
-                  <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%' }}>{desc}</div>
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, alignSelf:'stretch' }}>
+                  <div className={titleClass} style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize: i===0 ? 32 : 28, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{title}</div>
+                  <div className="sl-feature-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%' }}>{desc}</div>
                 </div>
               </div>
             ))}
@@ -490,20 +768,19 @@ export function StaleListingsLanding() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS — white bg outer, EEF0F2 step cards inside ── */}
+      {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" className="sl-how-section" style={{ padding:'40px 100px', background:'#FFFFFF' }}>
-        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:32 }}>
+        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:24 }}>
 
           {/* Step 1 */}
           <div className="sl-step-card" style={{ display:'flex', padding:56, flexDirection:'column', alignItems:'flex-start', gap:32, alignSelf:'stretch', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#EEF0F2', overflow:'hidden', position:'relative', isolation:'isolate', boxSizing:'border-box' }}>
-            <div style={{ display:'flex', width:120, height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', zIndex:1 }}>
+            <div className="sl-step-badge" style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', borderRadius:48, background:'#000', zIndex:1, boxSizing:'border-box' }}>
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 1</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, flex:'1 0 0', zIndex:1 }}>
-              <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Tell Us About Your Home</div>
-              <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.</div>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, flex:'1 0 0', zIndex:1 }}>
+              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Tell Us About Your Home</div>
+              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.</div>
             </div>
-            {/* Floating white card — positioned absolute to the right */}
             <div className="sl-step-float" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               {[
                 { Icon: HomeInputIcon, label:'Enter property address…' },
@@ -520,14 +797,13 @@ export function StaleListingsLanding() {
 
           {/* Step 2 */}
           <div className="sl-step-card" style={{ display:'flex', padding:56, flexDirection:'column', alignItems:'flex-start', gap:32, alignSelf:'stretch', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#EEF0F2', overflow:'hidden', position:'relative', isolation:'isolate', boxSizing:'border-box' }}>
-            <div style={{ display:'flex', width:120, height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', zIndex:1 }}>
+            <div className="sl-step-badge" style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', borderRadius:48, background:'#000', zIndex:1, boxSizing:'border-box' }}>
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 2</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, flex:'1 0 0', zIndex:1 }}>
-              <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Get personalized selling insights</div>
-              <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:580 }}>We analyse your home using property data, buyer trends, and experienced local agent expertise to uncover what could improve your sale.</div>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, flex:'1 0 0', zIndex:1 }}>
+              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Get personalized selling insights</div>
+              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:580 }}>We analyse your home using property data, buyer trends, and experienced local agent expertise to uncover what could improve your sale.</div>
             </div>
-            {/* Floating white card */}
             <div className="sl-step-float" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               {[
                 { Icon: PropertyDataIcon, title:'Property data', sub:'Pricing trends & comparables' },
@@ -547,14 +823,13 @@ export function StaleListingsLanding() {
 
           {/* Step 3 */}
           <div className="sl-step-card" style={{ display:'flex', padding:56, flexDirection:'column', alignItems:'flex-start', gap:32, alignSelf:'stretch', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#EEF0F2', overflow:'hidden', position:'relative', isolation:'isolate', boxSizing:'border-box' }}>
-            <div style={{ display:'flex', width:120, height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', zIndex:1 }}>
+            <div className="sl-step-badge" style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', borderRadius:48, background:'#000', zIndex:1, boxSizing:'border-box' }}>
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 3</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, flex:'1 0 0', zIndex:1 }}>
-              <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Improve your chances of a faster sale</div>
-              <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:661 }}>Receive your expert report within 6–12 hours, with actionable recommendations you can implement alongside your current estate agent.</div>
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, flex:'1 0 0', zIndex:1 }}>
+              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Improve your chances of a faster sale</div>
+              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:661 }}>Receive your expert report within 6–12 hours, with actionable recommendations you can implement alongside your current estate agent.</div>
             </div>
-            {/* Floating white card — step 3: right:-192px, border-radius top only */}
             <div className="sl-step-float" style={{ position:'absolute', right:-192, top:46, width:679, padding:32, display:'flex', flexDirection:'column', gap:37, borderRadius:'32px 32px 0px 0px', border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               <span style={{ fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'24px', textTransform:'uppercase' }}>Your report includes</span>
               <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
@@ -567,40 +842,40 @@ export function StaleListingsLanding() {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS — bg:#EEF0F2, padding 80px 100px ── */}
+      {/* ── TESTIMONIALS ── */}
       <section className="sl-testimonials-section" style={{ padding:'80px 100px', background:'#EEF0F2' }}>
-        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:32 }}>
-          <h2 style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:48, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:713 }}>
+        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:24 }}>
+          <h2 className="sl-testimonials-heading" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:48, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:713 }}>
             See why sellers trust our insights
           </h2>
           {/* Row 1 */}
-          <div className="sl-testimonial-row" style={{ display:'flex', flexDirection:'row', alignItems:'center', gap:32, alignSelf:'stretch' }}>
+          <div className="sl-testimonial-row" style={{ display:'flex', flexDirection:'row', alignItems:'stretch', gap:16 }}>
             {TESTIMONIALS.slice(0, 3).map((t, i) => (
-              <div key={i} style={{ display:'flex', padding:24, flexDirection:'column', alignItems:'flex-start', gap:32, flex:'1 0 0', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#FFFFFF', overflow:'hidden', minHeight:317.68, boxSizing:'border-box' }}>
+              <div key={i} className="sl-testimonial-card" style={{ display:'flex', padding:24, flexDirection:'column', alignItems:'flex-start', gap:32, flex:'1 0 0', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#FFFFFF', overflow:'hidden', boxSizing:'border-box' }}>
                 <QuoteIcon />
-                <div style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:400, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>"{t.text}"</div>
-                <div style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:700, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>{t.name}</div>
+                <div className="sl-testimonial-text" style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:400, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>"{t.text}"</div>
+                <div className="sl-testimonial-name" style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:700, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>{t.name}</div>
               </div>
             ))}
           </div>
           {/* Row 2 */}
-          <div className="sl-testimonial-row" style={{ display:'flex', flexDirection:'row', alignItems:'center', gap:32, alignSelf:'stretch' }}>
+          <div className="sl-testimonial-row" style={{ display:'flex', flexDirection:'row', alignItems:'stretch', gap:16 }}>
             {TESTIMONIALS.slice(3).map((t, i) => (
-              <div key={i} style={{ display:'flex', padding:24, flexDirection:'column', alignItems:'flex-start', gap:32, flex:'1 0 0', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#FFFFFF', overflow:'hidden', minHeight:317.68, boxSizing:'border-box' }}>
+              <div key={i} className="sl-testimonial-card" style={{ display:'flex', padding:24, flexDirection:'column', alignItems:'flex-start', gap:32, flex:'1 0 0', borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#FFFFFF', overflow:'hidden', boxSizing:'border-box' }}>
                 <QuoteIcon />
-                <div style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:400, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>"{t.text}"</div>
-                <div style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:700, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>{t.name}</div>
+                <div className="sl-testimonial-text" style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:400, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>"{t.text}"</div>
+                <div className="sl-testimonial-name" style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:700, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>{t.name}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── FAQ — bg:#FEFFFF, padding 80px 200px ── */}
+      {/* ── FAQ ── */}
       <section id="faq" className="sl-faq-section" style={{ padding:'80px 200px', background:'#FEFFFF' }}>
         <div style={{ maxWidth:1440, margin:'0 auto' }}>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:40, width:1040, maxWidth:'100%' }}>
-            <h2 style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:900, fontSize:44, color:'#050405', lineHeight:'110%', margin:0 }}>Evertthing you need to know</h2>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:40, maxWidth:'100%' }}>
+            <h2 className="sl-faq-heading" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:900, fontSize:44, color:'#050405', lineHeight:'110%', margin:0 }}>Everything you need to know</h2>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:0, alignSelf:'stretch' }}>
               {faqsToShow.map((faq, i) => (
                 <FAQItem key={i} q={faq.q} a={faq.a} defaultOpen={i < 2} />
@@ -618,37 +893,44 @@ export function StaleListingsLanding() {
         </div>
       </section>
 
-      {/* ── PRICING — bg:#FFB0E6, padding 80px 100px ── */}
+      {/* ── PRICING ── */}
       <section id="pricing" className="sl-pricing-section" style={{ padding:'80px 100px', background:'#FFB0E6' }}>
-        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', gap:32 }}>
-          <h2 style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:858, textAlign:'center' }}>
+        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', gap:24 }}>
+          <h2
+            className="sl-pricing-heading"
+            style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:858, textAlign:'center' }}
+          >
             Find out why your property isn't selling and what you can do to improve it.
           </h2>
-          <p style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%', margin:0, maxWidth:734, textAlign:'center' }}>
+          <p
+            className="sl-pricing-desc"
+            style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%', margin:0, maxWidth:734, textAlign:'center' }}
+          >
             Get expert insights, market analysis, and professional recommendations designed to help position your property more effectively and attract the right buyers faster.
           </p>
           {/* Plan cards */}
-          <div className="sl-pricing-cols" style={{ display:'flex', flexDirection:'row', gap:24, alignSelf:'stretch', alignItems:'stretch' }}>
+          <div className="sl-pricing-cols" style={{ display:'flex', flexDirection:'row', gap:16, alignSelf:'stretch', alignItems:'stretch', width:'100%' }}>
             {PLANS.map((plan, i) => {
-              const HouseIcon = HOUSE_ICONS[i];
+              const PlanHouseIcon = HOUSE_ICONS[i];
               const isPopular = plan.popular;
               return (
-                <div key={i} style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'space-between', padding:24, gap:32, flex:'1 0 0', background:'#FFFFFF', border: isPopular ? '2px solid #1A6B6B' : '1px solid rgba(0,0,0,0.05)', borderRadius:32, boxSizing:'border-box' }}>
-                  {/* BEST VALUE badge */}
+                <div
+                  key={i}
+                  className="sl-plan-card"
+                  style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'space-between', padding:24, gap:32, flex:'1 0 0', background:'#FFFFFF', border: isPopular ? '2px solid #1A6B6B' : '1px solid rgba(0,0,0,0.05)', borderRadius:32, boxSizing:'border-box' }}
+                >
                   {isPopular && (
                     <div style={{ position:'absolute', top:20, right:20, background:'#E53935', color:'#fff', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:11, letterSpacing:'0.5px', padding:'4px 10px', borderRadius:20, textTransform:'uppercase' }}>
                       BEST VALUE
                     </div>
                   )}
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:32 }}>
-                    {/* House illustration */}
-                    <HouseIcon />
+                    <PlanHouseIcon />
                     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, alignSelf:'stretch' }}>
                       <div style={{ display:'flex', flexDirection:'column', gap:20, alignSelf:'stretch' }}>
                         <div style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%' }}>{plan.name}</div>
                         <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%' }}>{plan.tagline}</div>
                       </div>
-                      {/* Features list */}
                       <div style={{ display:'flex', flexDirection:'column', gap:16, paddingTop:16, borderTop:'1px solid rgba(0,0,0,0.1)', alignSelf:'stretch' }}>
                         {(plan as any).preNote && (
                           <div style={{ fontFamily:'Inter, sans-serif', fontSize:14, letterSpacing:'-0.03em', lineHeight:'130%' }}>
@@ -667,17 +949,13 @@ export function StaleListingsLanding() {
                       </div>
                     </div>
                   </div>
-                  {/* Turnaround + Price + CTA */}
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-                    {/* Purple turnaround pill */}
                     <div style={{ display:'inline-flex', padding:'10px 12px', borderRadius:10, background:'#FAEBFE', alignSelf:'stretch' }}>
                       <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#602ED3', letterSpacing:'-0.02em', lineHeight:'130%' }}>{(plan as any).turnaround}</span>
                     </div>
-                    {/* Price */}
-                    <div className="text-center font-semibold text-[24px]" style={{ fontFamily:'Inter, sans-serif', color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch' }}>
+                    <div style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch' }}>
                       {plan.price} per report
                     </div>
-                    {/* CTA button */}
                     <button
                       onClick={handleStart}
                       style={{ display:'flex', height:44, padding:'8px', justifyContent:'center', alignItems:'center', gap:8, borderRadius:10, background: isPopular ? '#F5A623' : '#000000', color: isPopular ? '#000' : '#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:16, letterSpacing:'-0.02em', border:'none', cursor:'pointer', alignSelf:'stretch' }}
@@ -693,13 +971,16 @@ export function StaleListingsLanding() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background: '#fff', borderTop: '1px solid #EFEFEF', padding: '28px 60px' }}>
-        <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 20, color: '#1F1F1E', letterSpacing: '-0.5px', flexShrink: 0 }}>StaleListings</span>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#1F1F1E', textAlign: 'center' }}>© 2025 StaleListings. All rights reserved.</span>
-          <div style={{ display: 'flex', gap: 24, flexShrink: 0 }}>
-            <a href="/privacy-policy" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#1F1F1E', textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="/terms" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#1F1F1E', textDecoration: 'none' }}>Terms</a>
+      <footer>
+        <div
+          className="sl-footer sl-inner-container"
+          style={{ maxWidth:1440, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, padding:'28px 100px', borderTop:'1px solid #EFEFEF', background:'#fff' }}
+        >
+          <span style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:20, color:'#1F1F1E', letterSpacing:'-0.5px', flexShrink:0 }}>StaleListings</span>
+          <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#1F1F1E', textAlign:'center' }}>© 2025 StaleListings. All rights reserved.</span>
+          <div className="sl-footer-links" style={{ display:'flex', gap:24, flexShrink:0 }}>
+            <a href="/privacy-policy" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Privacy Policy</a>
+            <a href="/terms" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Terms</a>
           </div>
         </div>
       </footer>
