@@ -674,7 +674,7 @@ export function StaleListingsLanding() {
                       <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#602ED3', letterSpacing:'-0.02em', lineHeight:'130%' }}>{(plan as any).turnaround}</span>
                     </div>
                     {/* Price */}
-                    <div style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch' }}>
+                    <div className="text-center font-semibold text-[24px]" style={{ fontFamily:'Inter, sans-serif', color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch' }}>
                       {plan.price} per report
                     </div>
                     {/* CTA button */}
