@@ -607,17 +607,13 @@ export function StaleListingsLanding() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ background:'#1F1F1E', padding:'48px 100px' }}>
-        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-            <span style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:20, color:'#FFF', letterSpacing:'-0.5px' }}>StaleListings</span>
-            <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-              <span style={{ fontFamily:'Inter, sans-serif', fontSize:13, color:'rgba(255,255,255,0.6)' }}>By</span>
-              <span style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:13, color:'rgba(255,255,255,0.8)', letterSpacing:'-0.3px' }}>HAVLO</span>
-            </div>
-          </div>
-          <div style={{ fontFamily:'Inter, sans-serif', fontSize:14, color:'rgba(255,255,255,0.5)', textAlign:'right' }}>
-            © 2026 StaleListings.com · All rights reserved
+      <footer style={{ background: '#fff', borderTop: '1px solid #EFEFEF', padding: '28px 60px' }}>
+        <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+          <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 20, color: '#1F1F1E', letterSpacing: '-0.5px', flexShrink: 0 }}>StaleListings</span>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#1F1F1E', textAlign: 'center' }}>© 2025 StaleListings. All rights reserved.</span>
+          <div style={{ display: 'flex', gap: 24, flexShrink: 0 }}>
+            <a href="/privacy-policy" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#1F1F1E', textDecoration: 'none' }}>Privacy Policy</a>
+            <a href="/terms" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#1F1F1E', textDecoration: 'none' }}>Terms</a>
           </div>
         </div>
       </footer>
