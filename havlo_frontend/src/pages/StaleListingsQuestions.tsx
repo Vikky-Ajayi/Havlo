@@ -245,7 +245,7 @@ export function StaleListingsQuestions() {
 
           {/* Question counter + title */}
           <div style={{ marginBottom: 40 }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 14, color: '#666', letterSpacing: '-0.28px', marginBottom: 16 }}>
+            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: PURPLE, letterSpacing: '-0.32px', lineHeight: '150%', marginBottom: 16 }}>
               Question {currentQ + 1} of {QUESTIONS.length}
             </div>
             <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 700, fontSize: 28, color: '#000', letterSpacing: '-0.5px', lineHeight: '130%', margin: '0 0 12px' }}>
