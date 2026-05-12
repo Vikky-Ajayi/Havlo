@@ -295,7 +295,7 @@ export function StaleListingsQuestions() {
           </div>
 
           {/* Navigation */}
-          <div className="sl-q-nav-row" style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 40 }}>
+          <div className="sl-q-nav-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 40 }}>
             <button
               onClick={handleBack}
               style={{ display: 'flex', width: 160, height: 52, padding: '16px 24px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 8, border: '1px solid rgba(0,0,0,0.15)', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, color: '#000', cursor: 'pointer', letterSpacing: '-0.32px', boxSizing: 'border-box' }}
