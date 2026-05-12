@@ -213,7 +213,7 @@ function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
 function PlanNavbar() {
   return (
     <header style={{ display: 'flex', width: '100%', height: 80, padding: '12px 56px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F4F4F4', background: '#FFF', backdropFilter: 'blur(5px)', boxSizing: 'border-box' }}>
-      <StaleListingsLogo />
+      <img src="/stale-logo.png" alt="StaleListings" style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <LockIcon />
         <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16, color: '#000', letterSpacing: '-0.32px' }}>Secure assessment · SSL encrypted</span>

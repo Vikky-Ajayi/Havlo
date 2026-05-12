@@ -213,9 +213,8 @@ export function StaleListingsQuestions() {
       <header style={{ background: '#FFF', borderBottom: '1px solid #F4F4F4', flexShrink: 0 }}>
         <div className="sl-q-navbar-inner" style={{ maxWidth: '100%', margin: '0 auto', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
-          <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-            <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 22, color: '#1F1F1E', letterSpacing: '-0.5px', lineHeight: 1 }}>StaleListings</span>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, color: '#555', letterSpacing: 0 }}>By HAVLO</span>
+          <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+            <img src="/stale-logo.png" alt="StaleListings" style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
           </button>
 
           {/* Desktop: secure badge */}
