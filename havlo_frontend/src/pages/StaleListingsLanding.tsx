@@ -958,10 +958,10 @@ export function StaleListingsLanding() {
                     </div>
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-                    <div style={{ display:'inline-flex', padding:'10px 12px', borderRadius:10, background:'#FAEBFE', alignSelf:'stretch' }}>
+                    <div style={{ display:'flex', justifyContent:'center', padding:'10px 12px', borderRadius:10, background:'#FAEBFE', alignSelf:'stretch' }}>
                       <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#602ED3', letterSpacing:'-0.02em', lineHeight:'130%' }}>{(plan as any).turnaround}</span>
                     </div>
-                    <div style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch' }}>
+                    <div style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch', textAlign:'center' }}>
                       {plan.price} per report
                     </div>
                     <button
