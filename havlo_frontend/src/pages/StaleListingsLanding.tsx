@@ -728,7 +728,7 @@ export function StaleListingsLanding() {
 
             {/* Hero image — mobile only, sits below stats */}
             <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', borderRadius:30, overflow:'hidden', flexShrink:0 }}>
-              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:400, objectFit:'cover', objectPosition:'center', display:'block' }} />
+              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:260, objectFit:'cover', objectPosition:'center', display:'block' }} />
             </div>
           </div>
 
