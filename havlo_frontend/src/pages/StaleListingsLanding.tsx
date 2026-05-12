@@ -337,7 +337,8 @@ export function StaleListingsLanding() {
         @media(max-width:1024px) {
           .sl-hero-right { display:none !important; }
           .sl-features-cols { flex-direction:column !important; }
-          .sl-testimonial-row { flex-direction:column !important; }
+          .sl-testimonial-row { flex-direction:column !important; gap:16px !important; }
+          .sl-testimonial-card { flex:0 0 auto !important; width:100% !important; box-sizing:border-box !important; }
           .sl-hero-heading { font-size:38px !important; }
           .sl-hero-section { padding:60px 40px !important; }
           .sl-features-section { padding:60px 40px !important; }
@@ -503,10 +504,21 @@ export function StaleListingsLanding() {
           }
           .sl-testimonial-row {
             flex-direction:column !important;
-            gap:32px !important;
+            gap:16px !important;
           }
           .sl-testimonial-card {
-            min-height:unset !important;
+            flex: 0 0 auto !important;
+            width: 100% !important;
+            min-height: unset !important;
+            box-sizing: border-box !important;
+            gap: 16px !important;
+          }
+          .sl-testimonial-text {
+            font-size: 14px !important;
+            letter-spacing: -0.01em !important;
+          }
+          .sl-testimonial-name {
+            font-size: 14px !important;
           }
 
           /* FAQ */
