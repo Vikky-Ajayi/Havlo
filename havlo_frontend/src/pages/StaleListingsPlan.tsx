@@ -315,7 +315,7 @@ export function StaleListingsPlan() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F6F6F6', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F6F6F6', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -426,10 +426,32 @@ export function StaleListingsPlan() {
         }
 
         @media (max-width: 900px) {
-          .sl-p-cards { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; width: 100%; }
+          .sl-p-cards {
+            flex-direction: column !important;
+            max-width: 480px;
+            margin: 0 auto;
+            width: 100%;
+          }
+          .sl-p-card {
+            flex: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
         }
         @media (max-width: 640px) {
           .sl-p-content { padding: 28px 16px 100px; }
+          .sl-p-cards {
+            flex-direction: column !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            gap: 20px !important;
+          }
+          .sl-p-card {
+            flex: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            border-radius: 24px !important;
+          }
           .sl-p-bottom-bar {
             display: flex;
             position: fixed;
