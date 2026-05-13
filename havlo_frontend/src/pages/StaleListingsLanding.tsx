@@ -641,11 +641,6 @@ export function StaleListingsLanding() {
               </p>
             </div>
 
-            {/* Hero image — mobile only, between heading and input */}
-            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', borderRadius:16, overflow:'hidden', flexShrink:0 }}>
-              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:220, objectFit:'cover', display:'block' }} />
-            </div>
-
             {/* Input + trust */}
             <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
               <div
@@ -692,6 +687,11 @@ export function StaleListingsLanding() {
                   <div className="sl-stat-label" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:14, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%' }}>{label}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Hero image — mobile only, below stats */}
+            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', borderRadius:30.45, overflow:'hidden', flexShrink:0 }}>
+              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:300, objectFit:'cover', display:'block' }} />
             </div>
           </div>
 
