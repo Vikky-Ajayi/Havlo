@@ -563,8 +563,6 @@ export function StaleListingsPlan() {
                 </span>
               </div>
 
-              {/* Full-width divider under the label */}
-              <div style={{ height: 1, background: '#F0F0F0', margin: '0' }} />
 
               {/* Data rows */}
               {orderRows.map((row, i, arr) => (
@@ -580,8 +578,8 @@ export function StaleListingsPlan() {
                 </div>
               ))}
 
-              {/* Buttons — right-aligned, separated by a top border */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '20px 24px', borderTop: '1px solid #F0F0F0' }}>
+              {/* Buttons — right-aligned */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '20px 24px' }}>
                 <button
                   onClick={() => navigate('/stale-listings/questions')}
                   style={{ height: 48, padding: '0 24px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.18)', background: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#000', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
