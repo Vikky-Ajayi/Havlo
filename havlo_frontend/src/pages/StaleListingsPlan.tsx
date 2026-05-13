@@ -320,21 +320,24 @@ export function StaleListingsPlan() {
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
 
         .sl-p-cards {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
-          align-items: start;
+          display: flex;
+          flex-direction: row;
+          gap: 16px;
+          align-items: stretch;
+          width: 100%;
         }
         .sl-p-card {
+          flex: 1 0 0;
           background: #fff;
-          border-radius: 16px;
+          border-radius: 32px;
           padding: 24px;
           cursor: pointer;
           box-sizing: border-box;
           position: relative;
           display: flex;
           flex-direction: column;
-          gap: 0;
+          justify-content: space-between;
+          gap: 32px;
           transition: box-shadow 0.15s;
         }
         .sl-p-card:hover {
@@ -480,93 +483,69 @@ export function StaleListingsPlan() {
                 >
                   {/* BEST VALUE badge */}
                   {p.bestValue && (
-                    <div style={{
-                      position: 'absolute', top: -1, right: 20,
-                      background: '#E63660',
-                      borderRadius: '0 0 8px 8px',
-                      padding: '6px 14px',
-                    }}>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 12, color: '#FFF', letterSpacing: '0.8px', textTransform: 'uppercase' }}>BEST VALUE</span>
+                    <div style={{ position: 'absolute', top: 20, right: 20, background: '#E53935', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: '0.5px', padding: '4px 10px', borderRadius: 20, textTransform: 'uppercase' }}>
+                      BEST VALUE
                     </div>
                   )}
 
-                  {/* Illustration */}
-                  <p.Illustration />
-
-                  {/* Plan name */}
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, color: '#0A0A0A', letterSpacing: '-0.4px', marginBottom: 8, marginTop: 4 }}>
-                    {p.name}
-                  </div>
-
-                  {/* Tagline */}
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 14, color: '#555', lineHeight: '1.4', marginBottom: 16 }}>
-                    {p.tagline}
-                  </div>
-
-                  {/* Features section */}
-                  <div style={{ borderTop: '1px solid #EFEFEF', paddingTop: 16, marginBottom: 20 }}>
-                    {p.preNote && (
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13, color: '#333', lineHeight: '1.5', marginBottom: 14 }}>
-                        <strong style={{ fontWeight: 600 }}>
-                          {p.id === 'professional_review'
-                            ? 'Includes everything in Quick Insight, plus'
-                            : 'Includes everything in professional review plus'}
-                        </strong>
-                        {p.id === 'professional_review'
-                          ? ': a detailed review by an estate agent actively selling similar properties in the local area.'
-                          : ':'}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {p.features.map((feat, j) => (
-                        <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <VerifyIcon />
-                          <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 13.5, color: '#222', lineHeight: '1.4', letterSpacing: '-0.1px' }}>
-                            {feat}
-                          </span>
+                  {/* ── TOP SECTION (grows to fill) ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
+                    <p.Illustration />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 24, alignSelf: 'stretch' }}>
+                      {/* Name + tagline */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignSelf: 'stretch' }}>
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 24, color: '#000', letterSpacing: '-0.03em', lineHeight: '150%' }}>
+                          {p.name}
                         </div>
-                      ))}
+                        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16, color: '#000', letterSpacing: '-0.03em', lineHeight: '120%' }}>
+                          {p.tagline}
+                        </div>
+                      </div>
+                      {/* Features */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.1)', alignSelf: 'stretch' }}>
+                        {p.preNote && (
+                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, letterSpacing: '-0.03em', lineHeight: '130%' }}>
+                            <span style={{ fontWeight: 700, color: '#050405' }}>
+                              {p.id === 'professional_review'
+                                ? 'Includes everything in Quick Insight, plus'
+                                : 'Includes everything in professional review plus'}:
+                            </span>
+                            {p.id === 'professional_review' && (
+                              <span style={{ fontWeight: 400, color: '#050405' }}> a detailed review by an estate agent actively selling similar properties in the local area.</span>
+                            )}
+                          </div>
+                        )}
+                        {p.features.map((feat, j) => (
+                          <div key={j} style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                            <VerifyIcon />
+                            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 14, color: '#050405', letterSpacing: '-0.03em', lineHeight: '120%', flex: 1 }}>{feat}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Turnaround pill */}
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                    <div style={{ background: '#F4EAFD', borderRadius: 100, padding: '7px 16px' }}>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, color: '#7B2FBE', letterSpacing: '-0.1px' }}>
+                  {/* ── BOTTOM SECTION (pinned to bottom) ── */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                    {/* Turnaround pill — full width, text centered */}
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 12px', borderRadius: 10, background: '#FAEBFE', alignSelf: 'stretch' }}>
+                      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#602ED3', letterSpacing: '-0.02em', lineHeight: '130%' }}>
                         {p.turnaround}
                       </span>
                     </div>
+                    {/* Price */}
+                    <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 24, color: '#000', letterSpacing: '-0.03em', lineHeight: '120%', alignSelf: 'stretch', textAlign: 'center' }}>
+                      {p.priceLabel}
+                    </div>
+                    {/* CTA button */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPlan(p.id); }}
+                      style={{ display: 'flex', height: 44, padding: '8px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 10, background: p.btnBg, color: p.btnColor, fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, letterSpacing: '-0.02em', border: 'none', cursor: 'pointer', alignSelf: 'stretch' }}
+                    >
+                      Start Assessment
+                      {isSelected && p.btnGold && <CheckIcon />}
+                    </button>
                   </div>
-
-                  {/* Price */}
-                  <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 22, color: '#0A0A0A', letterSpacing: '-0.5px', marginBottom: 16, textAlign: 'center' }}>
-                    {p.priceLabel}
-                  </div>
-
-                  {/* CTA button */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setSelectedPlan(p.id); }}
-                    style={{
-                      width: '100%',
-                      height: 46,
-                      borderRadius: 8,
-                      border: 'none',
-                      background: p.btnBg,
-                      color: p.btnColor,
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: 600,
-                      fontSize: 15,
-                      cursor: 'pointer',
-                      letterSpacing: '-0.2px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    Start Assessment
-                    {isSelected && p.btnGold && <CheckIcon />}
-                  </button>
                 </div>
               );
             })}
