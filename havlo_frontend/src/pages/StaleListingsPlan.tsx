@@ -554,10 +554,11 @@ export function StaleListingsPlan() {
 
           {/* Order summary — hidden on mobile via CSS */}
           <div className="sl-p-order-summary" style={{ marginTop: 44 }}>
-            <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 11, color: '#888', letterSpacing: '1.8px', textTransform: 'uppercase', marginBottom: 10 }}>
-              ORDER SUMMARY
-            </div>
             <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #EBEBEB', overflow: 'hidden' }}>
+              {/* ORDER SUMMARY header inside the card */}
+              <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F0' }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 11, color: '#888', letterSpacing: '1.8px', textTransform: 'uppercase' }}>ORDER SUMMARY</span>
+              </div>
               {orderRows.map((row, i) => (
                 <div key={i} style={{
                   display: 'flex',
