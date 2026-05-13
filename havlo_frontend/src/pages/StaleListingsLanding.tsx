@@ -716,7 +716,7 @@ export function StaleListingsLanding() {
             <div className="sl-stats-row" style={{ display:'flex', alignItems:'flex-start', gap:23 }}>
               {[
                 ['10K+','Listings Analyzed'],
-                ['91K+','Seller Recommendations Generated'],
+                ['91K+','Seller Recommendations'],
                 ['250K+','Property Data Points Analyzed'],
               ].map(([val, label], i) => (
                 <div key={i} className="sl-stat-item" style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4, flex:1 }}>
