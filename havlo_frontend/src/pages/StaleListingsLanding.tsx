@@ -501,8 +501,10 @@ export function StaleListingsLanding() {
             letter-spacing:-0.03em !important;
           }
           .sl-testimonial-row {
-            flex-direction:column !important;
-            gap:16px !important;
+            display: none !important;
+          }
+          .sl-testimonial-scroll-wrap {
+            display: block !important;
           }
           .sl-testimonial-card {
             flex: 0 0 auto !important;
@@ -517,6 +519,10 @@ export function StaleListingsLanding() {
           }
           .sl-testimonial-name {
             font-size: 14px !important;
+          }
+          @keyframes sl-scroll-up {
+            0%   { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
           }
 
           /* FAQ */
@@ -869,6 +875,20 @@ export function StaleListingsLanding() {
                 <div className="sl-testimonial-name" style={{ fontFamily:'Inter, sans-serif', fontSize:20, fontWeight:700, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em', alignSelf:'stretch' }}>{t.name}</div>
               </div>
             ))}
+          </div>
+
+          {/* Mobile vertical auto-scroll — hidden on desktop, shown on mobile via CSS */}
+          <div className="sl-testimonial-scroll-wrap" style={{ display:'none', height:460, overflow:'hidden', position:'relative' }}>
+            <div style={{ animation:'sl-scroll-up 28s linear infinite', display:'flex', flexDirection:'column', gap:16 }}>
+              {/* Cards rendered twice for seamless loop */}
+              {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
+                <div key={i} className="sl-testimonial-card" style={{ display:'flex', padding:24, flexDirection:'column', alignItems:'flex-start', gap:16, borderRadius:32, border:'1px solid rgba(0,0,0,0.05)', background:'#FFFFFF', overflow:'hidden', boxSizing:'border-box', width:'100%' }}>
+                  <QuoteIcon />
+                  <div className="sl-testimonial-text" style={{ fontFamily:'Inter, sans-serif', fontSize:14, fontWeight:400, color:'#000', lineHeight:'150%', letterSpacing:'-0.01em' }}>"{t.text}"</div>
+                  <div className="sl-testimonial-name" style={{ fontFamily:'Inter, sans-serif', fontSize:14, fontWeight:700, color:'#000', lineHeight:'150%', letterSpacing:'-0.03em' }}>{t.name}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
