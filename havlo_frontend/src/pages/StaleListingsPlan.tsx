@@ -553,39 +553,49 @@ export function StaleListingsPlan() {
           </div>
 
           {/* Order summary — hidden on mobile via CSS */}
-          <div className="sl-p-order-summary" style={{ marginTop: 44 }}>
-            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #EBEBEB', overflow: 'hidden' }}>
-              {/* ORDER SUMMARY header inside the card */}
-              <div style={{ padding: '18px 24px', borderBottom: '1px solid #F0F0F0' }}>
-                <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 11, color: '#888', letterSpacing: '1.8px', textTransform: 'uppercase' }}>ORDER SUMMARY</span>
+          <div className="sl-p-order-summary" style={{ marginTop: 44, marginBottom: 48 }}>
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8E8E8' }}>
+
+              {/* ORDER SUMMARY label — plain text, top-left, no own border row */}
+              <div style={{ padding: '20px 24px 16px 24px' }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 11, color: '#999', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                  ORDER SUMMARY
+                </span>
               </div>
-              {orderRows.map((row, i) => (
+
+              {/* Full-width divider under the label */}
+              <div style={{ height: 1, background: '#F0F0F0', margin: '0' }} />
+
+              {/* Data rows */}
+              {orderRows.map((row, i, arr) => (
                 <div key={i} style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '18px 24px',
-                  borderBottom: '1px solid #F0F0F0',
+                  padding: '20px 24px',
+                  borderBottom: i < arr.length - 1 ? '1px solid #F0F0F0' : 'none',
                 }}>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 14, color: '#666' }}>{row.label}</span>
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 14, color: '#555' }}>{row.label}</span>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#000' }}>{row.value}</span>
                 </div>
               ))}
-              {/* Buttons row inside order summary */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '20px 24px' }}>
+
+              {/* Buttons — right-aligned, separated by a top border */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '20px 24px', borderTop: '1px solid #F0F0F0' }}>
                 <button
                   onClick={() => navigate('/stale-listings/questions')}
-                  style={{ height: 50, padding: '0 28px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.20)', background: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#000', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
+                  style={{ height: 48, padding: '0 24px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.18)', background: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#000', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
                 >
                   Back to Questions
                 </button>
                 <button
                   onClick={handlePayClick}
-                  style={{ height: 50, padding: '0 28px', borderRadius: 8, border: 'none', background: '#000', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
+                  style={{ height: 48, padding: '0 24px', borderRadius: 8, border: 'none', background: '#000', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
                 >
                   Pay Securely and start Assessment
                 </button>
               </div>
+
             </div>
           </div>
 
