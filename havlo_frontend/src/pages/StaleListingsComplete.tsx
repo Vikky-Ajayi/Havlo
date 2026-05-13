@@ -10,18 +10,6 @@ const PACKAGE_LABELS: Record<string, { name: string; turnaround: string }> = {
   premium_strategy: { name: 'Premium Strategy', turnaround: '12 hours (express)' },
 };
 
-const StaleListingsLogo = () => (
-  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: 215, height: 52 }}>
-    <svg width="215" height="33" viewBox="0 0 215 33" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="26" fontFamily='"Plus Jakarta Sans", sans-serif' fontWeight="800" fontSize="26" fill="#313131" letterSpacing="-0.5">StaleListings</text>
-    </svg>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: '#000', fontWeight: 400, letterSpacing: '-0.32px' }}>By</span>
-      <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 13, color: '#313131', letterSpacing: '-0.3px' }}>HAVLO</span>
-    </div>
-  </div>
-);
-
 const LockIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M4 7V5C4 2.79086 5.79086 1 8 1C10.2091 1 12 2.79086 12 5V7M3.2 15H12.8C13.4627 15 14 14.4627 14 13.8V8.2C14 7.53726 13.4627 7 12.8 7H3.2C2.53726 7 2 7.53726 2 8.2V13.8C2 14.4627 2.53726 15 3.2 15Z" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -112,22 +100,33 @@ export function StaleListingsComplete() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .sl-c-secure-wrap { display: flex; }
+        .sl-c-hamburger { display: none; }
         @media (max-width: 640px) {
-          .sl-c-navbar { padding: 12px 20px !important; }
+          .sl-c-navbar { padding: 0 20px !important; }
           .sl-c-stepper { padding: 16px 20px !important; }
           .sl-c-content { padding: 40px 20px !important; }
+          .sl-c-secure-wrap { display: none !important; }
+          .sl-c-hamburger { display: flex !important; }
         }
       `}</style>
 
       {/* NAVBAR */}
-      <header className="sl-c-navbar" style={{ display: 'flex', height: 80, padding: '12px 56px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F4F4F4', background: '#FFF', boxSizing: 'border-box', flexShrink: 0 }}>
+      <header className="sl-c-navbar" style={{ display: 'flex', height: 80, padding: '0 56px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F4F4F4', background: '#FFF', boxSizing: 'border-box', flexShrink: 0 }}>
         <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <StaleListingsLogo />
+          <img src="/stale-logo.png" alt="StaleListings" style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {/* Desktop: secure badge */}
+        <div className="sl-c-secure-wrap" style={{ alignItems: 'center', gap: 6 }}>
           <LockIcon />
           <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 16, color: '#000', letterSpacing: '-0.32px' }}>Secure assessment · SSL encrypted</span>
         </div>
+        {/* Mobile: hamburger */}
+        <button className="sl-c-hamburger" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 6H21M3 12H21M3 18H21" stroke="#1F1F1E" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
       </header>
 
       {/* STEPPER */}

@@ -222,10 +222,17 @@ function PlanNavbar() {
   return (
     <header style={{ display: 'flex', width: '100%', height: 72, padding: '0 40px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F0F0F0', background: '#FFF', boxSizing: 'border-box', position: 'sticky', top: 0, zIndex: 30 }}>
       <img src="/stale-logo.png" alt="StaleListings" style={{ height: 38, width: 'auto', display: 'block', flexShrink: 0 }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* Desktop: secure badge */}
+      <div className="sl-p-secure-wrap" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <LockIcon />
         <span className="sl-p-secure-text" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 15, color: '#000', letterSpacing: '-0.2px' }}>Secure assessment · SSL encrypted</span>
       </div>
+      {/* Mobile: hamburger */}
+      <button className="sl-p-hamburger" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, alignItems: 'center', justifyContent: 'center', display: 'none' }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 6H21M3 12H21M3 18H21" stroke="#1F1F1E" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </button>
     </header>
   );
 }
@@ -466,7 +473,8 @@ export function StaleListingsPlan() {
             box-sizing: border-box;
           }
           .sl-p-pay-btn { flex: 1; }
-          .sl-p-secure-text { display: none; }
+          .sl-p-secure-wrap { display: none !important; }
+          .sl-p-hamburger { display: flex !important; }
           .sl-p-order-summary { display: none; }
           .sl-form-box { padding: 28px 20px; }
         }
