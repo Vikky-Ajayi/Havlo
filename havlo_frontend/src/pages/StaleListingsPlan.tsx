@@ -573,7 +573,7 @@ export function StaleListingsPlan() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '20px 24px',
-                  borderBottom: i < arr.length - 1 ? '1px solid #F0F0F0' : 'none',
+                  borderTop: i === arr.length - 1 ? '1px solid #F0F0F0' : 'none',
                 }}>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 14, color: '#555' }}>{row.label}</span>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#000' }}>{row.value}</span>
