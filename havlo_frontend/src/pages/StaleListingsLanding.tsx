@@ -574,9 +574,10 @@ export function StaleListingsLanding() {
           display:'flex',
           alignItems:'center',
           boxSizing:'border-box',
+          padding:'0 100px',
         }}
       >
-        <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', padding:'0 100px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
           <div className="sl-nav-logo-wrap" style={{ display:'flex', alignItems:'center' }}>
             <img src="/stale-logo.png" alt="StaleListings" style={{ height:40, width:'auto', flexShrink:0, display:'block' }} />
@@ -602,13 +603,13 @@ export function StaleListingsLanding() {
       </header>
 
       {/* ── HERO ── */}
-      <section style={{ background:'#FEFEFE', overflow:'hidden', position:'relative' }}>
+      <section style={{ background:'#FEFEFE', overflow:'hidden', position:'relative', padding:'0 100px' }}>
         {/* Pink blob — matches Figma: left:-67px top:-99px size 524x736 blur:213px */}
         <div style={{ position:'absolute', left:-67, top:-99, width:524, height:736, borderRadius:'50%', background:'#FFB0E6', filter:'blur(213.468px)', pointerEvents:'none', zIndex:0 }} />
 
         <div
           className="sl-hero-section sl-hero-inner sl-inner-container"
-          style={{ maxWidth:1440, margin:'0 auto', padding:'92px 100px 73px', position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}
+          style={{ maxWidth:1440, margin:'0 auto', padding:'92px 0 73px', position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}
         >
           {/* Left column */}
           <div className="sl-hero-left" style={{ width:657, display:'flex', flexDirection:'column', gap:43 }}>
