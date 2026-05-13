@@ -275,6 +275,7 @@ export function StaleListingsLanding() {
   const navigate = useNavigate();
   const [input, setInput] = useState('');
   const [showAllFaq, setShowAllFaq] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleStart = () => {
     const params = new URLSearchParams();
@@ -608,12 +609,85 @@ export function StaleListingsLanding() {
           {/* Hamburger (mobile/tablet) */}
           <button
             className="sl-hamburger"
+            onClick={() => setMenuOpen(true)}
             style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'none', alignItems:'center' }}
           >
             <HamburgerIcon />
           </button>
         </div>
       </header>
+
+      {/* ── MOBILE NAV DRAWER ── */}
+      {/* Backdrop */}
+      <div
+        onClick={() => setMenuOpen(false)}
+        style={{
+          position:'fixed', inset:0, zIndex:90,
+          background:'rgba(0,0,0,0.45)',
+          opacity: menuOpen ? 1 : 0,
+          pointerEvents: menuOpen ? 'auto' : 'none',
+          transition:'opacity 0.3s ease',
+        }}
+      />
+      {/* Drawer panel */}
+      <div
+        style={{
+          position:'fixed', top:0, right:0, bottom:0, zIndex:100,
+          width:280,
+          background:'#FFF',
+          boxShadow:'-4px 0 24px rgba(0,0,0,0.12)',
+          transform: menuOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          display:'flex', flexDirection:'column',
+          padding:'24px 24px 40px',
+          boxSizing:'border-box',
+        }}
+      >
+        {/* Drawer header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:40 }}>
+          <img src="/stale-logo.png" alt="StaleListings" style={{ height:32, width:'auto', display:'block' }} />
+          <button
+            onClick={() => setMenuOpen(false)}
+            style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', alignItems:'center', justifyContent:'center' }}
+            aria-label="Close menu"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="#1F1F1E" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Nav links */}
+        <nav style={{ display:'flex', flexDirection:'column', gap:0 }}>
+          {[['How it works','#how-it-works'],['FAQ','#faq'],['Pricing','#pricing']].map(([label, href], i) => (
+            <a
+              key={i}
+              href={href}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                color:'#1F1F1E', fontFamily:'Inter, sans-serif', fontSize:18, fontWeight:600,
+                letterSpacing:'-0.02em', textDecoration:'none', padding:'16px 0',
+                borderBottom:'1px solid rgba(0,0,0,0.08)', display:'block',
+              }}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        {/* CTA */}
+        <button
+          onClick={() => { setMenuOpen(false); handleStart(); }}
+          style={{
+            marginTop:32, width:'100%', height:52, borderRadius:48,
+            background:'#000', color:'#FFF',
+            fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700,
+            letterSpacing:'-0.02em', border:'none', cursor:'pointer',
+          }}
+        >
+          Start Assessment
+        </button>
+      </div>
 
       {/* ── HERO ── */}
       <section className="sl-hero-section" style={{ background:'#FEFEFE', overflow:'hidden', position:'relative' }}>
