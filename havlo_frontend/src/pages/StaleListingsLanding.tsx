@@ -717,7 +717,7 @@ export function StaleListingsLanding() {
               {[
                 ['10K+','Listings Analyzed'],
                 ['91K+','Seller Recommendations'],
-                ['250K+','Property Data Points Analyzed'],
+                ['250K+','Market Signals Analyzed'],
               ].map(([val, label], i) => (
                 <div key={i} className="sl-stat-item" style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4, flex:1 }}>
                   <div className="sl-stat-val" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:32, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{val}</div>
