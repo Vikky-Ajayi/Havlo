@@ -185,6 +185,7 @@ Write in a warm but direct tone — honest, professional, and easy for a homeown
         raise
 
 
+
 async def generate_stale_listing_report(
     package: str,
     questions_data: dict,
@@ -192,85 +193,108 @@ async def generate_stale_listing_report(
     listing_url: str = "",
 ) -> dict:
     """
-    Generate a structured stale listing analysis report as a dict.
-    Returns a dict with overall_score, scores, key_findings, action_plan,
-    pricing_recommendation, executive_summary.
+    Generate a structured stale listing analysis report using Groq LLM.
+    Returns a dict matching StaleListingReportData schema.
     Falls back to a sensible default dict on any failure.
     """
     import asyncio as _aio
     import json
 
-    q_lines = []
     label_map = {
-        "q1_viewings": "Viewings since listing",
-        "q2_feedback": "Buyer feedback",
-        "q3_time_on_market": "Time on market",
-        "q4_price_reduction": "Price changes",
-        "q5_marketing": "Current marketing channels",
-        "q6_listing_features": "Listing features present",
-        "q7_property_type": "Property type",
-        "q8_asking_price": "Asking price range",
-        "q9_primary_goal": "Seller's primary goal",
-        "q10_challenge": "Biggest challenge",
+        "q1_viewings": "Number of viewings since listing",
+        "q2_feedback": "Buyer feedback after viewings (may be multiple answers)",
+        "q3_under_offer": "Previously gone under offer and fallen through",
+        "q4_price_reduction": "Price reductions since launch",
+        "q5_flexibility": "Openness to adjusting pricing or marketing strategy",
+        "q6_marketing": "Current marketing channels used",
+        "q7_listing_features": "Listing features present (may be multiple)",
+        "q8_photos": "Satisfaction with listing photo quality",
+        "q9_asking_price": "Approximate asking price range",
+        "q10_challenge": "Biggest challenge currently facing",
     }
+
+    q_lines = []
     for key, label in label_map.items():
         val = questions_data.get(key, "Not provided")
         if isinstance(val, list):
             val = "; ".join(val) if val else "None selected"
-        q_lines.append(f"- {label}: {val}")
+        q_lines.append(f"  {label}: {val}")
 
-    context = "\n".join(q_lines)
-    if property_address:
-        context = f"Property address: {property_address}\n" + context
-    if listing_url:
-        context = context + f"\nListing URL: {listing_url}"
+    questionnaire = "\n".join(q_lines)
+    address_line = f"Property address: {property_address}" if property_address else ""
+    url_line = f"Listing URL: {listing_url}" if listing_url else ""
+    property_context = "\n".join(filter(None, [address_line, url_line])) or "Property details: not provided"
 
     tier_instructions = {
-        "quick_insight": "Provide a concise, data-driven analysis focusing on the 3 most critical issues.",
-        "professional_review": "Provide a thorough professional analysis with detailed findings and a comprehensive action plan.",
-        "premium_strategy": "Provide a comprehensive strategic analysis with in-depth insights, detailed comparable recommendations, and a full strategic action plan.",
+        "quick_insight": "Focus on the 4 most critical issues. Keep findings concise but specific.",
+        "professional_review": "Provide a thorough analysis with 5 findings and a detailed action plan.",
+        "premium_strategy": "Provide a comprehensive strategic analysis with 5-6 findings, full action plan, and rich comparable sales context.",
     }
-    depth_note = tier_instructions.get(package, tier_instructions["professional_review"])
+    depth = tier_instructions.get(package, tier_instructions["professional_review"])
 
-    prompt = f"""You are a senior UK property sales strategist. A homeowner has completed an assessment questionnaire about their stale listing. {depth_note}
+    prompt = f"""You are Mark Williams, a senior UK property sales consultant with 22 years of experience helping homeowners sell stalled listings. You write in a direct, honest, and practical tone. You always reference the specific data the homeowner has given you — never give generic advice.
 
-Questionnaire responses:
-{context}
+A homeowner has submitted their property for a StaleListings assessment. Here is the data:
 
-Return ONLY a valid JSON object (no markdown code fences, no explanation) with this exact structure:
+{property_context}
+
+Questionnaire answers:
+{questionnaire}
+
+Your task: {depth}
+
+Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text before or after the JSON) with this exact structure:
+
 {{
-  "overall_score": <integer 0-100, honest assessment>,
+  "overall_score": <integer 0-100, honest reflection of likelihood to sell in current state>,
+  "days_on_market": <integer, estimate the days on market based on questionnaire signals — e.g. multiple price reductions = 90+ days. Return null if completely unclear>,
   "scores": {{
-    "photos": <integer 0-100>,
-    "pricing": <integer 0-100>,
-    "description": <integer 0-100>,
-    "positioning": <integer 0-100>
+    "photos": <integer 0-100, based on q7_listing_features and q8_photos>,
+    "pricing": <integer 0-100, based on q4 price reductions, q9 asking price, q2 buyer feedback about price>,
+    "description": <integer 0-100, based on q7_listing_features 'detailed description' answer>,
+    "positioning": <integer 0-100, based on q6 marketing channels and overall strategy>
   }},
   "key_findings": [
     {{
-      "title": "<short title>",
-      "description": "<1-2 sentence specific insight>",
-      "type": "issue"
+      "title": "<concise specific issue or strength, max 8 words>",
+      "description": "<1-2 sentences referencing the homeowner's actual questionnaire answers — specific, not generic>",
+      "type": "issue",
+      "icon": "price"
     }}
   ],
   "action_plan": [
     {{
       "priority": "URGENT",
-      "title": "<action title>",
-      "description": "<specific actionable step>"
+      "title": "<specific action title>",
+      "description": "<one direct sentence: what needs to happen and why>",
+      "bullets": [
+        "<specific actionable step — what to do, how, where, when>",
+        "<follow-through step — measurable outcome or next action>"
+      ]
     }}
   ],
-  "pricing_recommendation": "<specific pricing advice based on the answers>",
-  "executive_summary": "<2-3 sentence honest summary of why this property is stale and what to do>"
+  "comparable_sales": [
+    {{
+      "address": "<plausible street address near the property — use the area from property_address if provided>",
+      "beds": <integer>,
+      "property_type": "<Semi-det. | Terrace | Detached | Flat>",
+      "sold_asking": "<e.g. £370,000 or £385,000 asking>",
+      "is_subject": false
+    }}
+  ],
+  "pricing_recommendation": "<one specific sentence pricing advice referencing their actual asking price range and any reductions>",
+  "pricing_recommendation_detail": "<2-3 sentences: explain the rationale, what a price change would trigger on Rightmove, and expected outcome>",
+  "executive_summary": "<3-4 sentences: honest summary of why this property is stale referencing their specific answers (viewings, feedback, marketing, photos), and the clearest path to a sale. Must sound like a human expert, not AI boilerplate.>"
 }}
 
-Rules:
-- overall_score must reflect the honest likelihood of selling in current state (low if many problems)
-- Scores are for each dimension: photos (presentation quality), pricing (market positioning), description (copy quality), positioning (marketing strategy)
-- Provide 4-6 key_findings (mix of issues and 1-2 strengths if applicable)
-- Provide 4-6 action_plan items ordered by priority (URGENT first, then IMPORTANT, then RECOMMENDED)
-- Be specific and actionable — not generic advice
-- Do not add any text outside the JSON object"""
+RULES — follow these exactly:
+- overall_score: be honest. Multiple issues with no price reductions and low viewings = 35-50. Strong fundamentals with minor issues = 60-70. Only score above 70 if genuinely strong.
+- key_findings: provide exactly 5 findings. Mix of issues (4) and strengths (1) if warranted, or all 5 issues if no clear strengths. Icon values allowed: "price", "photos", "description", "location", "marketing", "condition", "timing"
+- action_plan: provide exactly 5 items ordered by priority (URGENT first, then HIGH, then MEDIUM). Priority must be one of: URGENT, HIGH, MEDIUM. Each item must have exactly 2 bullets.
+- comparable_sales: provide exactly 4 entries. The last entry must have is_subject: true and represent the subject property at its current asking price. The other 3 show recent sold comparables at lower prices. Use the area/street from the property address if provided.
+- Reference specific answers: mention that they had X viewings, that buyers said Y, that they are/are not on Z portals, that they have/haven't reduced the price.
+- pricing_recommendation and pricing_recommendation_detail must reference the actual price range from q9_asking_price.
+- Do NOT use placeholder text. Write as if you personally reviewed this exact listing."""
 
     def _call_groq() -> str:
         client = _get_client()
@@ -279,74 +303,124 @@ Rules:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a senior UK property sales strategist. Return only valid JSON as instructed.",
+                    "content": "You are Mark Williams, a senior UK property sales consultant. Return only valid JSON as instructed. No markdown, no code fences, no explanation.",
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=2048,
-            temperature=0.6,
+            max_tokens=3500,
+            temperature=0.5,
         )
         return response.choices[0].message.content or ""
 
-    _DEFAULT_REPORT = {
+    _DEFAULT_REPORT: dict = {
         "overall_score": 48,
-        "scores": {"photos": 45, "pricing": 52, "description": 48, "positioning": 40},
+        "days_on_market": None,
+        "scores": {"photos": 42, "pricing": 50, "description": 45, "positioning": 40},
         "key_findings": [
             {
-                "title": "Limited buyer exposure",
-                "description": "The property is not reaching its full potential audience, particularly international and investor buyers who make up a growing share of the UK market.",
+                "title": "Low viewing conversion rate",
+                "description": "The number of viewings relative to time on market suggests the listing is generating clicks but not convincing buyers to visit — a sign of weak portal presentation.",
                 "type": "issue",
+                "icon": "marketing",
             },
             {
-                "title": "Pricing strategy needs review",
-                "description": "Based on your answers, the asking price may be misaligned with current buyer expectations in your area.",
+                "title": "Asking price needs review",
+                "description": "Based on your answers, the current asking price may be misaligned with what active buyers in this area are willing to pay.",
                 "type": "issue",
+                "icon": "price",
             },
             {
-                "title": "Marketing assets require updating",
-                "description": "Stale portal listings lose algorithmic visibility over time. Fresh photography and an updated description can reset buyer interest.",
+                "title": "Photography is undermining first impressions",
+                "description": "Listing photos are the single biggest driver of click-through from portals. Substandard photos significantly reduce the number of viewings booked.",
                 "type": "issue",
+                "icon": "photos",
             },
             {
-                "title": "Portal fatigue is a real risk",
-                "description": "Buyers who have already seen the listing multiple times are less likely to enquire. New exposure channels are needed.",
+                "title": "Description doesn't convert viewers",
+                "description": "The listing description is not working hard enough to convert portal views into booking requests — key selling points are likely buried or missing.",
                 "type": "issue",
+                "icon": "description",
+            },
+            {
+                "title": "Location fundamentals are sound",
+                "description": "The property's core location attributes are attractive to the right buyer. With improved presentation and realistic pricing, buyer interest should be achievable.",
+                "type": "strength",
+                "icon": "location",
             },
         ],
         "action_plan": [
             {
                 "priority": "URGENT",
-                "title": "Request fresh portal photography",
-                "description": "Book professional property photography immediately. New images reset the listing's appearance of freshness and improve click-through rates.",
+                "title": "Commission professional photography immediately",
+                "description": "New photos will reset the listing's appearance of freshness and improve click-through rates from portal searches.",
+                "bullets": [
+                    "Book a local property photographer this week — aim to reshoot within 7 days.",
+                    "Update all portal images simultaneously to trigger a 'recently updated' visibility boost.",
+                ],
             },
             {
                 "priority": "URGENT",
-                "title": "Reassess asking price against current sold prices",
-                "description": "Compare against properties that actually sold (not just listed) in the last 90 days within 0.5 miles.",
+                "title": "Review asking price against recent sold comparables",
+                "description": "Compare against properties that actually sold in the past 90 days — not just listed.",
+                "bullets": [
+                    "Use Rightmove's sold prices tool to find comparables within 0.5 miles sold in the last 90 days.",
+                    "Discuss a targeted 3–5% reduction with your agent — this often unlocks a significantly larger active buyer pool.",
+                ],
             },
             {
-                "priority": "IMPORTANT",
+                "priority": "HIGH",
                 "title": "Rewrite the listing description",
-                "description": "Focus on emotional triggers and lifestyle benefits, not just room sizes. Highlight proximity to amenities and unique selling points.",
+                "description": "Restructure the copy to lead immediately with the property's strongest selling points.",
+                "bullets": [
+                    "Open with the top 2–3 benefits — garden, parking, school catchment — in the very first sentence.",
+                    "Add a short 'Key Features' bullet list near the top of the portal listing.",
+                ],
             },
             {
-                "priority": "RECOMMENDED",
-                "title": "Expand to international buyer channels",
-                "description": "A significant share of UK property buyers are now based overseas. Targeted campaigns in UAE, Singapore, and North America can unlock fresh demand.",
+                "priority": "HIGH",
+                "title": "Expand portal and marketing presence",
+                "description": "Widen exposure beyond a single portal to reach buyers who search across multiple platforms.",
+                "bullets": [
+                    "Ensure the listing is live on both Rightmove and Zoopla — and OnTheMarket if not already.",
+                    "Ask your agent to share on social media with targeted local buyer groups.",
+                ],
+            },
+            {
+                "priority": "MEDIUM",
+                "title": "Add missing listing assets",
+                "description": "Complete listing assets improve search ranking and buyer confidence.",
+                "bullets": [
+                    "Add a floor plan if not present — listings with floor plans consistently convert better.",
+                    "Ensure the lead photo is the strongest exterior shot, taken in good daylight.",
+                ],
             },
         ],
-        "pricing_recommendation": "Review your asking price against the most recent sold prices (not asking prices) for comparable properties within a half-mile radius. A realistic 3-5% adjustment often unlocks a significantly larger pool of active buyers.",
-        "executive_summary": "Your property shows the classic signs of a stale listing: declining portal visibility, limited buyer feedback, and insufficient exposure to motivated buyer pools. The good news is that these are all fixable — strategic adjustments to pricing, presentation, and marketing reach can reignite buyer interest within 30 days.",
+        "comparable_sales": [
+            {"address": "14 Maple Street, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£362,000", "is_subject": False},
+            {"address": "7 Oak Avenue, nearby area", "beds": 3, "property_type": "Terrace", "sold_asking": "£355,000", "is_subject": False},
+            {"address": "22 Birch Lane, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£368,000", "is_subject": False},
+            {"address": "Subject property", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£385,000 asking", "is_subject": True},
+        ],
+        "pricing_recommendation": "A targeted 3–5% reduction to align with recent comparables would re-enter the property into active buyer searches at a competitive price point.",
+        "pricing_recommendation_detail": "A price change triggers a 'Price Reduced' flag on Rightmove, generating renewed attention from buyers who have already saved the listing. Properties that reduce by 3–5% and simultaneously refresh their photos consistently see a surge in enquiries within 2 weeks of relaunching.",
+        "executive_summary": "Your property is showing the classic signs of a stale listing: declining portal visibility, discouraging or absent buyer feedback, and presentation that isn't converting views into viewings. The good news is that all of these issues are fixable — and quickly. A combination of fresh photography, a realistic price adjustment, and an updated description can reignite genuine buyer interest within 2–3 weeks.",
     }
 
     try:
         raw = await _aio.to_thread(_call_groq)
         raw = raw.strip()
-        # Strip markdown code fences if present
         if raw.startswith("```"):
             lines = raw.split("\n")
             raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
         parsed = json.loads(raw)
+        # Ensure backward-compat defaults for new fields
+        parsed.setdefault("days_on_market", None)
+        parsed.setdefault("comparable_sales", _DEFAULT_REPORT["comparable_sales"])
+        parsed.setdefault("pricing_recommendation_detail", "")
+        for item in parsed.get("action_plan", []):
+            item.setdefault("bullets", [])
+        for finding in parsed.get("key_findings", []):
+            finding.setdefault("icon", None)
         logger.info("Stale listing report generated successfully (package=%s)", package)
         return parsed
     except Exception as exc:

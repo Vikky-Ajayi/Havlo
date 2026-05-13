@@ -451,12 +451,22 @@ class StaleListingKeyFinding(BaseModel):
     title: str
     description: str
     type: str
+    icon: Optional[str] = None
+
+
+class StaleListingComparableSale(BaseModel):
+    address: str
+    beds: int = 0
+    property_type: str = ""
+    sold_asking: str = ""
+    is_subject: bool = False
 
 
 class StaleListingActionItem(BaseModel):
     priority: str
     title: str
     description: str
+    bullets: list[str] = Field(default_factory=list)
 
 
 class StaleListingReportData(BaseModel):
@@ -464,8 +474,11 @@ class StaleListingReportData(BaseModel):
     scores: StaleListingScores = Field(default_factory=StaleListingScores)
     key_findings: list[StaleListingKeyFinding] = Field(default_factory=list)
     action_plan: list[StaleListingActionItem] = Field(default_factory=list)
+    comparable_sales: list[StaleListingComparableSale] = Field(default_factory=list)
     pricing_recommendation: str = ""
+    pricing_recommendation_detail: str = ""
     executive_summary: str = ""
+    days_on_market: Optional[int] = None
 
 
 class StaleListingReportResponse(BaseModel):
@@ -490,10 +503,12 @@ class StaleListingAdminItem(BaseModel):
     package: str
     property_address: Optional[str]
     listing_url: Optional[str]
+    questions_data: Optional[str] = None
     report_status: str
     payment_status: str
     created_at: str
     ai_report_json: Optional[str]
+    agent_edited_report_json: Optional[str] = None
     agent_notes: Optional[str]
 
 

@@ -765,10 +765,13 @@ export const api = {
       payment_status: string;
       report_data?: {
         overall_score: number;
+        days_on_market?: number | null;
         scores: { photos: number; pricing: number; description: number; positioning: number };
-        key_findings: { title: string; description: string; type: string }[];
-        action_plan: { priority: string; title: string; description: string }[];
+        key_findings: { title: string; description: string; type: string; icon?: string }[];
+        action_plan: { priority: string; title: string; description: string; bullets: string[] }[];
+        comparable_sales: { address: string; beds: number; property_type: string; sold_asking: string; is_subject: boolean }[];
         pricing_recommendation: string;
+        pricing_recommendation_detail: string;
         executive_summary: string;
       };
       created_at: string;
@@ -790,10 +793,12 @@ export const api = {
       package: string;
       property_address?: string;
       listing_url?: string;
+      questions_data?: string;
       report_status: string;
       payment_status: string;
       created_at: string;
       ai_report_json?: string;
+      agent_edited_report_json?: string;
       agent_notes?: string;
     }[]>('/stale-listings/admin', { token }),
 

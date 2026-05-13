@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
+import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 
 const PURPLE = '#A409D2';
 const TEAL = '#006163';
-const COUNTRY_CODES = ['+44', '+1', '+971', '+65', '+852', '+61', '+49', '+33'];
 
 /* ─── ICONS ─── */
 const LockIcon = () => (
@@ -737,14 +737,15 @@ export function StaleListingsPlan() {
             {/* Phone */}
             <div style={{ marginBottom: 22 }}>
               <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, color: '#444', marginBottom: 6 }}>Phone number</label>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <select
-                  value={form.phone_country_code}
-                  onChange={e => setForm({ ...form, phone_country_code: e.target.value })}
-                  style={{ border: '1px solid #E0E0E0', borderRadius: 8, padding: '10px 10px', fontFamily: 'Inter, sans-serif', fontSize: 14, background: '#fff', outline: 'none', flexShrink: 0 }}
-                >
-                  {COUNTRY_CODES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ border: '1px solid #E0E0E0', borderRadius: 8, padding: '5px 8px', background: '#fff', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CountryCodeSelect
+                    value={form.phone_country_code}
+                    onChange={c => setForm({ ...form, phone_country_code: c })}
+                    buttonClassName="h-9 bg-gray-100 hover:bg-gray-200"
+                  />
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#555', minWidth: 32 }}>{form.phone_country_code}</span>
+                </div>
                 <input
                   type="tel"
                   value={form.phone}

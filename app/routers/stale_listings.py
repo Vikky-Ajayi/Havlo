@@ -50,6 +50,10 @@ async def _generate_and_save_report(
     questions_data: dict,
     property_address: str,
     listing_url: str,
+    first_name: str = "",
+    last_name: str = "",
+    email: str = "",
+    reference: str = "",
 ) -> None:
     from app.db.database import AsyncSessionLocal
     from app.services.groq_service import generate_stale_listing_report
@@ -74,6 +78,19 @@ async def _generate_and_save_report(
                 assessment.ai_report_generated_at = datetime.utcnow()
                 await db.commit()
                 logger.info("AI report saved for assessment %s", assessment_id)
+
+        # Notify the agent that a new report needs review
+        try:
+            from app.services.email_service import send_stale_listing_agent_notification_sync
+            import asyncio
+            await asyncio.to_thread(
+                send_stale_listing_agent_notification_sync,
+                first_name, last_name, email, reference,
+                package, property_address or "", listing_url or "",
+            )
+        except Exception as email_exc:
+            logger.warning("Agent notification email failed for %s: %s", assessment_id, email_exc)
+
     except Exception as exc:
         logger.error("AI report generation failed for %s: %s", assessment_id, exc)
 
@@ -148,6 +165,10 @@ async def submit_stale_listing(
         questions_data=payload.questions_data or {},
         property_address=payload.property_address or "",
         listing_url=payload.listing_url or "",
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        email=payload.email,
+        reference=reference,
     )
 
     background_tasks.add_task(
@@ -275,10 +296,12 @@ async def list_stale_listings_admin(
             package=a.package,
             property_address=a.property_address,
             listing_url=a.listing_url,
+            questions_data=a.questions_data,
             report_status=a.report_status,
             payment_status=a.payment_status,
             created_at=a.created_at.isoformat() if a.created_at else "",
             ai_report_json=a.ai_report_json,
+            agent_edited_report_json=a.agent_edited_report_json,
             agent_notes=a.agent_notes,
         )
         for a in assessments

@@ -737,6 +737,114 @@ async def send_stale_listing_report_ready(
     )
 
 
+def send_stale_listing_agent_notification_sync(
+    first_name: str,
+    last_name: str,
+    email: str,
+    reference: str,
+    package: str,
+    property_address: str,
+    listing_url: str,
+) -> bool:
+    """Notify the admin agent that a new AI report is ready for review."""
+    s = get_settings()
+    to_email = (s.ADMIN_NOTIFY_EMAIL or "").strip()
+    if not to_email:
+        logger.info("Skipping agent notification (ADMIN_NOTIFY_EMAIL empty).")
+        return False
+
+    frontend_url = getattr(s, "FRONTEND_URL", None) or "https://heyhavlo.com"
+    admin_url = f"{frontend_url.rstrip('/')}/dashboard/stale-listings"
+
+    package_labels = {
+        "quick_insight": "Quick Insight (£79.99)",
+        "professional_review": "Professional Review (£299.99)",
+        "premium_strategy": "Premium Strategy (£1,499.99)",
+    }
+    package_label = package_labels.get(package, package)
+
+    rows_html = ""
+    fields = {
+        "Client": f"{first_name} {last_name}",
+        "Email": email,
+        "Reference": reference,
+        "Package": package_label,
+        "Property Address": property_address or "Not provided",
+        "Listing URL": listing_url or "Not provided",
+    }
+    for i, (k, v) in enumerate(fields.items()):
+        bg = "#f9fafb" if i % 2 == 0 else "#ffffff"
+        rows_html += f"""<tr style="background:{bg};">
+          <td style="padding:10px 16px;font-size:13px;color:#6b7280;width:38%;border-bottom:1px solid #f0f0f0;">{_html_lib.escape(k)}</td>
+          <td style="padding:10px 16px;font-size:13px;color:#111827;font-weight:600;border-bottom:1px solid #f0f0f0;">{_html_lib.escape(v)}</td>
+        </tr>"""
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>New StaleListings Assessment</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
+      <tr><td style="background:#000000;padding:24px 32px;">
+        <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">StaleListings</span>
+        <span style="color:#9ca3af;font-size:13px;margin-left:8px;">by HAVLO</span>
+      </td></tr>
+      <tr><td style="padding:32px 32px 16px;">
+        <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">New assessment needs review</h1>
+        <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">A new StaleListings assessment has been submitted and the AI report has been generated. Please review and approve before sending to the client.</p>
+      </td></tr>
+      <tr><td style="padding:0 32px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+          {rows_html}
+        </table>
+      </td></tr>
+      <tr><td style="padding:16px 32px 32px;">
+        <a href="{admin_url}" style="background:#000000;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-weight:600;font-size:14px;display:inline-block;">
+          Review in Dashboard →
+        </a>
+      </td></tr>
+      <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;">
+        <p style="margin:0;color:#9ca3af;font-size:12px;">Reference: {_html_lib.escape(reference)} · Sent automatically when an AI report is generated.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+
+    plain_body = (
+        f"New StaleListings assessment needs review.\n\n"
+        f"Client: {first_name} {last_name}\n"
+        f"Email: {email}\n"
+        f"Reference: {reference}\n"
+        f"Package: {package_label}\n"
+        f"Property: {property_address or 'Not provided'}\n\n"
+        f"Review in dashboard: {admin_url}\n"
+    )
+
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[StaleListings] New assessment needs review — {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+
+async def send_stale_listing_agent_notification(
+    first_name: str,
+    last_name: str,
+    email: str,
+    reference: str,
+    package: str,
+    property_address: str,
+    listing_url: str,
+) -> bool:
+    return await asyncio.to_thread(
+        send_stale_listing_agent_notification_sync,
+        first_name, last_name, email, reference, package, property_address, listing_url,
+    )
+
+
 # Sync helpers exposed for FastAPI BackgroundTasks (which prefer sync callables).
 __all__ = [
     "send_welcome_email",
