@@ -852,6 +852,8 @@ export function StaleListingsLanding() {
                 </div>
               ))}
             </div>
+            {/* Fade-out gradient overlay at bottom */}
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:120, background:'linear-gradient(to bottom, rgba(238,240,242,0) 0%, #EEF0F2 100%)', pointerEvents:'none' }} />
           </div>
         </div>
       </section>
