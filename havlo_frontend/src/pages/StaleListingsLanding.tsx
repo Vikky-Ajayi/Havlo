@@ -336,11 +336,11 @@ export function StaleListingsLanding() {
         /* ── TABLET ── */
         @media(max-width:1024px) {
           .sl-hero-right { display:none !important; }
+          .sl-hero-inner { padding:60px 40px !important; }
           .sl-features-cols { flex-direction:column !important; }
           .sl-testimonial-row { flex-direction:column !important; gap:16px !important; }
           .sl-testimonial-card { flex:0 0 auto !important; width:100% !important; box-sizing:border-box !important; }
           .sl-hero-heading { font-size:38px !important; }
-          .sl-hero-section { padding:60px 40px !important; }
           .sl-features-section { padding:60px 40px !important; }
           .sl-how-section { padding:40px 40px !important; }
           .sl-testimonials-section { padding:60px 40px !important; }
@@ -349,7 +349,7 @@ export function StaleListingsLanding() {
           .sl-nav-links { display:none !important; }
           .sl-step-card { padding:32px !important; }
           .sl-step-float { display:none !important; }
-          .sl-input-bar { max-width:100% !important; }
+          .sl-input-bar { max-width:100% !important; width:100% !important; }
           .sl-hamburger { display:flex !important; }
           .sl-nav-cta-desktop { display:none !important; }
         }
@@ -369,16 +369,16 @@ export function StaleListingsLanding() {
           }
 
           /* Hero */
-          .sl-hero-section {
-            padding:32px 16px 40px !important;
-          }
           .sl-hero-inner {
             flex-direction:column !important;
+            padding:32px 16px 40px !important;
             gap:0 !important;
           }
           .sl-hero-left {
             width:100% !important;
-            gap:32px !important;
+            max-width:100% !important;
+            flex-shrink:1 !important;
+            gap:28px !important;
           }
           .sl-hero-right {
             display:none !important;
@@ -396,7 +396,7 @@ export function StaleListingsLanding() {
             letter-spacing:-0.02em !important;
           }
           .sl-hero-head-group {
-            gap:28px !important;
+            gap:20px !important;
           }
           .sl-input-bar {
             width:100% !important;
@@ -596,6 +596,13 @@ export function StaleListingsLanding() {
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
+            <button
+              className="sl-nav-cta-desktop"
+              onClick={handleStart}
+              style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em', border:'none', cursor:'pointer', whiteSpace:'nowrap' }}
+            >
+              Start Assessment
+            </button>
           </div>
 
           {/* Hamburger (mobile/tablet) */}
@@ -609,16 +616,16 @@ export function StaleListingsLanding() {
       </header>
 
       {/* ── HERO ── */}
-      <section style={{ background:'#FEFEFE', overflow:'hidden', position:'relative', padding:'0 100px' }}>
-        {/* Pink blob — matches Figma: left:-67px top:-99px size 524x736 blur:213px */}
+      <section className="sl-hero-section" style={{ background:'#FEFEFE', overflow:'hidden', position:'relative' }}>
+        {/* Pink blob */}
         <div style={{ position:'absolute', left:-67, top:-99, width:524, height:736, borderRadius:'50%', background:'#FFB0E6', filter:'blur(213.468px)', pointerEvents:'none', zIndex:0 }} />
 
         <div
-          className="sl-hero-section sl-hero-inner sl-inner-container"
-          style={{ maxWidth:1440, margin:'0 auto', padding:'92px 0 73px', position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}
+          className="sl-hero-inner"
+          style={{ maxWidth:1440, margin:'0 auto', padding:'92px 100px 73px', position:'relative', zIndex:1, display:'flex', alignItems:'flex-start', justifyContent:'space-between', boxSizing:'border-box' }}
         >
           {/* Left column */}
-          <div className="sl-hero-left" style={{ width:657, display:'flex', flexDirection:'column', gap:43 }}>
+          <div className="sl-hero-left" style={{ width:657, flexShrink:0, display:'flex', flexDirection:'column', gap:43 }}>
 
             {/* Heading + description */}
             <div className="sl-hero-head-group" style={{ display:'flex', flexDirection:'column', gap:48 }}>
@@ -634,24 +641,16 @@ export function StaleListingsLanding() {
               </p>
             </div>
 
+            {/* Hero image — mobile only, between heading and input */}
+            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', borderRadius:16, overflow:'hidden', flexShrink:0 }}>
+              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:220, objectFit:'cover', display:'block' }} />
+            </div>
+
             {/* Input + trust */}
             <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-              {/* Input bar */}
               <div
                 className="sl-input-bar"
-                style={{
-                  display:'flex',
-                  flexDirection:'row',
-                  alignItems:'center',
-                  width:570,
-                  height:56,
-                  padding:'4px 4px 4px 16px',
-                  boxSizing:'border-box',
-                  background:'#EEF0F2',
-                  borderBottom:'1px solid rgba(0,0,0,0.05)',
-                  borderRadius:12,
-                  gap:8,
-                }}
+                style={{ display:'flex', flexDirection:'row', alignItems:'center', width:570, height:56, padding:'4px 4px 4px 16px', boxSizing:'border-box', background:'#EEF0F2', borderBottom:'1px solid rgba(0,0,0,0.05)', borderRadius:12, gap:8 }}
               >
                 <HomeInputIcon />
                 <input
@@ -660,43 +659,12 @@ export function StaleListingsLanding() {
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleStart()}
                   placeholder="Enter property address or Rightmove/Zoopla URL…"
-                  style={{
-                    flex:1,
-                    background:'transparent',
-                    border:'none',
-                    outline:'none',
-                    fontFamily:'"Libre Franklin", sans-serif',
-                    fontWeight:500,
-                    fontSize:14,
-                    color:'#1F1F1E',
-                    letterSpacing:'-0.03em',
-                    lineHeight:'17px',
-                    minWidth:0,
-                  }}
+                  style={{ flex:1, background:'transparent', border:'none', outline:'none', fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:14, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'17px', minWidth:0 }}
                 />
                 <button
                   className="sl-input-btn"
                   onClick={handleStart}
-                  style={{
-                    display:'flex',
-                    width:169,
-                    height:48,
-                    padding:'12px 20px',
-                    justifyContent:'center',
-                    alignItems:'center',
-                    gap:4,
-                    background:'#000000',
-                    color:'#FFFFFF',
-                    fontFamily:'Inter, sans-serif',
-                    fontWeight:700,
-                    fontSize:16,
-                    letterSpacing:'-0.02em',
-                    borderRadius:12,
-                    border:'none',
-                    cursor:'pointer',
-                    whiteSpace:'nowrap',
-                    flexShrink:0,
-                  }}
+                  style={{ display:'flex', width:169, height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, background:'#000000', color:'#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, letterSpacing:'-0.02em', borderRadius:12, border:'none', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}
                 >
                   Assess my home
                 </button>
@@ -725,17 +693,12 @@ export function StaleListingsLanding() {
                 </div>
               ))}
             </div>
-
-            {/* Hero image — mobile only, sits below stats */}
-            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', flexShrink:0 }}>
-              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:'auto', display:'block' }} />
-            </div>
           </div>
 
           {/* Right column — hero image (desktop only) */}
           <div
             className="sl-hero-right"
-            style={{ width:582, height:568, borderRadius:30.45, overflow:'hidden', flexShrink:0 }}
+            style={{ width:582, height:568, borderRadius:30.45, overflow:'hidden', flexShrink:0, marginLeft:40 }}
           >
             <img
               src="/stale-hero-house.png"
