@@ -589,13 +589,6 @@ export function StaleListingsLanding() {
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
-            <button
-              className="sl-nav-cta-desktop"
-              onClick={handleStart}
-              style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em', border:'none', cursor:'pointer', whiteSpace:'nowrap' }}
-            >
-              Start Assessment
-            </button>
           </div>
 
           {/* Hamburger (mobile/tablet) */}
