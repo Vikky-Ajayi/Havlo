@@ -236,7 +236,7 @@ export function StaleListingsQuestions() {
 
       {/* ── STEPPER ── */}
       <div className="sl-q-stepper-scroll" style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
-        <div className="sl-q-stepper-inner" style={{ maxWidth: '100%', margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 'max-content', padding: '0 16px' }}>
+        <div className="sl-q-stepper-inner" style={{ margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 'max-content', padding: '0 16px' }}>
           {[
             { num: 1, label: 'Your property' },
             { num: 2, label: 'Choose Plan' },
