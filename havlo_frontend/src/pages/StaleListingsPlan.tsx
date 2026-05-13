@@ -344,17 +344,7 @@ export function StaleListingsPlan() {
           box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
         .sl-p-bottom-bar {
-          position: sticky;
-          bottom: 0;
-          background: #fff;
-          border-top: 1px solid #EBEBEB;
-          padding: 16px 40px;
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          gap: 12px;
-          box-sizing: border-box;
-          z-index: 20;
+          display: none;
         }
         .sl-p-back-btn {
           height: 50px;
@@ -439,9 +429,20 @@ export function StaleListingsPlan() {
           .sl-p-cards { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; width: 100%; }
         }
         @media (max-width: 640px) {
-          .sl-p-content { padding: 28px 16px 24px; }
-          .sl-p-bottom-bar { padding: 12px 16px; gap: 10px; }
-          .sl-p-back-btn { display: none; }
+          .sl-p-content { padding: 28px 16px 100px; }
+          .sl-p-bottom-bar {
+            display: flex;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 1px solid #EBEBEB;
+            padding: 12px 16px;
+            gap: 10px;
+            z-index: 20;
+            box-sizing: border-box;
+          }
           .sl-p-pay-btn { flex: 1; }
           .sl-p-secure-text { display: none; }
           .sl-p-order-summary { display: none; }
@@ -563,12 +564,27 @@ export function StaleListingsPlan() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '18px 24px',
-                  borderBottom: i < orderRows.length - 1 ? '1px solid #F0F0F0' : 'none',
+                  borderBottom: '1px solid #F0F0F0',
                 }}>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 14, color: '#666' }}>{row.label}</span>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#000' }}>{row.value}</span>
                 </div>
               ))}
+              {/* Buttons row inside order summary */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, padding: '20px 24px' }}>
+                <button
+                  onClick={() => navigate('/stale-listings/questions')}
+                  style={{ height: 50, padding: '0 28px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.20)', background: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#000', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
+                >
+                  Back to Questions
+                </button>
+                <button
+                  onClick={handlePayClick}
+                  style={{ height: 50, padding: '0 28px', borderRadius: 8, border: 'none', background: '#000', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
+                >
+                  Pay Securely and start Assessment
+                </button>
+              </div>
             </div>
           </div>
 
