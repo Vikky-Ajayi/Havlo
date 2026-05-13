@@ -710,7 +710,7 @@ export function StaleListingsLanding() {
                 <span style={{ color:'#1F1F1E' }}>Don't Let Your Home Sit </span>
                 <span style={{ color:PURPLE }}>on the Market</span>
               </h1>
-              <p className="sl-hero-desc" style={{ fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:400, color:'#000000', lineHeight:'150%', letterSpacing:'-0.02em', margin:0 }}>
+              <p className="sl-hero-desc text-justify" style={{ fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:400, color:'#000000', lineHeight:'150%', letterSpacing:'-0.02em', margin:0 }}>
                 Whether you're preparing to sell or already on the market, get personalised insights combining data-driven analysis with experienced local agent expertise to help your home sell faster — all while working with your current agent, no switching required.
               </p>
             </div>
