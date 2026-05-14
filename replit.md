@@ -51,6 +51,10 @@ Havlo is an international real estate platform that facilitates property matchin
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` - optional SMS notifications
 - `SUMUP_API_KEY`, `SUMUP_MERCHANT_CODE` - optional payments
 - `CALENDLY_LINK` - optional booking redirect
+- `RESEND_API_KEY` - transactional email via Resend (replaces SendGrid)
+- `EMAIL_FROM` - sender address on a Resend-verified domain (e.g. `noreply@heyhavlo.com`)
+- `EMAIL_FROM_NAME` - sender display name (default: `Havlo`)
+- `ADMIN_NOTIFY_EMAIL` - receives admin/agent notification emails
 
 ## Development Workflow
 - `Start application`: runs `bash start.sh`
@@ -80,7 +84,7 @@ Havlo is an international real estate platform that facilitates property matchin
 ## 2026-04-24 — Polish & notifications
 
 - **Mobile auto-scroll review marquee**: Switched `AutoScrollReviews.tsx` from a JS `requestAnimationFrame` + `scrollLeft` loop (unreliable on iOS Safari with `overflow:hidden`) to a pure CSS `@keyframes translateX(-50%)` marquee. Pauses on hover. Works on every mobile browser.
-- **SendGrid email service** (`app/services/email_service.py`): graceful no-op when `SENDGRID_API_KEY` / `EMAIL_FROM` are not set; sync helpers used inside FastAPI `BackgroundTasks` so the user-facing HTTP response is never blocked. Required env vars: `SENDGRID_API_KEY`, `EMAIL_FROM`, optional `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`, `SUPPORT_EMAIL`.
+- **Resend email service** (`app/services/email_service.py`): graceful no-op when `RESEND_API_KEY` / `EMAIL_FROM` are not set; sync helpers used inside FastAPI `BackgroundTasks` so the user-facing HTTP response is never blocked. Required env vars: `RESEND_API_KEY`, `EMAIL_FROM` (must be on a Resend-verified domain), optional `EMAIL_FROM_NAME`, `EMAIL_REPLY_TO`, `SUPPORT_EMAIL`.
 - **Welcome email on signup**: Email-client-safe HTML template (table layout + media query) matching the supplied Figma `Email_5` design. Sent by `auth.py` register as a background task.
 - **Inbox notification email + SMS**: `_maybe_send_team_sms` in `app/routers/messaging.py` now dispatches BOTH SMS (existing Twilio path) and email (new SendGrid path) in parallel via `asyncio.gather`. Reuses the existing `sms_notification_sent` dedupe flag.
 - **Speed**: removed the eager `_ensure_admin_conversation_for_user` call from the hot path of `GET /messaging/conversations`; the empty-list fallback still creates the default thread for brand-new users. Added a one-shot `SELECT 1` DB pre-warm at startup so the first request after boot does not pay the asyncpg cold-connect penalty. Measured locally: register ≈ 210 ms, login ≈ 140 ms.
