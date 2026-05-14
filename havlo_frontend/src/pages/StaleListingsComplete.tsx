@@ -109,16 +109,20 @@ export function StaleListingsComplete() {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .sl-c-secure-wrap { display: flex; }
         .sl-c-hamburger { display: none; }
+        /* Stepper base */
+        .sl-c-stepper-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .sl-c-stepper-scroll::-webkit-scrollbar { display: none; }
+        .sl-c-stepper-inner { padding: 20px 56px; }
         .sl-c-step-label { display: inline; }
         .sl-c-step-line { width: 80px; }
         @media (max-width: 640px) {
           .sl-c-navbar { padding: 0 20px !important; }
-          .sl-c-stepper { padding: 16px 20px !important; }
+          .sl-c-stepper-inner { padding: 14px 20px !important; }
           .sl-c-content { padding: 40px 20px !important; }
           .sl-c-secure-wrap { display: none !important; }
           .sl-c-hamburger { display: flex !important; }
           .sl-c-step-label { display: none !important; }
-          .sl-c-step-line { width: 32px !important; margin: 0 8px !important; }
+          .sl-c-step-line { width: 24px !important; margin: 0 8px !important; }
           .sl-c-done-btn { width: 100% !important; padding: 16px 24px !important; }
         }
       `}</style>
@@ -142,23 +146,34 @@ export function StaleListingsComplete() {
       </header>
 
       {/* STEPPER */}
-      <div className="sl-c-stepper" style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', padding: '20px 56px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+      <div className="sl-c-stepper-scroll" style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
+        <div className="sl-c-stepper-inner" style={{ margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 'max-content' }}>
           {[
             { num: 1, label: 'Your property' },
             { num: 2, label: 'Choose Plan' },
             { num: 3, label: 'Completed' },
-          ].map((step, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: pageState === 'success' || i < 2 ? PURPLE : '#E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#fff' }}>{step.num}</span>
+          ].map((step, i) => {
+            const activeStep = 3;
+            const isActive = step.num === activeStep;
+            const isDone = step.num < activeStep;
+            const isInactive = step.num > activeStep;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                    background: (isActive || isDone) ? PURPLE : 'transparent',
+                    border: isInactive ? '2px solid #D0D0D0' : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: (isActive || isDone) ? '#fff' : '#B0B0B0' }}>{step.num}</span>
+                  </div>
+                  <span className="sl-c-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#000' : '#B0B0B0', whiteSpace: 'nowrap' }}>{step.label}</span>
                 </div>
-                <span className="sl-c-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: step.num === 3 ? 600 : 400, fontSize: 14, color: '#000' }}>{step.label}</span>
+                {i < 2 && <div className="sl-c-step-line" style={{ height: 1, background: '#E0E0E0', margin: '0 20px', flexShrink: 0 }} />}
               </div>
-              {i < 2 && <div className="sl-c-step-line" style={{ width: 80, height: 1, background: PURPLE, margin: '0 20px' }} />}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

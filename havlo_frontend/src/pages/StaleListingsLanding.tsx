@@ -616,7 +616,7 @@ export function StaleListingsLanding() {
           <button
             className="sl-hamburger"
             onClick={() => setMenuOpen(true)}
-            style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'none', alignItems:'center' }}
+            style={{ background:'none', border:'none', cursor:'pointer', padding:0, alignItems:'center' }}
           >
             <HamburgerIcon />
           </button>

@@ -187,29 +187,26 @@ function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
     { num: 3, label: 'Completed' },
   ];
   return (
-    <div style={{ background: '#fff', borderBottom: '1px solid #F0F0F0' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px', height: 64, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0 }}>
+    <div className="sl-p-stepper-scroll" style={{ background: '#fff', borderBottom: '1px solid #F4F4F4', overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
+      <div className="sl-p-stepper-inner" style={{ margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 'max-content' }}>
         {steps.map((step, i) => {
           const isActive = step.num === activeStep;
           const isDone = step.num < activeStep;
           const isInactive = step.num > activeStep;
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
-                  width: 32, height: 32, borderRadius: '50%',
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                   background: (isActive || isDone) ? PURPLE : 'transparent',
                   border: isInactive ? '2px solid #D0D0D0' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
                 }}>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: (isActive || isDone) ? '#fff' : '#B0B0B0' }}>{step.num}</span>
                 </div>
-                <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 15, color: isActive ? '#000' : isInactive ? '#B0B0B0' : '#555' }}>{step.label}</span>
+                <span className="sl-p-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#000' : '#B0B0B0', whiteSpace: 'nowrap' }}>{step.label}</span>
               </div>
-              {i < 2 && (
-                <div style={{ width: 72, height: 1, background: '#E0E0E0', margin: '0 18px' }} />
-              )}
+              {i < 2 && <div className="sl-p-step-line" style={{ height: 1, background: '#E0E0E0', margin: '0 20px', flexShrink: 0 }} />}
             </div>
           );
         })}
@@ -483,7 +480,17 @@ export function StaleListingsPlan() {
           .sl-p-hamburger { display: flex !important; }
           .sl-p-order-summary { display: none; }
           .sl-form-box { padding: 28px 20px; }
+          .sl-p-step-label { display: none !important; }
+          .sl-p-step-line { width: 24px !important; margin: 0 8px !important; }
+          .sl-p-stepper-inner { padding: 14px 20px !important; }
         }
+
+        /* Stepper base styles */
+        .sl-p-stepper-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .sl-p-stepper-scroll::-webkit-scrollbar { display: none; }
+        .sl-p-stepper-inner { padding: 20px 56px; }
+        .sl-p-step-label { display: inline; }
+        .sl-p-step-line { width: 80px; }
       `}</style>
 
       <PlanNavbar />
