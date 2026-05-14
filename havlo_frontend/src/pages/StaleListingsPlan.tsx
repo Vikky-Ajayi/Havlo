@@ -491,7 +491,6 @@ export function StaleListingsPlan() {
         .sl-p-step-line { width: 80px; margin: 0 20px; }
 
         @media (max-width: 768px) {
-          .sl-p-step-label { display: none !important; }
           .sl-p-step-line { width: 24px !important; margin: 0 8px !important; }
           .sl-p-stepper-inner { padding: 14px 20px !important; }
         }

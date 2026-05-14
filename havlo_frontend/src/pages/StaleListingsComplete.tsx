@@ -121,7 +121,6 @@ export function StaleListingsComplete() {
           .sl-c-content { padding: 40px 20px !important; }
           .sl-c-secure-wrap { display: none !important; }
           .sl-c-hamburger { display: flex !important; }
-          .sl-c-step-label { display: none !important; }
           .sl-c-step-line { width: 24px !important; margin: 0 8px !important; }
           .sl-c-done-btn { width: 100% !important; padding: 16px 24px !important; }
         }
