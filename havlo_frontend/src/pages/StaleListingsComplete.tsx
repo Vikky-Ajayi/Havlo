@@ -114,8 +114,8 @@ export function StaleListingsComplete() {
         .sl-c-stepper-scroll::-webkit-scrollbar { display: none; }
         .sl-c-stepper-inner { padding: 20px 56px; }
         .sl-c-step-label { display: inline; }
-        .sl-c-step-line { width: 80px; }
-        @media (max-width: 640px) {
+        .sl-c-step-line { width: 80px; margin: 0 20px; }
+        @media (max-width: 768px) {
           .sl-c-navbar { padding: 0 20px !important; }
           .sl-c-stepper-inner { padding: 14px 20px !important; }
           .sl-c-content { padding: 40px 20px !important; }
@@ -170,7 +170,7 @@ export function StaleListingsComplete() {
                   </div>
                   <span className="sl-c-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#000' : '#B0B0B0', whiteSpace: 'nowrap' }}>{step.label}</span>
                 </div>
-                {i < 2 && <div className="sl-c-step-line" style={{ height: 1, background: '#E0E0E0', margin: '0 20px', flexShrink: 0 }} />}
+                {i < 2 && <div className="sl-c-step-line" style={{ height: 1, background: '#E0E0E0', flexShrink: 0 }} />}
               </div>
             );
           })}

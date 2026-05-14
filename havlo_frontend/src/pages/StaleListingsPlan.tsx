@@ -206,7 +206,7 @@ function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
                 </div>
                 <span className="sl-p-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: isActive ? 600 : 400, fontSize: 14, color: isActive ? '#000' : '#B0B0B0', whiteSpace: 'nowrap' }}>{step.label}</span>
               </div>
-              {i < 2 && <div className="sl-p-step-line" style={{ height: 1, background: '#E0E0E0', margin: '0 20px', flexShrink: 0 }} />}
+              {i < 2 && <div className="sl-p-step-line" style={{ height: 1, background: '#E0E0E0', flexShrink: 0 }} />}
             </div>
           );
         })}
@@ -328,6 +328,7 @@ export function StaleListingsPlan() {
     <div style={{ minHeight: '100vh', background: '#F6F6F6', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
 
         .sl-p-cards {
           display: flex;
@@ -480,9 +481,6 @@ export function StaleListingsPlan() {
           .sl-p-hamburger { display: flex !important; }
           .sl-p-order-summary { display: none; }
           .sl-form-box { padding: 28px 20px; }
-          .sl-p-step-label { display: none !important; }
-          .sl-p-step-line { width: 24px !important; margin: 0 8px !important; }
-          .sl-p-stepper-inner { padding: 14px 20px !important; }
         }
 
         /* Stepper base styles */
@@ -490,7 +488,13 @@ export function StaleListingsPlan() {
         .sl-p-stepper-scroll::-webkit-scrollbar { display: none; }
         .sl-p-stepper-inner { padding: 20px 56px; }
         .sl-p-step-label { display: inline; }
-        .sl-p-step-line { width: 80px; }
+        .sl-p-step-line { width: 80px; margin: 0 20px; }
+
+        @media (max-width: 768px) {
+          .sl-p-step-label { display: none !important; }
+          .sl-p-step-line { width: 24px !important; margin: 0 8px !important; }
+          .sl-p-stepper-inner { padding: 14px 20px !important; }
+        }
       `}</style>
 
       <PlanNavbar />
