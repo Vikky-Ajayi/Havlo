@@ -307,8 +307,9 @@ RULES — follow these exactly:
                 },
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=3500,
-            temperature=0.5,
+            max_tokens=5000,
+            temperature=0.4,
+            response_format={"type": "json_object"},
         )
         return response.choices[0].message.content or ""
 
@@ -406,14 +407,56 @@ RULES — follow these exactly:
         "executive_summary": "Your property is showing the classic signs of a stale listing: declining portal visibility, discouraging or absent buyer feedback, and presentation that isn't converting views into viewings. The good news is that all of these issues are fixable — and quickly. A combination of fresh photography, a realistic price adjustment, and an updated description can reignite genuine buyer interest within 2–3 weeks.",
     }
 
+    def _extract_json(raw: str) -> dict:
+        """Strip markdown fences and extract the outermost JSON object."""
+        import re
+        text = raw.strip()
+
+        # Strip ```json ... ``` or ``` ... ``` fences
+        if text.startswith("```"):
+            lines = text.split("\n")
+            # Drop first line (```json) and last line (```) if it closes
+            end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
+            text = "\n".join(lines[1:end]).strip()
+
+        # Try direct parse first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Find the outermost { ... } block (handles trailing text after JSON)
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            candidate = match.group(0)
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+        # Last resort: progressively trim from the end to find valid JSON
+        # (handles truncated output where closing braces are missing)
+        for end in range(len(text), max(len(text) - 200, 0), -1):
+            segment = text[:end]
+            # Count braces — if balanced, try parsing
+            depth = 0
+            for ch in segment:
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(segment)
+                except json.JSONDecodeError:
+                    continue
+
+        raise ValueError("Could not extract valid JSON from Groq response")
+
     try:
         raw = await _aio.to_thread(_call_groq)
-        raw = raw.strip()
-        if raw.startswith("```"):
-            lines = raw.split("\n")
-            raw = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-        parsed = json.loads(raw)
-        # Ensure backward-compat defaults for new fields
+        parsed = _extract_json(raw)
+        # Ensure backward-compat defaults for new / optional fields
         parsed.setdefault("days_on_market", None)
         parsed.setdefault("comparable_sales", _DEFAULT_REPORT["comparable_sales"])
         parsed.setdefault("pricing_recommendation_detail", "")
