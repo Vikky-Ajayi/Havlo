@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const offers = [
   'Bespoke consultation tailored to your goals',
@@ -36,6 +37,11 @@ const howItWorks = [
 ];
 
 export const CompleteHomeBuying: React.FC = () => {
+  usePageMeta({
+    title: 'Complete Home Buying Service Abroad | Havlo',
+    description: 'One transparent fee covers strategy, local representation, marketing, and legal completion. Havlo\'s complete home buying service for international property purchases.',
+    canonical: 'https://www.heyhavlo.com/complete-home-buying',
+  });
   const { openModal } = useModal();
   const [propertyPrice, setPropertyPrice] = useState('');
   const calculatedPrice = useMemo(() => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const HOUSE_IMG =
   'https://api.builder.io/api/v1/image/assets/TEMP/1d39f7bca27c7f8b2a16a58e41c532146fcabcf1?width=894';
@@ -129,6 +130,11 @@ const FeesPanel: React.FC<{ variant: 'mobile' | 'desktop' }> = ({ variant }) => 
 };
 
 export const BuyHome: React.FC = () => {
+  usePageMeta({
+    title: 'Buy a Home Abroad with Expert Support | Havlo',
+    description: 'Havlo guides you through every step of buying a home abroad — from property search and viewings to legal completion. Expert, end-to-end international support.',
+    canonical: 'https://www.heyhavlo.com/buy-home',
+  });
   const { openModal } = useModal();
 
   return (

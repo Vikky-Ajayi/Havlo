@@ -18,6 +18,7 @@ import { api } from '../lib/api';
 import { CountrySelect } from '../components/shared/CountrySelect';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { useConfig } from '../hooks/useConfig';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const TOTAL_STEPS = 9;
 
@@ -56,6 +57,11 @@ const marqueeItems = [
 ];
 
 export const Onboarding: React.FC = () => {
+  usePageMeta({
+    title: 'Get Started with International Property | Havlo',
+    description: 'Tell us about your property goals and we\'ll match you with the right expert. Buy or sell internationally with Havlo\'s personalised advisory service.',
+    canonical: 'https://www.heyhavlo.com/get-started',
+  });
   const navigate = useNavigate();
   const { token, refreshUser } = useAuth();
   const config = useConfig();

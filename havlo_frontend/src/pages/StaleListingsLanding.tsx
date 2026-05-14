@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const PURPLE = '#A409D2';
 
@@ -272,6 +273,11 @@ function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
 
 /* ─── MAIN COMPONENT ─── */
 export function StaleListingsLanding() {
+  usePageMeta({
+    title: 'Is Your Property Not Selling? Get a Free Listing Audit | Havlo',
+    description: 'Find out exactly why your property isn\'t selling. Stale Listings by Havlo gives you an expert review, pricing analysis, and action plan to attract buyers again.',
+    canonical: 'https://www.heyhavlo.com/stale-listings',
+  });
   const navigate = useNavigate();
   const [input, setInput] = useState('');
   const [showAllFaq, setShowAllFaq] = useState(false);

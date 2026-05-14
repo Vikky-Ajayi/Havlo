@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const PURPLE = '#A409D2';
 const TEAL = '#006163';
@@ -239,6 +240,11 @@ function PlanNavbar() {
 
 /* ─── MAIN COMPONENT ─── */
 export function StaleListingsPlan() {
+  usePageMeta({
+    title: 'Choose Your Property Review Plan | Havlo',
+    description: 'Select your property review plan. Stale Listings by Havlo offers expert assessment packages with scored feedback and a clear action plan to help your home sell.',
+    canonical: 'https://www.heyhavlo.com/stale-listings/plan',
+  });
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('professional_review');
   const [showOrderSheet, setShowOrderSheet] = useState(false);

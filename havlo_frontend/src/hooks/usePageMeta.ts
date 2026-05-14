@@ -38,5 +38,8 @@ export const usePageMeta = ({ title, description, canonical }: PageMeta) => {
       setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
       setLink('canonical', canonical);
     }
+    setMeta('meta[property="og:type"]', 'property', 'og:type', 'website');
+    setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'Havlo');
+    setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
   }, [title, description, canonical]);
 };

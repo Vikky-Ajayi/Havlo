@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const PURPLE = '#A409D2';
 
@@ -26,6 +27,11 @@ const GreenBadgeIcon = () => (
 type PageState = 'loading' | 'verifying' | 'success' | 'failed' | 'no_ref';
 
 export function StaleListingsComplete() {
+  usePageMeta({
+    title: 'Your Property Assessment is Confirmed | Havlo',
+    description: 'Your listing review is confirmed. Our team is now preparing your personalised property assessment, pricing analysis, and action plan based on your submission.',
+    canonical: 'https://www.heyhavlo.com/stale-listings/complete',
+  });
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const reference = searchParams.get('ref');

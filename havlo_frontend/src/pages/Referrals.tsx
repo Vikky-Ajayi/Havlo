@@ -1,7 +1,13 @@
 import React from 'react';
 import { Check, X } from 'lucide-react';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const Referrals: React.FC = () => {
+  usePageMeta({
+    title: 'Refer Clients for International Property Investment | Havlo',
+    description: 'Havlo\'s referral partnership is designed for advisors, wealth managers, and immigration consultants whose clients are buying or investing in property abroad.',
+    canonical: 'https://www.heyhavlo.com/referrals',
+  });
   return (
     <div className="flex flex-col w-full bg-white">
       {/* Hero Section */}

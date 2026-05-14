@@ -3,8 +3,14 @@ import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export const OnboardingSuccess: React.FC = () => {
+  usePageMeta({
+    title: 'Application Received | Havlo',
+    description: 'Thank you for getting in touch. A Havlo property expert will reach out shortly to begin your personalised international property journey.',
+    canonical: 'https://www.heyhavlo.com/get-started/success',
+  });
   const { openModal } = useModal();
   return (
     <div className="flex flex-col min-h-screen bg-white overflow-x-hidden">

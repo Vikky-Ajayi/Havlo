@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useModal } from '../hooks/useModal';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 type Country = { name: string; flag: string };
 type Region = { name: string; intro: string; countries: Country[] };
@@ -91,6 +92,11 @@ const regions: Region[] = [
 ];
 
 export const PropertyPurchase: React.FC = () => {
+  usePageMeta({
+    title: 'Buy Property in Any Country with Confidence | Havlo',
+    description: 'Browse properties by region and buy abroad with confidence. Havlo connects you with vetted local experts in Europe, the Middle East, Asia, and the Americas.',
+    canonical: 'https://www.heyhavlo.com/property-purchase',
+  });
   const { openModal } = useModal();
 
   return (

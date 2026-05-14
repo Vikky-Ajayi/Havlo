@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../lib/utils';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const regions = [
   {
@@ -76,6 +77,11 @@ const regions = [
 ];
 
 export const Countries: React.FC = () => {
+  usePageMeta({
+    title: 'International Property Markets by Country | Havlo',
+    description: 'Explore property markets across Europe, the Middle East, Asia, and the Americas. Havlo connects buyers with vetted experts in over 40 countries worldwide.',
+    canonical: 'https://www.heyhavlo.com/countries',
+  });
   return (
     <div className="flex flex-col w-full bg-[#F8F7F7]">
       {/* 1. Hero Section */}

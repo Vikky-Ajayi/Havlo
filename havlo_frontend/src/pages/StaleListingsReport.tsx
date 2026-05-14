@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 interface ComparableSale {
   address: string;
@@ -127,6 +128,11 @@ const SERVICES = [
 ];
 
 export function StaleListingsReport() {
+  usePageMeta({
+    title: 'Your Property Listing Report | Havlo',
+    description: 'View your personalised listing report with an overall score, comparable sales, pricing recommendation, and a step-by-step action plan to help your property sell.',
+    canonical: 'https://www.heyhavlo.com/stale-listings/report',
+  });
   const { reference } = useParams<{ reference: string }>();
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState<Assessment | null>(null);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const PURPLE = '#A409D2';
 
@@ -112,6 +113,11 @@ function CheckboxCircle({ selected }: { selected: boolean }) {
 
 /* ─── MAIN COMPONENT ─── */
 export function StaleListingsQuestions() {
+  usePageMeta({
+    title: 'Property Assessment Questions | Havlo',
+    description: 'Answer a few quick questions about your property and listing history. We\'ll use your answers to build a personalised analysis and action plan for your home.',
+    canonical: 'https://www.heyhavlo.com/stale-listings/questions',
+  });
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentQ, setCurrentQ] = useState(0);
@@ -166,6 +172,7 @@ export function StaleListingsQuestions() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflowX: 'hidden', width: '100%', boxSizing: 'border-box' }}>
+      <h1 style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>Answer Questions About Your Property Listing</h1>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
