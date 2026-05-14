@@ -102,18 +102,24 @@ export function StaleListingsComplete() {
   const pkg = PACKAGE_LABELS[planKey] || PACKAGE_LABELS.professional_review;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: '#F7F9F9', fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', overflowX: 'hidden', width: '100%', boxSizing: 'border-box' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+        *, *::before, *::after { box-sizing: border-box; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .sl-c-secure-wrap { display: flex; }
         .sl-c-hamburger { display: none; }
+        .sl-c-step-label { display: inline; }
+        .sl-c-step-line { width: 80px; }
         @media (max-width: 640px) {
           .sl-c-navbar { padding: 0 20px !important; }
           .sl-c-stepper { padding: 16px 20px !important; }
           .sl-c-content { padding: 40px 20px !important; }
           .sl-c-secure-wrap { display: none !important; }
           .sl-c-hamburger { display: flex !important; }
+          .sl-c-step-label { display: none !important; }
+          .sl-c-step-line { width: 32px !important; margin: 0 8px !important; }
+          .sl-c-done-btn { width: 100% !important; padding: 16px 24px !important; }
         }
       `}</style>
 
@@ -148,9 +154,9 @@ export function StaleListingsComplete() {
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: pageState === 'success' || i < 2 ? PURPLE : '#E0E0E0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#fff' }}>{step.num}</span>
                 </div>
-                <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: step.num === 3 ? 600 : 400, fontSize: 14, color: '#000' }}>{step.label}</span>
+                <span className="sl-c-step-label" style={{ fontFamily: 'Inter, sans-serif', fontWeight: step.num === 3 ? 600 : 400, fontSize: 14, color: '#000' }}>{step.label}</span>
               </div>
-              {i < 2 && <div style={{ width: 80, height: 1, background: PURPLE, margin: '0 20px' }} />}
+              {i < 2 && <div className="sl-c-step-line" style={{ width: 80, height: 1, background: PURPLE, margin: '0 20px' }} />}
             </div>
           ))}
         </div>
@@ -238,6 +244,7 @@ export function StaleListingsComplete() {
                 <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                   <button
                     onClick={() => navigate('/stale-listings')}
+                    className="sl-c-done-btn"
                     style={{ display: 'flex', height: 52, padding: '16px 48px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 10, background: '#020202', border: 'none', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, color: '#fff', cursor: 'pointer', letterSpacing: '-0.32px', margin: '0 auto' }}
                   >
                     Done
