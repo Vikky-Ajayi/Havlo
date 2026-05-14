@@ -110,7 +110,7 @@ async def _send_welcome_email_safely(to_email: str, first_name: str) -> None:
         )
         if not ok:
             logger.error(
-                "Welcome email NOT delivered to %s — see SendGrid logs above for cause.",
+                "Welcome email NOT delivered to %s — see Resend logs above for cause.",
                 to_email,
             )
     except Exception as exc:  # noqa: BLE001

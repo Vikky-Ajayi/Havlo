@@ -490,7 +490,7 @@ async def diag_sheets_test(request: Request) -> JSONResponse:
 
 @app.get("/api/v1/diag/email", tags=["Health"])
 async def diag_email(request: Request) -> JSONResponse:
-    """Show whether SendGrid is configured (without exposing the key)."""
+    """Show whether Resend is configured (without exposing the key)."""
     if not _check_diag_token(request):
         return JSONResponse({"error": "forbidden"}, status_code=403)
     from app.services import email_service as _es
@@ -499,7 +499,7 @@ async def diag_email(request: Request) -> JSONResponse:
 
 @app.api_route("/api/v1/diag/email/test", methods=["GET", "POST"], tags=["Health"])
 async def diag_email_test(request: Request) -> JSONResponse:
-    """Send a test email via SendGrid to verify credentials end-to-end.
+    """Send a test email via Resend to verify credentials end-to-end.
 
     Accepts either:
       * POST with JSON body ``{"to": "you@example.com"}``
@@ -509,7 +509,7 @@ async def diag_email_test(request: Request) -> JSONResponse:
         return JSONResponse({"error": "forbidden"}, status_code=403)
     from app.services import email_service as _es
     if not _es.is_configured():
-        return JSONResponse({"ok": False, "error": "SendGrid is not configured."}, status_code=400)
+        return JSONResponse({"ok": False, "error": "Resend is not configured."}, status_code=400)
     to = (request.query_params.get("to") or "").strip()
     if not to and request.method == "POST":
         try:

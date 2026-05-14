@@ -1,18 +1,20 @@
 """
-SendGrid email service.
+Resend email service.
 
 Used for:
 - Welcome email on user registration
 - New unread inbox message notification email
+- Admin / agent notification emails
+- StaleListings report-ready emails
 
 Like every other integration in this codebase, the service is fully optional:
-when SENDGRID_API_KEY / EMAIL_FROM are not configured the helpers log a
-warning and return False. They never raise, so the API request that triggered
-the email cannot fail because of an email problem.
+when RESEND_API_KEY / EMAIL_FROM are not configured the helpers log a warning
+and return False. They never raise, so the API request that triggered the
+email cannot fail because of an email problem.
 
-Sending is performed in a worker thread (the SendGrid SDK is sync), and is
+Sending is performed in a worker thread (the Resend SDK is sync), and is
 always called from a FastAPI BackgroundTask so the user-facing HTTP response
-is sent before SendGrid is contacted.
+is sent before Resend is contacted.
 """
 from __future__ import annotations
 
@@ -20,177 +22,99 @@ import asyncio
 import html as _html_lib
 import logging
 import time
-from functools import lru_cache
 from typing import Optional
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# SendGrid retry policy — short, bounded, sync-safe.
+# Retry policy — short, bounded, sync-safe.
 _RETRY_ATTEMPTS = 3
-_RETRY_BACKOFF_S = (1, 3, 6)  # backoff before attempts 2 and 3 (we use index attempt-1)
+_RETRY_BACKOFF_S = (1, 3, 6)
 
 
 def _is_configured() -> bool:
     s = get_settings()
-    return bool(s.SENDGRID_API_KEY and s.EMAIL_FROM)
-
-
-_GLOBAL_HOST = "https://api.sendgrid.com"
-_EU_HOST = "https://api.eu.sendgrid.com"
-
-
-def _resolve_sendgrid_host() -> str:
-    """Return the correct SendGrid base URL for the configured region.
-
-    SendGrid runs two independent regions: global (api.sendgrid.com) and EU
-    data-residency (api.eu.sendgrid.com). API keys belong to exactly one
-    region; calling the wrong host returns ``HTTP 401 Unauthorized`` even
-    with a valid key.
-
-    Reference: https://www.twilio.com/docs/sendgrid/for-developers/sending-email/getting-started-eu-data-residency
-    """
-    s = get_settings()
-    region = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower()
-    if region in ("eu", "europe"):
-        return _EU_HOST
-    return _GLOBAL_HOST
-
-
-@lru_cache
-def _get_client():
-    """Lazily import + cache the SendGrid client so the package is optional."""
-    try:
-        from sendgrid import SendGridAPIClient
-    except ImportError:  # pragma: no cover - sendgrid not installed
-        logger.warning("sendgrid package not installed — email is disabled.")
-        return None
-    s = get_settings()
-    if not s.SENDGRID_API_KEY:
-        return None
-    host = _resolve_sendgrid_host()
-    # Pass host directly to the constructor — this is the documented API and
-    # propagates correctly into the underlying python_http_client.Client.
-    client = SendGridAPIClient(api_key=s.SENDGRID_API_KEY, host=host)
-    logger.info(
-        "SendGrid client initialised (host=%s, region=%s, from=%s).",
-        host, getattr(s, "SENDGRID_REGION", "global") or "global", s.EMAIL_FROM or "MISSING",
-    )
-    return client
-
-
-def reset_client_cache() -> None:
-    """Drop the cached client so the next call re-reads settings.
-
-    Useful in tests or after rotating env vars without restarting the process.
-    """
-    _get_client.cache_clear()
+    return bool(s.RESEND_API_KEY and s.EMAIL_FROM)
 
 
 def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
     """Synchronous send with bounded retries. Always returns a bool, never raises.
 
-    Retries on transient errors (HTTP 429 rate limit, HTTP 5xx, network/timeout
-    exceptions). Permanent failures (4xx other than 429) are NOT retried —
-    re-sending them would just be rejected again.
+    Retries on transient errors (HTTP 429 rate-limit, HTTP 5xx, network/timeout).
+    Permanent 4xx failures (other than 429) are not retried.
     """
     if not _is_configured():
         logger.warning(
-            "Skipping email to %s — SendGrid is not configured (SENDGRID_API_KEY=%s, EMAIL_FROM=%s).",
+            "Skipping email to %s — Resend is not configured (RESEND_API_KEY=%s, EMAIL_FROM=%s).",
             to_email,
-            "set" if get_settings().SENDGRID_API_KEY else "MISSING",
+            "set" if get_settings().RESEND_API_KEY else "MISSING",
             get_settings().EMAIL_FROM or "MISSING",
         )
         return False
 
     try:
-        from sendgrid.helpers.mail import Mail, Email, To, Content
-    except ImportError:  # pragma: no cover
-        logger.warning("sendgrid helpers not available — email skipped.")
+        import resend  # type: ignore[import]
+    except ImportError:
+        logger.warning("resend package not installed — email is disabled.")
         return False
 
     s = get_settings()
-    client = _get_client()
-    if client is None:
-        return False
+    resend.api_key = s.RESEND_API_KEY
 
-    from_email = Email(s.EMAIL_FROM, s.EMAIL_FROM_NAME or "Havlo")
-    message = Mail(
-        from_email=from_email,
-        to_emails=To(to_email),
-        subject=subject,
-        plain_text_content=Content("text/plain", plain_body),
-        html_content=Content("text/html", html_body),
-    )
+    from_name = (s.EMAIL_FROM_NAME or "Havlo").strip()
+    from_field = f"{from_name} <{s.EMAIL_FROM}>"
+
+    params: dict = {
+        "from": from_field,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
+        "text": plain_body,
+    }
     if s.EMAIL_REPLY_TO:
-        message.reply_to = Email(s.EMAIL_REPLY_TO)
+        params["reply_to"] = s.EMAIL_REPLY_TO
 
-    # Import the SDK's typed HTTP error so we can read .status_code/.body
-    # instead of relying on the str(exc) form which loses detail.
-    try:
-        from python_http_client.exceptions import HTTPError as SgHTTPError
-    except ImportError:  # pragma: no cover - bundled with sendgrid
-        SgHTTPError = None  # type: ignore[assignment]
-
-    host = _resolve_sendgrid_host()
     last_error: Optional[str] = None
     for attempt in range(1, _RETRY_ATTEMPTS + 1):
         try:
-            response = client.send(message)
-            status_code = int(response.status_code)
-            if 200 <= status_code < 300:
+            result = resend.Emails.send(params)
+            email_id = result.get("id") if isinstance(result, dict) else getattr(result, "id", None)
+            if email_id:
                 logger.info(
-                    "Email delivered to %s (subject=%r, status=%s, attempt=%d, host=%s)",
-                    to_email, subject, status_code, attempt, host,
+                    "Email delivered to %s (subject=%r, id=%s, attempt=%d)",
+                    to_email, subject, email_id, attempt,
                 )
                 return True
-            # SendGrid normally raises on non-2xx, but handle the rare path.
-            body_preview = getattr(response, "body", b"")
-            try:
-                body_preview = body_preview.decode("utf-8", "replace")[:500]
-            except Exception:
-                body_preview = str(body_preview)[:500]
-            transient = status_code == 429 or 500 <= status_code < 600
+            # Unexpected response without an id
             logger.error(
-                "SendGrid %s for %s (attempt %d/%d, host=%s, from=%s): status=%s body=%s",
-                "transient error" if transient else "permanent error",
-                to_email, attempt, _RETRY_ATTEMPTS, host, s.EMAIL_FROM, status_code, body_preview,
+                "Resend returned no id for %s (attempt %d/%d): %s",
+                to_email, attempt, _RETRY_ATTEMPTS, result,
             )
-            last_error = f"status={status_code}"
-            if not transient:
-                return False
+            last_error = f"no_id result={result}"
+            # Treat as transient — may be a brief API hiccup
         except Exception as exc:  # noqa: BLE001
             status_code = getattr(exc, "status_code", None)
             body = getattr(exc, "body", None)
             try:
                 body_preview = (
-                    body.decode("utf-8", "replace") if isinstance(body, (bytes, bytearray)) else str(body or "")
+                    body.decode("utf-8", "replace") if isinstance(body, (bytes, bytearray))
+                    else str(body or "")
                 )[:500]
             except Exception:
-                body_preview = ""
+                body_preview = str(exc)[:500]
             transient = (
-                status_code is None  # network/timeout
+                status_code is None
                 or status_code == 429
                 or (isinstance(status_code, int) and 500 <= status_code < 600)
             )
             logger.error(
-                "SendGrid %s for %s (attempt %d/%d, host=%s, from=%s): status=%s body=%s exc=%s",
+                "Resend %s for %s (attempt %d/%d, from=%s): status=%s body=%s exc=%s",
                 "transient error" if transient else "permanent error",
-                to_email, attempt, _RETRY_ATTEMPTS, host, s.EMAIL_FROM,
+                to_email, attempt, _RETRY_ATTEMPTS, s.EMAIL_FROM,
                 status_code if status_code is not None else "n/a",
                 body_preview, exc,
             )
-            if status_code == 401:
-                # Highest-signal hint: the credentials were rejected by the
-                # endpoint we hit. Tell the operator exactly what to check.
-                region_set = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower()
-                logger.error(
-                    "SendGrid 401 from %s. The API key was rejected by this region. "
-                    "If your SendGrid account is on EU data residency, set the env var "
-                    "SENDGRID_REGION=eu and redeploy. Current SENDGRID_REGION=%r.",
-                    host, region_set or "(unset → defaults to global)",
-                )
             last_error = f"status={status_code} body={body_preview!r}" if status_code else str(exc)
             if not transient:
                 return False
@@ -199,7 +123,7 @@ def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> 
             time.sleep(_RETRY_BACKOFF_S[attempt - 1])
 
     logger.error(
-        "SendGrid send permanently failed for %s after %d attempts: %s",
+        "Resend send permanently failed for %s after %d attempts: %s",
         to_email, _RETRY_ATTEMPTS, last_error,
     )
     return False
@@ -648,17 +572,15 @@ async def send_inbox_notification(
 def diagnostics() -> dict:
     """Expose minimal config status (no secret material) for /diag endpoints."""
     s = get_settings()
-    region = (getattr(s, "SENDGRID_REGION", "") or "").strip().lower() or "global"
     return {
         "configured": _is_configured(),
         "from_set": bool(s.EMAIL_FROM),
         "from_name_set": bool(s.EMAIL_FROM_NAME),
         "reply_to_set": bool(s.EMAIL_REPLY_TO),
         "support_email_set": bool(s.SUPPORT_EMAIL),
-        "key_present": bool(s.SENDGRID_API_KEY),
-        "region": region,
-        "host": _resolve_sendgrid_host(),
+        "key_present": bool(s.RESEND_API_KEY),
         "from_email": s.EMAIL_FROM or None,
+        "provider": "resend",
     }
 
 
@@ -667,12 +589,12 @@ def is_configured() -> bool:
 
 
 def send_test_email(to_email: str) -> bool:
-    """Used by /diag/email/test to verify SendGrid credentials end-to-end."""
+    """Used by /diag/email/test to verify Resend credentials end-to-end."""
     return _send_sync(
         to_email=to_email,
         subject="Havlo email test",
-        html_body="<p>This is a Havlo email integration test. If you can read this, SendGrid is wired up correctly.</p>",
-        plain_body="This is a Havlo email integration test. If you can read this, SendGrid is wired up correctly.",
+        html_body="<p>This is a Havlo email integration test. If you can read this, Resend is wired up correctly.</p>",
+        plain_body="This is a Havlo email integration test. If you can read this, Resend is wired up correctly.",
     )
 
 
