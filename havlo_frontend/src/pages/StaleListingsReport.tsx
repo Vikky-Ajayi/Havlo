@@ -288,8 +288,21 @@ export function StaleListingsReport() {
 
               {/* LEFT: Scores panel */}
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8E9EA', overflow: 'hidden' }}>
-                {/* Property image placeholder */}
-                <div style={{ width: '100%', aspectRatio: '4/3', background: 'linear-gradient(135deg, #F0F0F0 0%, #E4E4E4 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                {/* Property image */}
+                {assessment.listing_image_url ? (
+                  <img
+                    src={assessment.listing_image_url}
+                    alt="Property"
+                    style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement | null;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div style={{ width: '100%', aspectRatio: '4/3', background: 'linear-gradient(135deg, #F0F0F0 0%, #E4E4E4 100%)', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, display: assessment.listing_image_url ? 'none' : 'flex' }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#B0B0B0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                   </svg>

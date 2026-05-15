@@ -761,6 +761,7 @@ export const api = {
       package: string;
       property_address?: string;
       listing_url?: string;
+      listing_image_url?: string;
       report_status: string;
       payment_status: string;
       report_data?: {
@@ -793,6 +794,7 @@ export const api = {
       package: string;
       property_address?: string;
       listing_url?: string;
+      listing_image_url?: string;
       questions_data?: string;
       report_status: string;
       payment_status: string;

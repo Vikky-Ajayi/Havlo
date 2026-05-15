@@ -58,6 +58,17 @@ async def _generate_and_save_report(
     from app.db.database import AsyncSessionLocal
     from app.services.groq_service import generate_stale_listing_report
 
+    # Scrape listing image if a URL was provided
+    image_url = ""
+    if listing_url:
+        try:
+            from app.services.listing_scraper import scrape_single_listing
+            scraped = await scrape_single_listing(listing_url)
+            image_url = scraped.get("image") or (scraped.get("images") or [""])[0]
+            logger.info("Scraped image for %s: %s", assessment_id, image_url)
+        except Exception as scrape_exc:
+            logger.warning("Image scrape failed for %s: %s", assessment_id, scrape_exc)
+
     try:
         report_dict = await generate_stale_listing_report(
             package=package,
@@ -76,6 +87,8 @@ async def _generate_and_save_report(
             if assessment:
                 assessment.ai_report_json = report_json
                 assessment.ai_report_generated_at = datetime.utcnow()
+                if image_url:
+                    assessment.listing_image_url = image_url
                 await db.commit()
                 logger.info("AI report saved for assessment %s", assessment_id)
 
@@ -230,6 +243,7 @@ async def get_stale_listing_report(
         package=assessment.package,
         property_address=assessment.property_address,
         listing_url=assessment.listing_url,
+        listing_image_url=assessment.listing_image_url,
         report_status=assessment.report_status,
         payment_status=assessment.payment_status,
         report_data=report_data,
@@ -296,6 +310,7 @@ async def list_stale_listings_admin(
             package=a.package,
             property_address=a.property_address,
             listing_url=a.listing_url,
+            listing_image_url=a.listing_image_url,
             questions_data=a.questions_data,
             report_status=a.report_status,
             payment_status=a.payment_status,

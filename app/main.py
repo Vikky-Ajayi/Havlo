@@ -298,6 +298,10 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS ai_report_generated_at TIMESTAMPTZ;
                     """))
                     await conn.execute(text("""
+                        ALTER TABLE stale_listing_assessments
+                            ADD COLUMN IF NOT EXISTS listing_image_url TEXT;
+                    """))
+                    await conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS agent_advanced_service_payments (
                             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

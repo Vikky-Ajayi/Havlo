@@ -445,6 +445,7 @@ class StaleListingAssessment(Base):
     payment_status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="pending"
     )
+    listing_image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
     sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
     reference: Mapped[str] = mapped_column(

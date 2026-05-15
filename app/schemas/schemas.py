@@ -488,6 +488,7 @@ class StaleListingReportResponse(BaseModel):
     package: str
     property_address: Optional[str]
     listing_url: Optional[str]
+    listing_image_url: Optional[str] = None
     report_status: str
     payment_status: str
     report_data: Optional[StaleListingReportData]
@@ -503,6 +504,7 @@ class StaleListingAdminItem(BaseModel):
     package: str
     property_address: Optional[str]
     listing_url: Optional[str]
+    listing_image_url: Optional[str] = None
     questions_data: Optional[str] = None
     report_status: str
     payment_status: str
