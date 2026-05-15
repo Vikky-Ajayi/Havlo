@@ -814,4 +814,10 @@ export const api = {
 
   staleListingsAdminDelete: (assessmentId: string, token: string) =>
     request<{ ok: boolean }>(`/stale-listings/admin/${assessmentId}`, { method: 'DELETE', token }),
+
+  staleListingsAdminMarkPaid: (assessmentId: string, token: string) =>
+    request<{ ok: boolean; payment_status: string; reference: string }>(
+      `/stale-listings/admin/${assessmentId}/mark-paid`,
+      { method: 'POST', token }
+    ),
 };

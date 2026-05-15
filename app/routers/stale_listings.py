@@ -349,6 +349,28 @@ async def finalize_stale_listing_report(
     return {"ok": True, "report_status": assessment.report_status}
 
 
+@admin_router.post("/admin/{assessment_id}/mark-paid")
+async def mark_stale_listing_paid(
+    assessment_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Manually mark an assessment payment as completed (for testing / manual payments)."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    result = await db.execute(
+        select(StaleListingAssessment).where(
+            StaleListingAssessment.id == uuid.UUID(assessment_id)
+        )
+    )
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found.")
+    assessment.payment_status = "completed"
+    await db.commit()
+    return {"ok": True, "payment_status": "completed", "reference": assessment.reference}
+
+
 @admin_router.delete("/admin/{assessment_id}")
 async def delete_stale_listing(
     assessment_id: str,

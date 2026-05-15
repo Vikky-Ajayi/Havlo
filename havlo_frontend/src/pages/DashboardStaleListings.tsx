@@ -197,6 +197,21 @@ export function DashboardStaleListings() {
     finally { setApproving(false); }
   };
 
+  const handleMarkPaid = async (item: AdminItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!token) return;
+    if (!confirm(`Mark payment as completed for ${item.reference}? Use this for manual/test payments only.`)) return;
+    try {
+      await api.staleListingsAdminMarkPaid(item.assessment_id, token);
+      setItems(prev => prev.map(i => i.assessment_id === item.assessment_id
+        ? { ...i, payment_status: 'completed' }
+        : i
+      ));
+      setSuccessMsg(`Payment marked as completed for ${item.reference}.`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (e) { alert(e instanceof Error ? e.message : 'Failed to mark as paid.'); }
+  };
+
   const handleDelete = async (item: AdminItem) => {
     if (!token) return;
     if (!confirm(`Delete assessment ${item.reference}? This cannot be undone.`)) return;
@@ -308,10 +323,18 @@ export function DashboardStaleListings() {
                   <div style={{ fontSize: 12, color: '#555', fontWeight: 600 }}>{PACKAGE_LABELS[item.package] || item.package}</div>
                   <div style={{ fontSize: 11, color: '#aaa' }}>{dateStr}</div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   <span style={{ background: pp.bg, color: pp.text, padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
                     Payment: {item.payment_status}
                   </span>
+                  {item.payment_status !== 'completed' && (
+                    <button
+                      onClick={e => handleMarkPaid(item, e)}
+                      style={{ background: '#065F46', color: '#fff', border: 'none', borderRadius: 10, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      ✓ Mark as Paid
+                    </button>
+                  )}
                   <span style={{ background: sp.bg, color: sp.text, padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
                     {sp.label}
                   </span>
