@@ -8,7 +8,7 @@ import string
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -235,83 +235,6 @@ async def get_stale_listing_report(
         report_data=report_data,
         created_at=assessment.created_at.isoformat() if assessment.created_at else "",
     )
-
-
-@public_router.post("/webhook/sumup")
-async def sumup_webhook(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-) -> dict:
-    """Receive SumUp payment event and instantly update assessment status.
-
-    Configure this URL in the SumUp dashboard:
-      https://heyhavlo.com/api/v1/stale-listings/webhook/sumup?secret=YOUR_SUMUP_WEBHOOK_SECRET
-
-    SumUp sends a JSON body with at minimum:
-      { "id": "<checkout_uuid>", "status": "PAID"|"FAILED"|"EXPIRED", ... }
-    """
-    from app.config import get_settings
-    settings = get_settings()
-
-    # ── Optional secret verification ─────────────────────────────────────────
-    webhook_secret = (settings.SUMUP_WEBHOOK_SECRET or "").strip()
-    if webhook_secret:
-        provided = (request.query_params.get("secret") or "").strip()
-        if provided != webhook_secret:
-            logger.warning("SumUp webhook: invalid secret — request rejected.")
-            raise HTTPException(status_code=401, detail="Invalid webhook secret.")
-
-    # ── Parse body ────────────────────────────────────────────────────────────
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
-
-    checkout_id = (payload.get("id") or "").strip()
-    sumup_status = (payload.get("status") or "").upper()
-    event_type = (payload.get("event_type") or "").upper()
-
-    logger.info(
-        "SumUp webhook received event_type=%s checkout_id=%s status=%s",
-        event_type, checkout_id, sumup_status,
-    )
-
-    if not checkout_id:
-        return {"ok": True, "detail": "No checkout id — nothing to do."}
-
-    # ── Find the assessment ───────────────────────────────────────────────────
-    result = await db.execute(
-        select(StaleListingAssessment).where(
-            StaleListingAssessment.sumup_checkout_id == checkout_id
-        )
-    )
-    assessment = result.scalar_one_or_none()
-    if not assessment:
-        logger.warning("SumUp webhook: no assessment found for checkout_id=%s", checkout_id)
-        return {"ok": True, "detail": "Assessment not found."}
-
-    # ── Update payment status ─────────────────────────────────────────────────
-    if sumup_status == "PAID" and assessment.payment_status != "completed":
-        assessment.payment_status = "completed"
-        await db.commit()
-        logger.info(
-            "SumUp webhook: payment marked completed for assessment %s ref=%s",
-            assessment.id, assessment.reference,
-        )
-    elif sumup_status in ("FAILED", "EXPIRED") and assessment.payment_status == "pending":
-        assessment.payment_status = "failed"
-        await db.commit()
-        logger.info(
-            "SumUp webhook: payment marked failed for assessment %s ref=%s",
-            assessment.id, assessment.reference,
-        )
-    else:
-        logger.info(
-            "SumUp webhook: no status change needed (current=%s sumup=%s)",
-            assessment.payment_status, sumup_status,
-        )
-
-    return {"ok": True}
 
 
 @public_router.post("/payment-verify/{reference}")
