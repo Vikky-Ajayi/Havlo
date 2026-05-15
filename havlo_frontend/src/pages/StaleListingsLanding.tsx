@@ -280,20 +280,24 @@ export function StaleListingsLanding() {
   });
   const navigate = useNavigate();
   const [input, setInput] = useState('');
+  const [inputError, setInputError] = useState('');
   const [showAllFaq, setShowAllFaq] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleStart = () => {
-    const params = new URLSearchParams();
     const v = input.trim();
-    if (v) {
-      if (v.startsWith('http') || v.includes('rightmove') || v.includes('zoopla') || v.includes('onthemarket')) {
-        params.set('url', v);
-      } else {
-        params.set('address', v);
-      }
+    if (!v) {
+      setInputError('Please enter your property address or listing URL to continue.');
+      return;
     }
-    navigate(`/stale-listings/questions${params.toString() ? '?' + params.toString() : ''}`);
+    setInputError('');
+    const params = new URLSearchParams();
+    if (v.startsWith('http') || v.includes('rightmove') || v.includes('zoopla') || v.includes('onthemarket')) {
+      params.set('url', v);
+    } else {
+      params.set('address', v);
+    }
+    navigate(`/stale-listings/questions?${params.toString()}`);
   };
 
   const faqsToShow = showAllFaq ? ALL_FAQS : ALL_FAQS.slice(0, 5);
@@ -744,6 +748,10 @@ export function StaleListingsLanding() {
                   Assess my home
                 </button>
               </div>
+
+              {inputError && (
+                <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{inputError}</p>
+              )}
 
               {/* Trustpilot row */}
               <div className="sl-trustpilot-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
