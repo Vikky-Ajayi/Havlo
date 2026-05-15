@@ -108,10 +108,14 @@ async def create_checkout(
             body=response.text,
         )
     checkout_reference = data.get("checkout_reference") or reference
+
+    # SumUp does not return a hosted URL in the create-checkout response body.
+    # Construct it from the checkout ID — this is the standard hosted pay page format.
     hosted_checkout_url = (
         data.get("hosted_page_url")
         or data.get("checkout_url")
         or data.get("redirect_url")
+        or f"https://pay.sumup.com/b2c/{internal_id}"
     )
 
     logger.info(
@@ -124,7 +128,7 @@ async def create_checkout(
     return {
         "id": internal_id,
         "checkout_reference": checkout_reference,
-        "checkout_url": hosted_checkout_url or "",
+        "checkout_url": hosted_checkout_url,
         "hosted_checkout_url": hosted_checkout_url,
         "amount": data.get("amount", amount_num),
         "currency": data.get("currency", currency_code),
