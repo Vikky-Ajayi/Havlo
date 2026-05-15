@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     # ── SumUp ────────────────────────────────────────────────────────────
     SUMUP_API_KEY: str = ""
     SUMUP_MERCHANT_CODE: str = ""
+    SUMUP_WEBHOOK_SECRET: str = ""
 
     # ── Groq LLM ─────────────────────────────────────────────────────────
     GROQ_API_KEY: str = ""
