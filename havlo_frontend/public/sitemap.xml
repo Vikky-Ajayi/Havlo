@@ -32,6 +32,12 @@
   </url>
 
   <url>
+    <loc>https://www.heyhavlo.com/custom-offers</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
     <loc>https://www.heyhavlo.com/buyer-network</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

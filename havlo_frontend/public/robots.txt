@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /custom-offers
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /checkout
+Disallow: /get-started
+Disallow: /custom-offers/proposal
+Disallow: /custom-offers/plan
+Disallow: /custom-offers/complete
+Disallow: /custom-offers/status
+
+Sitemap: https://www.heyhavlo.com/sitemap.xml

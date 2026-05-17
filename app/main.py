@@ -661,11 +661,16 @@ async def robots_txt() -> PlainTextResponse:
     body = (
         "User-agent: *\n"
         "Allow: /\n"
+        "Allow: /custom-offers\n"
         "Disallow: /api/\n"
         "Disallow: /dashboard\n"
         "Disallow: /admin\n"
         "Disallow: /checkout\n"
         "Disallow: /get-started\n"
+        "Disallow: /custom-offers/proposal\n"
+        "Disallow: /custom-offers/plan\n"
+        "Disallow: /custom-offers/complete\n"
+        "Disallow: /custom-offers/status\n"
         f"\nSitemap: {SITE_BASE}/sitemap.xml\n"
     )
     return PlainTextResponse(body, media_type="text/plain")

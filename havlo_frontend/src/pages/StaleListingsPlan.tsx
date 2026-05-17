@@ -512,7 +512,7 @@ export function StaleListingsPlan() {
               Choose your assessment plan
             </h1>
             <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 15, color: '#555', lineHeight: '1.5', margin: 0, maxWidth: 480 }}>
-              Based on your answers, a property specialist will analyse your listing and prepare your personalised report.
+              Find out why buyers might be overlooking your property and get a personalised roadmap to improve visibility, pricing and buyer interest.
             </p>
           </div>
 

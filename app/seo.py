@@ -76,6 +76,15 @@ PAGE_SEO: dict[str, PageSeo] = {
         ),
         canonical_path="/property-matching",
     ),
+    "/custom-offers": PageSeo(
+        title="Custom Offers | Flexible Property Proposals | Havlo",
+        description=(
+            "Make property offers that do not fit the traditional box. "
+            "Present flexible purchase terms directly and professionally so "
+            "homeowners can properly consider your proposal."
+        ),
+        canonical_path="/custom-offers",
+    ),
     "/sell-your-property": PageSeo(
         title="Sell Your Property Abroad with Ease | Havlo",
         description=(
