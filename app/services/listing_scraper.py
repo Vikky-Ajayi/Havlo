@@ -101,7 +101,10 @@ def _detect_platform(url: str) -> str:
 def _clean(s: Any, maxlen: int = 500) -> str:
     if not s:
         return ""
-    return re.sub(r"\s+", " ", str(s)).strip()[:maxlen]
+    cleaned = re.sub(r"\s+", " ", str(s)).strip()
+    cleaned = cleaned.replace("Â£", "£").replace("â‚¬", "€")
+    cleaned = re.sub(r"(?<![A-Za-z])Ł(?=\d)", "£", cleaned)
+    return cleaned[:maxlen]
 
 
 def _fmt_price(amount: Any, currency: str = "GBP") -> str:
@@ -1164,6 +1167,95 @@ async def scrape_single_listing(url: str) -> dict:
         }
 
     return result
+
+
+def normalize_listing_url(raw_url: str) -> str:
+    cleaned = (raw_url or "").strip()
+    if not cleaned:
+        raise ValueError("Please enter a property URL.")
+    if not re.match(r"^https?://", cleaned, re.IGNORECASE):
+        cleaned = f"https://{cleaned.lstrip('/')}"
+    parsed = urlparse(cleaned)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError("Please enter a valid property URL.")
+    filtered_params: list[tuple[str, str]] = []
+    for key, values in parse_qs(parsed.query, keep_blank_values=False).items():
+        lowered = key.lower()
+        if lowered.startswith("utm_") or lowered in {"fbclid", "gclid"}:
+            continue
+        for value in values:
+            filtered_params.append((key, value))
+    return urlunparse(parsed._replace(query=urlencode(filtered_params), fragment=""))
+
+
+def detect_listing_platform(url: str) -> str:
+    return _detect_platform(url)
+
+
+def empty_listing_snapshot(url: str) -> dict:
+    return _empty_listing(_detect_platform(url), url)
+
+
+def _listing_missing_fields(listing: dict[str, Any]) -> list[str]:
+    missing: list[str] = []
+    if not _clean(listing.get("address") or listing.get("title")):
+        missing.append("address")
+    if not _clean(listing.get("price")):
+        missing.append("price")
+    if not _clean(listing.get("description")):
+        missing.append("description")
+    return missing
+
+
+async def scrape_listing_for_public_flow(raw_url: str) -> dict:
+    normalized_url = normalize_listing_url(raw_url)
+    platform = _detect_platform(normalized_url)
+    try:
+        listing = await scrape_single_listing(normalized_url)
+    except Exception as exc:
+        logger.warning("Public scrape fallback for %s: %s", normalized_url, exc)
+        listing = _empty_listing(platform, normalized_url)
+        listing["url"] = normalized_url
+        return {
+            "status": "partial",
+            "platform": platform,
+            "message": (
+                "We could not fully read this listing automatically. "
+                "You can still continue and confirm the property details manually."
+            ),
+            "property": listing,
+            "missing_fields": ["address", "price", "description"],
+        }
+
+    merged = {**_empty_listing(platform, normalized_url), **(listing or {})}
+    merged["url"] = normalized_url
+    merged["platform"] = merged.get("platform") or platform
+    missing_fields = _listing_missing_fields(merged)
+    blocked = bool(merged.get("blocked"))
+
+    if blocked:
+        status = "blocked"
+        message = (
+            "This listing blocked automated access. "
+            "You can still continue and confirm the property details manually."
+        )
+    elif missing_fields:
+        status = "partial"
+        message = (
+            "We found the listing, but a few details need your confirmation "
+            "before the proposal is presented."
+        )
+    else:
+        status = "complete"
+        message = "Listing details collected successfully."
+
+    return {
+        "status": status,
+        "platform": merged.get("platform") or platform,
+        "message": message,
+        "property": merged,
+        "missing_fields": missing_fields,
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

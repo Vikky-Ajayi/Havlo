@@ -63,6 +63,7 @@ export const Navbar: React.FC = () => {
       dropdownItems: [
         { name: 'Buy Property Abroad', href: '/buy-property-abroad' },
         { name: 'Property Matching', href: '/property-matching' },
+        { name: 'Custom Offers', href: '/custom-offers' },
       ]
     },
     {

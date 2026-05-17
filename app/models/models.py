@@ -446,11 +446,51 @@ class StaleListingAssessment(Base):
         String(50), nullable=False, default="pending"
     )
     listing_image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    listing_snapshot_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
     sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
     reference: Mapped[str] = mapped_column(
         String(20), nullable=False, unique=True, index=True
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class CustomOfferSubmission(Base):
+    __tablename__ = "custom_offer_submissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    reference: Mapped[str] = mapped_column(
+        String(20), nullable=False, unique=True, index=True
+    )
+    listing_url: Mapped[str] = mapped_column(Text, nullable=False)
+    listing_platform: Mapped[str] = mapped_column(String(50), nullable=False, default="generic")
+    property_snapshot_json: Mapped[Optional[str]] = mapped_column(Text)
+    property_override_json: Mapped[Optional[str]] = mapped_column(Text)
+    form_answers_json: Mapped[Optional[str]] = mapped_column(Text)
+    plan_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    plan_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    buyer_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    buyer_email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    buyer_phone: Mapped[str] = mapped_column(String(50), nullable=False)
+    payment_status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="pending"
+    )
+    proposal_status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="submitted"
+    )
+    sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
+    sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
+    admin_notes: Mapped[Optional[str]] = mapped_column(Text)
+    sheets_recorded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    buyer_confirmation_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    admin_notification_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

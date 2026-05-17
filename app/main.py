@@ -299,7 +299,8 @@ async def startup() -> None:
                     """))
                     await conn.execute(text("""
                         ALTER TABLE stale_listing_assessments
-                            ADD COLUMN IF NOT EXISTS listing_image_url TEXT;
+                            ADD COLUMN IF NOT EXISTS listing_image_url TEXT,
+                            ADD COLUMN IF NOT EXISTS listing_snapshot_json TEXT;
                     """))
                     await conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS agent_advanced_service_payments (
@@ -335,6 +336,8 @@ async def startup() -> None:
                             agent_edited_report_json TEXT,
                             report_status VARCHAR(50) NOT NULL DEFAULT 'pending',
                             payment_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+                            listing_image_url TEXT,
+                            listing_snapshot_json TEXT,
                             sumup_checkout_id VARCHAR(255),
                             sumup_checkout_url TEXT,
                             reference VARCHAR(20) NOT NULL,
@@ -641,6 +644,10 @@ app.include_router(admin_users.router, prefix=API_PREFIX)
 from app.routers import stale_listings  # noqa: E402
 app.include_router(stale_listings.public_router, prefix=API_PREFIX)
 app.include_router(stale_listings.admin_router, prefix=API_PREFIX)
+
+from app.routers import custom_offers  # noqa: E402
+app.include_router(custom_offers.public_router, prefix=API_PREFIX)
+app.include_router(custom_offers.admin_router, prefix=API_PREFIX)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 

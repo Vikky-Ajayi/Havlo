@@ -18,12 +18,14 @@ from app.models.models import StaleListingAssessment, User
 from app.schemas.schemas import (
     StaleListingAdminFinalizeRequest,
     StaleListingAdminItem,
+    StaleListingListingSnapshot,
     StaleListingReportData,
     StaleListingReportResponse,
     StaleListingSubmitRequest,
     StaleListingSubmitResponse,
 )
 from app.services import google_sheets, sumup_service
+from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,56 @@ def _generate_reference() -> str:
     return f"SL-{suffix}"
 
 
+def _snapshot_from_listing(listing: dict | None, listing_url: str = "") -> dict[str, str]:
+    raw = listing or {}
+    images = raw.get("images") or []
+    first_image = raw.get("image") or (images[0] if isinstance(images, list) and images else "")
+    return {
+        "title": str(raw.get("title") or ""),
+        "address": str(raw.get("address") or raw.get("title") or ""),
+        "price": str(raw.get("price") or ""),
+        "image": str(first_image or ""),
+        "bedrooms": str(raw.get("bedrooms") or ""),
+        "bathrooms": str(raw.get("bathrooms") or ""),
+        "property_type": str(raw.get("property_type") or ""),
+        "platform": str(raw.get("platform") or detect_listing_platform(listing_url or "")),
+    }
+
+
+def _snapshot_has_content(snapshot: dict[str, str]) -> bool:
+    return any(
+        str(snapshot.get(field) or "").strip()
+        for field in ("address", "price", "image", "bedrooms", "bathrooms", "property_type", "platform")
+    )
+
+
+def _load_snapshot(raw_json: str | None) -> dict[str, str]:
+    if not raw_json:
+        return {}
+    try:
+        parsed = json.loads(raw_json)
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _fallback_snapshot(
+    listing_url: str,
+    property_address: str = "",
+    image_url: str = "",
+) -> dict[str, str]:
+    return {
+        "title": "",
+        "address": str(property_address or ""),
+        "price": "",
+        "image": str(image_url or ""),
+        "bedrooms": "",
+        "bathrooms": "",
+        "property_type": "",
+        "platform": detect_listing_platform(listing_url or ""),
+    }
+
+
 async def _generate_and_save_report(
     assessment_id: str,
     package: str,
@@ -62,12 +114,15 @@ async def _generate_and_save_report(
     image_url = ""
     if listing_url:
         try:
-            from app.services.listing_scraper import scrape_single_listing
             scraped = await scrape_single_listing(listing_url)
             image_url = scraped.get("image") or (scraped.get("images") or [""])[0]
+            snapshot = _snapshot_from_listing(scraped, listing_url)
             logger.info("Scraped image for %s: %s", assessment_id, image_url)
         except Exception as scrape_exc:
             logger.warning("Image scrape failed for %s: %s", assessment_id, scrape_exc)
+            snapshot = _fallback_snapshot(listing_url, property_address, image_url)
+    else:
+        snapshot = {}
 
     try:
         report_dict = await generate_stale_listing_report(
@@ -75,6 +130,7 @@ async def _generate_and_save_report(
             questions_data=questions_data,
             property_address=property_address or "",
             listing_url=listing_url or "",
+            listing_snapshot=snapshot,
         )
         report_json = json.dumps(report_dict)
         async with AsyncSessionLocal() as db:
@@ -89,6 +145,10 @@ async def _generate_and_save_report(
                 assessment.ai_report_generated_at = datetime.utcnow()
                 if image_url:
                     assessment.listing_image_url = image_url
+                if _snapshot_has_content(snapshot):
+                    assessment.listing_snapshot_json = json.dumps(snapshot, ensure_ascii=False)
+                    if not assessment.property_address and snapshot.get("address"):
+                        assessment.property_address = snapshot["address"]
                 await db.commit()
                 logger.info("AI report saved for assessment %s", assessment_id)
 
@@ -106,6 +166,50 @@ async def _generate_and_save_report(
 
     except Exception as exc:
         logger.error("AI report generation failed for %s: %s", assessment_id, exc)
+
+
+async def _backfill_listing_snapshot(
+    assessment_id: str,
+    listing_url: str,
+) -> None:
+    from app.db.database import AsyncSessionLocal
+
+    if not listing_url:
+        return
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(StaleListingAssessment).where(
+                StaleListingAssessment.id == uuid.UUID(assessment_id)
+            )
+        )
+        assessment = result.scalar_one_or_none()
+        if not assessment:
+            return
+
+        try:
+            scraped = await scrape_single_listing(listing_url)
+            snapshot = _snapshot_from_listing(scraped, listing_url)
+        except Exception as exc:
+            logger.warning("Deferred listing snapshot scrape failed for %s: %s", assessment_id, exc)
+            snapshot = _fallback_snapshot(
+                listing_url,
+                property_address=assessment.property_address or "",
+                image_url=assessment.listing_image_url or "",
+            )
+
+        if not _snapshot_has_content(snapshot):
+            return
+
+        try:
+            assessment.listing_snapshot_json = json.dumps(snapshot, ensure_ascii=False)
+            if snapshot.get("image") and not assessment.listing_image_url:
+                assessment.listing_image_url = snapshot["image"]
+            if snapshot.get("address") and not assessment.property_address:
+                assessment.property_address = snapshot["address"]
+            await db.commit()
+        except Exception as exc:
+            logger.warning("Deferred listing snapshot backfill failed for %s: %s", assessment_id, exc)
 
 
 @public_router.post(
@@ -215,6 +319,7 @@ async def submit_stale_listing(
 @public_router.get("/report/{reference}", response_model=StaleListingReportResponse)
 async def get_stale_listing_report(
     reference: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> StaleListingReportResponse:
     """Fetch report by reference code."""
@@ -226,6 +331,15 @@ async def get_stale_listing_report(
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
+
+    snapshot_data = _load_snapshot(assessment.listing_snapshot_json)
+    needs_snapshot = bool(assessment.listing_url) and not _snapshot_has_content(snapshot_data)
+    if needs_snapshot:
+        background_tasks.add_task(
+            _backfill_listing_snapshot,
+            assessment_id=str(assessment.id),
+            listing_url=assessment.listing_url or "",
+        )
 
     report_data = None
     raw_json = assessment.agent_edited_report_json or assessment.ai_report_json
@@ -244,6 +358,7 @@ async def get_stale_listing_report(
         property_address=assessment.property_address,
         listing_url=assessment.listing_url,
         listing_image_url=assessment.listing_image_url,
+        listing_snapshot=StaleListingListingSnapshot(**snapshot_data) if snapshot_data else None,
         report_status=assessment.report_status,
         payment_status=assessment.payment_status,
         report_data=report_data,

@@ -43,6 +43,12 @@ const StaleListingsPlan = React.lazy(() => import('./pages/StaleListingsPlan').t
 const StaleListingsComplete = React.lazy(() => import('./pages/StaleListingsComplete').then(m => ({ default: m.StaleListingsComplete })));
 const StaleListingsReport = React.lazy(() => import('./pages/StaleListingsReport').then(m => ({ default: m.StaleListingsReport })));
 const DashboardStaleListings = React.lazy(() => import('./pages/DashboardStaleListings').then(m => ({ default: m.DashboardStaleListings })));
+const CustomOffers = React.lazy(() => import('./pages/CustomOffers').then(m => ({ default: m.CustomOffers })));
+const CustomOffersProposal = React.lazy(() => import('./pages/CustomOffersProposal').then(m => ({ default: m.CustomOffersProposal })));
+const CustomOffersPlan = React.lazy(() => import('./pages/CustomOffersPlan').then(m => ({ default: m.CustomOffersPlan })));
+const CustomOffersComplete = React.lazy(() => import('./pages/CustomOffersComplete').then(m => ({ default: m.CustomOffersComplete })));
+const CustomOffersStatus = React.lazy(() => import('./pages/CustomOffersStatus').then(m => ({ default: m.CustomOffersStatus })));
+const DashboardCustomOffers = React.lazy(() => import('./pages/DashboardCustomOffers').then(m => ({ default: m.DashboardCustomOffers })));
 
 // Shared Components
 import { Navbar } from './components/shared/Navbar';
@@ -159,8 +165,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin = pathname.startsWith('/admin');
   const isStaleListings = pathname.startsWith('/stale-listings');
+  const isCustomOffers = pathname.startsWith('/custom-offers');
 
-  if (isDashboard || isAdmin || isStaleListings) {
+  if (isDashboard || isAdmin || isStaleListings || isCustomOffers) {
     return <main className="flex-grow">{children}</main>;
   }
 
@@ -188,6 +195,11 @@ export default function App() {
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/about" element={<Navigate to="/about-us" replace />} />
               <Route path="/buy-property-abroad" element={<BuyAbroad />} />
+              <Route path="/custom-offers" element={<CustomOffers />} />
+              <Route path="/custom-offers/proposal" element={<CustomOffersProposal />} />
+              <Route path="/custom-offers/plan" element={<CustomOffersPlan />} />
+              <Route path="/custom-offers/complete" element={<CustomOffersComplete />} />
+              <Route path="/custom-offers/status/:reference" element={<CustomOffersStatus />} />
               <Route path="/buy-abroad" element={<Navigate to="/buy-property-abroad" replace />} />
               <Route path="/property-audit" element={<RelaunchAssessment />} />
               <Route path="/elite-property" element={<EliteProperty />} />
@@ -227,6 +239,7 @@ export default function App() {
               <Route path="/stale-listings/complete" element={<StaleListingsComplete />} />
               <Route path="/stale-listings/report/:reference" element={<StaleListingsReport />} />
               <Route path="/dashboard/stale-listings" element={<AdminRoute><DashboardStaleListings /></AdminRoute>} />
+              <Route path="/dashboard/custom-offers" element={<AdminRoute><DashboardCustomOffers /></AdminRoute>} />
             </Routes>
           </Suspense>
         </Layout>

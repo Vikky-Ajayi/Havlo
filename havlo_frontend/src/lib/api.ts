@@ -1,3 +1,10 @@
+import type {
+  CustomOfferPropertyOverrides,
+  CustomOfferPropertySnapshot,
+  CustomOfferStatusResponse,
+  CustomOfferStepAnswers,
+} from './customOffers';
+
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 export interface AgentListing {
@@ -293,6 +300,44 @@ export interface PublicAssessResult {
     monthly_from: string;
     is_custom: boolean;
   };
+}
+
+export interface CustomOffersScrapeResponse {
+  status: string;
+  platform: string;
+  message: string;
+  property: CustomOfferPropertySnapshot;
+  missing_fields: string[];
+}
+
+export interface CustomOffersSubmitResponse {
+  submission_id: string;
+  reference: string;
+  checkout_url: string;
+  checkout_id: string;
+  amount: number;
+  currency: string;
+  message: string;
+}
+
+export interface CustomOffersAdminItem {
+  submission_id: string;
+  reference: string;
+  created_at: string;
+  updated_at: string;
+  listing_url: string;
+  listing_platform: string;
+  plan_id: string;
+  plan_name: string;
+  payment_status: string;
+  proposal_status: string;
+  buyer_name: string;
+  buyer_email: string;
+  buyer_phone: string;
+  property: CustomOfferPropertySnapshot;
+  property_overrides: CustomOfferPropertyOverrides;
+  answers: CustomOfferStepAnswers;
+  admin_notes?: string;
 }
 
 export interface Conversation {
@@ -762,6 +807,16 @@ export const api = {
       property_address?: string;
       listing_url?: string;
       listing_image_url?: string;
+      listing_snapshot?: {
+        title: string;
+        address: string;
+        price: string;
+        image: string;
+        bedrooms: string;
+        bathrooms: string;
+        property_type: string;
+        platform: string;
+      } | null;
       report_status: string;
       payment_status: string;
       report_data?: {
@@ -776,7 +831,7 @@ export const api = {
         executive_summary: string;
       };
       created_at: string;
-    }>(`/stale-listings/report/${encodeURIComponent(reference)}`),
+    }>(`/stale-listings/report/${encodeURIComponent(reference)}`, { timeout: 30000 }),
 
   staleListingsVerifyPayment: (reference: string) =>
     request<{ payment_status: string; reference: string }>(
@@ -822,4 +877,48 @@ export const api = {
       `/stale-listings/admin/${assessmentId}/mark-paid`,
       { method: 'POST', token }
     ),
+
+  customOffersScrape: (payload: { listing_url: string }) =>
+    request<CustomOffersScrapeResponse>('/custom-offers/scrape', {
+      method: 'POST',
+      body: payload,
+      timeout: 45000,
+    }),
+
+  customOffersSubmit: (payload: {
+    listing_url: string;
+    property_snapshot: CustomOfferPropertySnapshot;
+    property_overrides: CustomOfferPropertyOverrides;
+    proposal_data: CustomOfferStepAnswers;
+    plan_id: 'connect' | 'standout' | 'advantage';
+    redirect_url?: string;
+  }) =>
+    request<CustomOffersSubmitResponse>('/custom-offers/submit', {
+      method: 'POST',
+      body: payload,
+      timeout: 45000,
+    }),
+
+  customOffersVerifyPayment: (reference: string) =>
+    request<{ payment_status: string; proposal_status: string; reference: string }>(
+      `/custom-offers/payment-verify/${encodeURIComponent(reference)}`,
+      { method: 'POST', timeout: 30000 }
+    ),
+
+  customOffersStatus: (reference: string) =>
+    request<CustomOfferStatusResponse>(`/custom-offers/status/${encodeURIComponent(reference)}`),
+
+  customOffersAdminList: (token: string) =>
+    request<CustomOffersAdminItem[]>('/custom-offers/admin', { token }),
+
+  customOffersAdminUpdate: (
+    submissionId: string,
+    payload: { proposal_status?: string; admin_notes?: string },
+    token: string,
+  ) =>
+    request<CustomOffersAdminItem>(`/custom-offers/admin/${submissionId}`, {
+      method: 'PATCH',
+      body: payload,
+      token,
+    }),
 };

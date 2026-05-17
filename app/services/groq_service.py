@@ -191,6 +191,7 @@ async def generate_stale_listing_report(
     questions_data: dict,
     property_address: str = "",
     listing_url: str = "",
+    listing_snapshot: dict | None = None,
 ) -> dict:
     """
     Generate a structured stale listing analysis report using Groq LLM.
@@ -221,9 +222,33 @@ async def generate_stale_listing_report(
         q_lines.append(f"  {label}: {val}")
 
     questionnaire = "\n".join(q_lines)
-    address_line = f"Property address: {property_address}" if property_address else ""
-    url_line = f"Listing URL: {listing_url}" if listing_url else ""
-    property_context = "\n".join(filter(None, [address_line, url_line])) or "Property details: not provided"
+
+    snapshot = listing_snapshot if isinstance(listing_snapshot, dict) else {}
+    property_lines = [
+        f"Property address: {snapshot.get('address') or property_address}"
+        if (snapshot.get("address") or property_address)
+        else "",
+        f"Property title: {snapshot.get('title')}"
+        if snapshot.get("title")
+        else "",
+        f"Listing URL: {listing_url}" if listing_url else "",
+        f"Portal source: {snapshot.get('platform')}" if snapshot.get("platform") else "",
+        f"Asking price: {snapshot.get('price')}" if snapshot.get("price") else "",
+        f"Property type: {snapshot.get('property_type')}" if snapshot.get("property_type") else "",
+        f"Bedrooms: {snapshot.get('bedrooms')}" if snapshot.get("bedrooms") else "",
+        f"Bathrooms: {snapshot.get('bathrooms')}" if snapshot.get("bathrooms") else "",
+        f"Listed date: {snapshot.get('listed_date')}" if snapshot.get("listed_date") else "",
+        (
+            "Key features from listing: "
+            + ", ".join(str(feature).strip() for feature in (snapshot.get("features") or []) if str(feature).strip())
+        )
+        if snapshot.get("features")
+        else "",
+        f"Listing description: {str(snapshot.get('description') or '').strip()[:1600]}"
+        if snapshot.get("description")
+        else "",
+    ]
+    property_context = "\n".join(line for line in property_lines if line) or "Property details: not provided"
 
     # ── Plan-specific prompts ────────────────────────────────────────────────────
     # Each tier assesses genuinely different dimensions, not just depth of the same

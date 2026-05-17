@@ -557,6 +557,135 @@ async def send_admin_notification(sheet_tab: str, summary: str, fields: dict[str
     return await asyncio.to_thread(send_admin_notification_sync, sheet_tab, summary, fields)
 
 
+def send_custom_offer_buyer_confirmation_sync(
+    to_email: str,
+    first_name: str,
+    reference: str,
+    status_url: str,
+    property_address: str,
+) -> bool:
+    safe_name = _html_lib.escape(first_name or "there")
+    safe_reference = _html_lib.escape(reference)
+    safe_property = _html_lib.escape(property_address or "your selected property")
+    safe_status_url = _html_lib.escape(status_url)
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CustomOffer submission received</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;max-width:600px;width:100%;">
+      <tr><td style="background:#000000;padding:24px 32px;">
+        <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">CustomOffer</span>
+        <span style="color:#a3a3a3;font-size:13px;margin-left:8px;">by HAVLO</span>
+      </td></tr>
+      <tr><td style="padding:34px 32px;">
+        <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;color:#111827;">Your proposal has been submitted.</h1>
+        <p style="margin:0 0 16px;color:#4b5563;line-height:1.6;">Hi {safe_name}, your CustomOffer proposal for <strong style="color:#111827;">{safe_property}</strong> has been securely delivered for homeowner review.</p>
+        <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Reference: <strong style="color:#111827;">{safe_reference}</strong></p>
+        <div style="margin:28px 0;">
+          <a href="{safe_status_url}" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-weight:600;font-size:14px;">View proposal status</a>
+        </div>
+        <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">We will notify you if the homeowner chooses to engage. Seller responses are not guaranteed, and submission fees are non-refundable once outreach has started.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Your CustomOffer proposal has been submitted for {property_address or 'your selected property'}.\n"
+        f"Reference: {reference}\n\n"
+        f"Track status here:\n{status_url}\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[CustomOffer] Proposal submitted - {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+
+async def send_custom_offer_buyer_confirmation(
+    to_email: str,
+    first_name: str,
+    reference: str,
+    status_url: str,
+    property_address: str,
+) -> bool:
+    return await asyncio.to_thread(
+        send_custom_offer_buyer_confirmation_sync,
+        to_email,
+        first_name,
+        reference,
+        status_url,
+        property_address,
+    )
+
+
+def send_custom_offer_status_update_sync(
+    to_email: str,
+    first_name: str,
+    reference: str,
+    status_label: str,
+    status_url: str,
+) -> bool:
+    safe_name = _html_lib.escape(first_name or "there")
+    safe_reference = _html_lib.escape(reference)
+    safe_status = _html_lib.escape(status_label)
+    safe_status_url = _html_lib.escape(status_url)
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CustomOffer status update</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;max-width:600px;width:100%;">
+      <tr><td style="background:#000000;padding:24px 32px;">
+        <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">CustomOffer</span>
+        <span style="color:#a3a3a3;font-size:13px;margin-left:8px;">by HAVLO</span>
+      </td></tr>
+      <tr><td style="padding:34px 32px;">
+        <h1 style="margin:0 0 12px;font-size:26px;font-weight:800;color:#111827;">Your proposal status has changed.</h1>
+        <p style="margin:0 0 16px;color:#4b5563;line-height:1.6;">Hi {safe_name}, your CustomOffer submission <strong style="color:#111827;">{safe_reference}</strong> is now marked as <strong style="color:#111827;">{safe_status}</strong>.</p>
+        <div style="margin:28px 0;">
+          <a href="{safe_status_url}" style="display:inline-block;background:#000000;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-weight:600;font-size:14px;">View proposal status</a>
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>"""
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Your CustomOffer submission {reference} is now marked as {status_label}.\n\n"
+        f"Track status here:\n{status_url}\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[CustomOffer] Status update - {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+
+async def send_custom_offer_status_update(
+    to_email: str,
+    first_name: str,
+    reference: str,
+    status_label: str,
+    status_url: str,
+) -> bool:
+    return await asyncio.to_thread(
+        send_custom_offer_status_update_sync,
+        to_email,
+        first_name,
+        reference,
+        status_label,
+        status_url,
+    )
+
+
 async def send_inbox_notification(
     to_email: str,
     first_name: str,

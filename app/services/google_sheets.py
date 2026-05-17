@@ -83,6 +83,11 @@ SHEET_TABS: dict[str, list[str]] = {
         "First Name", "Last Name", "Phone", "Package",
         "Property Address", "Listing URL", "Payment Status", "Report Status",
     ],
+    "Custom Offers": [
+        "Timestamp", "Submission ID", "Reference", "Buyer Name", "Buyer Email",
+        "Buyer Phone", "Listing URL", "Platform", "Property Summary", "Plan ID",
+        "Plan Name", "Payment Status", "Proposal Status", "Answers Summary",
+    ],
 }
 
 
@@ -414,6 +419,33 @@ def record_stale_listing(form_data: dict[str, Any]) -> None:
         form_data.get("report_status", "pending"),
     ]
     _append_row("Stale Listings", row)
+
+
+def record_custom_offer(form_data: dict[str, Any]) -> bool:
+    if not is_configured():
+        logger.debug("Google Sheets not configured - skipping append to Custom Offers.")
+        return False
+    row = [
+        datetime.utcnow().isoformat(),
+        str(form_data.get("submission_id", "")),
+        form_data.get("reference", ""),
+        form_data.get("buyer_name", ""),
+        form_data.get("buyer_email", ""),
+        form_data.get("buyer_phone", ""),
+        form_data.get("listing_url", ""),
+        form_data.get("listing_platform", ""),
+        form_data.get("property_summary", ""),
+        form_data.get("plan_id", ""),
+        form_data.get("plan_name", ""),
+        form_data.get("payment_status", "pending"),
+        form_data.get("proposal_status", "submitted"),
+        form_data.get("answers_summary", ""),
+    ]
+    try:
+        _append_row("Custom Offers", row, raise_on_error=True)
+        return True
+    except Exception:
+        return False
 
 
 def record_public_assessment(form_data: dict[str, Any]) -> None:

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 
@@ -283,11 +283,22 @@ export function StaleListingsLanding() {
   const [inputError, setInputError] = useState('');
   const [showAllFaq, setShowAllFaq] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const heroSectionRef = useRef<HTMLElement | null>(null);
+  const heroInputRef = useRef<HTMLInputElement | null>(null);
+
+  const focusHeroInput = () => {
+    heroSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      heroInputRef.current?.focus();
+      heroInputRef.current?.select();
+    }, 260);
+  };
 
   const handleStart = () => {
     const v = input.trim();
     if (!v) {
       setInputError('Please enter your property address or listing URL to continue.');
+      focusHeroInput();
       return;
     }
     setInputError('');
@@ -300,6 +311,15 @@ export function StaleListingsLanding() {
     navigate(`/stale-listings/questions?${params.toString()}`);
   };
 
+  const handlePricingStart = () => {
+    if (!input.trim()) {
+      setInputError('Please enter your property address or listing URL to continue.');
+      focusHeroInput();
+      return;
+    }
+    handleStart();
+  };
+
   const faqsToShow = showAllFaq ? ALL_FAQS : ALL_FAQS.slice(0, 5);
 
   return (
@@ -309,11 +329,101 @@ export function StaleListingsLanding() {
 
         /* ── DESKTOP-ONLY ELEMENTS ── */
         .sl-nav-links { display:flex; }
-        .sl-nav-cta-desktop { display:flex; }
         .sl-hero-right { display:flex !important; }
         .sl-features-cols { display:flex; flex-direction:row; }
         .sl-testimonial-row { display:flex; flex-direction:row; }
         .sl-hamburger { display:none !important; }
+        .sl-input-field-wrap {
+          display:flex;
+          align-items:center;
+          gap:8px;
+          flex:1 1 auto;
+          min-width:0;
+        }
+        .sl-step-copy {
+          display:flex;
+          flex-direction:column;
+          align-items:flex-start;
+          gap:16px;
+          flex:1 1 auto;
+          width:min(54%, 680px);
+          max-width:661px;
+          z-index:1;
+        }
+        .sl-step-float {
+          max-width:100%;
+        }
+        .sl-step-float-row {
+          box-sizing:border-box;
+        }
+        .sl-step-float-row--input {
+          display:flex;
+          flex-direction:row;
+          align-items:center;
+          padding:13px 16px;
+          gap:12px;
+          min-height:56px;
+          background:#EEF0F2;
+          border-bottom:1px solid rgba(0,0,0,0.02);
+          border-radius:8px;
+        }
+        .sl-step-float-row--insight {
+          display:flex;
+          flex-direction:row;
+          align-items:center;
+          padding:16px;
+          gap:12px;
+          min-height:73px;
+          background:#EEF0F2;
+          border-bottom:1px solid rgba(0,0,0,0.02);
+          border-radius:8px;
+        }
+        .sl-step-float-copy {
+          display:flex;
+          flex-direction:column;
+          gap:12px;
+          flex:1 1 auto;
+          min-width:0;
+        }
+        .sl-step-float-title {
+          font-family:'Libre Franklin', sans-serif;
+          font-weight:600;
+          font-size:16px;
+          color:#000000;
+          letter-spacing:-0.03em;
+          line-height:19px;
+        }
+        .sl-step-float-sub {
+          font-family:'Libre Franklin', sans-serif;
+          font-weight:500;
+          font-size:14px;
+          color:#666666;
+          letter-spacing:-0.03em;
+          line-height:17px;
+        }
+        .sl-step-report-title {
+          font-family:'Libre Franklin', sans-serif;
+          font-weight:500;
+          font-size:20px;
+          color:#000000;
+          letter-spacing:-0.03em;
+          line-height:24px;
+          text-transform:uppercase;
+        }
+        .sl-step-report-list {
+          display:flex;
+          flex-direction:column;
+          gap:0;
+          width:100%;
+        }
+        .sl-step-report-item {
+          font-family:'Libre Franklin', sans-serif;
+          font-weight:500;
+          font-size:18px;
+          color:#000000;
+          letter-spacing:-0.03em;
+          line-height:200%;
+        }
 
         /* ── FAQ ITEM SHARED ── */
         .sl-faq-item {
@@ -346,8 +456,26 @@ export function StaleListingsLanding() {
 
         /* ── TABLET ── */
         @media(max-width:1024px) {
+          .sl-navbar { padding:0 40px !important; }
           .sl-hero-right { display:none !important; }
-          .sl-hero-inner { padding:60px 40px !important; }
+          .sl-hero-inner {
+            padding:60px 40px !important;
+            flex-direction:column !important;
+            gap:40px !important;
+          }
+          .sl-hero-left {
+            width:100% !important;
+            max-width:100% !important;
+            gap:36px !important;
+          }
+          .sl-hero-img-mobile {
+            display:block !important;
+            height:auto !important;
+            max-width:582px !important;
+            border-radius:0 !important;
+            overflow:visible !important;
+          }
+          .sl-hero-head-group { gap:28px !important; }
           .sl-features-cols { flex-direction:column !important; }
           .sl-testimonial-row { flex-direction:column !important; gap:16px !important; }
           .sl-testimonial-card { flex:0 0 auto !important; width:100% !important; box-sizing:border-box !important; }
@@ -358,15 +486,51 @@ export function StaleListingsLanding() {
           .sl-faq-section { padding:60px 40px !important; }
           .sl-pricing-section { padding:60px 40px !important; }
           .sl-nav-links { display:none !important; }
-          .sl-step-card { padding:32px !important; }
-          .sl-step-float { display:none !important; }
+          .sl-stats-row {
+            flex-wrap:wrap !important;
+            row-gap:16px !important;
+            column-gap:16px !important;
+          }
+          .sl-stat-item {
+            flex:1 1 180px !important;
+            min-width:180px !important;
+          }
+          .sl-step-card {
+            padding:36px !important;
+            gap:28px !important;
+            border-radius:28px !important;
+          }
+          .sl-step-copy {
+            width:100% !important;
+            max-width:100% !important;
+          }
+          .sl-step-float {
+            position:static !important;
+            right:auto !important;
+            top:auto !important;
+            width:100% !important;
+            padding:24px !important;
+            gap:20px !important;
+            border-radius:24px !important;
+            box-sizing:border-box !important;
+          }
+          .sl-step-float--report { border-radius:24px !important; }
           .sl-input-bar { max-width:100% !important; width:100% !important; }
+          .sl-pricing-cols { flex-wrap:wrap !important; }
+          .sl-plan-card {
+            flex:1 1 calc(50% - 8px) !important;
+            min-width:280px !important;
+          }
+          .sl-footer {
+            padding:24px 40px !important;
+            flex-wrap:wrap !important;
+          }
           .sl-hamburger { display:flex !important; }
           .sl-nav-cta-desktop { display:none !important; }
         }
 
         /* ── MOBILE ── */
-        @media(max-width:640px) {
+        @media(max-width:768px) {
           /* Inner containers — remove 100px side padding */
           .sl-inner-container {
             padding-left:16px !important;
@@ -383,11 +547,12 @@ export function StaleListingsLanding() {
           .sl-hero-inner {
             flex-direction:column !important;
             padding:32px 16px 40px !important;
-            gap:0 !important;
+            gap:24px !important;
           }
           .sl-hero-left {
             width:100% !important;
             max-width:100% !important;
+            min-width:0 !important;
             flex-shrink:1 !important;
             gap:28px !important;
           }
@@ -396,30 +561,59 @@ export function StaleListingsLanding() {
           }
           .sl-hero-img-mobile {
             display:block !important;
+            height:auto !important;
+            max-width:582px !important;
+            border-radius:0 !important;
+            overflow:visible !important;
           }
           .sl-hero-heading {
-            font-size:40px !important;
+            font-size:36px !important;
             letter-spacing:-0.03em !important;
             line-height:120% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-hero-desc {
             font-size:14px !important;
             letter-spacing:-0.02em !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-hero-head-group {
             gap:20px !important;
+            max-width:100% !important;
+            min-width:0 !important;
           }
           .sl-input-bar {
+            flex-direction:column !important;
+            align-items:stretch !important;
             width:100% !important;
             max-width:100% !important;
-            height:56px !important;
-            padding:4px 4px 4px 12px !important;
+            height:auto !important;
+            padding:12px !important;
+            border-radius:16px !important;
+            gap:12px !important;
+            overflow:hidden !important;
+          }
+          .sl-input-field-wrap {
+            width:100% !important;
+            min-width:0 !important;
+            overflow:hidden !important;
+          }
+          .sl-input-input {
+            width:100% !important;
+            font-size:13px !important;
+            line-height:16px !important;
+            min-width:0 !important;
           }
           .sl-input-btn {
-            width:auto !important;
-            font-size:14px !important;
-            padding:12px 14px !important;
-            border-radius:10px !important;
+            width:100% !important;
+            height:48px !important;
+            font-size:15px !important;
+            padding:12px 16px !important;
+            border-radius:12px !important;
           }
           .sl-trustpilot-row {
             flex-direction:column !important;
@@ -439,9 +633,13 @@ export function StaleListingsLanding() {
           }
           .sl-stats-row {
             gap:12px !important;
+            flex-wrap:nowrap !important;
+            justify-content:space-between !important;
           }
           .sl-stat-item {
-            gap:20px !important;
+            gap:8px !important;
+            flex:1 1 0 !important;
+            min-width:0 !important;
           }
           .sl-stat-val {
             font-size:24px !important;
@@ -449,7 +647,9 @@ export function StaleListingsLanding() {
           }
           .sl-stat-label {
             font-size:12px !important;
-            width:76px !important;
+            width:auto !important;
+            max-width:none !important;
+            line-height:135% !important;
           }
 
           /* Features */
@@ -457,18 +657,25 @@ export function StaleListingsLanding() {
             padding:40px 16px !important;
           }
           .sl-features-heading {
-            font-size:28px !important;
+            font-size:26px !important;
             letter-spacing:-0.02em !important;
             line-height:130% !important;
+            max-width:100% !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-features-cols {
             flex-direction:column !important;
           }
           .sl-features-inner {
             gap:48px !important;
+            width:100% !important;
+            max-width:100% !important;
+            min-width:0 !important;
           }
           .sl-feature-item {
             gap:24px !important;
+            width:100% !important;
+            min-width:0 !important;
           }
           .sl-feature-title-large {
             font-size:24px !important;
@@ -478,6 +685,8 @@ export function StaleListingsLanding() {
           }
           .sl-feature-desc {
             font-size:16px !important;
+            max-width:100% !important;
+            overflow-wrap:anywhere !important;
           }
 
           /* How it works */
@@ -485,23 +694,86 @@ export function StaleListingsLanding() {
             padding:24px 16px !important;
           }
           .sl-step-card {
-            padding:24px 20px !important;
+            padding:24px 20px 0 !important;
             border-radius:24px !important;
-            gap:20px !important;
+            gap:18px !important;
           }
           .sl-step-badge {
             height:40px !important;
             padding:10px 16px !important;
             font-size:14px !important;
           }
+          .sl-step-copy {
+            width:100% !important;
+            max-width:100% !important;
+            gap:14px !important;
+          }
           .sl-step-title {
             font-size:28px !important;
             letter-spacing:-0.02em !important;
+            line-height:118% !important;
+            max-width:100% !important;
+            min-width:0 !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-step-desc {
             font-size:16px !important;
+            max-width:none !important;
+            min-width:0 !important;
+            overflow-wrap:anywhere !important;
           }
-          .sl-step-float { display:none !important; }
+          .sl-step-float {
+            position:static !important;
+            right:auto !important;
+            top:auto !important;
+            width:calc(100% + 20px) !important;
+            padding:18px 16px !important;
+            gap:14px !important;
+            border-radius:20px !important;
+            box-sizing:border-box !important;
+            max-width:none !important;
+            align-self:stretch !important;
+            margin-right:-20px !important;
+            margin-bottom:-20px !important;
+          }
+          .sl-step-float--inputs,
+          .sl-step-float--insights,
+          .sl-step-float--report {
+            border-radius:20px !important;
+          }
+          .sl-step-float-row--input {
+            min-height:52px !important;
+            padding:12px 14px !important;
+            gap:10px !important;
+            width:100% !important;
+          }
+          .sl-step-float-row--insight {
+            min-height:68px !important;
+            height:auto !important;
+            padding:12px 14px !important;
+            gap:10px !important;
+            align-items:flex-start !important;
+            width:100% !important;
+          }
+          .sl-step-float-copy {
+            gap:8px !important;
+          }
+          .sl-step-float-title {
+            font-size:15px !important;
+            line-height:18px !important;
+          }
+          .sl-step-float-sub {
+            font-size:13px !important;
+            line-height:16px !important;
+          }
+          .sl-step-report-title {
+            font-size:16px !important;
+            line-height:20px !important;
+          }
+          .sl-step-report-item {
+            font-size:15px !important;
+            line-height:170% !important;
+          }
 
           /* Testimonials */
           .sl-testimonials-section {
@@ -510,6 +782,8 @@ export function StaleListingsLanding() {
           .sl-testimonials-heading {
             font-size:28px !important;
             letter-spacing:-0.03em !important;
+            max-width:100% !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-testimonial-row {
             display: none !important;
@@ -552,9 +826,13 @@ export function StaleListingsLanding() {
           .sl-pricing-heading {
             font-size:28px !important;
             letter-spacing:-0.02em !important;
+            max-width:100% !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-pricing-desc {
             font-size:16px !important;
+            max-width:100% !important;
+            overflow-wrap:anywhere !important;
           }
           .sl-pricing-cols {
             flex-direction:column !important;
@@ -562,6 +840,7 @@ export function StaleListingsLanding() {
           }
           .sl-plan-card {
             border-radius:32px !important;
+            min-width:0 !important;
           }
 
           /* Footer */
@@ -600,20 +879,13 @@ export function StaleListingsLanding() {
             <img src="/stale-logo.png" alt="StaleListings" style={{ height:40, width:'auto', flexShrink:0, display:'block' }} />
           </div>
 
-          {/* Nav + CTA (desktop) */}
+          {/* Nav links (desktop) */}
           <div style={{ display:'flex', alignItems:'center', gap:32 }}>
             <nav className="sl-nav-links" style={{ display:'flex', alignItems:'center', gap:40 }}>
               {[['How it works','#how-it-works'],['Faq','#faq'],['Pricing','#pricing']].map(([label, href], i) => (
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
-            <button
-              className="sl-nav-cta-desktop"
-              onClick={handleStart}
-              style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, borderRadius:48, background:'#000', color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em', border:'none', cursor:'pointer', whiteSpace:'nowrap' }}
-            >
-              Start Assessment
-            </button>
           </div>
 
           {/* Hamburger (mobile/tablet) */}
@@ -686,21 +958,10 @@ export function StaleListingsLanding() {
         </nav>
 
         {/* CTA */}
-        <button
-          onClick={() => { setMenuOpen(false); handleStart(); }}
-          style={{
-            marginTop:32, width:'100%', height:52, borderRadius:48,
-            background:'#000', color:'#FFF',
-            fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700,
-            letterSpacing:'-0.02em', border:'none', cursor:'pointer',
-          }}
-        >
-          Start Assessment
-        </button>
       </div>
 
       {/* ── HERO ── */}
-      <section className="sl-hero-section" style={{ background:'#FEFEFE', overflow:'hidden', position:'relative' }}>
+      <section ref={heroSectionRef} className="sl-hero-section" style={{ background:'#FEFEFE', overflow:'hidden', position:'relative' }}>
         {/* Pink blob */}
         <div style={{ position:'absolute', left:-67, top:-99, width:524, height:736, borderRadius:'50%', background:'#FFB0E6', filter:'blur(213.468px)', pointerEvents:'none', zIndex:0 }} />
 
@@ -731,15 +992,19 @@ export function StaleListingsLanding() {
                 className="sl-input-bar"
                 style={{ display:'flex', flexDirection:'row', alignItems:'center', width:570, height:56, padding:'4px 4px 4px 16px', boxSizing:'border-box', background:'#EEF0F2', borderBottom:'1px solid rgba(0,0,0,0.05)', borderRadius:12, gap:8 }}
               >
-                <HomeInputIcon />
-                <input
-                  type="text"
+                <div className="sl-input-field-wrap">
+                  <HomeInputIcon />
+                  <input
+                    ref={heroInputRef}
+                    className="sl-input-input"
+                    type="text"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleStart()}
                   placeholder="Enter property address or Rightmove/Zoopla URL…"
                   style={{ flex:1, background:'transparent', border:'none', outline:'none', fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:14, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'17px', minWidth:0 }}
-                />
+                  />
+                </div>
                 <button
                   className="sl-input-btn"
                   onClick={handleStart}
@@ -778,8 +1043,8 @@ export function StaleListingsLanding() {
             </div>
 
             {/* Hero image — mobile only, below stats */}
-            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', height:350, borderRadius:30.45, overflow:'hidden', flexShrink:0 }}>
-              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+            <div className="sl-hero-img-mobile" style={{ display:'none', width:'100%', maxWidth:582, height:'auto', borderRadius:0, overflow:'visible', flexShrink:0 }}>
+              <img src="/stale-hero-house.png" alt="Property" style={{ width:'100%', height:'auto', objectFit:'contain', display:'block' }} />
             </div>
           </div>
 
@@ -836,19 +1101,19 @@ export function StaleListingsLanding() {
             <div className="sl-step-badge" style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', borderRadius:48, background:'#000', zIndex:1, boxSizing:'border-box' }}>
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 1</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, flex:'1 0 0', zIndex:1 }}>
+            <div className="sl-step-copy">
               <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Tell Us About Your Home</div>
               <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.</div>
             </div>
-            <div className="sl-step-float" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
+            <div className="sl-step-float sl-step-float--inputs" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               {[
                 { Icon: HomeInputIcon, label:'Enter property address…' },
                 { Icon: LinkIcon, label:'Paste Rightmove / Zoopla URL…' },
                 { Icon: UploadIcon, label:'Upload listing document' },
               ].map(({ Icon, label }, i) => (
-                <div key={i} style={{ display:'flex', flexDirection:'row', alignItems:'center', padding:'13px 16px', gap:12, height:56, background:'#EEF0F2', borderBottom:'1px solid rgba(0,0,0,0.02)', borderRadius:8, boxSizing:'border-box' }}>
+                <div key={i} className="sl-step-float-row sl-step-float-row--input">
                   <Icon />
-                  <span style={{ fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:14, color:'#666666', letterSpacing:'-0.03em' }}>{label}</span>
+                  <span className="sl-step-float-sub">{label}</span>
                 </div>
               ))}
             </div>
@@ -859,21 +1124,21 @@ export function StaleListingsLanding() {
             <div className="sl-step-badge" style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', borderRadius:48, background:'#000', zIndex:1, boxSizing:'border-box' }}>
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 2</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, flex:'1 0 0', zIndex:1 }}>
+            <div className="sl-step-copy">
               <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Get personalized selling insights</div>
               <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:580 }}>We analyse your home using property data, buyer trends, and experienced local agent expertise to uncover what could improve your sale.</div>
             </div>
-            <div className="sl-step-float" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
+            <div className="sl-step-float sl-step-float--insights" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               {[
                 { Icon: PropertyDataIcon, title:'Property data', sub:'Pricing trends & comparables' },
                 { Icon: BuyerTrendsIcon, title:'Buyer trends', sub:'What buyers are searching for' },
                 { Icon: AgentIcon, title:'Local agent expertise', sub:'Human insight, not just algorithms' },
               ].map(({ Icon, title, sub }, i) => (
-                <div key={i} style={{ display:'flex', flexDirection:'row', alignItems:'center', padding:16, gap:12, height:73, background:'#EEF0F2', borderBottom:'1px solid rgba(0,0,0,0.02)', borderRadius:8, boxSizing:'border-box' }}>
+                <div key={i} className="sl-step-float-row sl-step-float-row--insight">
                   <Icon />
-                  <div style={{ display:'flex', flexDirection:'column', gap:12, flex:1 }}>
-                    <span style={{ fontFamily:'"Libre Franklin", sans-serif', fontWeight:600, fontSize:16, color:'#000000', letterSpacing:'-0.03em', lineHeight:'19px' }}>{title}</span>
-                    <span style={{ fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:14, color:'#666666', letterSpacing:'-0.03em', lineHeight:'17px' }}>{sub}</span>
+                  <div className="sl-step-float-copy">
+                    <span className="sl-step-float-title">{title}</span>
+                    <span className="sl-step-float-sub">{sub}</span>
                   </div>
                 </div>
               ))}
@@ -885,15 +1150,15 @@ export function StaleListingsLanding() {
             <div className="sl-step-badge" style={{ display:'flex', height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', borderRadius:48, background:'#000', zIndex:1, boxSizing:'border-box' }}>
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 3</span>
             </div>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:16, flex:'1 0 0', zIndex:1 }}>
+            <div className="sl-step-copy">
               <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Improve your chances of a faster sale</div>
               <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:661 }}>Receive your expert report within 6–12 hours, with actionable recommendations you can implement alongside your current estate agent.</div>
             </div>
-            <div className="sl-step-float" style={{ position:'absolute', right:-192, top:46, width:679, padding:32, display:'flex', flexDirection:'column', gap:37, borderRadius:'32px 32px 0px 0px', border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
-              <span style={{ fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'24px', textTransform:'uppercase' }}>Your report includes</span>
-              <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            <div className="sl-step-float sl-step-float--report" style={{ position:'absolute', right:-192, bottom:0, width:679, padding:32, display:'flex', flexDirection:'column', gap:37, borderRadius:'32px 32px 0px 0px', border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
+              <span className="sl-step-report-title">Your report includes</span>
+              <div className="sl-step-report-list">
                 {['Pricing insights','Photo improvements','Listing description feedback','Buyer appeal suggestions','Market positioning recommendations'].map((item, i) => (
-                  <div key={i} style={{ fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:18, color:'#000000', letterSpacing:'-0.03em', lineHeight:'200%' }}>{item}</div>
+                  <div key={i} className="sl-step-report-item">{item}</div>
                 ))}
               </div>
             </div>
@@ -1034,7 +1299,7 @@ export function StaleListingsLanding() {
                       {plan.price} per report
                     </div>
                     <button
-                      onClick={handleStart}
+                      onClick={handlePricingStart}
                       style={{ display:'flex', height:44, padding:'8px', justifyContent:'center', alignItems:'center', gap:8, borderRadius:10, background: isPopular ? '#F5A623' : '#000000', color: isPopular ? '#000' : '#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:16, letterSpacing:'-0.02em', border:'none', cursor:'pointer', alignSelf:'stretch' }}
                     >
                       Start Assessment
@@ -1053,7 +1318,7 @@ export function StaleListingsLanding() {
           className="sl-footer sl-inner-container"
           style={{ maxWidth:1440, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, padding:'28px 100px', borderTop:'1px solid #EFEFEF', background:'#fff' }}
         >
-          <span style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:20, color:'#1F1F1E', letterSpacing:'-0.5px', flexShrink:0 }}>StaleListings</span>
+          <img src="/stale-logo.png" alt="StaleListings" style={{ height:32, width:'auto', display:'block', flexShrink:0 }} />
           <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#1F1F1E', textAlign:'center' }}>© 2025 StaleListings. All rights reserved.</span>
           <div className="sl-footer-links" style={{ display:'flex', gap:24, flexShrink:0 }}>
             <a href="/privacy-policy" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Privacy Policy</a>

@@ -469,6 +469,17 @@ class StaleListingActionItem(BaseModel):
     bullets: list[str] = Field(default_factory=list)
 
 
+class StaleListingListingSnapshot(BaseModel):
+    title: str = ""
+    address: str = ""
+    price: str = ""
+    image: str = ""
+    bedrooms: str = ""
+    bathrooms: str = ""
+    property_type: str = ""
+    platform: str = ""
+
+
 class StaleListingReportData(BaseModel):
     overall_score: int = 50
     scores: StaleListingScores = Field(default_factory=StaleListingScores)
@@ -489,6 +500,7 @@ class StaleListingReportResponse(BaseModel):
     property_address: Optional[str]
     listing_url: Optional[str]
     listing_image_url: Optional[str] = None
+    listing_snapshot: Optional[StaleListingListingSnapshot] = None
     report_status: str
     payment_status: str
     report_data: Optional[StaleListingReportData]
@@ -518,3 +530,116 @@ class StaleListingAdminFinalizeRequest(BaseModel):
     agent_notes: Optional[str] = None
     agent_edited_report_json: Optional[str] = None
     report_status: str = "completed"
+
+
+# - Custom Offers -------------------------------------------------------------
+
+class CustomOfferPropertySnapshot(BaseModel):
+    title: str = ""
+    address: str = ""
+    price: str = ""
+    description: str = ""
+    url: str = ""
+    images: list[str] = Field(default_factory=list)
+    image: str = ""
+    bedrooms: str = ""
+    bathrooms: str = ""
+    property_type: str = ""
+    listed_date: str = ""
+    features: list[str] = Field(default_factory=list)
+    floor_area: str = ""
+    platform: str = ""
+    blocked: bool = False
+
+
+class CustomOfferPropertyOverrides(BaseModel):
+    title: Optional[str] = None
+    address: Optional[str] = None
+    price: Optional[str] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+    bedrooms: Optional[str] = None
+    bathrooms: Optional[str] = None
+    property_type: Optional[str] = None
+
+
+class CustomOfferStepAnswers(BaseModel):
+    property_interest: str = ""
+    proposal_type: str = ""
+    proposed_offer: str = ""
+    seller_consideration: str = ""
+    flexible_terms: list[str] = Field(default_factory=list)
+    buyer_status: str = ""
+    proceed_timing: str = ""
+    viewed_state: str = ""
+    presentation_primary: str = ""
+    presentation_risk: str = ""
+    presentation_style: str = ""
+    full_name: str = ""
+    email: EmailStr
+    phone: str = Field(..., min_length=4, max_length=50)
+    confirm_responses_not_guaranteed: bool = False
+    confirm_non_refundable: bool = False
+    confirm_information_accurate: bool = False
+
+
+class CustomOfferScrapeRequest(BaseModel):
+    listing_url: str = Field(..., min_length=8, max_length=2000)
+
+
+class CustomOfferScrapeResponse(BaseModel):
+    status: str
+    platform: str
+    message: str
+    property: CustomOfferPropertySnapshot
+    missing_fields: list[str] = Field(default_factory=list)
+
+
+class CustomOfferSubmitRequest(BaseModel):
+    listing_url: str = Field(..., min_length=8, max_length=2000)
+    property_snapshot: CustomOfferPropertySnapshot
+    property_overrides: CustomOfferPropertyOverrides = Field(default_factory=CustomOfferPropertyOverrides)
+    proposal_data: CustomOfferStepAnswers
+    plan_id: str = Field(..., pattern="^(connect|standout|advantage)$")
+    redirect_url: Optional[str] = Field(None, max_length=2000)
+
+
+class CustomOfferSubmitResponse(BaseModel):
+    submission_id: str
+    reference: str
+    checkout_url: str = ""
+    checkout_id: str = ""
+    amount: float
+    currency: str
+    message: str
+
+
+class CustomOfferStatusResponse(BaseModel):
+    submission_id: str
+    reference: str
+    created_at: str
+    listing_url: str
+    listing_platform: str
+    plan_id: str
+    plan_name: str
+    payment_status: str
+    proposal_status: str
+    property: CustomOfferPropertySnapshot
+    property_overrides: CustomOfferPropertyOverrides
+    answers: CustomOfferStepAnswers
+    buyer_name: str
+
+
+class CustomOfferAdminItem(CustomOfferStatusResponse):
+    updated_at: str
+    buyer_email: str
+    buyer_phone: str
+    admin_notes: Optional[str] = None
+
+
+class CustomOfferAdminUpdateRequest(BaseModel):
+    proposal_status: Optional[str] = Field(
+        None,
+        pattern="^(submitted|awaiting_seller_review|seller_interested|seller_not_interested|closed)$",
+    )
+    admin_notes: Optional[str] = None

@@ -243,6 +243,12 @@ export const Home: React.FC = () => {
                     href="/property-matching"
                     className="bg-white"
                   />
+                  <ServiceCard
+                    title="Custom Offers"
+                    description="Submit flexible or non-standard property proposals directly to homeowners and present your terms professionally when a standard offer alone does not tell the full story."
+                    href="/custom-offers"
+                    className="bg-white"
+                  />
                 </div>
               </div>
             )}
@@ -336,6 +342,12 @@ export const Home: React.FC = () => {
                 title="Property Matching"
                 description="Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent."
                 href="/property-matching"
+                className="flex-1 bg-white"
+              />
+              <ServiceCard
+                title="Custom Offers"
+                description="Submit flexible or non-standard property proposals directly to homeowners and present your terms professionally when a standard offer alone does not tell the full story."
+                href="/custom-offers"
                 className="flex-1 bg-white"
               />
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -9,6 +9,17 @@ interface ComparableSale {
   property_type: string;
   sold_asking: string;
   is_subject: boolean;
+}
+
+interface ListingSnapshot {
+  title: string;
+  address: string;
+  price: string;
+  image: string;
+  bedrooms: string;
+  bathrooms: string;
+  property_type: string;
+  platform: string;
 }
 
 interface ReportData {
@@ -30,6 +41,8 @@ interface Assessment {
   package: string;
   property_address?: string;
   listing_url?: string;
+  listing_image_url?: string;
+  listing_snapshot?: ListingSnapshot | null;
   report_status: string;
   payment_status: string;
   report_data?: ReportData;
@@ -42,89 +55,260 @@ const PACKAGE_LABELS: Record<string, string> = {
   premium_strategy: 'Premium Strategy',
 };
 
-function scoreBarColor(s: number) {
-  return s >= 70 ? '#16A34A' : s >= 50 ? '#D97706' : '#DC2626';
+const PRIORITY_ACCENTS: Record<string, { color: string; bg: string }> = {
+  URGENT: { color: '#D94716', bg: '#FFF1E8' },
+  HIGH: { color: '#D97706', bg: '#FFF5E8' },
+  MEDIUM: { color: '#15803D', bg: '#E7FAF3' },
+};
+
+function scoreBarColor(score: number) {
+  return score >= 70 ? '#2E8B2F' : score >= 50 ? '#F18A00' : '#ED3B2F';
 }
-function scoreBarBg(s: number) {
-  return s >= 70 ? '#DCFCE7' : s >= 50 ? '#FEF3C7' : '#FEE2E2';
+
+function overallScoreColor(score: number) {
+  return score >= 70 ? '#12824A' : score >= 50 ? '#E06D00' : '#D93025';
 }
-function overallScoreColor(s: number) {
-  return s >= 70 ? '#15803D' : s >= 50 ? '#B45309' : '#B91C1C';
+
+function sentenceCasePlatform(platform: string) {
+  const value = (platform || '').trim().toLowerCase();
+  if (!value) return '';
+  if (value === 'onthemarket') return 'OnTheMarket';
+  if (value === 'rightmove') return 'Rightmove';
+  if (value === 'zoopla') return 'Zoopla';
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
-function scoreLabel(s: number) {
-  return s >= 80 ? 'Strong position' : s >= 65 ? 'Good fundamentals' : s >= 50 ? 'Needs attention' : s >= 35 ? 'Significant issues' : 'Critical — action required';
+
+function formatPropertyMeta(snapshot: ListingSnapshot | null | undefined, address: string) {
+  const parts: string[] = [];
+  if (snapshot?.bedrooms) parts.push(`${snapshot.bedrooms} bed`);
+  if (snapshot?.bathrooms) parts.push(`${snapshot.bathrooms} bath`);
+  if (snapshot?.property_type) parts.push(snapshot.property_type);
+  if (snapshot?.price) parts.push(snapshot.price);
+  return {
+    address: snapshot?.address || snapshot?.title || address || 'Property address not provided',
+    summary: parts.join(' · '),
+    portalLabel: snapshot?.platform ? `Listed on ${sentenceCasePlatform(snapshot.platform)}` : '',
+  };
+}
+
+function extractImage(assessment: Assessment) {
+  return assessment.listing_snapshot?.image || assessment.listing_image_url || '';
 }
 
 function FindingIcon({ icon, type }: { icon?: string; type: string }) {
-  const color = type === 'strength' ? '#15803D' : '#C2410C';
-  if (icon === 'price') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-    </svg>
-  );
-  if (icon === 'photos') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-      <circle cx="12" cy="13" r="4"/>
-    </svg>
-  );
-  if (icon === 'description') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-    </svg>
-  );
-  if (icon === 'location') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-      <circle cx="12" cy="10" r="3"/>
-    </svg>
-  );
-  if (icon === 'marketing') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-    </svg>
-  );
-  if (icon === 'condition') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  );
-  if (icon === 'timing') return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-    </svg>
-  );
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-  );
+  const emojiMap: Record<string, string> = {
+    price: '£',
+    photos: '📷',
+    description: '✏️',
+    location: '📍',
+    marketing: '●',
+    condition: '🏠',
+    timing: '⏱',
+  };
+  const glyph = emojiMap[icon || ''] || (type === 'strength' ? '●' : '•');
+  return <span>{glyph}</span>;
 }
 
-function ScoreBar({ label, score }: { label: string; score: number }) {
+function ScoreRow({ label, score }: { label: string; score: number }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#555', fontFamily: 'Inter, sans-serif' }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: scoreBarColor(score), fontFamily: 'Inter, sans-serif' }}>{score}</span>
+    <div className="slr-score-row">
+      <div className="slr-score-row-head">
+        <span>{label}</span>
+        <strong style={{ color: scoreBarColor(score) }}>{score}</strong>
       </div>
-      <div style={{ width: '100%', height: 8, borderRadius: 99, background: '#F0F0F0', overflow: 'hidden' }}>
-        <div style={{ width: `${score}%`, height: '100%', borderRadius: 99, background: scoreBarColor(score), transition: 'width 0.8s ease' }} />
+      <div className="slr-score-track">
+        <div className="slr-score-fill" style={{ width: `${Math.max(0, Math.min(100, score))}%`, background: scoreBarColor(score) }} />
       </div>
     </div>
   );
 }
 
-const SERVICES = [
-  { category: 'Premium Marketing & Seller Services', name: 'HAVLO', desc: 'International buyer campaigns and premium listing exposure', color: '#000' },
-  { category: 'Repairs & Home Improvement', name: 'Concierge', desc: 'Pre-sale repairs and home improvement services', color: '#1D4ED8' },
-  { category: 'Estate Agent Comparison', name: 'GetAgent', desc: 'Compare local agents on performance and fees', color: '#7C3AED' },
-  { category: 'Conveyancing & Legal', name: 'ReallyMoving', desc: 'Compare conveyancers and legal services', color: '#0891B2' },
-  { category: 'Property Market Data', name: 'PropertyData', desc: 'In-depth market data and comparable analysis', color: '#059669' },
-  { category: 'Professional Photography', name: 'Photoplan', desc: 'Professional photography, floor plans and virtual tours', color: '#DC2626' },
-  { category: 'Moving & Relocation', name: 'ANYVAN', desc: 'Trusted removal and relocation services', color: '#D97706' },
-  { category: 'Home Staging', name: 'Staging Co.', desc: 'Professional home staging to maximise buyer appeal', color: '#7C3AED' },
+function GetAgentLogo() {
+  return (
+    <div className="slr-logo-inline slr-logo-inline--getagent" aria-label="GetAgent">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <rect x="1.25" y="4.25" width="15.5" height="12.5" rx="2" stroke="#1F74FF" strokeWidth="1.5" />
+        <path d="M4.5 12V10.2M7.5 12V7.6M10.5 12V9M13.5 12V5.5" stroke="#1F74FF" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+      <span>GetAgent</span>
+    </div>
+  );
+}
+
+function EstateAgent4MeLogo() {
+  return (
+    <div className="slr-logo-inline slr-logo-inline--estateagent4me" aria-label="estateagent4me">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+        <path d="M11 3.5C6.85786 3.5 3.5 6.85786 3.5 11C3.5 15.1421 6.85786 18.5 11 18.5" stroke="#2D84DA" strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M11 3.5C15.1421 3.5 18.5 6.85786 18.5 11" stroke="#2D84DA" strokeWidth="2.4" strokeLinecap="round" opacity="0.35" />
+      </svg>
+      <span><strong>estateagent</strong><em>4me</em></span>
+    </div>
+  );
+}
+
+function ConciergeHomeLogo() {
+  return (
+    <img src="/report-logos/concierge-home.png" alt="Concierge Home" className="slr-logo-image slr-logo-image--concierge" />
+  );
+}
+
+function PhotoplanLogo() {
+  return (
+    <div className="slr-logo-inline slr-logo-inline--photoplan" aria-label="photoplan bookings">
+      <span>photoplan</span>
+      <small>bookings</small>
+    </div>
+  );
+}
+
+function FocalAgentLogo() {
+  return (
+    <div className="slr-logo-inline slr-logo-inline--focalagent" aria-label="FOCAL.AGENT">
+      <span>FOCAL.</span>
+      <em>AGENT</em>
+    </div>
+  );
+}
+
+function HiLogisticsLogo() {
+  return (
+    <img
+      src="/report-logos/hi%20logistics.png"
+      alt="HI Logistics"
+      className="slr-logo-image slr-logo-image--hilogistics"
+    />
+  );
+}
+
+type ServiceCardItem = {
+  title: string;
+  description: string;
+  logos: ReactNode[];
+};
+
+function printFindingAccent(type: string, index: number) {
+  if (type === 'strength') {
+    return { bg: '#E8FBF6', border: '#B8F0E0', title: '#0E7A50', dot: '#D93A2E' };
+  }
+  if (index === 0) {
+    return { bg: '#FFF2F1', border: '#FFD7D1', title: '#E33B2F', dot: '#D93A2E' };
+  }
+  return { bg: '#FFF4E9', border: '#FFDABB', title: '#E06A00', dot: '#DF6D00' };
+}
+
+function PrintGauge({ score }: { score: number }) {
+  const normalized = Math.max(0, Math.min(100, score));
+  const radius = 46;
+  const circumference = Math.PI * radius;
+  const dash = (normalized / 100) * circumference;
+  const color = scoreBarColor(normalized);
+
+  return (
+    <svg
+      width="120"
+      height="86"
+      viewBox="0 0 120 86"
+      role="img"
+      aria-label={`Total score ${normalized}`}
+      style={{ overflow: 'visible' }}
+    >
+      <path
+        d="M 14 68 A 46 46 0 0 1 106 68"
+        fill="none"
+        stroke="#D9D9D9"
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M 14 68 A 46 46 0 0 1 106 68"
+        fill="none"
+        stroke={color}
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeDasharray={`${dash} ${circumference}`}
+      />
+      <text
+        x="60"
+        y="48"
+        textAnchor="middle"
+        fontFamily='"Plus Jakarta Sans", Arial, sans-serif'
+        fontWeight="800"
+        fontSize="20"
+        fill="#111111"
+      >
+        {normalized}
+      </text>
+      <text
+        x="60"
+        y="62"
+        textAnchor="middle"
+        fontFamily="Inter, Arial, sans-serif"
+        fontWeight="500"
+        fontSize="7.8"
+        fill="#666666"
+      >
+        TOTAL
+      </text>
+      <text
+        x="60"
+        y="71"
+        textAnchor="middle"
+        fontFamily="Inter, Arial, sans-serif"
+        fontWeight="500"
+        fontSize="7.8"
+        fill="#666666"
+      >
+        SCORE
+      </text>
+    </svg>
+  );
+}
+
+const SERVICE_CARDS: ServiceCardItem[] = [
+  {
+    title: 'Premium Marketing & Seller Services',
+    description: 'Advanced property exposure and promotion designed to help properties sell faster.',
+    logos: [
+      <img key="havlo" src="/Havlo%20Black%20Transparent.png" alt="Havlo" className="slr-logo-image slr-logo-image--havlo" />,
+    ],
+  },
+  {
+    title: 'Repairs & Home Improvement',
+    description: 'Fix overlooked issues that may reduce buyer confidence',
+    logos: [<ConciergeHomeLogo key="concierge" />],
+  },
+  {
+    title: 'Estate Agent Comparison',
+    description: 'Help homeowners compare local agents based on performance, fees, and speed of sale.',
+    logos: [<GetAgentLogo key="getagent" />, <EstateAgent4MeLogo key="estateagent4me" />],
+  },
+  {
+    title: 'Conveyancing & Legal Services',
+    description: 'Help sellers manage the legal side of the transaction smoothly.',
+    logos: [
+      <img key="reallymoving" src="/report-logos/reallymoving.svg" alt="reallymoving" className="slr-logo-image slr-logo-image--rm" />,
+      <img key="comparemymove" src="/report-logos/comparemymove.svg" alt="Compare My Move" className="slr-logo-image slr-logo-image--cmm" />,
+    ],
+  },
+  {
+    title: 'Property Market Data & Pricing',
+    description: 'Analyze pricing trends, comparable sales, and market performance.',
+    logos: [
+      <img key="propertydata" src="/report-logos/propertydata.svg" alt="PropertyData" className="slr-logo-image slr-logo-image--propertydata" />,
+      <img key="home" src="/report-logos/home.svg" alt="home.co.uk" className="slr-logo-image slr-logo-image--home" />,
+    ],
+  },
+  {
+    title: 'Professional Photography & Media',
+    description: 'Improve buyer engagement with high-quality visuals and video tours.',
+    logos: [<PhotoplanLogo key="photoplan" />, <FocalAgentLogo key="focalagent" />],
+  },
+  {
+    title: 'Moving & Relocation Services',
+    description: 'Support homeowners preparing for their move after the sale.',
+    logos: [<HiLogisticsLogo key="hi" />, <img key="anyvan" src="/report-logos/anyvan.svg" alt="AnyVan" className="slr-logo-image slr-logo-image--anyvan" />],
+  },
 ];
 
 export function StaleListingsReport() {
@@ -133,6 +317,7 @@ export function StaleListingsReport() {
     description: 'View your personalised listing report with an overall score, comparable sales, pricing recommendation, and a step-by-step action plan to help your property sell.',
     canonical: 'https://www.heyhavlo.com/stale-listings/report',
   });
+
   const { reference } = useParams<{ reference: string }>();
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
@@ -144,7 +329,7 @@ export function StaleListingsReport() {
   const fetchReport = () => {
     if (!reference) return;
     api.staleListingsGetReport(reference)
-      .then(data => {
+      .then((data) => {
         setAssessment(data as Assessment);
         setLoading(false);
         if (data.report_status === 'completed') {
@@ -152,11 +337,18 @@ export function StaleListingsReport() {
           setPolling(false);
         }
       })
-      .catch(() => { setError('Report not found or not yet available.'); setLoading(false); });
+      .catch(() => {
+        setError('Report not found or not yet available.');
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
-    if (!reference) { setError('No report reference provided.'); setLoading(false); return; }
+    if (!reference) {
+      setError('No report reference provided.');
+      setLoading(false);
+      return;
+    }
     fetchReport();
   }, [reference]);
 
@@ -166,22 +358,23 @@ export function StaleListingsReport() {
       setPolling(true);
       pollRef.current = setInterval(fetchReport, 8000);
     }
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [assessment?.report_status, assessment?.payment_status]);
 
   const handleDownloadPDF = () => {
-    document.documentElement.classList.add('printing-report');
     window.print();
-    setTimeout(() => document.documentElement.classList.remove('printing-report'), 1000);
   };
 
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F8F8' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid #E5E7EB', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ fontFamily: 'Inter, sans-serif', color: '#888', fontSize: 15 }}>Loading your report…</p>
+          <div style={{ width: 40, height: 40, border: '3px solid #E5E7EB', borderTopColor: '#000', borderRadius: '50%', animation: 'slr-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ fontFamily: 'Inter, sans-serif', color: '#666', fontSize: 15 }}>Loading your report…</p>
         </div>
+        <style>{'@keyframes slr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
       </div>
     );
   }
@@ -189,11 +382,11 @@ export function StaleListingsReport() {
   if (error || !assessment) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F8F8' }}>
-        <div style={{ textAlign: 'center', maxWidth: 400, padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 420, padding: '0 24px' }}>
           <div style={{ fontSize: 40, marginBottom: 16 }}>🔍</div>
-          <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 22, marginBottom: 8, color: '#111' }}>Report not found</h2>
+          <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 24, marginBottom: 8, color: '#111' }}>Report not found</h2>
           <p style={{ fontFamily: 'Inter, sans-serif', color: '#666', fontSize: 15, marginBottom: 24 }}>{error || 'This report could not be found. Please check your reference code.'}</p>
-          <button onClick={() => navigate('/stale-listings')} style={{ background: '#000', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 24px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+          <button onClick={() => navigate('/stale-listings')} style={{ background: '#000', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 24px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
             Back to StaleListings
           </button>
         </div>
@@ -201,460 +394,1331 @@ export function StaleListingsReport() {
     );
   }
 
-  const rd = assessment.report_data;
-  const issues = rd?.key_findings.filter(f => f.type === 'issue').length || 0;
-  const strengths = rd?.key_findings.filter(f => f.type === 'strength').length || 0;
-  const address = assessment.property_address || 'Property address not provided';
-
+  const report = assessment.report_data;
+  const snapshot = assessment.listing_snapshot || null;
+  const propertyMeta = formatPropertyMeta(snapshot, assessment.property_address || '');
+  const propertyImage = extractImage(assessment);
+  const issues = report?.key_findings.filter((item) => item.type !== 'strength').length || 0;
+  const strengths = report?.key_findings.filter((item) => item.type === 'strength').length || 0;
   const isPending = assessment.payment_status !== 'completed';
   const isProcessing = assessment.payment_status === 'completed' && assessment.report_status !== 'completed';
+  const currentPackage = PACKAGE_LABELS[assessment.package] || assessment.package;
+  const pdfPrimaryFindings = report?.key_findings.slice(0, 4) ?? [];
+  const pdfAdditionalFindings = report?.key_findings.slice(4) ?? [];
 
   return (
     <>
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+        @keyframes slr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .slr-page {
+          min-height: 100vh;
+          background: #f4f5f5;
+          color: #1f1f1e;
+          font-family: 'Inter', sans-serif;
+        }
+        .slr-topbar {
+          background: #ffffff;
+          border-bottom: 1px solid #ececec;
+        }
+        .slr-topbar-inner,
+        .slr-shell {
+          width: min(1328px, calc(100% - 48px));
+          margin: 0 auto;
+        }
+        .slr-topbar-inner {
+          min-height: 84px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          padding: 0;
+        }
+        .slr-topbar-actions {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+        .slr-shell {
+          padding: 26px 0 40px;
+        }
+        .slr-title-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-bottom: 28px;
+        }
+        .slr-title-wrap h1 {
+          margin: 0;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: clamp(28px, 4vw, 58px);
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          line-height: 1.02;
+        }
+        .slr-title-wrap p {
+          margin: 0;
+          font-size: 17px;
+          line-height: 1.35;
+          color: #262626;
+        }
+        .slr-main-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 512px) minmax(0, 1fr);
+          gap: 24px;
+          align-items: stretch;
+        }
+        .slr-card {
+          border-radius: 32px;
+          border: 1px solid #dadbdb;
+          background: #ffffff;
+          box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+        }
+        .slr-property-card {
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .slr-property-image {
+          aspect-ratio: 16 / 13;
+          background: #dcdcdc;
+        }
+        .slr-property-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .slr-property-image-placeholder {
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(180deg, #dedede 0%, #d1d1d1 100%);
+        }
+        .slr-property-body {
+          padding: 22px 28px 26px;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .slr-property-address {
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: clamp(21px, 2vw, 28px);
+          font-weight: 800;
+          line-height: 1.08;
+          letter-spacing: -0.04em;
+          margin: 0;
+        }
+        .slr-property-subline {
+          margin: 0;
+          font-size: 18px;
+          line-height: 1.35;
+          color: #333333;
+        }
+        .slr-overall-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+        .slr-overall-head span {
+          font-size: 18px;
+          font-weight: 700;
+        }
+        .slr-overall-value {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+        }
+        .slr-overall-value strong {
+          font-size: clamp(36px, 4vw, 56px);
+          line-height: 0.95;
+          letter-spacing: -0.05em;
+        }
+        .slr-overall-value em {
+          font-style: normal;
+          font-size: 21px;
+          color: #303030;
+          font-weight: 600;
+        }
+        .slr-score-row {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 14px;
+        }
+        .slr-score-row-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          font-size: 14px;
+          color: #252525;
+        }
+        .slr-score-row-head strong {
+          font-size: 14px;
+        }
+        .slr-score-track {
+          height: 5px;
+          border-radius: 999px;
+          background: #ececec;
+          overflow: hidden;
+        }
+        .slr-score-fill {
+          height: 100%;
+          border-radius: 999px;
+        }
+        .slr-findings-card {
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .slr-findings-head {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          padding: 22px 24px;
+          border-bottom: 1px solid #ebebeb;
+        }
+        .slr-findings-head h2,
+        .slr-analysis-card h2,
+        .slr-services-head h2 {
+          margin: 0;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: clamp(26px, 2.4vw, 40px);
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          line-height: 1.04;
+        }
+        .slr-findings-head p {
+          margin: 0;
+          font-size: 16px;
+          line-height: 1.3;
+          color: #1f1f1e;
+          text-align: right;
+          white-space: nowrap;
+        }
+        .slr-findings-list {
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 22px;
+        }
+        .slr-finding-item {
+          border-radius: 24px;
+          padding: 22px 22px 20px;
+          border: 1px solid transparent;
+          display: flex;
+          gap: 18px;
+          align-items: flex-start;
+        }
+        .slr-finding-icon {
+          width: 46px;
+          height: 46px;
+          border-radius: 12px;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          flex-shrink: 0;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+        }
+        .slr-finding-copy h3 {
+          margin: 0 0 8px;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-weight: 700;
+          font-size: clamp(18px, 1.8vw, 28px);
+          letter-spacing: -0.04em;
+          line-height: 1.1;
+        }
+        .slr-finding-copy p {
+          margin: 0;
+          font-size: 16px;
+          line-height: 1.55;
+          color: #2a2a2a;
+        }
+        .slr-summary-note {
+          margin-top: 8px;
+          padding: 18px 22px;
+          border-radius: 20px;
+          background: #f7f8f8;
+          border: 1px solid #ececec;
+          font-size: 15px;
+          line-height: 1.65;
+          color: #424242;
+        }
+        .slr-analysis-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          margin-top: 24px;
+        }
+        .slr-analysis-card {
+          padding: 26px 28px 28px;
+        }
+        .slr-analysis-card h2 {
+          font-size: clamp(24px, 2vw, 34px);
+          margin-bottom: 18px;
+        }
+        .slr-compare-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 15px;
+        }
+        .slr-compare-table thead th {
+          background: #0e0e0e;
+          color: #ffffff;
+          padding: 12px 14px;
+          text-align: left;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .slr-compare-table tbody td {
+          padding: 13px 14px;
+          border-bottom: 1px solid #ededed;
+          color: #242424;
+        }
+        .slr-compare-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .slr-compare-table tbody tr.is-subject {
+          background: #fff4eb;
+        }
+        .slr-recommendation-box {
+          margin-top: 12px;
+          border: 1px solid #ececec;
+          background: #ffffff;
+          padding: 14px 12px 4px;
+        }
+        .slr-recommendation-box strong {
+          display: block;
+          margin-bottom: 8px;
+          color: #eb6200;
+          font-size: 16px;
+        }
+        .slr-recommendation-box p {
+          margin: 0 0 10px;
+          color: #303030;
+          font-size: 14px;
+          line-height: 1.55;
+        }
+        .slr-action-list {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .slr-action-item {
+          display: grid;
+          grid-template-columns: 28px minmax(0, 1fr);
+          gap: 14px;
+          padding: 16px 12px;
+          border: 1px solid #ececec;
+          background: #ffffff;
+        }
+        .slr-action-index {
+          font-size: 24px;
+          line-height: 1;
+          font-weight: 800;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          color: #111111;
+          padding-top: 2px;
+        }
+        .slr-action-copy {
+          border-left: 1px solid #ededed;
+          padding-left: 12px;
+        }
+        .slr-action-copy h3 {
+          margin: 0 0 8px;
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          font-size: 18px;
+          line-height: 1.3;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-weight: 700;
+          letter-spacing: -0.03em;
+        }
+        .slr-action-priority {
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+        }
+        .slr-action-copy p {
+          margin: 0 0 8px;
+          color: #303030;
+          font-size: 15px;
+          line-height: 1.5;
+        }
+        .slr-action-copy ul {
+          margin: 0;
+          padding-left: 18px;
+          color: #303030;
+          font-size: 15px;
+          line-height: 1.5;
+        }
+        .slr-services-wrap {
+          margin-top: 32px;
+        }
+        .slr-services-head {
+          margin-bottom: 22px;
+        }
+        .slr-services-head h2 {
+          font-size: clamp(22px, 1.8vw, 28px);
+          line-height: 1.1;
+        }
+        .slr-services-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 18px;
+        }
+        .slr-service-card {
+          min-height: 282px;
+          padding: 18px 20px 18px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 24px;
+        }
+        .slr-service-card h3 {
+          margin: 0 0 10px;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 20px;
+          font-weight: 800;
+          line-height: 1.05;
+          letter-spacing: -0.04em;
+        }
+        .slr-service-card p {
+          margin: 0;
+          font-size: 15px;
+          line-height: 1.33;
+          color: #232323;
+        }
+        .slr-service-logos {
+          margin-top: auto;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        .slr-logo-image {
+          display: block;
+          width: auto;
+          height: auto;
+          max-width: 100%;
+          object-fit: contain;
+        }
+        .slr-logo-image--rm { width: 146px; }
+        .slr-logo-image--cmm { width: 190px; }
+        .slr-logo-image--concierge { width: 71px; }
+        .slr-logo-image--havlo { width: 137px; }
+        .slr-logo-image--propertydata { width: 190px; }
+        .slr-logo-image--home { width: 104px; }
+        .slr-logo-image--anyvan { width: 116px; }
+        .slr-logo-inline {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .slr-logo-inline--getagent span {
+          color: #1f74ff;
+          font-size: 18px;
+          font-weight: 700;
+        }
+        .slr-logo-inline--estateagent4me span {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 0;
+          font-size: 14px;
+          line-height: 1;
+        }
+        .slr-logo-inline--estateagent4me strong {
+          color: #5d6670;
+          font-weight: 700;
+        }
+        .slr-logo-inline--estateagent4me em {
+          color: #2d84da;
+          font-style: normal;
+          font-weight: 700;
+        }
+        .slr-logo-inline--photoplan {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0;
+          line-height: 1;
+        }
+        .slr-logo-inline--photoplan span {
+          color: #111111;
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: -0.03em;
+        }
+        .slr-logo-inline--photoplan small {
+          color: #f25f22;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: lowercase;
+          margin-left: 26px;
+        }
+        .slr-logo-inline--focalagent {
+          gap: 0;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: -0.04em;
+        }
+        .slr-logo-inline--focalagent span {
+          color: #4b5563;
+        }
+        .slr-logo-inline--focalagent em {
+          color: #eb4f7c;
+          font-style: italic;
+          margin-left: 3px;
+        }
+        .slr-logo-image--hilogistics { width: 138px; }
+        .slr-disclaimer {
+          margin-top: 18px;
+          border-radius: 18px;
+          border: 1px solid #ffe2b8;
+          background: #fff6e9;
+          padding: 16px 18px;
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+        .slr-disclaimer-icon {
+          width: 22px;
+          height: 22px;
+          flex-shrink: 0;
+          border-radius: 50%;
+          border: 2px solid #ef8a00;
+          color: #ef8a00;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 13px;
+        }
+        .slr-disclaimer p {
+          margin: 0;
+          color: #d35f00;
+          font-size: 13px;
+          line-height: 1.3;
+          font-weight: 600;
+        }
+        .slr-chip {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 40px;
+          padding: 10px 16px;
+          border-radius: 16px;
+          font-size: 16px;
+          line-height: 1;
+          white-space: nowrap;
+          border: 1px solid transparent;
+        }
+        .slr-chip--market {
+          background: #fff3eb;
+          color: #f06f15;
+        }
+        .slr-chip--ready {
+          background: #d9f8ea;
+          color: #0d7a4e;
+        }
+        .slr-chip--button {
+          background: #ffffff;
+          color: #191919;
+          border-color: #dfdfdf;
+          cursor: pointer;
+          font-weight: 500;
+        }
+        .slr-mobile-chip-row {
+          display: none;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 18px;
+        }
+        .pdf-print-area {
+          display: none;
+        }
+        .slr-pdf-root {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+        }
+        .slr-pdf-page {
+          width: 210mm;
+          min-height: 297mm;
+          box-sizing: border-box;
+          padding: 10mm 8mm 8mm;
+          background: #f5f5f5;
+          color: #111111;
+          font-family: 'Inter', Arial, sans-serif;
+          display: flex;
+          flex-direction: column;
+        }
+        .slr-pdf-page + .slr-pdf-page {
+          page-break-before: always;
+        }
+        .slr-pdf-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12mm;
+          margin-bottom: 7.5mm;
+        }
+        .slr-pdf-brand {
+          height: 13mm;
+          width: auto;
+          display: block;
+        }
+        .slr-pdf-header-copy {
+          text-align: right;
+          font-size: 10pt;
+          line-height: 1.28;
+          color: #1f1f1e;
+        }
+        .slr-pdf-header-copy strong {
+          display: block;
+          font-weight: 500;
+        }
+        .slr-pdf-summary-card {
+          background: #ffffff;
+          border: 1px solid #e9e3dc;
+          border-radius: 6mm;
+          padding: 5mm 6.5mm;
+          margin-bottom: 8.5mm;
+        }
+        .slr-pdf-summary-title {
+          margin: 0 0 2mm;
+          font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+          font-size: 13pt;
+          line-height: 1.08;
+          letter-spacing: -0.04em;
+          font-weight: 800;
+        }
+        .slr-pdf-summary-subline {
+          margin: 0 0 4mm;
+          font-size: 10pt;
+          line-height: 1.35;
+          color: #323232;
+        }
+        .slr-pdf-pill-row {
+          display: flex;
+          gap: 3mm;
+          flex-wrap: wrap;
+        }
+        .slr-pdf-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 9mm;
+          padding: 0 4mm;
+          border-radius: 3mm;
+          font-size: 10pt;
+          font-weight: 600;
+          line-height: 1;
+        }
+        .slr-pdf-pill--market {
+          background: #fff2e7;
+          color: #f06f15;
+        }
+        .slr-pdf-pill--ready {
+          background: #d7f6e7;
+          color: #0d7a4e;
+        }
+        .slr-pdf-score-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 44mm;
+          gap: 12mm;
+          align-items: start;
+          margin-bottom: 9mm;
+        }
+        .slr-pdf-kicker {
+          margin: 0 0 4.5mm;
+          font-size: 10pt;
+          font-weight: 700;
+          line-height: 1.2;
+          letter-spacing: 0.01em;
+        }
+        .slr-pdf-score-row {
+          display: grid;
+          grid-template-columns: 21mm 1fr;
+          gap: 4mm;
+          align-items: center;
+          margin-bottom: 4mm;
+          break-inside: avoid;
+        }
+        .slr-pdf-score-row:last-child {
+          margin-bottom: 0;
+        }
+        .slr-pdf-score-label {
+          font-size: 9pt;
+          color: #1f1f1e;
+        }
+        .slr-pdf-score-track {
+          height: 2.4mm;
+          border-radius: 999px;
+          background: #e6e6e6;
+          overflow: hidden;
+        }
+        .slr-pdf-score-fill {
+          height: 100%;
+          border-radius: 999px;
+        }
+        .slr-pdf-gauge-wrap {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding-top: 2mm;
+        }
+        .slr-pdf-section-title {
+          margin: 0 0 5mm;
+          font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+          font-size: 18pt;
+          line-height: 1.05;
+          letter-spacing: -0.04em;
+          font-weight: 800;
+        }
+        .slr-pdf-finding-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4.2mm;
+        }
+        .slr-pdf-finding-card {
+          display: grid;
+          grid-template-columns: 5mm 1fr;
+          gap: 5mm;
+          border-radius: 4.5mm;
+          border: 1px solid #ffd4cf;
+          padding: 4.5mm 5mm;
+          break-inside: avoid;
+        }
+        .slr-pdf-finding-dot {
+          width: 4mm;
+          height: 4mm;
+          border-radius: 50%;
+          margin-top: 1.8mm;
+        }
+        .slr-pdf-finding-title {
+          margin: 0 0 1.6mm;
+          font-size: 12pt;
+          line-height: 1.18;
+          font-weight: 800;
+        }
+        .slr-pdf-finding-copy {
+          margin: 0;
+          font-size: 9.6pt;
+          line-height: 1.42;
+          color: #222222;
+        }
+        .slr-pdf-block {
+          margin-bottom: 8.5mm;
+        }
+        .slr-pdf-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 9.6pt;
+          margin-bottom: 4mm;
+        }
+        .slr-pdf-table thead th {
+          background: #111111;
+          color: #ffffff;
+          padding: 3mm 4mm;
+          text-align: left;
+          font-size: 9.2pt;
+          font-weight: 700;
+        }
+        .slr-pdf-table tbody td {
+          padding: 3mm 4mm;
+          border-bottom: 1px solid #e9e9e9;
+          color: #212121;
+          vertical-align: top;
+        }
+        .slr-pdf-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .slr-pdf-table tbody tr.is-subject {
+          background: #fff4ea;
+        }
+        .slr-pdf-table tbody tr.is-subject td {
+          color: #e06b00;
+          font-weight: 700;
+        }
+        .slr-pdf-recommendation {
+          background: #ffffff;
+          border: 1px solid #e7e7e7;
+          padding: 4mm;
+        }
+        .slr-pdf-recommendation strong {
+          display: block;
+          margin-bottom: 2mm;
+          color: #eb6200;
+          font-size: 12pt;
+          font-weight: 800;
+        }
+        .slr-pdf-recommendation p {
+          margin: 0 0 2mm;
+          font-size: 10pt;
+          line-height: 1.42;
+          color: #242424;
+        }
+        .slr-pdf-recommendation p:last-child {
+          margin-bottom: 0;
+        }
+        .slr-pdf-action-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4mm;
+        }
+        .slr-pdf-action-card {
+          background: #ffffff;
+          border: 1px solid #ececec;
+          display: grid;
+          grid-template-columns: 8mm 1fr;
+          gap: 4mm;
+          padding: 4mm;
+          break-inside: avoid;
+        }
+        .slr-pdf-action-index {
+          font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+          font-size: 13pt;
+          line-height: 1;
+          font-weight: 800;
+          color: #111111;
+        }
+        .slr-pdf-action-body {
+          border-left: 1px solid #ececec;
+          padding-left: 4mm;
+        }
+        .slr-pdf-action-head {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 3mm;
+          margin-bottom: 1.5mm;
+        }
+        .slr-pdf-action-priority {
+          font-size: 10pt;
+          line-height: 1.1;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .slr-pdf-action-divider {
+          font-size: 10pt;
+          line-height: 1;
+        }
+        .slr-pdf-action-title {
+          font-size: 12pt;
+          line-height: 1.2;
+          font-weight: 700;
+        }
+        .slr-pdf-action-description {
+          margin: 0 0 1.5mm;
+          font-size: 10pt;
+          line-height: 1.42;
+        }
+        .slr-pdf-action-bullets {
+          margin: 0;
+          padding-left: 4.6mm;
+          font-size: 9.5pt;
+          line-height: 1.42;
+        }
+        .slr-pdf-footer-cta {
+          margin-top: auto;
+          background: #0e0e0e;
+          color: #ffffff;
+          padding: 5mm 5.5mm;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8mm;
+          break-inside: avoid;
+        }
+        .slr-pdf-footer-cta h3 {
+          margin: 0 0 1mm;
+          font-size: 12pt;
+          font-weight: 800;
+        }
+        .slr-pdf-footer-cta p {
+          margin: 0;
+          font-size: 9.5pt;
+          line-height: 1.4;
+          color: #e4e4e4;
+        }
+        .slr-pdf-footer-link {
+          color: #f0a900;
+          font-size: 11pt;
+          line-height: 1;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+        @media (max-width: 1120px) {
+          .slr-main-grid {
+            grid-template-columns: 1fr;
+          }
+          .slr-services-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .slr-topbar-actions {
+            display: none;
+          }
+          .slr-mobile-chip-row {
+            display: flex;
+          }
+        }
+        @media (max-width: 720px) {
+          .slr-topbar-inner,
+          .slr-shell {
+            width: min(100% - 32px, 1328px);
+          }
+          .slr-shell {
+            padding-top: 12px;
+          }
+          .slr-card {
+            border-radius: 20px;
+          }
+          .slr-property-body,
+          .slr-findings-list,
+          .slr-analysis-card {
+            padding-left: 16px;
+            padding-right: 16px;
+          }
+          .slr-findings-head {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .slr-findings-head p {
+            text-align: left;
+            white-space: normal;
+          }
+          .slr-services-grid {
+            grid-template-columns: 1fr;
+          }
+          .slr-service-card {
+            min-height: 0;
+          }
+          .slr-compare-table {
+            min-width: 560px;
+          }
+          .slr-action-item {
+            grid-template-columns: 22px minmax(0, 1fr);
+            gap: 10px;
+          }
+          .slr-title-wrap p {
+            font-size: 15px;
+          }
+        }
         @media print {
-          body * { visibility: hidden !important; }
-          .pdf-print-area, .pdf-print-area * { visibility: visible !important; }
-          .pdf-print-area { position: absolute; left: 0; top: 0; width: 100%; }
-          @page { margin: 0; size: A4; }
+          html,
+          body {
+            background: #ffffff !important;
+            margin: 0;
+            padding: 0;
+          }
+          body * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .slr-screen {
+            display: none !important;
+          }
+          .pdf-print-area {
+            display: block !important;
+          }
+          @page {
+            size: A4;
+            margin: 0;
+          }
         }
       `}</style>
 
-      {/* ── NAVBAR ── */}
-      <nav style={{ background: '#fff', borderBottom: '1px solid #E8E9EA', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', height: 68 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, cursor: 'pointer' }} onClick={() => navigate('/stale-listings')}>
-            <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 18, letterSpacing: '-0.5px', color: '#000' }}>StaleListings</span>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#888', fontWeight: 500 }}>by HAVLO</span>
-          </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {rd?.days_on_market && (
-              <span style={{ background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA', padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                On market {rd.days_on_market} days
-              </span>
-            )}
-            {assessment.report_status === 'completed' && (
-              <span style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                Report ready
-              </span>
-            )}
-            {assessment.report_status === 'completed' && (
-              <button onClick={handleDownloadPDF} style={{ background: '#000', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 18px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                Download PDF
-              </button>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* ── PAGE BACKGROUND ── */}
-      <div style={{ background: '#F7F8F8', minHeight: 'calc(100vh - 68px)' }}>
-
-        {/* ── PENDING PAYMENT ── */}
+      <div className="slr-page">
         {isPending && (
-          <div style={{ maxWidth: 600, margin: '0 auto', padding: '80px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-            <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 26, marginBottom: 12 }}>Payment pending</h2>
-            <p style={{ fontFamily: 'Inter, sans-serif', color: '#666', fontSize: 16, marginBottom: 8 }}>Your payment has not yet been confirmed. If you've completed checkout, please wait a moment and refresh.</p>
-            <p style={{ fontFamily: 'Inter, sans-serif', color: '#aaa', fontSize: 14 }}>Reference: <strong style={{ color: '#555' }}>{assessment.reference}</strong></p>
-            <button onClick={fetchReport} style={{ marginTop: 24, background: '#000', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 28px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Refresh Status</button>
+          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', maxWidth: 560 }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+              <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 28, marginBottom: 12 }}>Payment pending</h2>
+              <p style={{ fontFamily: 'Inter, sans-serif', color: '#666', fontSize: 16, marginBottom: 8 }}>Your payment has not yet been confirmed. If you have completed checkout, wait a moment and refresh.</p>
+              <p style={{ fontFamily: 'Inter, sans-serif', color: '#999', fontSize: 14, marginBottom: 24 }}>Reference: <strong style={{ color: '#444' }}>{assessment.reference}</strong></p>
+              <button onClick={fetchReport} style={{ background: '#000', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                Refresh Status
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ── PROCESSING ── */}
         {isProcessing && (
-          <div style={{ maxWidth: 600, margin: '0 auto', padding: '80px 24px', textAlign: 'center' }}>
-            <div style={{ width: 48, height: 48, border: '3px solid #E5E7EB', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.9s linear infinite', margin: '0 auto 20px' }} />
-            <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 26, marginBottom: 12 }}>Your report is being prepared</h2>
-            <p style={{ fontFamily: 'Inter, sans-serif', color: '#666', fontSize: 16, marginBottom: 8 }}>Payment confirmed. Our team is reviewing your assessment and preparing your personalised report. You'll receive an email when it's ready.</p>
-            <p style={{ fontFamily: 'Inter, sans-serif', color: '#aaa', fontSize: 14 }}>Reference: <strong style={{ color: '#555' }}>{assessment.reference}</strong>{polling && ' · Checking for updates…'}</p>
+          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+            <div style={{ textAlign: 'center', maxWidth: 620 }}>
+              <div style={{ width: 48, height: 48, border: '3px solid #E5E7EB', borderTopColor: '#000', borderRadius: '50%', animation: 'slr-spin 0.9s linear infinite', margin: '0 auto 20px' }} />
+              <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 28, marginBottom: 12 }}>Your report is being prepared</h2>
+              <p style={{ fontFamily: 'Inter, sans-serif', color: '#666', fontSize: 16, marginBottom: 8 }}>Payment confirmed. Our team is reviewing your assessment and preparing your personalised report. You will receive an email when it is ready.</p>
+              <p style={{ fontFamily: 'Inter, sans-serif', color: '#999', fontSize: 14 }}>Reference: <strong style={{ color: '#444' }}>{assessment.reference}</strong>{polling ? ' · Checking for updates…' : ''}</p>
+            </div>
           </div>
         )}
 
-        {/* ── FULL REPORT ── */}
-        {assessment.report_status === 'completed' && rd && (
+        {assessment.report_status === 'completed' && report && (
           <>
-            {/* Title section */}
-            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '36px 24px 24px' }}>
-              <h1 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 34, letterSpacing: '-0.03em', color: '#0A0A0A', margin: '0 0 8px' }}>Your listing report</h1>
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#666', margin: 0 }}>
-                {address} · {PACKAGE_LABELS[assessment.package] || assessment.package}
-              </p>
-            </div>
+            <div className="slr-screen">
+              <header className="slr-topbar">
+                <div className="slr-topbar-inner">
+                  <img src="/stale-logo.png" alt="StaleListings" style={{ height: 54, width: 'auto', display: 'block' }} />
+                  <div className="slr-topbar-actions">
+                    {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
+                    <span className="slr-chip slr-chip--ready">Report ready</span>
+                    <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF}>Download PDF</button>
+                  </div>
+                </div>
+              </header>
 
-            {/* ── MAIN 2-COL ── */}
-            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 32px', display: 'grid', gridTemplateColumns: 'minmax(300px, 360px) 1fr', gap: 20 }} className="sl-report-grid">
-
-              {/* LEFT: Scores panel */}
-              <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8E9EA', overflow: 'hidden' }}>
-                {/* Property image */}
-                {assessment.listing_image_url ? (
-                  <img
-                    src={assessment.listing_image_url}
-                    alt="Property"
-                    style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.style.display = 'none';
-                      const fallback = target.nextElementSibling as HTMLElement | null;
-                      if (fallback) fallback.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div style={{ width: '100%', aspectRatio: '4/3', background: 'linear-gradient(135deg, #F0F0F0 0%, #E4E4E4 100%)', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, display: assessment.listing_image_url ? 'none' : 'flex' }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#B0B0B0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#B0B0B0', fontWeight: 500 }}>Property image</span>
+              <main className="slr-shell">
+                <div className="slr-title-wrap">
+                  <div className="slr-mobile-chip-row">
+                    {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
+                    <span className="slr-chip slr-chip--ready">Report ready</span>
+                    <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF}>Download PDF</button>
+                  </div>
+                  <h1>Your listing report</h1>
+                  <p>{propertyMeta.address}{propertyMeta.portalLabel ? ` · ${propertyMeta.portalLabel}` : ` · ${currentPackage}`}</p>
                 </div>
 
-                <div style={{ padding: '20px 22px' }}>
-                  <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 700, fontSize: 15, color: '#0A0A0A', marginBottom: 3 }}>{address}</div>
-                  {assessment.listing_url && (
-                    <a href={assessment.listing_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#7C3AED', textDecoration: 'none' }}>View listing ↗</a>
-                  )}
-
-                  {/* Overall score */}
-                  <div style={{ margin: '20px 0 16px', padding: '16px', background: '#FAFAFA', borderRadius: 12, border: '1px solid #F0F0F0' }}>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', color: '#999', textTransform: 'uppercase', marginBottom: 8 }}>OVERALL SCORE</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                      <span style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 52, letterSpacing: '-0.03em', color: overallScoreColor(rd.overall_score), lineHeight: 1 }}>{rd.overall_score}</span>
-                      <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 20, color: '#C0C0C0' }}>/100</span>
+                <section className="slr-main-grid">
+                  <article className="slr-card slr-property-card">
+                    <div className="slr-property-image">
+                      {propertyImage ? (
+                        <img src={propertyImage} alt={propertyMeta.address} />
+                      ) : (
+                        <div className="slr-property-image-placeholder" />
+                      )}
                     </div>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#888', marginTop: 4 }}>{scoreLabel(rd.overall_score)}</div>
-                  </div>
-
-                  {/* Score bars */}
-                  <ScoreBar label="Photos & Presentation" score={rd.scores.photos} />
-                  <ScoreBar label="Pricing Strategy" score={rd.scores.pricing} />
-                  <ScoreBar label="Listing Description" score={rd.scores.description} />
-                  <ScoreBar label="Market Positioning" score={rd.scores.positioning} />
-                </div>
-              </div>
-
-              {/* RIGHT: Key findings */}
-              <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8E9EA', padding: '28px 28px 24px' }}>
-                <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-0.02em', color: '#0A0A0A', margin: '0 0 6px' }}>Key findings</h2>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#888', margin: '0 0 24px' }}>
-                  {issues > 0 && `${issues} issue${issues !== 1 ? 's' : ''} to address`}{issues > 0 && strengths > 0 ? ' · ' : ''}{strengths > 0 && `${strengths} strength${strengths !== 1 ? 's' : ''} to leverage`}
-                </p>
-
-                {rd.key_findings.map((f, i) => {
-                  const isStrength = f.type === 'strength';
-                  return (
-                    <div key={i} style={{
-                      display: 'flex', gap: 14, padding: '16px', marginBottom: 12,
-                      borderRadius: 12, border: `1px solid ${isStrength ? '#BBF7D0' : '#FED7AA'}`,
-                      background: isStrength ? '#F0FDF4' : '#FFFBF5',
-                    }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                        background: isStrength ? '#D1FAE5' : '#FEE2E2',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <FindingIcon icon={f.icon} type={f.type} />
+                    <div className="slr-property-body">
+                      <div>
+                        <h2 className="slr-property-address">{propertyMeta.address}</h2>
+                        {propertyMeta.summary ? <p className="slr-property-subline">{propertyMeta.summary}</p> : null}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: isStrength ? '#15803D' : '#C2410C', marginBottom: 4 }}>{f.title}</div>
-                        <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#555', lineHeight: 1.55 }}>{f.description}</div>
-                      </div>
-                    </div>
-                  );
-                })}
 
-                {/* Executive summary */}
-                {rd.executive_summary && (
-                  <div style={{ marginTop: 8, padding: '16px', borderRadius: 12, background: '#F8F9FA', border: '1px solid #E8E9EA' }}>
-                    <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: '1px', color: '#999', textTransform: 'uppercase', marginBottom: 6 }}>CONSULTANT SUMMARY</div>
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#444', lineHeight: 1.65, margin: 0 }}>{rd.executive_summary}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── ACTION PLAN ── */}
-            {rd.action_plan.length > 0 && (
-              <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 32px' }}>
-                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8E9EA', padding: '28px 28px 20px' }}>
-                  <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em', color: '#0A0A0A', margin: '0 0 20px' }}>Prioritised action plan</h2>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-                    {rd.action_plan.map((item, i) => {
-                      const pColors: Record<string, { bg: string; text: string; border: string }> = {
-                        URGENT: { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA' },
-                        HIGH: { bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA' },
-                        MEDIUM: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
-                      };
-                      const pc = pColors[item.priority] || pColors.MEDIUM;
-                      return (
-                        <div key={i} style={{ border: '1px solid #E8E9EA', borderRadius: 12, padding: '18px 18px 14px', background: '#FAFAFA' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                            <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 800, fontSize: 16, color: '#0A0A0A', letterSpacing: '-0.3px' }}>{i + 1}</span>
-                            <span style={{ background: pc.bg, color: pc.text, border: `1px solid ${pc.border}`, padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 800, letterSpacing: '0.5px', fontFamily: 'Inter, sans-serif' }}>{item.priority}</span>
+                      <div>
+                        <div className="slr-overall-head">
+                          <span>OVERALL SCORE</span>
+                          <div className="slr-overall-value">
+                            <strong style={{ color: overallScoreColor(report.overall_score) }}>{report.overall_score}</strong>
+                            <em>/100</em>
                           </div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#0A0A0A', marginBottom: 6 }}>{item.title}</div>
-                          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#666', lineHeight: 1.5, marginBottom: 10 }}>{item.description}</div>
-                          {item.bullets?.length > 0 && (
-                            <ul style={{ margin: 0, paddingLeft: 16 }}>
-                              {item.bullets.map((b, j) => (
-                                <li key={j} style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#555', lineHeight: 1.55, marginBottom: 4 }}>{b}</li>
-                              ))}
-                            </ul>
-                          )}
                         </div>
+                        <ScoreRow label="Photos" score={report.scores.photos} />
+                        <ScoreRow label="Pricing" score={report.scores.pricing} />
+                        <ScoreRow label="Description" score={report.scores.description} />
+                        <ScoreRow label="Positioning" score={report.scores.positioning} />
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="slr-card slr-findings-card">
+                    <div className="slr-findings-head">
+                      <h2>Key findings</h2>
+                      <p>{issues} issue{issues !== 1 ? 's' : ''} to address · {strengths} strength{strengths !== 1 ? 's' : ''} to leverage</p>
+                    </div>
+                    <div className="slr-findings-list">
+                      {report.key_findings.map((finding, index) => {
+                        const isStrength = finding.type === 'strength';
+                        const accent = isStrength
+                          ? { bg: '#DFF8F1', border: '#B9F0E1', title: '#0F7A53' }
+                          : index === 0
+                            ? { bg: '#FFF2F1', border: '#FFD4CF', title: '#E23B2E' }
+                            : { bg: '#FFF4EA', border: '#FFD9BF', title: '#E06900' };
+                        return (
+                          <div key={`${finding.title}-${index}`} className="slr-finding-item" style={{ background: accent.bg, borderColor: accent.border }}>
+                            <div className="slr-finding-icon" style={{ color: accent.title }}>
+                              <FindingIcon icon={finding.icon} type={finding.type} />
+                            </div>
+                            <div className="slr-finding-copy">
+                              <h3 style={{ color: accent.title }}>{finding.title}</h3>
+                              <p>{finding.description}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {report.executive_summary ? <div className="slr-summary-note">{report.executive_summary}</div> : null}
+                    </div>
+                  </article>
+                </section>
+
+                <section className="slr-analysis-stack">
+                  {report.comparable_sales.length > 0 ? (
+                    <article className="slr-card slr-analysis-card">
+                      <h2>Pricing vs. Comparable Sales</h2>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table className="slr-compare-table">
+                          <thead>
+                            <tr>
+                              <th>Property</th>
+                              <th>Beds</th>
+                              <th>Type</th>
+                              <th>Sold / Asking</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {report.comparable_sales.map((sale, index) => (
+                              <tr key={`${sale.address}-${index}`} className={sale.is_subject ? 'is-subject' : ''}>
+                                <td>{sale.address}</td>
+                                <td>{sale.beds || '—'}</td>
+                                <td>{sale.property_type || '—'}</td>
+                                <td style={{ color: sale.is_subject ? '#E06900' : '#2D2D2D', fontWeight: sale.is_subject ? 700 : 500 }}>{sale.sold_asking}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {(report.pricing_recommendation || report.pricing_recommendation_detail) ? (
+                        <div className="slr-recommendation-box">
+                          <strong>Recommendation</strong>
+                          {report.pricing_recommendation ? <p>{report.pricing_recommendation}</p> : null}
+                          {report.pricing_recommendation_detail ? <p>{report.pricing_recommendation_detail}</p> : null}
+                        </div>
+                      ) : null}
+                    </article>
+                  ) : null}
+
+                  {report.action_plan.length > 0 ? (
+                    <article className="slr-card slr-analysis-card">
+                      <h2>Prioritised Action Plan</h2>
+                      <div className="slr-action-list">
+                        {report.action_plan.map((item, index) => {
+                          const accent = PRIORITY_ACCENTS[item.priority] || PRIORITY_ACCENTS.MEDIUM;
+                          return (
+                            <div key={`${item.title}-${index}`} className="slr-action-item">
+                              <div className="slr-action-index">{index + 1}</div>
+                              <div className="slr-action-copy">
+                                <h3>
+                                  <span className="slr-action-priority" style={{ color: accent.color }}>{item.priority}</span>
+                                  <span>—</span>
+                                  <span>{item.title}</span>
+                                </h3>
+                                <p>{item.description}</p>
+                                {item.bullets.length > 0 ? (
+                                  <ul>
+                                    {item.bullets.map((bullet, bulletIndex) => (
+                                      <li key={`${bulletIndex}-${bullet}`}>{bullet}</li>
+                                    ))}
+                                  </ul>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </article>
+                  ) : null}
+                </section>
+
+                <section className="slr-services-wrap">
+                  <div className="slr-services-head">
+                    <h2>Based on your assessment, these platforms and services may help improve your sale.</h2>
+                  </div>
+                  <div className="slr-services-grid">
+                    {SERVICE_CARDS.map((card) => (
+                      <article key={card.title} className="slr-card slr-service-card">
+                        <div>
+                          <h3>{card.title}</h3>
+                          <p>{card.description}</p>
+                        </div>
+                        <div className="slr-service-logos">
+                          {card.logos.map((logo, index) => <div key={`${card.title}-${index}`}>{logo}</div>)}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="slr-disclaimer">
+                  <div className="slr-disclaimer-icon">i</div>
+                  <p>Any third-party services referenced within this report are included solely to support the marketing and sale of your property and should not be interpreted as endorsement or formal affiliation.</p>
+                </div>
+              </main>
+            </div>
+
+            <div className="pdf-print-area">
+              <div className="slr-pdf-root">
+                <section className="slr-pdf-page">
+                  <div className="slr-pdf-header">
+                    <img src="/stale-logo.png" alt="StaleListings" className="slr-pdf-brand" />
+                    <div className="slr-pdf-header-copy">
+                      <strong>{propertyMeta.address}</strong>
+                      <div>{propertyMeta.portalLabel || currentPackage}</div>
+                    </div>
+                  </div>
+
+                  <section className="slr-pdf-summary-card">
+                    <h2 className="slr-pdf-summary-title">{propertyMeta.address}</h2>
+                    {propertyMeta.summary ? <p className="slr-pdf-summary-subline">{propertyMeta.summary}</p> : null}
+                    <div className="slr-pdf-pill-row">
+                      {report.days_on_market ? <span className="slr-pdf-pill slr-pdf-pill--market">On market {report.days_on_market} days</span> : null}
+                      <span className="slr-pdf-pill slr-pdf-pill--ready">Report ready</span>
+                    </div>
+                  </section>
+
+                  <section className="slr-pdf-score-grid">
+                    <div>
+                      <p className="slr-pdf-kicker">LISTING SCORE BREAKDOWN</p>
+                      {[
+                        ['PHOTOS', report.scores.photos],
+                        ['PRICING', report.scores.pricing],
+                        ['DESCRIPTION', report.scores.description],
+                        ['POSITIONING', report.scores.positioning],
+                      ].map(([label, score]) => (
+                        <div key={label} className="slr-pdf-score-row">
+                          <div className="slr-pdf-score-label">{label}</div>
+                          <div className="slr-pdf-score-track">
+                            <div className="slr-pdf-score-fill" style={{ width: `${Math.max(0, Math.min(100, Number(score)))}%`, background: scoreBarColor(Number(score)) }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="slr-pdf-gauge-wrap">
+                      <PrintGauge score={report.overall_score} />
+                    </div>
+                  </section>
+
+                  <h2 className="slr-pdf-section-title">Key Findings</h2>
+                  <div className="slr-pdf-finding-list">
+                    {pdfPrimaryFindings.map((finding, index) => {
+                      const accent = printFindingAccent(finding.type, index);
+                      return (
+                        <article
+                          key={`pdf-finding-${finding.title}-${index}`}
+                          className="slr-pdf-finding-card"
+                          style={{ background: accent.bg, borderColor: accent.border }}
+                        >
+                          <div className="slr-pdf-finding-dot" style={{ background: accent.dot }} />
+                          <div>
+                            <h3 className="slr-pdf-finding-title" style={{ color: accent.title }}>{finding.title}</h3>
+                            <p className="slr-pdf-finding-copy">{finding.description}</p>
+                          </div>
+                        </article>
                       );
                     })}
                   </div>
-                </div>
-              </div>
-            )}
+                </section>
 
-            {/* ── COMPARABLE SALES ── */}
-            {rd.comparable_sales?.length > 0 && (
-              <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 32px' }}>
-                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E8E9EA', padding: '28px 28px 20px' }}>
-                  <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em', color: '#0A0A0A', margin: '0 0 8px' }}>Pricing vs comparable sales</h2>
-                  {rd.pricing_recommendation && (
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#666', margin: '0 0 20px', lineHeight: 1.5 }}>{rd.pricing_recommendation}</p>
-                  )}
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Inter, sans-serif', fontSize: 14 }}>
-                      <thead>
-                        <tr style={{ background: '#F8F9FA', borderBottom: '1px solid #E8E9EA' }}>
-                          {['Property', 'Beds', 'Type', 'Price'].map(h => (
-                            <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#888', fontSize: 12, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rd.comparable_sales.map((c, i) => (
-                          <tr key={i} style={{
-                            borderBottom: '1px solid #F0F0F0',
-                            background: c.is_subject ? '#FFFBEB' : '#fff',
-                          }}>
-                            <td style={{ padding: '12px 16px', fontWeight: c.is_subject ? 700 : 400, color: c.is_subject ? '#0A0A0A' : '#333' }}>
-                              {c.address}{c.is_subject && <span style={{ marginLeft: 8, background: '#FEF3C7', color: '#92400E', padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700 }}>YOUR PROPERTY</span>}
-                            </td>
-                            <td style={{ padding: '12px 16px', color: '#555' }}>{c.beds > 0 ? `${c.beds} bed` : '—'}</td>
-                            <td style={{ padding: '12px 16px', color: '#555' }}>{c.property_type || '—'}</td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: c.is_subject ? '#B45309' : '#15803D' }}>{c.sold_asking}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <section className="slr-pdf-page">
+                  <div className="slr-pdf-header">
+                    <img src="/stale-logo.png" alt="StaleListings" className="slr-pdf-brand" />
+                    <div className="slr-pdf-header-copy">
+                      <strong>{propertyMeta.address}</strong>
+                      <div>{propertyMeta.portalLabel || currentPackage}</div>
+                    </div>
                   </div>
-                  {rd.pricing_recommendation_detail && (
-                    <div style={{ marginTop: 16, padding: '14px 16px', background: '#FFFBEB', borderRadius: 10, border: '1px solid #FDE68A' }}>
-                      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#92400E', margin: 0, lineHeight: 1.6 }}>{rd.pricing_recommendation_detail}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* ── SERVICES SECTION ── */}
-            <div style={{ background: '#fff', borderTop: '1px solid #F0F0F0', padding: '48px 24px 56px', marginTop: 8 }}>
-              <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-                <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                  <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em', color: '#0A0A0A', margin: '0 0 8px' }}>Recommended services</h2>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#666', margin: 0 }}>Based on your assessment, these platforms and services may help improve your sale.</p>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }} className="sl-services-grid">
-                  {SERVICES.map((s, i) => (
-                    <div key={i} style={{ border: '1px solid #E8E9EA', borderRadius: 12, padding: '18px', background: '#fff', cursor: 'default' }}>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 700, letterSpacing: '1px', color: '#999', textTransform: 'uppercase', marginBottom: 6 }}>{s.category}</div>
-                      <div style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 16, color: s.color, marginBottom: 6 }}>{s.name}</div>
-                      <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#777', lineHeight: 1.5 }}>{s.desc}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                  {pdfAdditionalFindings.length > 0 ? (
+                    <section className="slr-pdf-block">
+                      <h2 className="slr-pdf-section-title">Additional Findings</h2>
+                      <div className="slr-pdf-finding-list">
+                        {pdfAdditionalFindings.map((finding, index) => {
+                          const accent = printFindingAccent(finding.type, index + pdfPrimaryFindings.length);
+                          return (
+                            <article
+                              key={`pdf-extra-finding-${finding.title}-${index}`}
+                              className="slr-pdf-finding-card"
+                              style={{ background: accent.bg, borderColor: accent.border }}
+                            >
+                              <div className="slr-pdf-finding-dot" style={{ background: accent.dot }} />
+                              <div>
+                                <h3 className="slr-pdf-finding-title" style={{ color: accent.title }}>{finding.title}</h3>
+                                <p className="slr-pdf-finding-copy">{finding.description}</p>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {report.comparable_sales.length > 0 ? (
+                    <section className="slr-pdf-block">
+                      <h2 className="slr-pdf-section-title">Pricing vs. Comparable Sales</h2>
+                      <table className="slr-pdf-table">
+                        <thead>
+                          <tr>
+                            <th>Property</th>
+                            <th>Beds</th>
+                            <th>Type</th>
+                            <th>Sold / Asking</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {report.comparable_sales.map((sale, index) => (
+                            <tr key={`pdf-sale-${sale.address}-${index}`} className={sale.is_subject ? 'is-subject' : ''}>
+                              <td>{sale.address}</td>
+                              <td>{sale.beds || '—'}</td>
+                              <td>{sale.property_type || '—'}</td>
+                              <td>{sale.sold_asking}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {(report.pricing_recommendation || report.pricing_recommendation_detail) ? (
+                        <div className="slr-pdf-recommendation">
+                          <strong>Recommendation</strong>
+                          {report.pricing_recommendation ? <p>{report.pricing_recommendation}</p> : null}
+                          {report.pricing_recommendation_detail ? <p>{report.pricing_recommendation_detail}</p> : null}
+                        </div>
+                      ) : null}
+                    </section>
+                  ) : null}
+
+                  {report.action_plan.length > 0 ? (
+                    <section className="slr-pdf-block">
+                      <h2 className="slr-pdf-section-title">Prioritised Action Plan</h2>
+                      <div className="slr-pdf-action-list">
+                        {report.action_plan.map((item, index) => {
+                          const accent = PRIORITY_ACCENTS[item.priority] || PRIORITY_ACCENTS.MEDIUM;
+                          return (
+                            <article key={`pdf-action-${item.title}-${index}`} className="slr-pdf-action-card">
+                              <div className="slr-pdf-action-index">{index + 1}</div>
+                              <div className="slr-pdf-action-body">
+                                <div className="slr-pdf-action-head">
+                                  <span className="slr-pdf-action-priority" style={{ color: accent.color }}>{item.priority}</span>
+                                  <span className="slr-pdf-action-divider">—</span>
+                                  <span className="slr-pdf-action-title">{item.title}</span>
+                                </div>
+                                <p className="slr-pdf-action-description">{item.description}</p>
+                                {item.bullets.length > 0 ? (
+                                  <ul className="slr-pdf-action-bullets">
+                                    {item.bullets.map((bullet, bulletIndex) => (
+                                      <li key={`pdf-action-bullet-${index}-${bulletIndex}`}>{bullet}</li>
+                                    ))}
+                                  </ul>
+                                ) : null}
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                <section className="slr-pdf-footer-cta">
+                  <div>
+                    <h3>Want deeper support?</h3>
+                    <p>Upgrade to Professional or Premium Strategy for a full re-launch plan and direct agent access.</p>
+                  </div>
+                  <div className="slr-pdf-footer-link">stalelistings.com →</div>
+                </section>
+              </section>
             </div>
-
-            {/* ── FOOTER DISCLAIMER ── */}
-            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px 40px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#888', lineHeight: 1.6, margin: 0 }}>
-                This report is generated using AI analysis and human expert review. Comparable sales data is indicative and based on publicly available information. This report does not constitute professional valuation or legal advice. For an accurate property valuation, please consult a qualified RICS surveyor or local estate agent. Reference: {assessment.reference}
-              </p>
             </div>
           </>
         )}
       </div>
-
-      {/* ── PDF PRINT AREA (only visible when printing) ── */}
-      {assessment.report_status === 'completed' && rd && (
-        <div className="pdf-print-area" style={{ display: 'none', fontFamily: 'Arial, sans-serif' }}>
-          {/* PAGE 1 */}
-          <div style={{ width: '210mm', minHeight: '297mm', padding: '16mm', boxSizing: 'border-box', pageBreakAfter: 'always' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid #000' }}>
-              <div>
-                <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.5px' }}>StaleListings</span>
-                <span style={{ color: '#888', fontSize: 11, marginLeft: 6 }}>by HAVLO</span>
-              </div>
-              <div style={{ fontSize: 11, color: '#555', textAlign: 'right' }}>
-                <div style={{ fontWeight: 600 }}>{address}</div>
-                <div style={{ color: '#888' }}>Ref: {assessment.reference}</div>
-              </div>
-            </div>
-
-            {/* Property info box */}
-            <div style={{ border: '1px solid #E5E7EB', borderRadius: 8, padding: '12px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{address}</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {rd.days_on_market && (
-                  <span style={{ background: '#FFF7ED', color: '#C2410C', border: '1px solid #FED7AA', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600 }}>
-                    On market {rd.days_on_market} days
-                  </span>
-                )}
-                <span style={{ background: '#F0FDF4', color: '#15803D', border: '1px solid #BBF7D0', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600 }}>Report ready</span>
-              </div>
-            </div>
-
-            {/* LISTING SCORE BREAKDOWN */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: 12 }}>LISTING SCORE BREAKDOWN</div>
-              <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-                <div style={{ flexShrink: 0, textAlign: 'center', background: '#F8F9FA', borderRadius: 12, padding: '16px 20px' }}>
-                  <div style={{ fontSize: 48, fontWeight: 800, color: overallScoreColor(rd.overall_score), lineHeight: 1 }}>{rd.overall_score}</div>
-                  <div style={{ fontSize: 11, color: '#999', marginTop: 4 }}>/ 100</div>
-                  <div style={{ fontSize: 10, color: '#888', marginTop: 2, fontWeight: 600 }}>OVERALL</div>
-                </div>
-                <div style={{ flex: 1 }}>
-                  {([
-                    ['Photos & Presentation', rd.scores.photos],
-                    ['Pricing Strategy', rd.scores.pricing],
-                    ['Listing Description', rd.scores.description],
-                    ['Market Positioning', rd.scores.positioning],
-                  ] as [string, number][]).map(([label, score]) => (
-                    <div key={label} style={{ marginBottom: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 12, color: '#555' }}>{label}</span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: scoreBarColor(score) }}>{score}/100</span>
-                      </div>
-                      <div style={{ height: 8, background: '#F0F0F0', borderRadius: 4 }}>
-                        <div style={{ width: `${score}%`, height: '100%', background: scoreBarColor(score), borderRadius: 4 }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* KEY FINDINGS */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: 12 }}>KEY FINDINGS</div>
-              {rd.key_findings.map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, padding: '10px 12px', background: f.type === 'strength' ? '#F0FDF4' : '#FFFBF5', border: `1px solid ${f.type === 'strength' ? '#BBF7D0' : '#FED7AA'}`, borderRadius: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: f.type === 'strength' ? '#16A34A' : '#C2410C', marginTop: 4, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: f.type === 'strength' ? '#15803D' : '#C2410C', marginBottom: 3 }}>{f.title}</div>
-                    <div style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>{f.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* PAGE 2 */}
-          <div style={{ width: '210mm', minHeight: '297mm', padding: '16mm', boxSizing: 'border-box' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '2px solid #000' }}>
-              <div>
-                <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.5px' }}>StaleListings</span>
-                <span style={{ color: '#888', fontSize: 11, marginLeft: 6 }}>by HAVLO</span>
-              </div>
-              <div style={{ fontSize: 11, color: '#555', textAlign: 'right' }}>
-                <div style={{ fontWeight: 600 }}>{address}</div>
-                <div style={{ color: '#888' }}>Ref: {assessment.reference}</div>
-              </div>
-            </div>
-
-            {/* Comparable sales */}
-            {rd.comparable_sales?.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: 12 }}>PRICING VS COMPARABLE SALES</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ background: '#F8F9FA' }}>
-                      {['Property', 'Beds', 'Type', 'Price'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#888', fontSize: 10, letterSpacing: '0.5px', textTransform: 'uppercase', border: '1px solid #E8E9EA' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rd.comparable_sales.map((c, i) => (
-                      <tr key={i} style={{ background: c.is_subject ? '#FFFBEB' : '#fff' }}>
-                        <td style={{ padding: '8px 12px', fontWeight: c.is_subject ? 700 : 400, border: '1px solid #E8E9EA' }}>
-                          {c.address}{c.is_subject ? ' ★' : ''}
-                        </td>
-                        <td style={{ padding: '8px 12px', border: '1px solid #E8E9EA' }}>{c.beds > 0 ? `${c.beds}` : '—'}</td>
-                        <td style={{ padding: '8px 12px', border: '1px solid #E8E9EA' }}>{c.property_type || '—'}</td>
-                        <td style={{ padding: '8px 12px', fontWeight: 600, color: c.is_subject ? '#B45309' : '#15803D', border: '1px solid #E8E9EA' }}>{c.sold_asking}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pricing recommendation box */}
-            {rd.pricing_recommendation && (
-              <div style={{ marginBottom: 24, padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', color: '#92400E', textTransform: 'uppercase', marginBottom: 6 }}>RECOMMENDATION</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E', marginBottom: 6 }}>{rd.pricing_recommendation}</div>
-                {rd.pricing_recommendation_detail && <div style={{ fontSize: 11, color: '#78350F', lineHeight: 1.55 }}>{rd.pricing_recommendation_detail}</div>}
-              </div>
-            )}
-
-            {/* Action plan */}
-            {rd.action_plan.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', color: '#888', textTransform: 'uppercase', marginBottom: 12 }}>PRIORITISED ACTION PLAN</div>
-                {rd.action_plan.map((item, i) => (
-                  <div key={i} style={{ marginBottom: 12, padding: '10px 12px', border: '1px solid #E8E9EA', borderRadius: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0A0A0A' }}>{i + 1}.</span>
-                      <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 4, background: item.priority === 'URGENT' ? '#FEE2E2' : item.priority === 'HIGH' ? '#FFF7ED' : '#EFF6FF', color: item.priority === 'URGENT' ? '#B91C1C' : item.priority === 'HIGH' ? '#C2410C' : '#1D4ED8' }}>{item.priority}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0A0A0A' }}>{item.title}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: '#555', marginBottom: 4, paddingLeft: 20 }}>{item.description}</div>
-                    {item.bullets?.length > 0 && (
-                      <ul style={{ margin: 0, paddingLeft: 36 }}>
-                        {item.bullets.map((b, j) => (
-                          <li key={j} style={{ fontSize: 11, color: '#666', lineHeight: 1.5, marginBottom: 2 }}>{b}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Footer CTA */}
-            <div style={{ background: '#000', color: '#fff', padding: '16px 20px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.3px' }}>Ready to act on this report?</div>
-                <div style={{ fontSize: 11, color: '#ccc', marginTop: 2 }}>Contact HAVLO to discuss your personalised strategy.</div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 600 }}>heyhavlo.com</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @media (max-width: 768px) {
-          .sl-report-grid { grid-template-columns: 1fr !important; }
-          .sl-services-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (max-width: 480px) {
-          .sl-services-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </>
   );
 }
