@@ -199,64 +199,65 @@ function printFindingAccent(type: string, index: number) {
 
 function PrintGauge({ score }: { score: number }) {
   const normalized = Math.max(0, Math.min(100, score));
-  const radius = 46;
-  const circumference = Math.PI * radius;
-  const dash = (normalized / 100) * circumference;
   const color = scoreBarColor(normalized);
+  const arcPath = 'M 30 118 A 56 88 0 0 1 142 118';
 
   return (
     <svg
-      width="120"
-      height="86"
-      viewBox="0 0 120 86"
+      width="168"
+      height="150"
+      viewBox="0 0 172 150"
       role="img"
       aria-label={`Total score ${normalized}`}
       style={{ overflow: 'visible' }}
     >
       <path
-        d="M 14 68 A 46 46 0 0 1 106 68"
+        d={arcPath}
         fill="none"
         stroke="#D9D9D9"
-        strokeWidth="8"
+        strokeWidth="12"
         strokeLinecap="round"
+        pathLength={100}
+        strokeDasharray="100 100"
       />
       <path
-        d="M 14 68 A 46 46 0 0 1 106 68"
+        d={arcPath}
         fill="none"
         stroke={color}
-        strokeWidth="8"
+        strokeWidth="12"
         strokeLinecap="round"
-        strokeDasharray={`${dash} ${circumference}`}
+        pathLength={100}
+        strokeDasharray={`${normalized} 100`}
       />
       <text
-        x="60"
-        y="48"
+        x="86"
+        y="86"
         textAnchor="middle"
         fontFamily='"Plus Jakarta Sans", Arial, sans-serif'
         fontWeight="800"
-        fontSize="20"
+        fontSize="38"
         fill="#111111"
       >
         {normalized}
       </text>
       <text
-        x="60"
-        y="62"
+        x="86"
+        y="108"
         textAnchor="middle"
         fontFamily="Inter, Arial, sans-serif"
         fontWeight="500"
-        fontSize="7.8"
+        fontSize="10.6"
         fill="#666666"
       >
         TOTAL
       </text>
       <text
-        x="60"
-        y="71"
+        x="86"
+        y="121"
         textAnchor="middle"
         fontFamily="Inter, Arial, sans-serif"
         fontWeight="500"
-        fontSize="7.8"
+        fontSize="10.6"
         fill="#666666"
       >
         SCORE
@@ -1036,8 +1037,8 @@ export function StaleListingsReport() {
         }
         .slr-pdf-score-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 44mm;
-          gap: 12mm;
+          grid-template-columns: minmax(0, 1fr) 64mm;
+          gap: 7mm;
           align-items: start;
           margin-bottom: 9mm;
         }
@@ -1075,9 +1076,10 @@ export function StaleListingsReport() {
         }
         .slr-pdf-gauge-wrap {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
-          padding-top: 2mm;
+          padding-top: 6mm;
+          padding-right: 0;
         }
         .slr-pdf-section-title {
           margin: 0 0 5mm;

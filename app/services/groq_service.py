@@ -256,146 +256,156 @@ async def generate_stale_listing_report(
     # the same; the richness of the content varies dramatically.
 
     if package == "quick_insight":
-        task_block = """Your task is to produce a QUICK INSIGHT report — fast, punchy, opinionated.
+        task_block = """Your task is to produce a QUICK INSIGHT report - fast, punchy, opinionated, and still clearly worth paying for.
 
 Identify the 4 most critical blockers that are preventing a sale RIGHT NOW. Be
 ruthlessly specific: name the actual number of viewings, the specific feedback
-buyers gave, the exact portals they are or aren't on, the price range they stated.
-Every sentence must feel like it was written for THIS property, not a template.
+buyers gave, the exact portals they are or are not on, the price range they stated,
+and the immediate buyer consequence. Even though this is the lightest plan, it must
+still feel like a paid professional mini-brief, not a skimpy summary.
 
 Focus exclusively on these four areas (pick the 4 worst performers):
-  1. Listing performance signals — viewings vs. time ratio, portal click-through signals
-  2. Pricing & market position — current ask vs. what buyers are actually offering
-  3. Listing quality — photos, description completeness, assets present
-  4. Buyer appeal — feedback themes, presentation friction, first-impression issues
+  1. Listing performance signals - viewings vs. time ratio, portal click-through signals
+  2. Pricing and market position - current ask vs. what buyers are actually offering
+  3. Listing quality - photos, description completeness, assets present
+  4. Buyer appeal - feedback themes, presentation friction, first-impression issues
 
 QUICK INSIGHT format rules:
 - key_findings: EXACTLY 4 items. At most 1 strength ("type":"strength"); the rest must be "issue".
-  Each description: 1 tight sentence. No padding. Reference the homeowner's actual answers directly.
+  Each description should feel like evidence plus consequence, even when concise.
+  Use EXACTLY 2 concise sentences: sentence 1 states the evidence from this seller's answers,
+  sentence 2 states the direct buyer consequence or missed opportunity.
 - action_plan: EXACTLY 4 items. 2 URGENT, 2 HIGH. No MEDIUM items.
   Each action must be doable within 2 weeks without professional consultancy.
-  Each bullet: a single clear instruction, ≤20 words.
+  Each action description should explain why the action matters now.
+  Each bullet must be a complete sentence with a concrete instruction and a practical outcome.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Keep street names realistic for the area given.
-- executive_summary: 2–3 sentences. Open with the single biggest reason the property isn't selling.
-  Close with what one change would have the fastest impact. No soft language — be direct."""
+- pricing_recommendation_detail: EXACTLY 2 sentences. Sentence 1 explains the current mismatch.
+  Sentence 2 explains what immediate benefit a correction unlocks.
+- executive_summary: EXACTLY 3 sentences. Open with the single biggest reason the property is not selling.
+  Sentence 2 should explain how buyers are interpreting the current listing. Sentence 3 should name the fastest-impact fix this week.
+  Be direct, commercial, and specific - never generic."""
 
-        max_tokens_val = 3500
-        system_msg = "You are Mark Williams, a senior UK property sales consultant. Produce a Quick Insight report: concise, punchy, 100% specific to this homeowner's data. Return only valid JSON. No markdown, no code fences."
+        max_tokens_val = 4200
+        system_msg = "You are Mark Williams, a senior UK property sales consultant. Produce a Quick Insight report that is concise, punchy, commercially sharp, and 100% specific to this homeowner's data. Even the shortest plan must feel paid-for and professionally written. Return only valid JSON. No markdown, no code fences."
 
     elif package == "premium_strategy":
-        task_block = """Your task is to produce a PREMIUM STRATEGY report — the most comprehensive property analysis
+        task_block = """Your task is to produce a PREMIUM STRATEGY report - the most comprehensive property analysis
 available, equivalent to a paid consultant briefing. This report covers six distinct assessment dimensions
 that go well beyond surface-level listing advice.
 
 Assess ALL SIX of the following dimensions thoroughly:
 
   1. Listing Performance & Visibility Analysis
-     — How the listing is performing on portals relative to days on market, viewings, and engagement signals.
-     — Estimate where the listing appears in search results based on staleness, pricing tier, and marketing activity.
-     — Identify whether the property has been de-indexed or de-prioritised by portal algorithms.
+     - How the listing is performing on portals relative to days on market, viewings, and engagement signals.
+     - Estimate where the listing appears in search results based on staleness, pricing tier, and marketing activity.
+     - Identify whether the property has been de-indexed or de-prioritised by portal algorithms.
 
   2. Pricing Intelligence & Buyer Psychology
-     — Detailed analysis of the gap between asking price and market absorption price.
-     — What the price signals to buyers psychologically (overconfidence, desperation, or indifference).
-     — Specific impact of any prior price reductions on buyer perception ("damaged goods" risk).
-     — Recommended repositioning strategy including whether to reduce, withdraw, or relaunch.
+     - Detailed analysis of the gap between asking price and market absorption price.
+     - What the price signals to buyers psychologically (overconfidence, desperation, or indifference).
+     - Specific impact of any prior price reductions on buyer perception ("damaged goods" risk).
+     - Recommended repositioning strategy including whether to reduce, withdraw, or relaunch.
 
   3. Photography & Presentation Intelligence
-     — Forensic assessment of listing photography based on what the homeowner reported.
-     — Specific critique of likely issues: lighting, angles, clutter, emotional triggers missing.
-     — What the photos are communicating to a buyer before they read a single word of the description.
-     — Precise staging recommendations: which rooms to restyle, what to remove, what to add.
+     - Forensic assessment of listing photography based on what the homeowner reported.
+     - Specific critique of likely issues: lighting, angles, clutter, emotional triggers missing.
+     - What the photos are communicating to a buyer before they read a single word of the description.
+     - Precise staging recommendations: which rooms to restyle, what to remove, what to add.
 
   4. Digital Marketing & Portal Strategy
-     — Analysis of all portals the property is currently on (and those it isn't).
-     — Whether the listing has been Rightmove Featured, Premium Listing, or spotlight boosted.
-     — Social media exposure: what channels to target and the type of content that converts.
-     — Specific recommendations for relaunching with fresh assets to trigger portal algorithm refresh.
+     - Analysis of all portals the property is currently on and those it is not on.
+     - Whether the listing has been Rightmove Featured, Premium Listing, or spotlight boosted.
+     - Social media exposure: what channels to target and the type of content that converts.
+     - Specific recommendations for relaunching with fresh assets to trigger portal algorithm refresh.
 
   5. Estate Agent Performance Review
-     — Honest, direct assessment of whether the agent is actively selling or passively waiting.
-     — Whether the marketing channels selected suggest a low-effort instruction.
-     — Signs the agent relationship may need to be reviewed (re-listed without fresh strategy, no proactive outreach).
-     — Clear language the homeowner can use with their agent to demand performance.
+     - Honest, direct assessment of whether the agent is actively selling or passively waiting.
+     - Whether the marketing channels selected suggest a low-effort instruction.
+     - Signs the agent relationship may need to be reviewed (re-listed without fresh strategy, no proactive outreach).
+     - Clear language the homeowner can use with their agent to demand performance.
 
   6. Property Liquidity & Exit Risk
-     — Realistic assessment of this property's liquidity in the current market.
-     — Risk factors that could prevent a sale regardless of price (structural issues signalled, niche appeal, location detractors).
-     — Exit strategies available to the seller beyond a traditional sale.
-     — What a realistic timeline to sale looks like given current signals.
+     - Realistic assessment of this property's liquidity in the current market.
+     - Risk factors that could prevent a sale regardless of price (structural issues signalled, niche appeal, location detractors).
+     - Exit strategies available to the seller beyond a traditional sale.
+     - What a realistic timeline to sale looks like given current signals.
 
 PREMIUM STRATEGY format rules:
-- key_findings: EXACTLY 6 items. Draw one finding from EACH of the 6 dimensions above (label the title clearly so the homeowner knows which dimension it addresses). Mix: 4–5 issues, 1–2 strengths.
-  Each description: 2–3 sentences. Reference questionnaire answers explicitly.
-  Do NOT use generic language. Every sentence must feel like it was personally written for this property.
-- action_plan: EXACTLY 6 items — 2 URGENT, 2 HIGH, 2 MEDIUM. Ordered URGENT → HIGH → MEDIUM.
-  Each action: a multi-part recommendation covering not just WHAT but HOW and in what sequence.
-  Each bullet: a complete, specific instruction ≥15 words with a measurable outcome.
+- key_findings: EXACTLY 6 items. Draw one finding from EACH of the 6 dimensions above (label the title clearly so the homeowner knows which dimension it addresses). Mix: 4-5 issues, 1-2 strengths.
+  Each description must feel materially richer than Professional Review.
+  Use EXACTLY 3 sentences: sentence 1 states the evidence from this property's answers,
+  sentence 2 explains the behavioural or market consequence, and sentence 3 states the strategic implication or missed advantage.
+- action_plan: EXACTLY 6 items - 2 URGENT, 2 HIGH, 2 MEDIUM. Ordered URGENT -> HIGH -> MEDIUM.
+  Each action must read like consultant advice, covering not just WHAT but HOW, in what order, and what result to look for.
+  Each action description should include sequencing or strategic framing.
+  Each bullet must be a complete, specific instruction of at least 16 words with a measurable or observable outcome.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Include sold dates (within 90 days).
   Comp selection must reflect the specific property type and price range from q9_asking_price.
 - pricing_recommendation: One decisive sentence. Include the exact adjusted price or percentage.
-- pricing_recommendation_detail: 3–4 sentences covering: current position vs. market, psychological impact
-  of the current price, what a reduction unlocks on Rightmove (e.g. search price bracket re-entry),
-  and the expected timeline to next viewing after a price change.
-- executive_summary: 4–5 sentences. Written as a professional consultant briefing for the homeowner.
-  Cover: why this property is stale (referencing specific questionnaire answers), the biggest single
-  opportunity, the biggest single risk, and the recommended first action this week. Authoritative, not reassuring."""
+- pricing_recommendation_detail: EXACTLY 4 sentences covering current position vs. market, the psychological impact
+  of the current price, what a reduction unlocks on Rightmove (for example search price bracket re-entry),
+  and the expected timeline to next viewing after a price change. This must feel like premium strategic pricing advice, not a generic reduction note.
+- executive_summary: EXACTLY 5 sentences. Written as a professional consultant briefing for the homeowner.
+  Cover why this property is stale, the biggest opportunity, the biggest risk, the recommended first action this week,
+  and what outcome should be expected if the strategy is followed. Authoritative, commercially sharp, and not reassuring for the sake of it."""
 
-        max_tokens_val = 7000
-        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report: comprehensive, analytical, deeply specific to this homeowner's data. This is the most detailed report available — cover all six assessment dimensions fully. Return only valid JSON. No markdown, no code fences."
+        max_tokens_val = 7800
+        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Return only valid JSON. No markdown, no code fences."
 
     else:
         # professional_review (default)
-        task_block = """Your task is to produce a PROFESSIONAL REVIEW report — thorough, behavioural, and positioning-focused.
+        task_block = """Your task is to produce a PROFESSIONAL REVIEW report - thorough, behavioural, and positioning-focused.
 This goes beyond surface-level issues to analyse why buyers are choosing other properties instead.
 
 Assess these five dimensions in depth:
 
   1. Listing Performance & Portal Signals
-     — How viewings, feedback, and time on market combine to indicate where the listing is in the buyer funnel.
-     — Whether the listing is getting portal impressions but not clicks (presentation problem) or clicks but not viewings (pricing/detail problem).
-     — Estimate the listing's search result position based on age, price bracket, and marketing activity.
+     - How viewings, feedback, and time on market combine to indicate where the listing is in the buyer funnel.
+     - Whether the listing is getting portal impressions but not clicks (presentation problem) or clicks but not viewings (pricing/detail problem).
+     - Estimate the listing's search result position based on age, price bracket, and marketing activity.
 
   2. Advanced Pricing Intelligence
-     — Not just whether the price is right, but WHY buyers are rejecting it.
-     — What price reductions (or the lack of them) are signalling to buyers psychologically.
-     — How the price compares to what similar properties have actually sold for (not just listed at) in the past 90 days.
-     — The specific price bracket on Rightmove this property sits in — and whether a small reduction would unlock a much larger buyer pool.
+     - Not just whether the price is right, but WHY buyers are rejecting it.
+     - What price reductions (or the lack of them) are signalling to buyers psychologically.
+     - How the price compares to what similar properties have actually sold for (not just listed at) in the past 90 days.
+     - The specific price bracket on Rightmove this property sits in - and whether a small reduction would unlock a much larger buyer pool.
 
   3. Photography, Description & Listing Psychology
-     — What the current photos are communicating subconsciously to buyers (warmth, space, neglect, value).
-     — Whether the listing description leads with benefits or buries them — and how that affects booking rates.
-     — Listing assets that are missing (floor plan, virtual tour, video) and the statistical impact on booking rates.
-     — The specific improvements that would make the biggest click-to-viewing conversion difference.
+     - What the current photos are communicating subconsciously to buyers (warmth, space, neglect, value).
+     - Whether the listing description leads with benefits or buries them - and how that affects booking rates.
+     - Listing assets that are missing (floor plan, virtual tour, video) and the statistical impact on booking rates.
+     - The specific improvements that would make the biggest click-to-viewing conversion difference.
 
   4. Local Competition Benchmarking
-     — How this property stacks up against active competition in the same price bracket.
-     — What competing listings are doing better: photos, price per sq ft, portal features, description quality.
-     — Where this property has a genuine competitive advantage that isn't being communicated.
+     - How this property stacks up against active competition in the same price bracket.
+     - What competing listings are doing better: photos, price per sq ft, portal features, description quality.
+     - Where this property has a genuine competitive advantage that is not being communicated.
 
   5. Marketing & Agent Strategy Analysis
-     — Which marketing channels are being used and which critical ones are missing.
-     — Whether the estate agent is running a proactive or reactive marketing strategy.
-     — The most effective low-cost interventions the homeowner can request immediately.
+     - Which marketing channels are being used and which critical ones are missing.
+     - Whether the estate agent is running a proactive or reactive marketing strategy.
+     - The most effective low-cost interventions the homeowner can request immediately.
 
 PROFESSIONAL REVIEW format rules:
-- key_findings: EXACTLY 5 items. One finding from each dimension above. Mix: 3–4 issues, 1–2 strengths.
-  Each description: 2 sentences. First sentence states the specific issue with evidence from the answers.
-  Second sentence explains why this is costing them viewings or offers.
-- action_plan: EXACTLY 5 items — 2 URGENT, 2 HIGH, 1 MEDIUM. Ordered URGENT → HIGH → MEDIUM.
-  Each action: specific, with named tools, portals, or techniques (e.g. "Rightmove Premium Listing", "Zoopla Spotlight").
-  Each bullet: a complete, specific instruction with a measurable outcome.
+- key_findings: EXACTLY 5 items. One finding from each dimension above. Mix: 3-4 issues, 1-2 strengths.
+  Each description must be noticeably more analytical than Quick Insight.
+  Use EXACTLY 3 sentences: sentence 1 states the specific issue with evidence from the answers,
+  sentence 2 explains why this is costing them viewings or offers, and sentence 3 states the market or buyer-behaviour implication.
+- action_plan: EXACTLY 5 items - 2 URGENT, 2 HIGH, 1 MEDIUM. Ordered URGENT -> HIGH -> MEDIUM.
+  Each action should feel strategic, linking the recommendation to buyer response, portal positioning, or pricing leverage.
+  Each action description should explain why the action matters and what it should improve.
+  Each bullet must be a complete, specific instruction with a measurable outcome or clear success signal.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Note sold dates where possible.
 - pricing_recommendation: One specific sentence including the recommended adjusted price or range.
-- pricing_recommendation_detail: 3 sentences: current position analysis, what a reduction triggers on Rightmove,
-  and the expected change in viewings within 14 days.
-- executive_summary: 3–4 sentences. Reference viewings count, buyer feedback, marketing gaps, and the
-  single most impactful action. Sound like a human professional, not an AI summary."""
+- pricing_recommendation_detail: EXACTLY 4 sentences covering current position analysis, what a reduction triggers on Rightmove,
+  how buyers are likely interpreting the current price, and the expected change in viewings within 14 days.
+- executive_summary: EXACTLY 4 sentences. Reference viewings count, buyer feedback, marketing gaps, the single most impactful action,
+  and why buyers are choosing competing listings instead. It should sound like a human professional, not an AI summary."""
 
-        max_tokens_val = 5500
-        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report: thorough, behavioural, and deeply specific to this homeowner's data. Cover all five assessment dimensions. Return only valid JSON. No markdown, no code fences."
+        max_tokens_val = 6400
+        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and more strategic than Quick Insight, while staying deeply specific to this homeowner's data. Cover all five assessment dimensions. Return only valid JSON. No markdown, no code fences."
 
-    # ── Shared JSON schema instruction (all tiers) ───────────────────────────────
     schema_block = f"""
 {property_context}
 

@@ -1319,7 +1319,7 @@ export function StaleListingsLanding() {
           style={{ maxWidth:1440, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, padding:'28px 100px', borderTop:'1px solid #EFEFEF', background:'#fff' }}
         >
           <img src="/stale-logo.png" alt="StaleListings" style={{ height:32, width:'auto', display:'block', flexShrink:0 }} />
-          <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#1F1F1E', textAlign:'center' }}>© 2025 StaleListings. All rights reserved.</span>
+          <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#1F1F1E', textAlign:'center' }}>© 2026 StaleListings. All rights reserved.</span>
           <div className="sl-footer-links" style={{ display:'flex', gap:24, flexShrink:0 }}>
             <a href="/privacy-policy" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Privacy Policy</a>
             <a href="/terms" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Terms</a>

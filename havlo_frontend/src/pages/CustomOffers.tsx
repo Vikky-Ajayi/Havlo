@@ -3151,7 +3151,7 @@ export const CustomOffers: React.FC = () => {
       <footer className="co-footer">
         <div className="co-inner co-footer-inner">
           <BrandLockup />
-          <div className="co-footer-copy">© 2025 StaleListings. All rights reserved.</div>
+          <div className="co-footer-copy">© 2026 Custom Offers. All rights reserved.</div>
           <div className="co-footer-links">
             <a href="/privacy-policy">Privacy Policy</a>
             <a href="/terms">Terms</a>

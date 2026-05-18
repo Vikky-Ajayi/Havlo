@@ -15,7 +15,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -535,6 +535,29 @@ async def diag_email_test(request: Request) -> JSONResponse:
     return JSONResponse({"ok": bool(sent), "to": to})
 
 
+@app.get(
+    "/api/v1/diag/email/preview/{template_name}",
+    tags=["Health"],
+    response_class=HTMLResponse,
+    response_model=None,
+)
+async def diag_email_preview(template_name: str, request: Request):
+    """Render a protected HTML preview for any production email template."""
+    if not _check_diag_token(request):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+    from app.services import email_service as _es
+
+    frontend_base = (request.query_params.get("frontend_base") or "").strip() or None
+    try:
+        html = _es.render_email_preview(template_name, frontend_base_url=frontend_base)
+    except KeyError:
+        return JSONResponse(
+            {"error": "unknown_template", "templates": _es.preview_template_names()},
+            status_code=404,
+        )
+    return HTMLResponse(content=html)
+
+
 @app.get("/api/v1/config", tags=["Config"])
 async def public_config() -> JSONResponse:
     """Return public frontend configuration values (no secrets)."""
@@ -651,7 +674,7 @@ app.include_router(custom_offers.admin_router, prefix=API_PREFIX)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import PlainTextResponse, Response
 from app.seo import lookup as seo_lookup, inject as seo_inject, PAGE_SEO, SITE_BASE
 from datetime import date
 

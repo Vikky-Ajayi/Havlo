@@ -19,10 +19,13 @@ is sent before Resend is contacted.
 from __future__ import annotations
 
 import asyncio
+import base64
 import html as _html_lib
 import logging
 import time
-from typing import Optional
+from pathlib import Path
+from typing import Iterable, Optional
+from urllib.parse import quote
 
 from app.config import get_settings
 
@@ -133,6 +136,418 @@ async def _send_async(to_email: str, subject: str, html_body: str, plain_body: s
     return await asyncio.to_thread(_send_sync, to_email, subject, html_body, plain_body)
 
 
+_EMAIL_PREVIEW_TEMPLATES = (
+    "welcome",
+    "inbox-notice",
+    "admin-notice",
+    "custom-offer-confirmation",
+    "custom-offer-status",
+    "stale-report-ready",
+    "stale-agent-notification",
+)
+
+
+def _frontend_base_url(*, preview: bool = False, override: str | None = None) -> str:
+    if override and override.strip():
+        return override.strip().rstrip("/")
+
+    configured = (get_settings().FRONTEND_URL or "").strip().rstrip("/")
+    if preview:
+        if configured and ("localhost" in configured or "127.0.0.1" in configured):
+            return "http://localhost:5001"
+        return configured or "http://localhost:5001"
+
+    if configured and "localhost" not in configured and "127.0.0.1" not in configured:
+        return configured
+    return "https://www.heyhavlo.com"
+
+
+def _email_asset_url(
+    asset_path: str,
+    *,
+    preview: bool = False,
+    frontend_base_url: str | None = None,
+) -> str:
+    clean_path = asset_path.lstrip("/")
+    encoded_path = "/".join(quote(part) for part in clean_path.split("/"))
+    return f"{_frontend_base_url(preview=preview, override=frontend_base_url)}/{encoded_path}"
+
+
+def _email_brand(frontend_base_url: str | None = None, *, preview: bool = False) -> dict[str, str]:
+    s = get_settings()
+    support_email = (s.SUPPORT_EMAIL or "support@Havlo.com").strip()
+    phone_display = (s.EMAIL_SUPPORT_PHONE_DISPLAY or "+44 292 1819 1819").strip()
+    phone_link = (s.EMAIL_SUPPORT_PHONE_LINK or "+4429218191819").strip().replace(" ", "")
+    hero_url = (s.EMAIL_HERO_IMAGE_URL or "").strip() or _email_asset_url(
+        "email-assets/havlo-email-hero.png",
+        preview=preview,
+        frontend_base_url=frontend_base_url,
+    )
+    return {
+        "support_email": support_email,
+        "support_email_escaped": _html_lib.escape(support_email),
+        "phone_display": phone_display,
+        "phone_link": f"tel:{_html_lib.escape(phone_link)}",
+        "facebook_url": (s.EMAIL_SOCIAL_FACEBOOK_URL or "https://www.facebook.com/profile.php?id=61586495581183").strip(),
+        "instagram_url": (s.EMAIL_SOCIAL_INSTAGRAM_URL or "https://www.instagram.com/heyhavlo/").strip(),
+        "x_url": (s.EMAIL_SOCIAL_X_URL or "https://x.com/heyhavlo?s=21").strip(),
+        "logo_url": _email_asset_url(
+            "Havlo Black Transparent.png",
+            preview=preview,
+            frontend_base_url=frontend_base_url,
+        ),
+        "hero_url": hero_url,
+        "icon_facebook_url": _email_asset_url(
+            "email-assets/icon-facebook.svg",
+            preview=preview,
+            frontend_base_url=frontend_base_url,
+        ),
+        "icon_instagram_url": _email_asset_url(
+            "email-assets/icon-instagram.svg",
+            preview=preview,
+            frontend_base_url=frontend_base_url,
+        ),
+        "icon_x_url": _email_asset_url(
+            "email-assets/icon-x.svg",
+            preview=preview,
+            frontend_base_url=frontend_base_url,
+        ),
+    }
+
+
+def _email_social_buttons_html(brand: dict[str, str]) -> str:
+    socials = (
+        ("Facebook", brand["facebook_url"], brand["icon_facebook_url"]),
+        ("Instagram", brand["instagram_url"], brand["icon_instagram_url"]),
+        ("X", brand["x_url"], brand["icon_x_url"]),
+    )
+    buttons = []
+    for label, href, icon_url in socials:
+        buttons.append(
+            f'<a href="{_html_lib.escape(href)}" target="_blank" rel="noopener noreferrer" '
+            'style="display:inline-block;margin-left:10px;width:32px;height:32px;border:1px solid rgba(17,17,17,0.14);'
+            'border-radius:8px;background:#FFFFFF;text-decoration:none;text-align:center;line-height:32px;">'
+            f'<img src="{icon_url}" alt="{label}" width="16" height="16" '
+            'style="display:inline-block;vertical-align:middle;margin-top:7px;" /></a>'
+        )
+    return "".join(buttons)
+
+
+def _email_button_html(url: str, label: str, *, accent: str = "#000000", text_color: str = "#FFFFFF") -> str:
+    return (
+        f'<a href="{_html_lib.escape(url)}" '
+        f'style="display:inline-block;background:{accent};color:{text_color};text-decoration:none;'
+        'padding:14px 28px;border-radius:8px;font-weight:700;font-size:14px;line-height:18px;">'
+        f"{_html_lib.escape(label)}</a>"
+    )
+
+
+def _email_phone_banner_html(brand: dict[str, str], eyebrow: str, headline: str) -> str:
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="margin:0 0 26px 0;background:#060606;border-radius:0;">
+      <tr>
+        <td style="padding:22px 20px;background:
+            linear-gradient(135deg, #000000 0%, #000000 14%, #2a2a2a 14%, #2a2a2a 28%, #000000 28%, #000000 100%);
+            text-align:center;">
+          <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:700;letter-spacing:0.4px;color:#FFFFFF;text-transform:uppercase;">
+            {_html_lib.escape(eyebrow)}
+          </p>
+          <a href="{brand["phone_link"]}" style="color:#FFFFFF;text-decoration:none;font-size:18px;line-height:24px;font-weight:800;">
+            {_html_lib.escape(headline)}
+          </a>
+        </td>
+      </tr>
+    </table>
+    """
+
+
+def _email_arrow_list_html(items: Iterable[str]) -> str:
+    rows: list[str] = []
+    for item in items:
+        rows.append(
+            "<tr>"
+            '<td valign="top" width="26" style="padding:6px 8px 10px 0;font-size:26px;line-height:24px;color:#8C133B;font-weight:700;">'
+            "&#8594;</td>"
+            f'<td style="padding:6px 0 10px 0;font-size:15px;line-height:24px;color:#556274;">{_html_lib.escape(item)}</td>'
+            "</tr>"
+        )
+    return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">" + "".join(rows) + "</table>"
+
+
+def _email_value_table_html(fields: dict[str, str]) -> str:
+    rows = []
+    for index, (key, value) in enumerate(fields.items()):
+        bg = "#F8F8F8" if index % 2 == 0 else "#FFFFFF"
+        rows.append(
+            f"<tr style=\"background:{bg};\">"
+            f"<td style=\"padding:11px 14px;font-size:13px;line-height:18px;font-weight:700;color:#111111;border-bottom:1px solid #ECECEC;\">{_html_lib.escape(str(key))}</td>"
+            f"<td style=\"padding:11px 14px;font-size:13px;line-height:18px;color:#4F5A68;border-bottom:1px solid #ECECEC;\">{_html_lib.escape(str(value))}</td>"
+            "</tr>"
+        )
+    return (
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="border:1px solid #ECECEC;border-radius:10px;overflow:hidden;">'
+        + "".join(rows)
+        + "</table>"
+    )
+
+
+def _email_shell_html(
+    *,
+    title: str,
+    preheader: str,
+    body_html: str,
+    brand: dict[str, str],
+    show_hero: bool = True,
+) -> str:
+    hero_html = ""
+    if show_hero:
+        hero_html = f"""
+        <tr>
+          <td class="havlo-pad-x" style="padding:18px 48px 0 48px;">
+            <img src="{brand["hero_url"]}" alt="Havlo property illustration" width="508"
+                 style="display:block;width:100%;max-width:508px;height:auto;" />
+          </td>
+        </tr>
+        """
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{_html_lib.escape(title)}</title>
+<style>
+  body {{ margin:0; padding:0; background:#F4F4F4; }}
+  table {{ border-collapse:collapse; }}
+  img {{ border:0; outline:none; text-decoration:none; display:block; }}
+  a {{ color:#3247E5; text-decoration:none; }}
+  .havlo-card {{ width:600px; max-width:600px; }}
+  .havlo-pad-x {{ padding-left:48px; padding-right:48px; }}
+  .havlo-body-copy {{ font-size:15px; line-height:28px; color:#556274; }}
+  .havlo-heading {{ font-size:28px; line-height:36px; font-weight:800; letter-spacing:-0.8px; color:#556274; }}
+  .havlo-subheading {{ font-size:16px; line-height:24px; color:#556274; }}
+  @media only screen and (max-width: 620px) {{
+    .havlo-card {{ width:100% !important; max-width:100% !important; }}
+    .havlo-pad-x {{ padding-left:16px !important; padding-right:16px !important; }}
+    .havlo-heading {{ font-size:24px !important; line-height:32px !important; }}
+    .havlo-body-copy {{ font-size:14px !important; line-height:24px !important; }}
+  }}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F4F4F4;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F4F4F4;">
+  {_html_lib.escape(preheader)}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4F4F4">
+  <tr>
+    <td align="center" style="padding:42px 16px 22px;">
+      <table role="presentation" class="havlo-card" cellpadding="0" cellspacing="0" border="0"
+             style="background:#FFFFFF;border:1px solid rgba(207,207,206,0.24);width:600px;max-width:600px;">
+        <tr>
+          <td class="havlo-pad-x" style="padding:34px 48px 0 48px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="left">
+                  <img src="{brand["logo_url"]}" alt="Havlo" width="137" style="display:block;width:137px;max-width:100%;height:auto;" />
+                </td>
+                <td align="right" style="white-space:nowrap;">
+                  {_email_social_buttons_html(brand)}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {hero_html}
+        {body_html}
+      </table>
+
+      <table role="presentation" class="havlo-card" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
+        <tr>
+          <td align="center" style="padding:18px 16px 8px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:22px;color:#556274;">
+            If you ever need support, we're always here:
+            <a href="mailto:{brand["support_email_escaped"]}" style="color:#3247E5;text-decoration:none;">{brand["support_email_escaped"]}</a>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 16px 24px 16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#556274;">
+            Copyright &copy;Havlo. All rights reserved.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+"""
+
+
+def preview_template_names() -> list[str]:
+    return list(_EMAIL_PREVIEW_TEMPLATES)
+
+
+_PUBLIC_DIR = Path(__file__).resolve().parents[2] / "havlo_frontend" / "public"
+
+
+def _asset_data_uri(public_relative_path: str) -> str:
+    file_path = _PUBLIC_DIR / public_relative_path
+    if not file_path.exists():
+        return ""
+    suffix = file_path.suffix.lower()
+    mime = {
+        ".png": "image/png",
+        ".svg": "image/svg+xml",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+    }.get(suffix, "application/octet-stream")
+    encoded = base64.b64encode(file_path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
+
+
+def _inline_preview_assets(html: str, frontend_base_url: str | None = None) -> str:
+    preview_brand = _email_brand(frontend_base_url, preview=True)
+    default_brand = _email_brand()
+    replacements = {}
+    for brand in (preview_brand, default_brand):
+        replacements[brand["logo_url"]] = _asset_data_uri("Havlo Black Transparent.png")
+        replacements[brand["hero_url"]] = _asset_data_uri("email-assets/havlo-email-hero.png")
+        replacements[brand["icon_facebook_url"]] = _asset_data_uri("email-assets/icon-facebook.svg")
+        replacements[brand["icon_instagram_url"]] = _asset_data_uri("email-assets/icon-instagram.svg")
+        replacements[brand["icon_x_url"]] = _asset_data_uri("email-assets/icon-x.svg")
+    rendered = html
+    for old, new in replacements.items():
+        if old and new:
+            rendered = rendered.replace(old, new)
+    return rendered
+
+
+def render_email_preview(template_name: str, frontend_base_url: str | None = None) -> str:
+    key = (template_name or "").strip().lower()
+    brand = _email_brand(frontend_base_url, preview=True)
+    if key == "welcome":
+        html = _welcome_html("First Name", brand["support_email"])
+    elif key == "inbox-notice":
+        html = _inbox_notice_html(
+            "First Name",
+            "Havlo Property Expert",
+            "Based on what you shared, the next step is a short conversation with one of our property experts.",
+            "https://www.heyhavlo.com/dashboard/messages",
+        )
+    elif key == "admin-notice":
+        html = _admin_notice_html(
+            "Buy Abroad Enquiries",
+            "A new Havlo lead has been captured and added to the sheet.",
+            {
+                "Name": "First Name Last Name",
+                "Email": "lead@example.com",
+                "Country": "Portugal",
+                "Timeline": "Within 6 months",
+            },
+        )
+    elif key == "custom-offer-confirmation":
+        html = _email_shell_html(
+            title="CustomOffer submission received",
+            preheader="Your CustomOffer proposal has been submitted.",
+            brand=brand,
+            show_hero=True,
+            body_html=f"""
+            <tr>
+              <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+                <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi First Name,</p>
+                <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Your proposal has been submitted.</h1>
+                <p class="havlo-body-copy" style="margin:0 0 14px 0;">Your CustomOffer proposal for <strong style="color:#111111;">14 Ashford Road, Bristol BS3 4TH</strong> has been securely delivered for homeowner review.</p>
+                <p style="margin:0 0 18px 0;font-size:14px;line-height:24px;color:#556274;">Reference: <strong style="color:#111111;">CO-1A2B3C</strong></p>
+              </td>
+            </tr>
+            <tr><td class="havlo-pad-x" style="padding:0 48px 0 48px;">{_email_phone_banner_html(brand, "Call us here", brand["phone_display"])}</td></tr>
+            <tr>
+              <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+                <div style="text-align:left;margin-bottom:18px;">{_email_button_html("https://www.heyhavlo.com/custom-offers/status/CO-1A2B3C", "View proposal status")}</div>
+                <p class="havlo-body-copy" style="margin:0;">We'll notify you if the homeowner chooses to engage.</p>
+              </td>
+            </tr>
+            """,
+        )
+    elif key == "custom-offer-status":
+        html = _email_shell_html(
+            title="CustomOffer status update",
+            preheader="Your CustomOffer status has changed.",
+            brand=brand,
+            show_hero=True,
+            body_html=f"""
+            <tr>
+              <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+                <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi First Name,</p>
+                <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Your proposal status has changed.</h1>
+                <p class="havlo-body-copy" style="margin:0 0 14px 0;">Your CustomOffer submission <strong style="color:#111111;">CO-1A2B3C</strong> is now marked as <strong style="color:#111111;">Seller reviewing proposal</strong>.</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+                <div style="text-align:left;margin-bottom:18px;">{_email_button_html("https://www.heyhavlo.com/custom-offers/status/CO-1A2B3C", "View proposal status")}</div>
+                <p class="havlo-body-copy" style="margin:0;">We'll keep you updated as soon as anything changes on the seller side.</p>
+              </td>
+            </tr>
+            """,
+        )
+    elif key == "stale-report-ready":
+        html = _email_shell_html(
+            title="Your StaleListings report is ready",
+            preheader="Your StaleListings property assessment report is ready.",
+            brand=brand,
+            show_hero=True,
+            body_html=f"""
+            <tr>
+              <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+                <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi First Name,</p>
+                <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Your report is ready.</h1>
+                <p class="havlo-body-copy" style="margin:0 0 14px 0;">Your StaleListings property assessment has been reviewed and your personalised report is now available.</p>
+                <p style="margin:0 0 18px 0;font-size:14px;line-height:24px;color:#556274;">Reference: <strong style="color:#111111;">SL-Q44816</strong></p>
+              </td>
+            </tr>
+            <tr>
+              <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+                <div style="text-align:left;margin-bottom:18px;">{_email_button_html("https://www.heyhavlo.com/stale-listings/report/SL-Q44816", "View my report")}</div>
+                <p class="havlo-body-copy" style="margin:0;">Inside your report you'll find your listing score, key findings, and a prioritised action plan.</p>
+              </td>
+            </tr>
+            """,
+        )
+    elif key == "stale-agent-notification":
+        html = _email_shell_html(
+            title="New StaleListings assessment",
+            preheader="A new StaleListings assessment needs review.",
+            brand=brand,
+            show_hero=False,
+            body_html=f"""
+            <tr>
+              <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+                <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#8C133B;text-transform:uppercase;">Internal alert</p>
+                <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#556274;">New assessment needs review</h1>
+                <p class="havlo-body-copy" style="margin:0 0 18px 0;">A new StaleListings assessment has been submitted and the AI report has been generated.</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="havlo-pad-x" style="padding:0 48px 14px 48px;">{_email_value_table_html({"Client": "Jane Seller", "Email": "jane@example.com", "Reference": "SL-Q44816", "Package": "Professional Review (GBP 299.99)"})}</td>
+            </tr>
+            <tr>
+              <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+                <div style="text-align:left;margin-bottom:18px;">{_email_button_html("https://www.heyhavlo.com/dashboard/stale-listings", "Review in dashboard")}</div>
+                <p class="havlo-body-copy" style="margin:0;">Reference: SL-Q44816 - Sent automatically when an AI report is generated.</p>
+              </td>
+            </tr>
+            """,
+        )
+    else:
+        raise KeyError(key)
+
+    return _inline_preview_assets(html, frontend_base_url)
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # Welcome email — matches the Figma design supplied by the product team.
 # ────────────────────────────────────────────────────────────────────────────
@@ -145,6 +560,93 @@ _WELCOME_HERO_URL = (
 
 def _welcome_html(first_name: str, support_email: str) -> str:
     safe_name = _html_lib.escape(first_name or "there")
+    brand = _email_brand()
+    brand["support_email"] = support_email or brand["support_email"]
+    brand["support_email_escaped"] = _html_lib.escape(brand["support_email"])
+
+    body_html = f"""
+    <tr>
+      <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {safe_name},</p>
+        <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Welcome to Havlo, the future of property is here.</h1>
+        <p class="havlo-body-copy" style="margin:0 0 12px 0;">
+          We're excited to have you join a new kind of property platform — one built to connect opportunity across borders, simplify selling, and unlock global buying power.
+        </p>
+        <p class="havlo-body-copy" style="margin:0 0 16px 0;">
+          At Havlo, we bring together estate agents, homeowners, and international buyers in one seamless place designed for speed, visibility, and trust.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="border:1px solid #F4D4F6;background:#FEEFFF;border-radius:10px;">
+          <tr>
+            <td style="padding:14px 16px 16px 16px;">
+              <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#A0049A;text-transform:uppercase;">Whether you're</p>
+              <p style="margin:0 0 10px 0;font-size:14px;line-height:24px;color:#111111;"><strong>An estate agent</strong> looking to expand your reach and attract serious, qualified buyers</p>
+              <p style="margin:0 0 10px 0;font-size:14px;line-height:24px;color:#111111;"><strong>A homeowner</strong> ready to sell your property with maximum exposure</p>
+              <p style="margin:0 0 10px 0;font-size:14px;line-height:24px;color:#111111;"><strong>A buyer searching</strong> for your next home abroad with confidence and ease</p>
+              <p style="margin:0;font-size:14px;line-height:24px;color:#111111;">Havlo is built to make it happen — faster and smarter.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:18px 48px 0 48px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:#070707;border-radius:10px;">
+          <tr>
+            <td style="padding:16px;">
+              <p style="margin:0 0 12px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#FFFFFF;text-transform:uppercase;">Why Havlo?</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;background:#1A1A1A;border-radius:10px;">
+                <tr>
+                  <td width="38" align="center" style="padding:10px 0 10px 10px;">
+                    <div style="width:28px;height:28px;border-radius:999px;background:#B018B2;color:#FFFFFF;font-size:15px;line-height:28px;text-align:center;">&#127760;</div>
+                  </td>
+                  <td style="padding:12px 14px;font-size:14px;line-height:22px;color:#FFFFFF;">Global property exposure, without the complexity</td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;background:#1A1A1A;border-radius:10px;">
+                <tr>
+                  <td width="38" align="center" style="padding:10px 0 10px 10px;">
+                    <div style="width:28px;height:28px;border-radius:999px;background:#B018B2;color:#FFFFFF;font-size:15px;line-height:28px;text-align:center;">&#8634;</div>
+                  </td>
+                  <td style="padding:12px 14px;font-size:14px;line-height:22px;color:#FFFFFF;">A streamlined experience for international transactions</td>
+                </tr>
+              </table>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1A1A1A;border-radius:10px;">
+                <tr>
+                  <td width="38" align="center" style="padding:10px 0 10px 10px;">
+                    <div style="width:28px;height:28px;border-radius:999px;background:#B018B2;color:#FFFFFF;font-size:15px;line-height:28px;text-align:center;">&#9650;</div>
+                  </td>
+                  <td style="padding:12px 14px;font-size:14px;line-height:22px;color:#FFFFFF;">More visibility for listings, more opportunities for deals</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:22px 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-body-copy" style="margin:0 0 14px 0;">
+          We're not just another property platform — we're building a global bridge for real estate. Your journey starts here, and we're excited to be part of it.
+        </p>
+        <p style="margin:0 0 14px 0;font-size:16px;line-height:26px;color:#111111;font-weight:700;">Welcome to the future of property.</p>
+        <p style="margin:0 0 6px 0;font-size:15px;line-height:24px;color:#556274;">Warm regards,</p>
+        <p style="margin:0;font-size:15px;line-height:24px;color:#111111;font-weight:700;">The Havlo Team.</p>
+      </td>
+    </tr>
+    """
+    return _email_shell_html(
+        title="Welcome to Havlo",
+        preheader="Welcome to Havlo — the future of property is here.",
+        body_html=body_html,
+        brand=brand,
+        show_hero=True,
+    )
     safe_support = _html_lib.escape(support_email or "support@Havlo.com")
 
     # Email-client-safe HTML: tables for layout, inline styles for everything,
@@ -407,9 +909,45 @@ async def send_welcome_email(to_email: str, first_name: str) -> bool:
 def _inbox_notice_html(first_name: str, sender_name: str, snippet: str, inbox_url: str) -> str:
     name_safe = _html_lib.escape(first_name or "there")
     sender_safe = _html_lib.escape(sender_name or "Havlo Advisory")
-    snippet_safe = _html_lib.escape((snippet or "").strip())
-    if not snippet_safe:
-        snippet_safe = "You have a new message in your Havlo inbox."
+    snippet_safe = _html_lib.escape((snippet or "").strip()) or "You have a new message in your Havlo inbox."
+    brand = _email_brand()
+    body_html = f"""
+    <tr>
+      <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {name_safe},</p>
+        <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">You have a new message waiting.</h1>
+        <p class="havlo-body-copy" style="margin:0 0 16px 0;">
+          <strong style="color:#111111;">{sender_safe}</strong> just sent you a new message on Havlo. We've pulled the key preview below so you can pick it up quickly.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 22px 48px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:#FFF4FD;border-left:4px solid #8C133B;border-radius:10px;">
+          <tr>
+            <td style="padding:16px 18px;font-size:15px;line-height:26px;color:#556274;">{snippet_safe}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+        {_email_phone_banner_html(brand, "Open your inbox", "Need help? Call +44 292 1819 1819")}
+        <div style="text-align:left;">{_email_button_html(inbox_url, "Open inbox")}</div>
+        <p class="havlo-body-copy" style="margin:20px 0 0 0;font-size:13px;line-height:22px;">
+          You're receiving this because message notifications are enabled for your Havlo account.
+        </p>
+      </td>
+    </tr>
+    """
+    return _email_shell_html(
+        title="You have a new message",
+        preheader="A new Havlo inbox message is waiting for you.",
+        body_html=body_html,
+        brand=brand,
+        show_hero=True,
+    )
 
     return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8" />
@@ -486,15 +1024,35 @@ def send_inbox_notification_sync(
 # ────────────────────────────────────────────────────────────────────────────
 
 def _admin_notice_html(sheet_tab: str, summary: str, fields: dict[str, str]) -> str:
-    rows = "".join(
-        f"<tr>"
-        f"<td style='padding:6px 12px;font-weight:600;color:#000;border-bottom:1px solid #eee;'>"
-        f"{_html_lib.escape(str(k))}</td>"
-        f"<td style='padding:6px 12px;color:#1F1F1E;border-bottom:1px solid #eee;'>"
-        f"{_html_lib.escape(str(v))}</td>"
-        f"</tr>"
-        for k, v in fields.items()
+    brand = _email_brand()
+    rows = _email_value_table_html(fields)
+    body_html = f"""
+    <tr>
+      <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#8C133B;text-transform:uppercase;">Internal alert</p>
+        <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#556274;">New entry: {_html_lib.escape(sheet_tab)}</h1>
+        <p class="havlo-body-copy" style="margin:0 0 18px 0;">{_html_lib.escape(summary)}</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 14px 48px;">{rows}</td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">
+          Sent automatically when a Havlo website form writes a row to your Google Sheet.
+        </p>
+      </td>
+    </tr>
+    """
+    return _email_shell_html(
+        title=f"New entry: {sheet_tab}",
+        preheader=f"New Havlo form submission for {sheet_tab}.",
+        body_html=body_html,
+        brand=brand,
+        show_hero=False,
     )
+
     return f"""<!DOCTYPE html>
 <html><head><meta charset='UTF-8'></head>
 <body style="margin:0;padding:0;background:#F4F4F4;font-family:Arial,Helvetica,sans-serif;color:#000;">
@@ -568,6 +1126,47 @@ def send_custom_offer_buyer_confirmation_sync(
     safe_reference = _html_lib.escape(reference)
     safe_property = _html_lib.escape(property_address or "your selected property")
     safe_status_url = _html_lib.escape(status_url)
+    brand = _email_brand()
+    html_body = _email_shell_html(
+        title="CustomOffer submission received",
+        preheader="Your CustomOffer proposal has been submitted.",
+        brand=brand,
+        show_hero=True,
+        body_html=f"""
+        <tr>
+          <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+            <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {safe_name},</p>
+            <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Your proposal has been submitted.</h1>
+            <p class="havlo-body-copy" style="margin:0 0 14px 0;">
+              Your CustomOffer proposal for <strong style="color:#111111;">{safe_property}</strong> has been securely delivered for homeowner review.
+            </p>
+            <p style="margin:0 0 18px 0;font-size:14px;line-height:24px;color:#556274;">Reference: <strong style="color:#111111;">{safe_reference}</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 0 48px;">{_email_phone_banner_html(brand, "Call us here", brand["phone_display"])}</td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+            <div style="text-align:left;margin-bottom:18px;">{_email_button_html(status_url, "View proposal status")}</div>
+            <p class="havlo-body-copy" style="margin:0 0 12px 0;">We'll notify you if the homeowner chooses to engage.</p>
+            <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">Seller responses are not guaranteed, and submission fees are non-refundable once outreach has started.</p>
+          </td>
+        </tr>
+        """,
+    )
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Your CustomOffer proposal has been submitted for {property_address or 'your selected property'}.\n"
+        f"Reference: {reference}\n\n"
+        f"Track status here:\n{status_url}\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[CustomOffer] Proposal submitted - {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
     html_body = f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CustomOffer submission received</title></head>
@@ -634,6 +1233,41 @@ def send_custom_offer_status_update_sync(
     safe_reference = _html_lib.escape(reference)
     safe_status = _html_lib.escape(status_label)
     safe_status_url = _html_lib.escape(status_url)
+    brand = _email_brand()
+    html_body = _email_shell_html(
+        title="CustomOffer status update",
+        preheader="Your CustomOffer status has changed.",
+        brand=brand,
+        show_hero=True,
+        body_html=f"""
+        <tr>
+          <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+            <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {safe_name},</p>
+            <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Your proposal status has changed.</h1>
+            <p class="havlo-body-copy" style="margin:0 0 12px 0;">
+              Your CustomOffer submission <strong style="color:#111111;">{safe_reference}</strong> is now marked as <strong style="color:#111111;">{safe_status}</strong>.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+            <div style="text-align:left;margin-bottom:18px;">{_email_button_html(status_url, "View proposal status")}</div>
+            <p class="havlo-body-copy" style="margin:0;">We'll keep you updated as soon as anything changes on the seller side.</p>
+          </td>
+        </tr>
+        """,
+    )
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Your CustomOffer submission {reference} is now marked as {status_label}.\n\n"
+        f"Track status here:\n{status_url}\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[CustomOffer] Status update - {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
     html_body = f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CustomOffer status update</title></head>
@@ -710,6 +1344,12 @@ def diagnostics() -> dict:
         "key_present": bool(s.RESEND_API_KEY),
         "from_email": s.EMAIL_FROM or None,
         "provider": "resend",
+        "preview_templates": preview_template_names(),
+        "social_links": {
+            "facebook": s.EMAIL_SOCIAL_FACEBOOK_URL,
+            "instagram": s.EMAIL_SOCIAL_INSTAGRAM_URL,
+            "x": s.EMAIL_SOCIAL_X_URL,
+        },
     }
 
 
@@ -734,6 +1374,45 @@ def send_stale_listing_report_ready_sync(
 ) -> bool:
     """Send a report-ready notification to the homeowner."""
     report_url = f"https://heyhavlo.com/stale-listings/report/{reference}"
+    brand = _email_brand()
+    html_body = _email_shell_html(
+        title="Your StaleListings report is ready",
+        preheader="Your StaleListings property assessment report is ready.",
+        brand=brand,
+        show_hero=True,
+        body_html=f"""
+        <tr>
+          <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+            <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {_html_lib.escape(first_name)},</p>
+            <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Your report is ready.</h1>
+            <p class="havlo-body-copy" style="margin:0 0 14px 0;">
+              Your StaleListings property assessment has been reviewed and your personalised report is now available.
+            </p>
+            <p style="margin:0 0 18px 0;font-size:14px;line-height:24px;color:#556274;">Reference: <strong style="color:#111111;">{_html_lib.escape(reference)}</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+            <div style="text-align:left;margin-bottom:18px;">{_email_button_html(report_url, "View my report")}</div>
+            <p class="havlo-body-copy" style="margin:0 0 10px 0;">Inside your report you'll find your listing score, key findings, and a prioritised action plan.</p>
+            <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">If the button doesn't work, copy and paste this link into your browser:<br /><a href="{_html_lib.escape(report_url)}" style="color:#3247E5;text-decoration:none;">{_html_lib.escape(report_url)}</a></p>
+          </td>
+        </tr>
+        """,
+    )
+    plain_body = (
+        f"Hi {first_name},\n\n"
+        f"Your StaleListings property assessment report is ready.\n\n"
+        f"Reference: {reference}\n\n"
+        f"View your report here:\n{report_url}\n\n"
+        "© 2026 Havlo Ltd. StaleListings by Havlo."
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[StaleListings] Your report is ready — {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
     html_body = f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your StaleListings Report is Ready</title></head>
@@ -813,6 +1492,7 @@ def send_stale_listing_agent_notification_sync(
         "premium_strategy": "Premium Strategy (£1,499.99)",
     }
     package_label = package_labels.get(package, package)
+    brand = _email_brand()
 
     rows_html = ""
     fields = {
@@ -829,6 +1509,48 @@ def send_stale_listing_agent_notification_sync(
           <td style="padding:10px 16px;font-size:13px;color:#6b7280;width:38%;border-bottom:1px solid #f0f0f0;">{_html_lib.escape(k)}</td>
           <td style="padding:10px 16px;font-size:13px;color:#111827;font-weight:600;border-bottom:1px solid #f0f0f0;">{_html_lib.escape(v)}</td>
         </tr>"""
+
+    html_body = _email_shell_html(
+        title="New StaleListings assessment",
+        preheader="A new StaleListings assessment needs review.",
+        brand=brand,
+        show_hero=False,
+        body_html=f"""
+        <tr>
+          <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+            <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#8C133B;text-transform:uppercase;">Internal alert</p>
+            <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#556274;">New assessment needs review</h1>
+            <p class="havlo-body-copy" style="margin:0 0 18px 0;">
+              A new StaleListings assessment has been submitted and the AI report has been generated. Review it in the dashboard before sending it to the client.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 14px 48px;">{_email_value_table_html(fields)}</td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+            <div style="text-align:left;margin-bottom:18px;">{_email_button_html(admin_url, "Review in dashboard")}</div>
+            <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">Reference: {_html_lib.escape(reference)} · Sent automatically when an AI report is generated.</p>
+          </td>
+        </tr>
+        """,
+    )
+    plain_body = (
+        f"New StaleListings assessment needs review.\n\n"
+        f"Client: {first_name} {last_name}\n"
+        f"Email: {email}\n"
+        f"Reference: {reference}\n"
+        f"Package: {package_label}\n"
+        f"Property: {property_address or 'Not provided'}\n\n"
+        f"Review in dashboard: {admin_url}\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[StaleListings] New assessment needs review — {reference}",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
 
     html_body = f"""<!DOCTYPE html>
 <html lang="en">
