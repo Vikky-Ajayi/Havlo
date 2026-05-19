@@ -142,6 +142,7 @@ _EMAIL_PREVIEW_TEMPLATES = (
     "admin-notice",
     "custom-offer-confirmation",
     "custom-offer-status",
+    "product-access-magic-link",
     "stale-report-ready",
     "stale-agent-notification",
 )
@@ -273,6 +274,45 @@ def _email_arrow_list_html(items: Iterable[str]) -> str:
             "</tr>"
         )
     return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">" + "".join(rows) + "</table>"
+
+
+def _product_access_magic_link_html(
+    email: str,
+    scope_label: str,
+    magic_link: str,
+    *,
+    first_name: str = "",
+) -> str:
+    brand = _email_brand()
+    safe_name = _html_lib.escape(first_name.strip() or "there")
+    safe_scope = _html_lib.escape(scope_label)
+    safe_email = _html_lib.escape(email)
+    body_html = f"""
+    <tr>
+      <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {safe_name},</p>
+        <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Sign in easily without a password.</h1>
+        <p class="havlo-body-copy" style="margin:0 0 14px 0;">
+          Use the secure magic link below to access your <strong style="color:#111111;">{safe_scope}</strong> updates with the email address
+          <strong style="color:#111111;">{safe_email}</strong>.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 18px 48px;font-family:Arial,Helvetica,sans-serif;">
+        <div style="text-align:left;margin-bottom:16px;">{_email_button_html(magic_link, "Sign in with magic link", accent="#000000", text_color="#FFFFFF")}</div>
+        <p class="havlo-body-copy" style="margin:0 0 10px 0;font-size:13px;line-height:22px;">This link expires in 30 minutes and can only be used once.</p>
+        <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">If the button doesn't work, copy and paste this link into your browser:<br /><a href="{_html_lib.escape(magic_link)}" style="color:#3247E5;text-decoration:none;">{_html_lib.escape(magic_link)}</a></p>
+      </td>
+    </tr>
+    """
+    return _email_shell_html(
+        title=f"{scope_label} sign in link",
+        preheader=f"Use this secure magic link to access your {scope_label} updates.",
+        body_html=body_html,
+        brand=brand,
+        show_hero=True,
+    )
 
 
 def _email_value_table_html(fields: dict[str, str]) -> str:
@@ -493,6 +533,13 @@ def render_email_preview(template_name: str, frontend_base_url: str | None = Non
               </td>
             </tr>
             """,
+        )
+    elif key == "product-access-magic-link":
+        html = _product_access_magic_link_html(
+            "first.last@example.com",
+            "Stale Listings",
+            "https://www.heyhavlo.com/stale-listings/access?token=preview-token",
+            first_name="First Name",
         )
     elif key == "stale-report-ready":
         html = _email_shell_html(
@@ -1367,6 +1414,43 @@ def send_test_email(to_email: str) -> bool:
     )
 
 
+def send_product_access_magic_link_sync(
+    to_email: str,
+    *,
+    scope_label: str,
+    magic_link: str,
+    first_name: str = "",
+) -> bool:
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Use this secure magic link to access your {scope_label} updates:\n"
+        f"{magic_link}\n\n"
+        "This link expires in 30 minutes and can only be used once.\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[{scope_label}] Your secure sign-in link",
+        html_body=_product_access_magic_link_html(to_email, scope_label, magic_link, first_name=first_name),
+        plain_body=plain_body,
+    )
+
+
+async def send_product_access_magic_link(
+    to_email: str,
+    *,
+    scope_label: str,
+    magic_link: str,
+    first_name: str = "",
+) -> bool:
+    return await asyncio.to_thread(
+        send_product_access_magic_link_sync,
+        to_email,
+        scope_label=scope_label,
+        magic_link=magic_link,
+        first_name=first_name,
+    )
+
+
 def send_stale_listing_report_ready_sync(
     to_email: str,
     first_name: str,
@@ -1624,6 +1708,8 @@ __all__ = [
     "send_welcome_email_sync",
     "send_inbox_notification",
     "send_inbox_notification_sync",
+    "send_product_access_magic_link",
+    "send_product_access_magic_link_sync",
     "send_test_email",
     "diagnostics",
     "is_configured",

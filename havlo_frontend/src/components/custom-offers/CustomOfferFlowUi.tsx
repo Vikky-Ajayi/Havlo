@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ProductAccessModal } from '../product-access/ProductAccessModal';
+import { clearProductAccessSession, readProductAccessSession } from '../../lib/productAccess';
 
 const PURPLE = '#A409D2';
 
@@ -12,15 +14,39 @@ export function CustomOfferFlowShell(props: {
   background?: string;
 }) {
   const { eyebrow, title, subtitle, children, contentWidth = 820, background = '#F5F6F7' } = props;
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accessModalOpen, setAccessModalOpen] = useState(false);
+  const [accessEmail, setAccessEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAccessEmail(readProductAccessSession('custom-offers')?.email ?? null);
+  }, []);
 
   useEffect(() => {
     const original = document.body.style.overflow;
-    document.body.style.overflow = menuOpen ? 'hidden' : original;
+    document.body.style.overflow = menuOpen || accessModalOpen ? 'hidden' : original;
     return () => {
       document.body.style.overflow = original;
     };
-  }, [menuOpen]);
+  }, [accessModalOpen, menuOpen]);
+
+  const handleOpenPortal = () => {
+    navigate('/custom-offers/portal');
+    setMenuOpen(false);
+  };
+
+  const handleOpenSignIn = () => {
+    setAccessModalOpen(true);
+    setMenuOpen(false);
+  };
+
+  const handleSignOut = () => {
+    clearProductAccessSession('custom-offers');
+    setAccessEmail(null);
+    setMenuOpen(false);
+    navigate('/custom-offers');
+  };
 
   return (
     <div style={{ minHeight: '100vh', background, fontFamily: 'Inter, sans-serif', color: '#111111' }}>
@@ -54,6 +80,28 @@ export function CustomOfferFlowShell(props: {
           color: #111111;
           font-size: 15px;
           letter-spacing: -0.02em;
+        }
+        .cof-auth-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          margin-left: 18px;
+        }
+        .cof-auth-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 44px;
+          padding: 0 18px;
+          border-radius: 14px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          background: #FFFFFF;
+          color: #111111;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: -0.02em;
+          text-decoration: none;
+          cursor: pointer;
         }
         .cof-menu-button {
           display: none;
@@ -250,6 +298,9 @@ export function CustomOfferFlowShell(props: {
           .cof-secure {
             display: none;
           }
+          .cof-auth-row {
+            display: none;
+          }
           .cof-menu-button {
             display: inline-flex;
           }
@@ -310,6 +361,22 @@ export function CustomOfferFlowShell(props: {
             <span aria-hidden="true">🔒</span>
             <span>Secure assessment · SSL encrypted</span>
           </div>
+          <div className="cof-auth-row">
+            {accessEmail ? (
+              <>
+                <button type="button" className="cof-auth-button" onClick={handleOpenPortal}>
+                  My submissions
+                </button>
+                <button type="button" className="cof-auth-button" onClick={handleSignOut}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button type="button" className="cof-auth-button" onClick={handleOpenSignIn}>
+                Sign in
+              </button>
+            )}
+          </div>
 
           <button type="button" className="cof-menu-button" onClick={() => setMenuOpen(true)} aria-label="Open navigation menu">
             <HamburgerIcon />
@@ -327,9 +394,25 @@ export function CustomOfferFlowShell(props: {
         </div>
         <nav className="cof-drawer-links">
           <a href="/custom-offers#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
-          <a href="/custom-offers#faq" onClick={() => setMenuOpen(false)}>Faq</a>
+          <a href="/custom-offers#faq" onClick={() => setMenuOpen(false)}>FAQ</a>
           <a href="/custom-offers#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
         </nav>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+          {accessEmail ? (
+            <>
+              <button type="button" className="cof-auth-button" onClick={handleOpenPortal}>
+                My submissions
+              </button>
+              <button type="button" className="cof-auth-button" onClick={handleSignOut}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button type="button" className="cof-auth-button" onClick={handleOpenSignIn}>
+              Sign in
+            </button>
+          )}
+        </div>
       </aside>
 
       <div className="cof-root">
@@ -344,6 +427,14 @@ export function CustomOfferFlowShell(props: {
           {children}
         </div>
       </div>
+      <ProductAccessModal
+        scope="custom-offers"
+        isOpen={accessModalOpen}
+        onClose={() => {
+          setAccessModalOpen(false);
+          setAccessEmail(readProductAccessSession('custom-offers')?.email ?? null);
+        }}
+      />
     </div>
   );
 }

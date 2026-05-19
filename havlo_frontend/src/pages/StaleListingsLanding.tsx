@@ -1,28 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { Footer } from '../components/shared/Footer';
+import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
+import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
 
 const PURPLE = '#A409D2';
 
 /* ─── SVG ICONS ─── */
-const StaleListingsLogo = () => (
-  <svg width="165" height="28" viewBox="0 0 165 28" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0}}>
-    <path d="M8.63887 21.9613C5.91631 21.9613 3.79349 21.3187 2.27038 20.0336C0.756793 18.7485 0 16.9493 0 14.6361H4.2409C4.26946 15.807 4.67403 16.7208 5.45462 17.3777C6.23521 18.025 7.30615 18.3487 8.66742 18.3487C9.88591 18.3487 10.8664 18.1012 11.6089 17.6062C12.3514 17.1111 12.7227 16.4495 12.7227 15.6214C12.7227 14.936 12.4228 14.3791 11.8231 13.9507C11.2329 13.5223 10.2619 13.1606 8.91017 12.8655L6.66835 12.38C2.49885 11.4756 0.414094 9.50513 0.414094 6.46844C0.414094 5.1738 0.752033 4.04575 1.42791 3.08429C2.10379 2.11331 3.04621 1.35652 4.25518 0.81391C5.46414 0.271303 6.87777 0 8.49607 0C10.9426 0 12.8798 0.609242 14.3077 1.82773C15.7451 3.04621 16.4971 4.72639 16.5638 6.86826H12.4514C12.3752 5.8592 11.9849 5.06433 11.2805 4.48364C10.5761 3.90296 9.65268 3.61262 8.51035 3.61262C7.42514 3.61262 6.53508 3.86012 5.84016 4.35513C5.15476 4.85014 4.81206 5.48318 4.81206 6.25425C4.81206 6.91109 5.09764 7.43942 5.66881 7.83924C6.23997 8.23905 7.17764 8.58175 8.4818 8.86733L10.5237 9.30998C12.7893 9.79547 14.4457 10.5237 15.4928 11.4947C16.5495 12.4562 17.0778 13.7365 17.0778 15.3358C17.0778 17.3824 16.3258 19.0007 14.8217 20.1907C13.3177 21.3711 11.2567 21.9613 8.63887 21.9613Z" fill="#313131"/>
-    <path d="M27.3525 6.53984V9.83831H24.2682V16.9636C24.2682 17.4776 24.3682 17.8346 24.5681 18.0345C24.7775 18.2249 25.1678 18.3201 25.739 18.3201H27.3525V21.6186H24.8965C23.2401 21.6186 22.0169 21.2949 21.2268 20.6476C20.4462 20.0003 20.0559 18.9912 20.0559 17.6204V9.83831H17.4571V6.53984H20.0559V2.42745H24.2682V6.53984H27.3525Z" fill="#313131"/>
-    <path d="M33.5005 21.8756C31.9965 21.8756 30.7542 21.4996 29.7737 20.7476C28.8027 19.9955 28.3172 18.8675 28.3172 17.3634C28.3172 16.2306 28.5885 15.3453 29.1311 14.7075C29.6737 14.0602 30.3924 13.589 31.2873 13.2939C32.1821 12.9988 33.1531 12.8036 34.2002 12.7084C35.5805 12.5656 36.5467 12.4228 37.0989 12.28C37.651 12.1372 37.927 11.8231 37.927 11.3376V11.2377C37.927 10.6855 37.7081 10.2334 37.2702 9.88115C36.8323 9.52893 36.2278 9.35282 35.4568 9.35282C34.6762 9.35282 34.0431 9.53369 33.5576 9.89543C33.0721 10.2572 32.8056 10.7284 32.758 11.3091H28.8027C28.8979 9.7574 29.5357 8.52463 30.7161 7.61077C31.8965 6.68739 33.5196 6.2257 35.5853 6.2257C37.651 6.2257 39.2502 6.68739 40.3831 7.61077C41.5159 8.52463 42.0823 9.78595 42.0823 11.3947V21.6186H37.9699V19.491H37.9128C37.513 20.224 36.9656 20.8047 36.2707 21.233C35.5758 21.6614 34.6524 21.8756 33.5005 21.8756ZM34.6714 18.9484C35.6805 18.9484 36.4801 18.6818 37.0703 18.1488C37.6605 17.6062 37.9556 16.9255 37.9556 16.1068V14.5933C37.7176 14.7265 37.3226 14.8503 36.7704 14.9645C36.2183 15.0692 35.6043 15.1739 34.9284 15.2787C34.205 15.3929 33.591 15.6023 33.0864 15.9069C32.5914 16.202 32.3439 16.6495 32.3439 17.2492C32.3439 17.7823 32.5533 18.2011 32.9722 18.5057C33.4006 18.8008 33.967 18.9484 34.6714 18.9484Z" fill="#313131"/>
-    <path d="M48.3874 0.342699V21.6186H44.175V0.342699H48.3874Z" fill="#313131"/>
-    <path d="M57.3769 21.9613C55.8538 21.9613 54.5259 21.6233 53.393 20.9475C52.2698 20.2716 51.394 19.3434 50.7657 18.163C50.1469 16.9731 49.8375 15.6166 49.8375 14.0935C49.8375 12.5609 50.1517 11.1996 50.78 10.0097C51.4178 8.81973 52.2935 7.88683 53.4073 7.21095C54.5211 6.53508 55.7967 6.19714 57.2341 6.19714C58.7192 6.19714 60.0138 6.53032 61.118 7.19667C62.2318 7.85351 63.0981 8.77214 63.7168 9.95254C64.3451 11.1234 64.6593 12.4752 64.6593 14.0078V15.1359H53.9356C53.9737 16.2496 54.3021 17.1397 54.9209 17.8061C55.5397 18.4724 56.4012 18.8056 57.5054 18.8056C58.3241 18.8056 59.0047 18.6295 59.5473 18.2773C60.0995 17.9251 60.4707 17.4586 60.6611 16.8779H64.5022C64.3213 17.8775 63.8977 18.758 63.2314 19.5196C62.565 20.2811 61.7273 20.8808 60.7182 21.3187C59.7092 21.7471 58.5954 21.9613 57.3769 21.9613ZM53.9642 12.4514H60.6897C60.585 11.509 60.2327 10.7665 59.633 10.2238C59.0428 9.67172 58.2717 9.39566 57.3198 9.39566C56.3774 9.39566 55.6111 9.67172 55.0209 10.2238C54.4307 10.7665 54.0784 11.509 53.9642 12.4514Z" fill="#313131"/>
-    <path d="M66.138 21.6186V0.342699H70.536V17.8489H80.2029V21.6186H66.138Z" fill="#313131"/>
-    <path d="M81.4389 21.6186V6.53984H85.6513V21.6186H81.4389ZM83.538 4.64071C82.843 4.64071 82.2671 4.43129 81.8102 4.01243C81.3533 3.58406 81.1248 3.04621 81.1248 2.39889C81.1248 1.75157 81.3533 1.21848 81.8102 0.799631C82.2671 0.371257 82.843 0.15707 83.538 0.15707C84.2234 0.15707 84.7945 0.371257 85.2515 0.799631C85.7084 1.21848 85.9369 1.75157 85.9369 2.39889C85.9369 3.04621 85.7084 3.58406 85.2515 4.01243C84.7945 4.43129 84.2234 4.64071 83.538 4.64071Z" fill="#313131"/>
-    <path d="M94.0268 21.9898C92.0658 21.9898 90.4428 21.5424 89.1577 20.6476C87.8821 19.7528 87.1776 18.4962 87.0443 16.8779H91.1853C91.2614 17.5348 91.5375 18.0488 92.0135 18.4201C92.4894 18.7913 93.1368 18.9769 93.9554 18.9769C94.736 18.9769 95.35 18.8294 95.7974 18.5343C96.2449 18.2392 96.4686 17.8584 96.4686 17.392C96.4686 16.9921 96.2925 16.6732 95.9402 16.4353C95.5975 16.1878 95.1216 16.0021 94.5123 15.8784L91.8707 15.3643C88.8816 14.7932 87.387 13.3272 87.387 10.9664C87.387 9.53845 87.963 8.39136 89.1148 7.52509C90.2667 6.65883 91.8231 6.2257 93.7841 6.2257C95.7356 6.2257 97.3063 6.68263 98.4962 7.59649C99.6861 8.51035 100.3 9.75264 100.338 11.3233H96.44C96.4305 10.7236 96.1877 10.2238 95.7118 9.82403C95.2453 9.4147 94.6408 9.21003 93.8983 9.21003C93.1749 9.21003 92.6084 9.3671 92.1991 9.68124C91.7898 9.98586 91.5851 10.3619 91.5851 10.8093C91.5851 11.1996 91.7422 11.5185 92.0563 11.766C92.38 12.0135 92.8321 12.1991 93.4128 12.3229L96.2687 12.8798C97.7918 13.1749 98.9103 13.6604 99.6242 14.3362C100.348 15.0026 100.709 15.8927 100.709 17.0064C100.709 18.006 100.424 18.8818 99.8527 19.6338C99.2911 20.3763 98.5057 20.957 97.4967 21.3758C96.4971 21.7852 95.3405 21.9898 94.0268 21.9898Z" fill="#313131"/>
-    <path d="M111.056 6.53984V9.83831H107.971V16.9636C107.971 17.4776 108.071 17.8346 108.271 18.0345C108.481 18.2249 108.871 18.3201 109.442 18.3201H111.056V21.6186H108.6C106.943 21.6186 105.72 21.2949 104.93 20.6476C104.149 20.0003 103.759 18.9912 103.759 17.6204V9.83831H101.16V6.53984H103.759V2.42745H107.971V6.53984H111.056Z" fill="#313131"/>
-    <path d="M112.306 21.6186V6.53984H116.518V21.6186H112.306ZM114.405 4.64071C113.71 4.64071 113.134 4.43129 112.677 4.01243C112.22 3.58406 111.992 3.04621 111.992 2.39889C111.992 1.75157 112.22 1.21848 112.677 0.799631C113.134 0.371257 113.71 0.15707 114.405 0.15707C115.09 0.15707 115.661 0.371257 116.118 0.799631C116.575 1.21848 116.804 1.75157 116.804 2.39889C116.804 3.04621 116.575 3.58406 116.118 4.01243C115.661 4.43129 115.09 4.64071 114.405 4.64071Z" fill="#313131"/>
-    <path d="M122.838 13.2367V21.6186H118.625V6.53984H122.766V8.91017C123.28 8.05342 123.923 7.39182 124.694 6.92537C125.465 6.45892 126.393 6.2257 127.478 6.2257C129.077 6.2257 130.358 6.7445 131.319 7.78212C132.281 8.81021 132.762 10.2762 132.762 12.1801V21.6186H128.563V12.9512C128.563 11.9421 128.321 11.1758 127.835 10.6522C127.35 10.1191 126.669 9.85259 125.793 9.85259C124.927 9.85259 124.218 10.1239 123.666 10.6665C123.114 11.2091 122.838 12.0659 122.838 13.2367Z" fill="#313131"/>
-    <path d="M142.008 27.7872C139.866 27.7872 138.21 27.3397 137.039 26.4449C135.868 25.5501 135.178 24.3697 134.968 22.9037H139.024C139.176 23.4749 139.514 23.9128 140.038 24.2174C140.561 24.5315 141.218 24.6886 142.008 24.6886C143.036 24.6886 143.826 24.4078 144.378 23.8461C144.94 23.2845 145.221 22.4611 145.221 21.3758V19.0626H145.207C144.759 19.9479 144.15 20.6 143.379 21.0189C142.617 21.4282 141.742 21.6329 140.752 21.6329C139.438 21.6329 138.291 21.3044 137.31 20.6476C136.33 19.9908 135.568 19.0912 135.026 17.9489C134.493 16.797 134.226 15.469 134.226 13.965C134.226 12.4514 134.497 11.1139 135.04 9.95254C135.592 8.79118 136.354 7.88207 137.325 7.22523C138.305 6.55887 139.438 6.2257 140.723 6.2257C141.694 6.2257 142.56 6.43512 143.322 6.85398C144.093 7.26331 144.721 7.88683 145.207 8.72454H145.221V6.53984H149.376V21.0331C149.376 22.6229 149.062 23.9128 148.434 24.9028C147.815 25.9023 146.953 26.6306 145.849 27.0875C144.745 27.5539 143.465 27.7872 142.008 27.7872ZM141.837 18.263C142.903 18.263 143.76 17.8679 144.407 17.0778C145.054 16.2877 145.378 15.2311 145.378 13.9079C145.378 12.5942 145.054 11.5423 144.407 10.7522C143.76 9.96206 142.903 9.56701 141.837 9.56701C140.818 9.56701 139.999 9.94778 139.381 10.7093C138.771 11.4614 138.467 12.5275 138.467 13.9079C138.467 15.2977 138.771 16.3734 139.381 17.1349C139.999 17.887 140.818 18.263 141.837 18.263Z" fill="#313131"/>
-    <path d="M157.752 21.9898C155.791 21.9898 154.168 21.5424 152.882 20.6476C151.607 19.7528 150.902 18.4962 150.769 16.8779H154.91C154.986 17.5348 155.262 18.0488 155.738 18.4201C156.214 18.7913 156.862 18.9769 157.68 18.9769C158.461 18.9769 159.075 18.8294 159.522 18.5343C159.97 18.2392 160.193 17.8584 160.193 17.392C160.193 16.9921 160.017 16.6732 159.665 16.4353C159.322 16.1878 158.846 16.0021 158.237 15.8784L155.596 15.3643C152.606 14.7932 151.112 13.3272 151.112 10.9664C151.112 9.53845 151.688 8.39136 152.84 7.52509C153.991 6.65883 155.548 6.2257 157.509 6.2257C159.46 6.2257 161.031 6.68263 162.221 7.59649C163.411 8.51035 164.025 9.75264 164.063 11.3233H160.165C160.155 10.7236 159.913 10.2238 159.437 9.82403C158.97 9.4147 158.366 9.21003 157.623 9.21003C156.9 9.21003 156.333 9.3671 155.924 9.68124C155.515 9.98586 155.31 10.3619 155.31 10.8093C155.31 11.1996 155.467 11.5185 155.781 11.766C156.105 12.0135 156.557 12.1991 157.138 12.3229L159.993 12.8798C161.517 13.1749 162.635 13.6604 163.349 14.3362C164.073 15.0026 164.434 15.8927 164.434 17.0064C164.434 18.006 164.149 18.8818 163.578 19.6338C163.016 20.3763 162.231 20.957 161.221 21.3758C160.222 21.7852 159.065 21.9898 157.752 21.9898Z" fill="#313131"/>
-  </svg>
-);
-
 const HavloLogo = () => (
   <svg width="39" height="10" viewBox="0 0 78 18" fill="none" xmlns="http://www.w3.org/2000/svg">
     <text x="0" y="14" fontFamily='"Plus Jakarta Sans", sans-serif' fontWeight="800" fontSize="14" fill="#313131" letterSpacing="-0.3">HAVLO</text>
@@ -135,17 +121,17 @@ const AgentIcon = () => (
 
 /* ─── DATA ─── */
 const ALL_FAQS = [
-  { q: '1. What is StaleListings.com?', a: 'StaleListings.com helps homeowners identify what may be slowing down their home sale, with\npersonalized recommendations powered by property data and experienced local agent insights.' },
+  { q: '1. What is Stale Listings?', a: 'Stale Listings helps homeowners identify what may be slowing down their home sale, with\npersonalized recommendations powered by property data and experienced local agent insights.' },
   { q: '2. Who is this for?', a: 'The platform is designed for:\n• homeowners preparing to sell\n• sellers already on the market\n• homeowners whose listings have gone stale\n• anyone wanting a second opinion on their sale strategy' },
   { q: '3. How does it work?', a: 'Simply enter your property details or upload your listing link. We analyze your home and provide\nactionable recommendations to improve buyer appeal and selling potential.' },
   { q: '4. Do I need to switch estate agents?', a: 'No. Our recommendations are designed to work alongside your current estate agent.' },
-  { q: '5. Can I use this before listing my home?', a: 'Yes. Many homeowners use StaleListings.com before going live to avoid common listing mistakes.' },
+  { q: '5. Can I use this before listing my home?', a: 'Yes. Many homeowners use Stale Listings before going live to avoid common listing mistakes.' },
   { q: '6. How long does the report take?', a: 'Most reports are delivered within 6–12 hours.' },
   { q: '7. What kind of recommendations will I receive?', a: 'Recommendations may include:\n• pricing insights\n• photo improvements\n• presentation tips\n• listing description feedback\n• buyer appeal suggestions\n• market positioning recommendations' },
   { q: '8. Is the analysis automated or reviewed by humans?', a: 'We combine data-driven analysis with experienced local property expertise.' },
   { q: '9. Will you contact my estate agent?', a: 'No, unless you specifically request it.' },
   { q: '10. What if my home is already listed?', a: "That's completely fine. The platform is specifically designed to help improve active listings." },
-  { q: '11. Can this help if my home has been on the market for months?', a: 'Yes. Many sellers use StaleListings.com to identify overlooked issues affecting buyer interest.' },
+  { q: '11. Can this help if my home has been on the market for months?', a: 'Yes. Many sellers use Stale Listings to identify overlooked issues affecting buyer interest.' },
   { q: '12. Do you guarantee my home will sell faster?', a: "No platform can guarantee a sale, but our goal is to help you improve your home's appeal and reduce avoidable listing mistakes." },
   { q: '13. What property websites do you support?', a: 'We currently support listings from major UK property portals including Rightmove and Zoopla.' },
   { q: '14. How detailed is the report?', a: 'Each report is personalized to your property and includes practical, actionable recommendations you can implement immediately.' },
@@ -153,9 +139,9 @@ const ALL_FAQS = [
   { q: '16. Can I get another report after making changes?', a: 'Yes. You can request an updated analysis after implementing our recommendations.' },
   { q: '17. Do you work across the UK?', a: 'Yes. We support homeowners across the UK.' },
   { q: '18. Is this only for expensive homes?', a: 'No. Our insights are designed for properties across different budgets and markets.' },
-  { q: '19. Why shouldn\'t I rely only on my estate agent?', a: 'Estate agents often manage multiple listings at once. StaleListings.com provides an additional layer of focused analysis to help uncover issues that may otherwise be overlooked.' },
-  { q: '20. What makes StaleListings.com different?', a: 'We combine property data, buyer behaviour insights, and experienced local expertise to help homeowners make smarter selling decisions — without changing agents.' },
-  { q: '21. Can estate agents use StaleListings.com?', a: 'Yes. Estate agents can use StaleListings.com to gain additional insights, strengthen listing performance, and provide more value to their clients. Our recommendations are designed to support agents, not replace them.' },
+  { q: '19. Why shouldn\'t I rely only on my estate agent?', a: 'Estate agents often manage multiple listings at once. Stale Listings provides an additional layer of focused analysis to help uncover issues that may otherwise be overlooked.' },
+  { q: '20. What makes Stale Listings different?', a: 'We combine property data, buyer behaviour insights, and experienced local expertise to help homeowners make smarter selling decisions — without changing agents.' },
+  { q: '21. Can estate agents use Stale Listings?', a: 'Yes. Estate agents can use Stale Listings to gain additional insights, strengthen listing performance, and provide more value to their clients. Our recommendations are designed to support agents, not replace them.' },
 ];
 
 const TESTIMONIALS = [
@@ -283,8 +269,14 @@ export function StaleListingsLanding() {
   const [inputError, setInputError] = useState('');
   const [showAllFaq, setShowAllFaq] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accessModalOpen, setAccessModalOpen] = useState(false);
+  const [accessEmail, setAccessEmail] = useState<string | null>(null);
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setAccessEmail(readProductAccessSession('stale-listings')?.email ?? null);
+  }, []);
 
   const focusHeroInput = () => {
     heroSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -321,6 +313,22 @@ export function StaleListingsLanding() {
   };
 
   const faqsToShow = showAllFaq ? ALL_FAQS : ALL_FAQS.slice(0, 5);
+
+  const handleOpenPortal = () => {
+    navigate('/stale-listings/portal');
+    setMenuOpen(false);
+  };
+
+  const handleOpenSignIn = () => {
+    setAccessModalOpen(true);
+    setMenuOpen(false);
+  };
+
+  const handleSignOut = () => {
+    clearProductAccessSession('stale-listings');
+    setAccessEmail(null);
+    setMenuOpen(false);
+  };
 
   return (
     <div style={{ fontFamily:'Inter, sans-serif', background:'#fff', minHeight:'100vh', overflowX:'hidden' }}>
@@ -575,7 +583,7 @@ export function StaleListingsLanding() {
             overflow-wrap:anywhere !important;
           }
           .sl-hero-desc {
-            font-size:14px !important;
+            font-size:16px !important;
             letter-spacing:-0.02em !important;
             max-width:100% !important;
             min-width:0 !important;
@@ -604,8 +612,8 @@ export function StaleListingsLanding() {
           }
           .sl-input-input {
             width:100% !important;
-            font-size:13px !important;
-            line-height:16px !important;
+            font-size:14px !important;
+            line-height:18px !important;
             min-width:0 !important;
           }
           .sl-input-btn {
@@ -629,7 +637,7 @@ export function StaleListingsLanding() {
             font-size:16px !important;
           }
           .sl-trustpilot-label {
-            font-size:14px !important;
+            font-size:15px !important;
           }
           .sl-stats-row {
             gap:12px !important;
@@ -646,7 +654,7 @@ export function StaleListingsLanding() {
             letter-spacing:-0.03em !important;
           }
           .sl-stat-label {
-            font-size:12px !important;
+            font-size:13px !important;
             width:auto !important;
             max-width:none !important;
             line-height:135% !important;
@@ -876,16 +884,42 @@ export function StaleListingsLanding() {
         <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
           <div className="sl-nav-logo-wrap" style={{ display:'flex', alignItems:'center' }}>
-            <img src="/stale-logo.png" alt="StaleListings" style={{ height:40, width:'auto', flexShrink:0, display:'block' }} />
+            <StaleListingsLogo style={{ height: 28, width: 'auto' }} />
           </div>
 
           {/* Nav links (desktop) */}
           <div style={{ display:'flex', alignItems:'center', gap:32 }}>
             <nav className="sl-nav-links" style={{ display:'flex', alignItems:'center', gap:40 }}>
-              {[['How it works','#how-it-works'],['Faq','#faq'],['Pricing','#pricing']].map(([label, href], i) => (
+              {[['How it works','#how-it-works'],['FAQ','#faq'],['Pricing','#pricing']].map(([label, href], i) => (
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
+            {accessEmail ? (
+              <div className="sl-nav-links" style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <button
+                  type="button"
+                  onClick={handleOpenPortal}
+                  style={{ display:'inline-flex', height:44, padding:'0 18px', alignItems:'center', justifyContent:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+                >
+                  My assessments
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  style={{ display:'inline-flex', height:44, padding:'0 18px', alignItems:'center', justifyContent:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOpenSignIn}
+                style={{ display:'inline-flex', height:44, padding:'0 22px', alignItems:'center', justifyContent:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+              >
+                Sign in
+              </button>
+            )}
           </div>
 
           {/* Hamburger (mobile/tablet) */}
@@ -927,7 +961,9 @@ export function StaleListingsLanding() {
       >
         {/* Drawer header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:40 }}>
-          <img src="/stale-logo.png" alt="StaleListings" style={{ height:32, width:'auto', display:'block' }} />
+          <div style={{ display:'flex', alignItems:'center', transform:'scale(0.78)', transformOrigin:'left center' }}>
+            <StaleListingsLogo style={{ height: 28, width: 'auto' }} />
+          </div>
           <button
             onClick={() => setMenuOpen(false)}
             style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', alignItems:'center', justifyContent:'center' }}
@@ -957,7 +993,34 @@ export function StaleListingsLanding() {
           ))}
         </nav>
 
-        {/* CTA */}
+        <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:24 }}>
+          {accessEmail ? (
+            <>
+              <button
+                type="button"
+                onClick={handleOpenPortal}
+                style={{ display:'flex', height:48, padding:'0 16px', justifyContent:'center', alignItems:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+              >
+                My assessments
+              </button>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                style={{ display:'flex', height:48, padding:'0 16px', justifyContent:'center', alignItems:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={handleOpenSignIn}
+              style={{ display:'flex', height:48, padding:'0 16px', justifyContent:'center', alignItems:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+            >
+              Sign in
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── HERO ── */}
@@ -1033,7 +1096,7 @@ export function StaleListingsLanding() {
               {[
                 ['10K+','Listings Analyzed'],
                 ['91K+','Seller Recommendations'],
-                ['250K+','Market Signals Analyzed'],
+                ['300+','Market Signals Analyzed'],
               ].map(([val, label], i) => (
                 <div key={i} className="sl-stat-item" style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:4, flex:1 }}>
                   <div className="sl-stat-val" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:32, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{val}</div>
@@ -1276,7 +1339,7 @@ export function StaleListingsLanding() {
                       <div style={{ display:'flex', flexDirection:'column', gap:16, paddingTop:16, borderTop:'1px solid rgba(0,0,0,0.1)', alignSelf:'stretch' }}>
                         {(plan as any).preNote && (
                           <div style={{ fontFamily:'Inter, sans-serif', fontSize:14, letterSpacing:'-0.03em', lineHeight:'130%' }}>
-                            <span style={{ fontWeight:700, color:'#050405' }}>{(plan as any).preNote}:</span>
+                            <span style={{ fontWeight:700, color:'#050405' }}>{(plan as any).preNote}</span>
                             {(plan as any).preNoteDetail && (
                               <span style={{ fontWeight:400, color:'#050405' }}> {(plan as any).preNoteDetail}</span>
                             )}
@@ -1313,19 +1376,15 @@ export function StaleListingsLanding() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer>
-        <div
-          className="sl-footer sl-inner-container"
-          style={{ maxWidth:1440, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, padding:'28px 100px', borderTop:'1px solid #EFEFEF', background:'#fff' }}
-        >
-          <img src="/stale-logo.png" alt="StaleListings" style={{ height:32, width:'auto', display:'block', flexShrink:0 }} />
-          <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#1F1F1E', textAlign:'center' }}>© 2026 StaleListings. All rights reserved.</span>
-          <div className="sl-footer-links" style={{ display:'flex', gap:24, flexShrink:0 }}>
-            <a href="/privacy-policy" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Privacy Policy</a>
-            <a href="/terms" style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:14, color:'#1F1F1E', textDecoration:'none' }}>Terms</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+      <ProductAccessModal
+        scope="stale-listings"
+        isOpen={accessModalOpen}
+        onClose={() => {
+          setAccessModalOpen(false);
+          setAccessEmail(readProductAccessSession('stale-listings')?.email ?? null);
+        }}
+      />
     </div>
   );
 }

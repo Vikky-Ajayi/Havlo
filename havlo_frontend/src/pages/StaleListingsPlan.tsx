@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
+import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const PURPLE = '#A409D2';
@@ -219,7 +220,7 @@ function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
 function PlanNavbar() {
   return (
     <header style={{ display: 'flex', width: '100%', height: 72, padding: '0 40px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F0F0F0', background: '#FFF', boxSizing: 'border-box', position: 'sticky', top: 0, zIndex: 30 }}>
-      <img src="/stale-logo.png" alt="StaleListings" style={{ height: 38, width: 'auto', display: 'block', flexShrink: 0 }} />
+      <StaleListingsLogo style={{ height: 38, width: 'auto', display: 'block', flexShrink: 0 }} />
       {/* Desktop: secure badge */}
       <div className="sl-p-secure-wrap" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <LockIcon />
@@ -289,11 +290,11 @@ export function StaleListingsPlan() {
         questions_data: answers,
         redirect_url: `${window.location.origin}/stale-listings/complete`,
       });
-      if (result.checkout_url) {
-        window.location.href = result.checkout_url;
-      } else {
-        navigate(`/stale-listings/complete?ref=${result.reference}`);
+      const checkoutUrl = result.checkout_url?.trim();
+      if (!checkoutUrl) {
+        throw new Error('Unable to create a secure SumUp checkout right now. Please try again in a moment.');
       }
+      window.location.href = checkoutUrl;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       setLoading(false);
@@ -552,14 +553,9 @@ export function StaleListingsPlan() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.1)', alignSelf: 'stretch' }}>
                         {p.preNote && (
                           <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, letterSpacing: '-0.03em', lineHeight: '130%' }}>
-                            <span style={{ fontWeight: 700, color: '#050405' }}>
-                              {p.id === 'professional_review'
-                                ? 'Includes everything in Quick Insight, plus'
-                                : 'Includes everything in professional review plus'}:
+                            <span style={{ fontWeight: p.id === 'professional_review' ? 400 : 700, color: '#050405' }}>
+                              {p.preNote}
                             </span>
-                            {p.id === 'professional_review' && (
-                              <span style={{ fontWeight: 400, color: '#050405' }}> a detailed review by an estate agent actively selling similar properties in the local area.</span>
-                            )}
                           </div>
                         )}
                         {p.features.map((feat, j) => (

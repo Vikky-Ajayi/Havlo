@@ -1,0 +1,412 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/modals/BookSessionModal.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=520aa8ef"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+var _s = $RefreshSig$();
+import __vite__cjsImport1_react from "/node_modules/.vite/deps/react.js?v=520aa8ef"; const useState = __vite__cjsImport1_react["useState"];
+import { ModalWrapper } from "/src/components/modals/ModalWrapper.tsx";
+import { useModal } from "/src/hooks/useModal.ts";
+import { Button } from "/src/components/ui/Button.tsx";
+import { X } from "/node_modules/.vite/deps/lucide-react.js?v=89ec77f2";
+import { useAuth } from "/src/context/AuthContext.tsx?t=1778970770480";
+import { api } from "/src/lib/api.ts?t=1778970770480";
+import { CountryCodeSelect } from "/src/components/shared/CountryCodeSelect.tsx";
+export const BookSessionModal = () => {
+  _s();
+  const { closeModal } = useModal();
+  const { token, user } = useAuth();
+  const [firstName, setFirstName] = useState(user?.first_name || "");
+  const [lastName, setLastName] = useState(user?.last_name || "");
+  const [phoneCountryCode, setPhoneCountryCode] = useState(user?.phone_country_code || "+44");
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone_number || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [preferredDate, setPreferredDate] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const generateDateOptions = () => {
+    const dates = [];
+    const today = /* @__PURE__ */ new Date();
+    for (let i = 1; i <= 14; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      if (d.getDay() !== 0 && d.getDay() !== 6) {
+        dates.push({
+          value: d.toISOString().split("T")[0],
+          label: d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
+        });
+      }
+    }
+    return dates;
+  };
+  const timeOptions = [
+    { value: "09:00", label: "09:00 AM" },
+    { value: "10:00", label: "10:00 AM" },
+    { value: "11:00", label: "11:00 AM" },
+    { value: "12:00", label: "12:00 PM" },
+    { value: "13:00", label: "01:00 PM" },
+    { value: "14:00", label: "02:00 PM" },
+    { value: "15:00", label: "03:00 PM" },
+    { value: "16:00", label: "04:00 PM" },
+    { value: "17:00", label: "05:00 PM" }
+  ];
+  const handleSubmit = async () => {
+    if (!token) return;
+    if (!firstName || !lastName || !email || !phoneNumber || !preferredDate || !preferredTime) {
+      setError("Please fill in all fields including date and time.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const result = await api.bookSession(token, {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone_country_code: phoneCountryCode,
+        phone_number: phoneNumber,
+        preferred_date: preferredDate,
+        preferred_time: preferredTime
+      });
+      if (!result.checkout_id) {
+        throw new Error("Missing checkout ID from payment gateway.");
+      }
+      const { redirectToCheckout } = await import("/src/lib/paymentReturn.ts");
+      redirectToCheckout(result.checkout_id, {
+        kind: "session",
+        recordId: result.booking_id,
+        reference: result.checkout_id
+      });
+      return;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to book session. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsxDEV(ModalWrapper, { children: /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-8 p-8 sm:p-[32px_24px]", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-4", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between", children: [
+        /* @__PURE__ */ jsxDEV("h2", { className: "font-display text-[32px] font-black leading-none text-black", children: "Book Your Consultation" }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 91,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            onClick: closeModal,
+            className: "flex h-6 w-6 items-center justify-center rounded-sm bg-[#3A3C3E] text-white/80 transition-colors hover:text-white",
+            children: /* @__PURE__ */ jsxDEV(X, { size: 14 }, void 0, false, {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+              lineNumber: 98,
+              columnNumber: 15
+            }, this)
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 94,
+            columnNumber: 13
+          },
+          this
+        )
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+        lineNumber: 90,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("p", { className: "font-body text-[20px] font-medium leading-[1.3] tracking-[-0.4px] text-black/70", children: "Schedule a personalized session with our expert to discuss your needs and goals." }, void 0, false, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+        lineNumber: 101,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+      lineNumber: 89,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "flex gap-6", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "relative flex flex-1 items-center rounded-xl border border-black/10 bg-[#242628]/[0.05] p-4", children: /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              placeholder: "First name",
+              value: firstName,
+              onChange: (e) => setFirstName(e.target.value),
+              className: "w-full bg-transparent font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+              lineNumber: 110,
+              columnNumber: 17
+            },
+            this
+          ) }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 109,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { className: "relative flex flex-1 items-center rounded-xl border border-black/10 bg-[#242628]/[0.05] p-4", children: /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              placeholder: "Last name",
+              value: lastName,
+              onChange: (e) => setLastName(e.target.value),
+              className: "w-full bg-transparent font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+              lineNumber: 119,
+              columnNumber: 17
+            },
+            this
+          ) }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 118,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 108,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "relative flex h-14 items-center gap-2 rounded-xl border border-black/10 bg-[#242628]/[0.05] px-2", children: [
+          /* @__PURE__ */ jsxDEV(CountryCodeSelect, { value: phoneCountryCode, onChange: setPhoneCountryCode }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 130,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "tel",
+              placeholder: "Enter phone number",
+              value: phoneNumber,
+              onChange: (e) => setPhoneNumber(e.target.value),
+              className: "w-full bg-transparent font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+              lineNumber: 131,
+              columnNumber: 15
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 129,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "relative flex items-center rounded-xl border border-black/10 bg-[#242628]/[0.05] p-4", children: /* @__PURE__ */ jsxDEV(
+          "input",
+          {
+            type: "email",
+            placeholder: "Email",
+            value: email,
+            onChange: (e) => setEmail(e.target.value),
+            className: "w-full bg-transparent font-body text-base font-medium text-black outline-none placeholder:text-black/50"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 141,
+            columnNumber: 15
+          },
+          this
+        ) }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 140,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "relative flex items-center rounded-xl border border-black/10 bg-[#242628]/[0.05] p-4", children: [
+          /* @__PURE__ */ jsxDEV(
+            "select",
+            {
+              value: preferredDate,
+              onChange: (e) => setPreferredDate(e.target.value),
+              className: "w-full appearance-none bg-transparent font-body text-base font-medium text-black outline-none",
+              children: [
+                /* @__PURE__ */ jsxDEV("option", { value: "", children: "Preferred Date" }, void 0, false, {
+                  fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+                  lineNumber: 156,
+                  columnNumber: 17
+                }, this),
+                generateDateOptions().map(
+                  (d) => /* @__PURE__ */ jsxDEV("option", { value: d.value, children: d.label }, d.value, false, {
+                    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+                    lineNumber: 158,
+                    columnNumber: 17
+                  }, this)
+                )
+              ]
+            },
+            void 0,
+            true,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+              lineNumber: 151,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(ChevronDown, { size: 20, className: "pointer-events-none absolute right-4 text-[#7A7A7A]" }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 161,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 150,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "relative flex items-center rounded-xl border border-black/10 bg-[#242628]/[0.05] p-4", children: [
+          /* @__PURE__ */ jsxDEV(
+            "select",
+            {
+              value: preferredTime,
+              onChange: (e) => setPreferredTime(e.target.value),
+              className: "w-full appearance-none bg-transparent font-body text-base font-medium text-black outline-none",
+              children: [
+                /* @__PURE__ */ jsxDEV("option", { value: "", children: "Preferred Time" }, void 0, false, {
+                  fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+                  lineNumber: 170,
+                  columnNumber: 17
+                }, this),
+                timeOptions.map(
+                  (t) => /* @__PURE__ */ jsxDEV("option", { value: t.value, children: t.label }, t.value, false, {
+                    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+                    lineNumber: 172,
+                    columnNumber: 17
+                  }, this)
+                )
+              ]
+            },
+            void 0,
+            true,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+              lineNumber: 165,
+              columnNumber: 15
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(ChevronDown, { size: 20, className: "pointer-events-none absolute right-4 text-[#7A7A7A]" }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 175,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 164,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+        lineNumber: 107,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between rounded-xl border border-[#C2E8FF] bg-[#D6EFFF] p-[24px_20px]", children: [
+        /* @__PURE__ */ jsxDEV("span", { className: "font-body text-base font-medium tracking-[-0.32px] text-black", children: "Session Fee" }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 180,
+          columnNumber: 13
+        }, this),
+        /* @__PURE__ */ jsxDEV("span", { className: "font-body text-[18px] font-bold tracking-[-0.36px] text-[#0078B4]", children: "$200" }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 183,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+        lineNumber: 179,
+        columnNumber: 11
+      }, this),
+      error && /* @__PURE__ */ jsxDEV("p", { className: "text-red-500 text-sm font-body", children: error }, void 0, false, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+        lineNumber: 188,
+        columnNumber: 21
+      }, this),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: [
+        /* @__PURE__ */ jsxDEV(
+          Button,
+          {
+            variant: "primary",
+            className: "h-14 w-full rounded-[48px] text-lg font-bold disabled:opacity-50",
+            onClick: handleSubmit,
+            disabled: loading,
+            children: loading ? "Processing..." : "Confirm Booking"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+            lineNumber: 191,
+            columnNumber: 13
+          },
+          this
+        ),
+        /* @__PURE__ */ jsxDEV("p", { className: "text-center font-body text-base font-normal tracking-[-0.32px] text-black/70", children: "You'll receive a confirmation email after booking" }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+          lineNumber: 199,
+          columnNumber: 13
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+        lineNumber: 190,
+        columnNumber: 11
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+      lineNumber: 106,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+    lineNumber: 88,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx",
+    lineNumber: 87,
+    columnNumber: 5
+  }, this);
+};
+_s(BookSessionModal, "qmb3wKWYnjtLk4o3WF237dH6U2Q=", false, function() {
+  return [useModal, useAuth];
+});
+_c = BookSessionModal;
+var _c;
+$RefreshReg$(_c, "BookSessionModal");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) {
+  return RefreshRuntime.register(type, "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/BookSessionModal.tsx " + id);
+}
+function $RefreshSig$() {
+  return RefreshRuntime.createSignatureFunctionForTransform();
+}
+
+//# sourceMappingURL=data:application/json;base64,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RCx1QkFBQyxTQUFJLFdBQVUsdUJBQ2I7QUFBQTtBQUFBLFVBQUM7QUFBQTtBQUFBLFlBQ0MsU0FBUTtBQUFBLFlBQ1IsV0FBVTtBQUFBLFlBQ1YsU0FBU3NCO0FBQUFBLFlBQ1QsVUFBVXhCO0FBQUFBLFlBRVRBLG9CQUFVLGtCQUFrQjtBQUFBO0FBQUEsVUFOL0I7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLFFBT0E7QUFBQSxRQUNBLHVCQUFDLE9BQUUsV0FBVSxnRkFBK0UsaUVBQTVGO0FBQUE7QUFBQTtBQUFBO0FBQUEsZUFFQTtBQUFBLFdBWEY7QUFBQTtBQUFBO0FBQUE7QUFBQSxhQVlBO0FBQUEsU0FoR0Y7QUFBQTtBQUFBO0FBQUE7QUFBQSxXQWlHQTtBQUFBLE9BbkhGO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0FvSEEsS0FySEY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQXNIQTtBQUVKO0FBQUV0QixHQXJNV0Qsa0JBQTBCO0FBQUEsVUFDZE4sVUFDQ0csT0FBTztBQUFBO0FBQUEsS0FGcEJHO0FBQTBCLElBQUFpRTtBQUFBLGFBQUFBLElBQUEiLCJuYW1lcyI6WyJ1c2VTdGF0ZSIsIk1vZGFsV3JhcHBlciIsInVzZU1vZGFsIiwiQnV0dG9uIiwiWCIsInVzZUF1dGgiLCJhcGkiLCJDb3VudHJ5Q29kZVNlbGVjdCIsIkJvb2tTZXNzaW9uTW9kYWwiLCJfcyIsImNsb3NlTW9kYWwiLCJ0b2tlbiIsInVzZXIiLCJmaXJzdE5hbWUiLCJzZXRGaXJzdE5hbWUiLCJmaXJzdF9uYW1lIiwibGFzdE5hbWUiLCJzZXRMYXN0TmFtZSIsImxhc3RfbmFtZSIsInBob25lQ291bnRyeUNvZGUiLCJzZXRQaG9uZUNvdW50cnlDb2RlIiwicGhvbmVfY291bnRyeV9jb2RlIiwicGhvbmVOdW1iZXIiLCJzZXRQaG9uZU51bWJlciIsInBob25lX251bWJlciIsImVtYWlsIiwic2V0RW1haWwiLCJwcmVmZXJyZWREYXRlIiwic2V0UHJlZmVycmVkRGF0ZSIsInByZWZlcnJlZFRpbWUiLCJzZXRQcmVmZXJyZWRUaW1lIiwibG9hZGluZyIsInNldExvYWRpbmciLCJlcnJvciIsInNldEVycm9yIiwiZ2VuZXJhdGVEYXRlT3B0aW9ucyIsImRhdGVzIiwidG9kYXkiLCJEYXRlIiwiaSIsImQiLCJzZXREYXRlIiwiZ2V0RGF0ZSIsImdldERheSIsInB1c2giLCJ2YWx1ZSIsInRvSVNPU3RyaW5nIiwic3BsaXQiLCJsYWJlbCIsInRvTG9jYWxlRGF0ZVN0cmluZyIsIndlZWtkYXkiLCJkYXkiLCJtb250aCIsInllYXIiLCJ0aW1lT3B0aW9ucyIsImhhbmRsZVN1Ym1pdCIsInJlc3VsdCIsImJvb2tTZXNzaW9uIiwicHJlZmVycmVkX2RhdGUiLCJwcmVmZXJyZWRfdGltZSIsImNoZWNrb3V0X2lkIiwiRXJyb3IiLCJyZWRpcmVjdFRvQ2hlY2tvdXQiLCJraW5kIiwicmVjb3JkSWQiLCJib29raW5nX2lkIiwicmVmZXJlbmNlIiwiZXJyIiwibWVzc2FnZSIsImUiLCJ0YXJnZXQiLCJtYXAiLCJ0IiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQm9va1Nlc3Npb25Nb2RhbC50c3giXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IFJlYWN0LCB7IHVzZVN0YXRlIH0gZnJvbSAncmVhY3QnO1xyXG5pbXBvcnQgeyBNb2RhbFdyYXBwZXIgfSBmcm9tICcuL01vZGFsV3JhcHBlcic7XHJcbmltcG9ydCB7IHVzZU1vZGFsIH0gZnJvbSAnLi4vLi4vaG9va3MvdXNlTW9kYWwnO1xyXG5pbXBvcnQgeyBCdXR0b24gfSBmcm9tICcuLi91aS9CdXR0b24nO1xyXG5pbXBvcnQgeyBYIH0gZnJvbSAnbHVjaWRlLXJlYWN0JztcclxuaW1wb3J0IHsgdXNlQXV0aCB9IGZyb20gJy4uLy4uL2NvbnRleHQvQXV0aENvbnRleHQnO1xyXG5pbXBvcnQgeyBhcGkgfSBmcm9tICcuLi8uLi9saWIvYXBpJztcclxuaW1wb3J0IHsgQ291bnRyeUNvZGVTZWxlY3QgfSBmcm9tICcuLi9zaGFyZWQvQ291bnRyeUNvZGVTZWxlY3QnO1xyXG5cclxuZXhwb3J0IGNvbnN0IEJvb2tTZXNzaW9uTW9kYWw6IFJlYWN0LkZDID0gKCkgPT4ge1xyXG4gIGNvbnN0IHsgY2xvc2VNb2RhbCB9ID0gdXNlTW9kYWwoKTtcclxuICBjb25zdCB7IHRva2VuLCB1c2VyIH0gPSB1c2VBdXRoKCk7XHJcbiAgY29uc3QgW2ZpcnN0TmFtZSwgc2V0Rmlyc3ROYW1lXSA9IHVzZVN0YXRlKHVzZXI/LmZpcnN0X25hbWUgfHwgJycpO1xyXG4gIGNvbnN0IFtsYXN0TmFtZSwgc2V0TGFzdE5hbWVdID0gdXNlU3RhdGUodXNlcj8ubGFzdF9uYW1lIHx8ICcnKTtcclxuICBjb25zdCBbcGhvbmVDb3VudHJ5Q29kZSwgc2V0UGhvbmVDb3VudHJ5Q29kZV0gPSB1c2VTdGF0ZSh1c2VyPy5waG9uZV9jb3VudHJ5X2NvZGUgfHwgJys0NCcpO1xyXG4gIGNvbnN0IFtwaG9uZU51bWJlciwgc2V0UGhvbmVOdW1iZXJdID0gdXNlU3RhdGUodXNlcj8ucGhvbmVfbnVtYmVyIHx8ICcnKTtcclxuICBjb25zdCBbZW1haWwsIHNldEVtYWlsXSA9IHVzZVN0YXRlKHVzZXI/LmVtYWlsIHx8ICcnKTtcclxuICBjb25zdCBbcHJlZmVycmVkRGF0ZSwgc2V0UHJlZmVycmVkRGF0ZV0gPSB1c2VTdGF0ZSgnJyk7XHJcbiAgY29uc3QgW3ByZWZlcnJlZFRpbWUsIHNldFByZWZlcnJlZFRpbWVdID0gdXNlU3RhdGUoJycpO1xyXG4gIGNvbnN0IFtsb2FkaW5nLCBzZXRMb2FkaW5nXSA9IHVzZVN0YXRlKGZhbHNlKTtcclxuICBjb25zdCBbZXJyb3IsIHNldEVycm9yXSA9IHVzZVN0YXRlKCcnKTtcclxuXHJcbiAgY29uc3QgZ2VuZXJhdGVEYXRlT3B0aW9ucyA9ICgpID0+IHtcclxuICAgIGNvbnN0IGRhdGVzOiB7IHZhbHVlOiBzdHJpbmc7IGxhYmVsOiBzdHJpbmcgfVtdID0gW107XHJcbiAgICBjb25zdCB0b2RheSA9IG5ldyBEYXRlKCk7XHJcbiAgICBmb3IgKGxldCBpID0gMTsgaSA8PSAxNDsgaSsrKSB7XHJcbiAgICAgIGNvbnN0IGQgPSBuZXcgRGF0ZSh0b2RheSk7XHJcbiAgICAgIGQuc2V0RGF0ZSh0b2RheS5nZXREYXRlKCkgKyBpKTtcclxuICAgICAgaWYgKGQuZ2V0RGF5KCkgIT09IDAgJiYgZC5nZXREYXkoKSAhPT0gNikge1xyXG4gICAgICAgIGRhdGVzLnB1c2goe1xyXG4gICAgICAgICAgdmFsdWU6IGQudG9JU09TdHJpbmcoKS5zcGxpdCgnVCcpWzBdLFxyXG4gICAgICAgICAgbGFiZWw6IGQudG9Mb2NhbGVEYXRlU3RyaW5nKCdlbi1HQicsIHsgd2Vla2RheTogJ3Nob3J0JywgZGF5OiAnbnVtZXJpYycsIG1vbnRoOiAnc2hvcnQnLCB5ZWFyOiAnbnVtZXJpYycgfSksXHJcbiAgICAgICAgfSk7XHJcbiAgICAgIH1cclxuICAgIH1cclxuICAgIHJldHVybiBkYXRlcztcclxuICB9O1xyXG5cclxuICBjb25zdCB0aW1lT3B0aW9ucyA9IFtcclxuICAgIHsgdmFsdWU6ICcwOTowMCcsIGxhYmVsOiAnMDk6MDAgQU0nIH0sXHJcbiAgICB7IHZhbHVlOiAnMTA6MDAnLCBsYWJlbDogJzEwOjAwIEFNJyB9LFxyXG4gICAgeyB2YWx1ZTogJzExOjAwJywgbGFiZWw6ICcxMTowMCBBTScgfSxcclxuICAgIHsgdmFsdWU6ICcxMjowMCcsIGxhYmVsOiAnMTI6MDAgUE0nIH0sXHJcbiAgICB7IHZhbHVlOiAnMTM6MDAnLCBsYWJlbDogJzAxOjAwIFBNJyB9LFxyXG4gICAgeyB2YWx1ZTogJzE0OjAwJywgbGFiZWw6ICcwMjowMCBQTScgfSxcclxuICAgIHsgdmFsdWU6ICcxNTowMCcsIGxhYmVsOiAnMDM6MDAgUE0nIH0sXHJcbiAgICB7IHZhbHVlOiAnMTY6MDAnLCBsYWJlbDogJzA0OjAwIFBNJyB9LFxyXG4gICAgeyB2YWx1ZTogJzE3OjAwJywgbGFiZWw6ICcwNTowMCBQTScgfSxcclxuICBdO1xyXG5cclxuICBjb25zdCBoYW5kbGVTdWJtaXQgPSBhc3luYyAoKSA9PiB7XHJcbiAgICBpZiAoIXRva2VuKSByZXR1cm47XHJcbiAgICBpZiAoIWZpcnN0TmFtZSB8fCAhbGFzdE5hbWUgfHwgIWVtYWlsIHx8ICFwaG9uZU51bWJlciB8fCAhcHJlZmVycmVkRGF0ZSB8fCAhcHJlZmVycmVkVGltZSkge1xyXG4gICAgICBzZXRFcnJvcignUGxlYXNlIGZpbGwgaW4gYWxsIGZpZWxkcyBpbmNsdWRpbmcgZGF0ZSBhbmQgdGltZS4nKTtcclxuICAgICAgcmV0dXJuO1xyXG4gICAgfVxyXG4gICAgc2V0TG9hZGluZyh0cnVlKTtcclxuICAgIHNldEVycm9yKCcnKTtcclxuICAgIHRyeSB7XHJcbiAgICAgIGNvbnN0IHJlc3VsdCA9IGF3YWl0IGFwaS5ib29rU2Vzc2lvbih0b2tlbiwge1xyXG4gICAgICAgIGZpcnN0X25hbWU6IGZpcnN0TmFtZSxcclxuICAgICAgICBsYXN0X25hbWU6IGxhc3ROYW1lLFxyXG4gICAgICAgIGVtYWlsLFxyXG4gICAgICAgIHBob25lX2NvdW50cnlfY29kZTogcGhvbmVDb3VudHJ5Q29kZSxcclxuICAgICAgICBwaG9uZV9udW1iZXI6IHBob25lTnVtYmVyLFxyXG4gICAgICAgIHByZWZlcnJlZF9kYXRlOiBwcmVmZXJyZWREYXRlLFxyXG4gICAgICAgIHByZWZlcnJlZF90aW1lOiBwcmVmZXJyZWRUaW1lLFxyXG4gICAgICB9KTtcclxuICAgICAgaWYgKCFyZXN1bHQuY2hlY2tvdXRfaWQpIHtcclxuICAgICAgICB0aHJvdyBuZXcgRXJyb3IoJ01pc3NpbmcgY2hlY2tvdXQgSUQgZnJvbSBwYXltZW50IGdhdGV3YXkuJyk7XHJcbiAgICAgIH1cclxuICAgICAgY29uc3QgeyByZWRpcmVjdFRvQ2hlY2tvdXQgfSA9IGF3YWl0IGltcG9ydCgnLi4vLi4vbGliL3BheW1lbnRSZXR1cm4nKTtcclxuICAgICAgcmVkaXJlY3RUb0NoZWNrb3V0KHJlc3VsdC5jaGVja291dF9pZCwge1xyXG4gICAgICAgIGtpbmQ6ICdzZXNzaW9uJyxcclxuICAgICAgICByZWNvcmRJZDogcmVzdWx0LmJvb2tpbmdfaWQsXHJcbiAgICAgICAgcmVmZXJlbmNlOiByZXN1bHQuY2hlY2tvdXRfaWQsXHJcbiAgICAgIH0pO1xyXG4gICAgICByZXR1cm47XHJcbiAgICB9IGNhdGNoIChlcnI6IHVua25vd24pIHtcclxuICAgICAgc2V0RXJyb3IoZXJyIGluc3RhbmNlb2YgRXJyb3IgPyBlcnIubWVzc2FnZSA6ICdGYWlsZWQgdG8gYm9vayBzZXNzaW9uLiBQbGVhc2UgdHJ5IGFnYWluLicpO1xyXG4gICAgfSBmaW5hbGx5IHtcclxuICAgICAgc2V0TG9hZGluZyhmYWxzZSk7XHJcbiAgICB9XHJcbiAgfTtcclxuXHJcbiAgcmV0dXJuIChcclxuICAgIDxNb2RhbFdyYXBwZXI+XHJcbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtOCBwLTggc206cC1bMzJweF8yNHB4XVwiPlxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtNFwiPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW5cIj5cclxuICAgICAgICAgICAgPGgyIGNsYXNzTmFtZT1cImZvbnQtZGlzcGxheSB0ZXh0LVszMnB4XSBmb250LWJsYWNrIGxlYWRpbmctbm9uZSB0ZXh0LWJsYWNrXCI+XHJcbiAgICAgICAgICAgICAgQm9vayBZb3VyIENvbnN1bHRhdGlvblxyXG4gICAgICAgICAgICA8L2gyPlxyXG4gICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgb25DbGljaz17Y2xvc2VNb2RhbH1cclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGgtNiB3LTYgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHJvdW5kZWQtc20gYmctWyMzQTNDM0VdIHRleHQtd2hpdGUvODAgdHJhbnNpdGlvbi1jb2xvcnMgaG92ZXI6dGV4dC13aGl0ZVwiXHJcbiAgICAgICAgICAgID5cclxuICAgICAgICAgICAgICA8WCBzaXplPXsxNH0gLz5cclxuICAgICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDxwIGNsYXNzTmFtZT1cImZvbnQtYm9keSB0ZXh0LVsyMHB4XSBmb250LW1lZGl1bSBsZWFkaW5nLVsxLjNdIHRyYWNraW5nLVstMC40cHhdIHRleHQtYmxhY2svNzBcIj5cclxuICAgICAgICAgICAgU2NoZWR1bGUgYSBwZXJzb25hbGl6ZWQgc2Vzc2lvbiB3aXRoIG91ciBleHBlcnQgdG8gZGlzY3VzcyB5b3VyIG5lZWRzIGFuZCBnb2Fscy5cclxuICAgICAgICAgIDwvcD5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGdhcC02XCI+XHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggZmxleC1jb2wgZ2FwLTZcIj5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGdhcC02XCI+XHJcbiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJyZWxhdGl2ZSBmbGV4IGZsZXgtMSBpdGVtcy1jZW50ZXIgcm91bmRlZC14bCBib3JkZXIgYm9yZGVyLWJsYWNrLzEwIGJnLVsjMjQyNjI4XS9bMC4wNV0gcC00XCI+XHJcbiAgICAgICAgICAgICAgICA8aW5wdXRcclxuICAgICAgICAgICAgICAgICAgdHlwZT1cInRleHRcIlxyXG4gICAgICAgICAgICAgICAgICBwbGFjZWhvbGRlcj1cIkZpcnN0IG5hbWVcIlxyXG4gICAgICAgICAgICAgICAgICB2YWx1ZT17Zmlyc3ROYW1lfVxyXG4gICAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldEZpcnN0TmFtZShlLnRhcmdldC52YWx1ZSl9XHJcbiAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT1cInctZnVsbCBiZy10cmFuc3BhcmVudCBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtbWVkaXVtIHRleHQtYmxhY2sgb3V0bGluZS1ub25lIHBsYWNlaG9sZGVyOnRleHQtYmxhY2svNTBcIlxyXG4gICAgICAgICAgICAgICAgLz5cclxuICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInJlbGF0aXZlIGZsZXggZmxleC0xIGl0ZW1zLWNlbnRlciByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItYmxhY2svMTAgYmctWyMyNDI2MjhdL1swLjA1XSBwLTRcIj5cclxuICAgICAgICAgICAgICAgIDxpbnB1dFxyXG4gICAgICAgICAgICAgICAgICB0eXBlPVwidGV4dFwiXHJcbiAgICAgICAgICAgICAgICAgIHBsYWNlaG9sZGVyPVwiTGFzdCBuYW1lXCJcclxuICAgICAgICAgICAgICAgICAgdmFsdWU9e2xhc3ROYW1lfVxyXG4gICAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldExhc3ROYW1lKGUudGFyZ2V0LnZhbHVlKX1cclxuICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPVwidy1mdWxsIGJnLXRyYW5zcGFyZW50IGZvbnQtYm9keSB0ZXh0LWJhc2UgZm9udC1tZWRpdW0gdGV4dC1ibGFjayBvdXRsaW5lLW5vbmUgcGxhY2Vob2xkZXI6dGV4dC1ibGFjay81MFwiXHJcbiAgICAgICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwicmVsYXRpdmUgZmxleCBoLTE0IGl0ZW1zLWNlbnRlciBnYXAtMiByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItYmxhY2svMTAgYmctWyMyNDI2MjhdL1swLjA1XSBweC0yXCI+XHJcbiAgICAgICAgICAgICAgPENvdW50cnlDb2RlU2VsZWN0IHZhbHVlPXtwaG9uZUNvdW50cnlDb2RlfSBvbkNoYW5nZT17c2V0UGhvbmVDb3VudHJ5Q29kZX0gLz5cclxuICAgICAgICAgICAgICA8aW5wdXRcclxuICAgICAgICAgICAgICAgIHR5cGU9XCJ0ZWxcIlxyXG4gICAgICAgICAgICAgICAgcGxhY2Vob2xkZXI9XCJFbnRlciBwaG9uZSBudW1iZXJcIlxyXG4gICAgICAgICAgICAgICAgdmFsdWU9e3Bob25lTnVtYmVyfVxyXG4gICAgICAgICAgICAgICAgb25DaGFuZ2U9eyhlKSA9PiBzZXRQaG9uZU51bWJlcihlLnRhcmdldC52YWx1ZSl9XHJcbiAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJ3LWZ1bGwgYmctdHJhbnNwYXJlbnQgZm9udC1ib2R5IHRleHQtYmFzZSBmb250LW1lZGl1bSB0ZXh0LWJsYWNrIG91dGxpbmUtbm9uZSBwbGFjZWhvbGRlcjp0ZXh0LWJsYWNrLzUwXCJcclxuICAgICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwicmVsYXRpdmUgZmxleCBpdGVtcy1jZW50ZXIgcm91bmRlZC14bCBib3JkZXIgYm9yZGVyLWJsYWNrLzEwIGJnLVsjMjQyNjI4XS9bMC4wNV0gcC00XCI+XHJcbiAgICAgICAgICAgICAgPGlucHV0XHJcbiAgICAgICAgICAgICAgICB0eXBlPVwiZW1haWxcIlxyXG4gICAgICAgICAgICAgICAgcGxhY2Vob2xkZXI9XCJFbWFpbFwiXHJcbiAgICAgICAgICAgICAgICB2YWx1ZT17ZW1haWx9XHJcbiAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldEVtYWlsKGUudGFyZ2V0LnZhbHVlKX1cclxuICAgICAgICAgICAgICAgIGNsYXNzTmFtZT1cInctZnVsbCBiZy10cmFuc3BhcmVudCBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtbWVkaXVtIHRleHQtYmxhY2sgb3V0bGluZS1ub25lIHBsYWNlaG9sZGVyOnRleHQtYmxhY2svNTBcIlxyXG4gICAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJyZWxhdGl2ZSBmbGV4IGl0ZW1zLWNlbnRlciByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItYmxhY2svMTAgYmctWyMyNDI2MjhdL1swLjA1XSBwLTRcIj5cclxuICAgICAgICAgICAgICA8c2VsZWN0IFxyXG4gICAgICAgICAgICAgICAgdmFsdWU9e3ByZWZlcnJlZERhdGV9XHJcbiAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldFByZWZlcnJlZERhdGUoZS50YXJnZXQudmFsdWUpfVxyXG4gICAgICAgICAgICAgICAgY2xhc3NOYW1lPVwidy1mdWxsIGFwcGVhcmFuY2Utbm9uZSBiZy10cmFuc3BhcmVudCBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtbWVkaXVtIHRleHQtYmxhY2sgb3V0bGluZS1ub25lXCJcclxuICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICA8b3B0aW9uIHZhbHVlPVwiXCI+UHJlZmVycmVkIERhdGU8L29wdGlvbj5cclxuICAgICAgICAgICAgICAgIHtnZW5lcmF0ZURhdGVPcHRpb25zKCkubWFwKChkKSA9PiAoXHJcbiAgICAgICAgICAgICAgICAgIDxvcHRpb24ga2V5PXtkLnZhbHVlfSB2YWx1ZT17ZC52YWx1ZX0+e2QubGFiZWx9PC9vcHRpb24+XHJcbiAgICAgICAgICAgICAgICApKX1cclxuICAgICAgICAgICAgICA8L3NlbGVjdD5cclxuICAgICAgICAgICAgICA8Q2hldnJvbkRvd24gc2l6ZT17MjB9IGNsYXNzTmFtZT1cInBvaW50ZXItZXZlbnRzLW5vbmUgYWJzb2x1dGUgcmlnaHQtNCB0ZXh0LVsjN0E3QTdBXVwiIC8+XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJyZWxhdGl2ZSBmbGV4IGl0ZW1zLWNlbnRlciByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItYmxhY2svMTAgYmctWyMyNDI2MjhdL1swLjA1XSBwLTRcIj5cclxuICAgICAgICAgICAgICA8c2VsZWN0IFxyXG4gICAgICAgICAgICAgICAgdmFsdWU9e3ByZWZlcnJlZFRpbWV9XHJcbiAgICAgICAgICAgICAgICBvbkNoYW5nZT17KGUpID0+IHNldFByZWZlcnJlZFRpbWUoZS50YXJnZXQudmFsdWUpfVxyXG4gICAgICAgICAgICAgICAgY2xhc3NOYW1lPVwidy1mdWxsIGFwcGVhcmFuY2Utbm9uZSBiZy10cmFuc3BhcmVudCBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtbWVkaXVtIHRleHQtYmxhY2sgb3V0bGluZS1ub25lXCJcclxuICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICA8b3B0aW9uIHZhbHVlPVwiXCI+UHJlZmVycmVkIFRpbWU8L29wdGlvbj5cclxuICAgICAgICAgICAgICAgIHt0aW1lT3B0aW9ucy5tYXAoKHQpID0+IChcclxuICAgICAgICAgICAgICAgICAgPG9wdGlvbiBrZXk9e3QudmFsdWV9IHZhbHVlPXt0LnZhbHVlfT57dC5sYWJlbH08L29wdGlvbj5cclxuICAgICAgICAgICAgICAgICkpfVxyXG4gICAgICAgICAgICAgIDwvc2VsZWN0PlxyXG4gICAgICAgICAgICAgIDxDaGV2cm9uRG93biBzaXplPXsyMH0gY2xhc3NOYW1lPVwicG9pbnRlci1ldmVudHMtbm9uZSBhYnNvbHV0ZSByaWdodC00IHRleHQtWyM3QTdBN0FdXCIgLz5cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiByb3VuZGVkLXhsIGJvcmRlciBib3JkZXItWyNDMkU4RkZdIGJnLVsjRDZFRkZGXSBwLVsyNHB4XzIwcHhdXCI+XHJcbiAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cImZvbnQtYm9keSB0ZXh0LWJhc2UgZm9udC1tZWRpdW0gdHJhY2tpbmctWy0wLjMycHhdIHRleHQtYmxhY2tcIj5cclxuICAgICAgICAgICAgICBTZXNzaW9uIEZlZVxyXG4gICAgICAgICAgICA8L3NwYW4+XHJcbiAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cImZvbnQtYm9keSB0ZXh0LVsxOHB4XSBmb250LWJvbGQgdHJhY2tpbmctWy0wLjM2cHhdIHRleHQtWyMwMDc4QjRdXCI+XHJcbiAgICAgICAgICAgICAgJDIwMFxyXG4gICAgICAgICAgICA8L3NwYW4+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICB7ZXJyb3IgJiYgPHAgY2xhc3NOYW1lPVwidGV4dC1yZWQtNTAwIHRleHQtc20gZm9udC1ib2R5XCI+e2Vycm9yfTwvcD59XHJcblxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGdhcC02XCI+XHJcbiAgICAgICAgICAgIDxCdXR0b24gXHJcbiAgICAgICAgICAgICAgdmFyaWFudD1cInByaW1hcnlcIiBcclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJoLTE0IHctZnVsbCByb3VuZGVkLVs0OHB4XSB0ZXh0LWxnIGZvbnQtYm9sZCBkaXNhYmxlZDpvcGFjaXR5LTUwXCJcclxuICAgICAgICAgICAgICBvbkNsaWNrPXtoYW5kbGVTdWJtaXR9XHJcbiAgICAgICAgICAgICAgZGlzYWJsZWQ9e2xvYWRpbmd9XHJcbiAgICAgICAgICAgID5cclxuICAgICAgICAgICAgICB7bG9hZGluZyA/ICdQcm9jZXNzaW5nLi4uJyA6ICdDb25maXJtIEJvb2tpbmcnfVxyXG4gICAgICAgICAgICA8L0J1dHRvbj5cclxuICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwidGV4dC1jZW50ZXIgZm9udC1ib2R5IHRleHQtYmFzZSBmb250LW5vcm1hbCB0cmFja2luZy1bLTAuMzJweF0gdGV4dC1ibGFjay83MFwiPlxyXG4gICAgICAgICAgICAgIFlvdSdsbCByZWNlaXZlIGEgY29uZmlybWF0aW9uIGVtYWlsIGFmdGVyIGJvb2tpbmdcclxuICAgICAgICAgICAgPC9wPlxyXG4gICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgPC9kaXY+XHJcbiAgICAgIDwvZGl2PlxyXG4gICAgPC9Nb2RhbFdyYXBwZXI+XHJcbiAgKTtcclxufTtcclxuIl0sImZpbGUiOiJDOi9Vc2Vycy9WSUNUT1JJQS9Eb3dubG9hZHMvSGF2bG8vaGF2bG9fZnJvbnRlbmQvc3JjL2NvbXBvbmVudHMvbW9kYWxzL0Jvb2tTZXNzaW9uTW9kYWwudHN4In0=

@@ -667,6 +667,8 @@ app.include_router(admin_users.router, prefix=API_PREFIX)
 from app.routers import stale_listings  # noqa: E402
 app.include_router(stale_listings.public_router, prefix=API_PREFIX)
 app.include_router(stale_listings.admin_router, prefix=API_PREFIX)
+from app.routers import product_access  # noqa: E402
+app.include_router(product_access.router, prefix=API_PREFIX)
 
 from app.routers import custom_offers  # noqa: E402
 app.include_router(custom_offers.public_router, prefix=API_PREFIX)

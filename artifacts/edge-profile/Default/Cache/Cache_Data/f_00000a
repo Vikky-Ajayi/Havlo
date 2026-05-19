@@ -1,0 +1,279 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/modals/LoginModal.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=520aa8ef"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+var _s = $RefreshSig$();
+import __vite__cjsImport1_react from "/node_modules/.vite/deps/react.js?v=520aa8ef"; const useState = __vite__cjsImport1_react["useState"];
+import { ModalWrapper } from "/src/components/modals/ModalWrapper.tsx";
+import { useModal } from "/src/hooks/useModal.ts";
+import { useAuth } from "/src/context/AuthContext.tsx?t=1778970770480";
+import { api } from "/src/lib/api.ts?t=1778970770480";
+import { Button } from "/src/components/ui/Button.tsx";
+import { useNavigate } from "/node_modules/.vite/deps/react-router-dom.js?v=519441c8";
+export const LoginModal = () => {
+  _s();
+  const { closeModal, switchModal } = useModal();
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const handleLogin = async () => {
+    setError("");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const resp = await api.login({ email: normalizedEmail, password });
+      await login(resp);
+      closeModal();
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message || "Invalid email or password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleLogin();
+  };
+  return /* @__PURE__ */ jsxDEV(ModalWrapper, { children: /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-8 p-8 sm:p-[32px_24px] bg-white", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between", children: [
+      /* @__PURE__ */ jsxDEV("h2", { className: "font-display text-[32px] font-black leading-none text-black", children: "Log in" }, void 0, false, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+        lineNumber: 51,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          onClick: closeModal,
+          className: "flex h-6 w-6 items-center justify-center rounded-sm transition-colors",
+          children: /* @__PURE__ */ jsxDEV("svg", { width: "14", height: "14", viewBox: "0 0 14 14", fill: "none", xmlns: "http://www.w3.org/2000/svg", children: /* @__PURE__ */ jsxDEV("path", { d: "M1.05 13.3L0 12.25L5.6 6.65L0 1.05L1.05 0L6.65 5.6L12.25 0L13.3 1.05L7.7 6.65L13.3 12.25L12.25 13.3L6.65 7.7L1.05 13.3Z", fill: "black", fillOpacity: "0.8" }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+            lineNumber: 59,
+            columnNumber: 15
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+            lineNumber: 58,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+          lineNumber: 54,
+          columnNumber: 11
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+      lineNumber: 50,
+      columnNumber: 9
+    }, this),
+    error && /* @__PURE__ */ jsxDEV("div", { className: "rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700", children: error }, void 0, false, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+      lineNumber: 65,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4", children: /* @__PURE__ */ jsxDEV(
+          "input",
+          {
+            type: "email",
+            placeholder: "Email",
+            value: email,
+            onChange: (e) => setEmail(e.target.value),
+            onKeyDown: handleKeyDown,
+            autoCapitalize: "none",
+            autoCorrect: "off",
+            spellCheck: false,
+            inputMode: "email",
+            autoComplete: "email",
+            className: "w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+            lineNumber: 74,
+            columnNumber: 17
+          },
+          this
+        ) }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+          lineNumber: 73,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4", children: [
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: showPassword ? "text" : "password",
+              placeholder: "Password",
+              value: password,
+              onChange: (e) => setPassword(e.target.value),
+              onKeyDown: handleKeyDown,
+              className: "w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+              lineNumber: 90,
+              columnNumber: 17
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            "button",
+            {
+              type: "button",
+              onClick: () => setShowPassword(!showPassword),
+              className: "text-black/50 transition-colors hover:text-black",
+              children: /* @__PURE__ */ jsxDEV("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg", children: /* @__PURE__ */ jsxDEV("path", { d: "M22.1141 9.729L20.5711 9C19.8235 10.6713 18.6085 12.0906 17.0724 13.0869C15.5364 14.0832 13.745 14.6139 11.9141 14.615C10.0833 14.6139 8.29183 14.0832 6.75579 13.0869C5.21975 12.0906 4.00469 10.6713 3.25711 9L1.71411 9.729C2.29824 10.9856 3.09609 12.1313 4.07211 13.115L2.44211 15.086L3.77211 16.2L5.40011 14.23C6.00011 14.659 6.64311 15.044 7.28611 15.344L6.42911 17.744L8.05711 18.344L8.91411 15.944C9.61018 16.159 10.3298 16.2886 11.0571 16.33V18.9H12.7711V16.33C13.4984 16.2886 14.218 16.1589 14.9141 15.944L15.7711 18.344L17.4011 17.744L16.5431 15.344C17.2291 15.044 17.8291 14.659 18.4291 14.23L20.0571 16.201L21.3861 15.087L19.7571 13.116C20.7431 12.13 21.5571 11.015 22.1141 9.729Z", fill: "black", fillOpacity: "0.5" }, void 0, false, {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+                lineNumber: 104,
+                columnNumber: 21
+              }, this) }, void 0, false, {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+                lineNumber: 103,
+                columnNumber: 19
+              }, this)
+            },
+            void 0,
+            false,
+            {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+              lineNumber: 98,
+              columnNumber: 17
+            },
+            this
+          )
+        ] }, void 0, true, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+          lineNumber: 89,
+          columnNumber: 15
+        }, this),
+        /* @__PURE__ */ jsxDEV("div", { className: "flex h-14 items-center justify-center", children: /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            onClick: () => switchModal("forgot-password"),
+            className: "font-body text-base font-medium tracking-[-0.32px] text-black underline underline-offset-4 hover:opacity-70",
+            children: "Forgot Password?"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+            lineNumber: 110,
+            columnNumber: 17
+          },
+          this
+        ) }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+          lineNumber: 109,
+          columnNumber: 15
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+        lineNumber: 72,
+        columnNumber: 13
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        Button,
+        {
+          variant: "primary",
+          className: "h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors disabled:opacity-50",
+          onClick: handleLogin,
+          disabled: loading,
+          children: loading ? "Logging in…" : "Log in"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+          lineNumber: 119,
+          columnNumber: 13
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV("div", { className: "flex h-14 items-center justify-center font-body text-base font-medium tracking-[-0.32px] text-black", children: [
+        "Don't have an account?",
+        " ",
+        /* @__PURE__ */ jsxDEV(
+          "button",
+          {
+            onClick: () => switchModal("create-account"),
+            className: "ml-1 font-bold underline underline-offset-4 hover:opacity-70",
+            children: "Create Account"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+            lineNumber: 130,
+            columnNumber: 15
+          },
+          this
+        )
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+        lineNumber: 128,
+        columnNumber: 13
+      }, this)
+    ] }, void 0, true, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+      lineNumber: 71,
+      columnNumber: 11
+    }, this) }, void 0, false, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+      lineNumber: 70,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+    lineNumber: 49,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx",
+    lineNumber: 48,
+    columnNumber: 5
+  }, this);
+};
+_s(LoginModal, "VhmMDLr7JO6mosp40wFz0/AVU1Y=", false, function() {
+  return [useModal, useAuth, useNavigate];
+});
+_c = LoginModal;
+var _c;
+$RefreshReg$(_c, "LoginModal");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) {
+  return RefreshRuntime.register(type, "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/LoginModal.tsx " + id);
+}
+function $RefreshSig$() {
+  return RefreshRuntime.createSignatureFunctionForTransform();
+}
+
+//# sourceMappingURL=data:application/json;base64,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SDtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUEsUUFLQSxLQU5GO0FBQUE7QUFBQTtBQUFBO0FBQUEsZUFPQTtBQUFBLFdBNUNGO0FBQUE7QUFBQTtBQUFBO0FBQUEsYUE2Q0E7QUFBQSxNQUVBO0FBQUEsUUFBQztBQUFBO0FBQUEsVUFDQyxTQUFRO0FBQUEsVUFDUixXQUFVO0FBQUEsVUFDVixTQUFTYTtBQUFBQSxVQUNULFVBQVVGO0FBQUFBLFVBRVRBLG9CQUFVLGdCQUFnQjtBQUFBO0FBQUEsUUFON0I7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLE1BT0E7QUFBQSxNQUVBLHVCQUFDLFNBQUksV0FBVSx1R0FBc0c7QUFBQTtBQUFBLFFBQzVGO0FBQUEsUUFDdkI7QUFBQSxVQUFDO0FBQUE7QUFBQSxZQUNDLFNBQVMsTUFBTVgsWUFBWSxnQkFBZ0I7QUFBQSxZQUMzQyxXQUFVO0FBQUEsWUFBOEQ7QUFBQTtBQUFBLFVBRjFFO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQSxRQUtBO0FBQUEsV0FQRjtBQUFBO0FBQUE7QUFBQTtBQUFBLGFBUUE7QUFBQSxTQWpFRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFdBa0VBLEtBbkVGO0FBQUE7QUFBQTtBQUFBO0FBQUEsV0FvRUE7QUFBQSxPQXpGRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBMEZBLEtBM0ZGO0FBQUE7QUFBQTtBQUFBO0FBQUEsU0E0RkE7QUFFSjtBQUFFRixHQXJJV0QsWUFBb0I7QUFBQSxVQUNLTCxVQUNsQkMsU0FDREcsV0FBVztBQUFBO0FBQUEsS0FIakJDO0FBQW9CLElBQUE0QjtBQUFBLGFBQUFBLElBQUEiLCJuYW1lcyI6WyJ1c2VTdGF0ZSIsIk1vZGFsV3JhcHBlciIsInVzZU1vZGFsIiwidXNlQXV0aCIsImFwaSIsIkJ1dHRvbiIsInVzZU5hdmlnYXRlIiwiTG9naW5Nb2RhbCIsIl9zIiwiY2xvc2VNb2RhbCIsInN3aXRjaE1vZGFsIiwibG9naW4iLCJuYXZpZ2F0ZSIsImVtYWlsIiwic2V0RW1haWwiLCJwYXNzd29yZCIsInNldFBhc3N3b3JkIiwic2hvd1Bhc3N3b3JkIiwic2V0U2hvd1Bhc3N3b3JkIiwiZXJyb3IiLCJzZXRFcnJvciIsImxvYWRpbmciLCJzZXRMb2FkaW5nIiwiaGFuZGxlTG9naW4iLCJub3JtYWxpemVkRW1haWwiLCJ0cmltIiwidG9Mb3dlckNhc2UiLCJyZXNwIiwiZXJyIiwibWVzc2FnZSIsImhhbmRsZUtleURvd24iLCJlIiwia2V5IiwidGFyZ2V0IiwidmFsdWUiLCJfYyJdLCJpZ25vcmVMaXN0IjpbXSwic291cmNlcyI6WyJMb2dpbk1vZGFsLnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgUmVhY3QsIHsgdXNlU3RhdGUgfSBmcm9tICdyZWFjdCc7XHJcbmltcG9ydCB7IE1vZGFsV3JhcHBlciB9IGZyb20gJy4vTW9kYWxXcmFwcGVyJztcclxuaW1wb3J0IHsgdXNlTW9kYWwgfSBmcm9tICcuLi8uLi9ob29rcy91c2VNb2RhbCc7XHJcbmltcG9ydCB7IHVzZUF1dGggfSBmcm9tICcuLi8uLi9jb250ZXh0L0F1dGhDb250ZXh0JztcclxuaW1wb3J0IHsgYXBpIH0gZnJvbSAnLi4vLi4vbGliL2FwaSc7XHJcbmltcG9ydCB7IEJ1dHRvbiB9IGZyb20gJy4uL3VpL0J1dHRvbic7XHJcbmltcG9ydCB7IHVzZU5hdmlnYXRlIH0gZnJvbSAncmVhY3Qtcm91dGVyLWRvbSc7XHJcblxyXG5leHBvcnQgY29uc3QgTG9naW5Nb2RhbDogUmVhY3QuRkMgPSAoKSA9PiB7XHJcbiAgY29uc3QgeyBjbG9zZU1vZGFsLCBzd2l0Y2hNb2RhbCB9ID0gdXNlTW9kYWwoKTtcclxuICBjb25zdCB7IGxvZ2luIH0gPSB1c2VBdXRoKCk7XHJcbiAgY29uc3QgbmF2aWdhdGUgPSB1c2VOYXZpZ2F0ZSgpO1xyXG5cclxuICBjb25zdCBbZW1haWwsIHNldEVtYWlsXSA9IHVzZVN0YXRlKCcnKTtcclxuICBjb25zdCBbcGFzc3dvcmQsIHNldFBhc3N3b3JkXSA9IHVzZVN0YXRlKCcnKTtcclxuICBjb25zdCBbc2hvd1Bhc3N3b3JkLCBzZXRTaG93UGFzc3dvcmRdID0gdXNlU3RhdGUoZmFsc2UpO1xyXG4gIGNvbnN0IFtlcnJvciwgc2V0RXJyb3JdID0gdXNlU3RhdGUoJycpO1xyXG4gIGNvbnN0IFtsb2FkaW5nLCBzZXRMb2FkaW5nXSA9IHVzZVN0YXRlKGZhbHNlKTtcclxuXHJcbiAgY29uc3QgaGFuZGxlTG9naW4gPSBhc3luYyAoKSA9PiB7XHJcbiAgICBzZXRFcnJvcignJyk7XHJcblxyXG4gICAgY29uc3Qgbm9ybWFsaXplZEVtYWlsID0gZW1haWwudHJpbSgpLnRvTG93ZXJDYXNlKCk7XHJcbiAgICBpZiAoIW5vcm1hbGl6ZWRFbWFpbCB8fCAhcGFzc3dvcmQpIHtcclxuICAgICAgc2V0RXJyb3IoJ1BsZWFzZSBlbnRlciB5b3VyIGVtYWlsIGFuZCBwYXNzd29yZC4nKTtcclxuICAgICAgcmV0dXJuO1xyXG4gICAgfVxyXG5cclxuICAgIHNldExvYWRpbmcodHJ1ZSk7XHJcbiAgICB0cnkge1xyXG4gICAgICBjb25zdCByZXNwID0gYXdhaXQgYXBpLmxvZ2luKHsgZW1haWw6IG5vcm1hbGl6ZWRFbWFpbCwgcGFzc3dvcmQgfSk7XHJcbiAgICAgIGF3YWl0IGxvZ2luKHJlc3ApO1xyXG4gICAgICBjbG9zZU1vZGFsKCk7XHJcblxyXG4gICAgICBuYXZpZ2F0ZSgnL2Rhc2hib2FyZCcpO1xyXG4gICAgfSBjYXRjaCAoZXJyOiBhbnkpIHtcclxuICAgICAgc2V0RXJyb3IoZXJyLm1lc3NhZ2UgfHwgJ0ludmFsaWQgZW1haWwgb3IgcGFzc3dvcmQuJyk7XHJcbiAgICB9IGZpbmFsbHkge1xyXG4gICAgICBzZXRMb2FkaW5nKGZhbHNlKTtcclxuICAgIH1cclxuICB9O1xyXG5cclxuICBjb25zdCBoYW5kbGVLZXlEb3duID0gKGU6IFJlYWN0LktleWJvYXJkRXZlbnQpID0+IHtcclxuICAgIGlmIChlLmtleSA9PT0gJ0VudGVyJykgaGFuZGxlTG9naW4oKTtcclxuICB9O1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPE1vZGFsV3JhcHBlcj5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGdhcC04IHAtOCBzbTpwLVszMnB4XzI0cHhdIGJnLXdoaXRlXCI+XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW5cIj5cclxuICAgICAgICAgIDxoMiBjbGFzc05hbWU9XCJmb250LWRpc3BsYXkgdGV4dC1bMzJweF0gZm9udC1ibGFjayBsZWFkaW5nLW5vbmUgdGV4dC1ibGFja1wiPlxyXG4gICAgICAgICAgICBMb2cgaW5cclxuICAgICAgICAgIDwvaDI+XHJcbiAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgIG9uQ2xpY2s9e2Nsb3NlTW9kYWx9XHJcbiAgICAgICAgICAgIGNsYXNzTmFtZT1cImZsZXggaC02IHctNiBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgcm91bmRlZC1zbSB0cmFuc2l0aW9uLWNvbG9yc1wiXHJcbiAgICAgICAgICA+XHJcbiAgICAgICAgICAgIDxzdmcgd2lkdGg9XCIxNFwiIGhlaWdodD1cIjE0XCIgdmlld0JveD1cIjAgMCAxNCAxNFwiIGZpbGw9XCJub25lXCIgeG1sbnM9XCJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Z1wiPlxyXG4gICAgICAgICAgICAgIDxwYXRoIGQ9XCJNMS4wNSAxMy4zTDAgMTIuMjVMNS42IDYuNjVMMCAxLjA1TDEuMDUgMEw2LjY1IDUuNkwxMi4yNSAwTDEzLjMgMS4wNUw3LjcgNi42NUwxMy4zIDEyLjI1TDEyLjI1IDEzLjNMNi42NSA3LjdMMS4wNSAxMy4zWlwiIGZpbGw9XCJibGFja1wiIGZpbGxPcGFjaXR5PVwiMC44XCIvPlxyXG4gICAgICAgICAgICA8L3N2Zz5cclxuICAgICAgICAgIDwvYnV0dG9uPlxyXG4gICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICB7ZXJyb3IgJiYgKFxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJyb3VuZGVkLXhsIGJvcmRlciBib3JkZXItcmVkLTIwMCBiZy1yZWQtNTAgcHgtNCBweS0zIHRleHQtc20gZm9udC1tZWRpdW0gdGV4dC1yZWQtNzAwXCI+XHJcbiAgICAgICAgICAgIHtlcnJvcn1cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICl9XHJcblxyXG4gICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtNlwiPlxyXG4gICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGdhcC02XCI+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtNlwiPlxyXG4gICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwicmVsYXRpdmUgZmxleCBpdGVtcy1jZW50ZXIgcm91bmRlZC14bCBib3JkZXIgYm9yZGVyLVtyZ2JhKDU4LDYwLDYyLDAuMTApXSBiZy1bcmdiYSgzNiwzOCw0MCwwLjA1KV0gcC00XCI+XHJcbiAgICAgICAgICAgICAgICA8aW5wdXRcclxuICAgICAgICAgICAgICAgICAgdHlwZT1cImVtYWlsXCJcclxuICAgICAgICAgICAgICAgICAgcGxhY2Vob2xkZXI9XCJFbWFpbFwiXHJcbiAgICAgICAgICAgICAgICAgIHZhbHVlPXtlbWFpbH1cclxuICAgICAgICAgICAgICAgICAgb25DaGFuZ2U9e2UgPT4gc2V0RW1haWwoZS50YXJnZXQudmFsdWUpfVxyXG4gICAgICAgICAgICAgICAgICBvbktleURvd249e2hhbmRsZUtleURvd259XHJcbiAgICAgICAgICAgICAgICAgIGF1dG9DYXBpdGFsaXplPVwibm9uZVwiXHJcbiAgICAgICAgICAgICAgICAgIGF1dG9Db3JyZWN0PVwib2ZmXCJcclxuICAgICAgICAgICAgICAgICAgc3BlbGxDaGVjaz17ZmFsc2V9XHJcbiAgICAgICAgICAgICAgICAgIGlucHV0TW9kZT1cImVtYWlsXCJcclxuICAgICAgICAgICAgICAgICAgYXV0b0NvbXBsZXRlPVwiZW1haWxcIlxyXG4gICAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJ3LWZ1bGwgYmctdHJhbnNwYXJlbnQgZm9udC1ib2R5IHRleHQtYmFzZSBmb250LW1lZGl1bSB0cmFja2luZy1bLTAuMzJweF0gdGV4dC1ibGFjayBvdXRsaW5lLW5vbmUgcGxhY2Vob2xkZXI6dGV4dC1ibGFjay81MFwiXHJcbiAgICAgICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInJlbGF0aXZlIGZsZXggaXRlbXMtY2VudGVyIHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1bcmdiYSg1OCw2MCw2MiwwLjEwKV0gYmctW3JnYmEoMzYsMzgsNDAsMC4wNSldIHAtNFwiPlxyXG4gICAgICAgICAgICAgICAgPGlucHV0XHJcbiAgICAgICAgICAgICAgICAgIHR5cGU9e3Nob3dQYXNzd29yZCA/ICd0ZXh0JyA6ICdwYXNzd29yZCd9XHJcbiAgICAgICAgICAgICAgICAgIHBsYWNlaG9sZGVyPVwiUGFzc3dvcmRcIlxyXG4gICAgICAgICAgICAgICAgICB2YWx1ZT17cGFzc3dvcmR9XHJcbiAgICAgICAgICAgICAgICAgIG9uQ2hhbmdlPXtlID0+IHNldFBhc3N3b3JkKGUudGFyZ2V0LnZhbHVlKX1cclxuICAgICAgICAgICAgICAgICAgb25LZXlEb3duPXtoYW5kbGVLZXlEb3dufVxyXG4gICAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJ3LWZ1bGwgYmctdHJhbnNwYXJlbnQgZm9udC1ib2R5IHRleHQtYmFzZSBmb250LW1lZGl1bSB0cmFja2luZy1bLTAuMzJweF0gdGV4dC1ibGFjayBvdXRsaW5lLW5vbmUgcGxhY2Vob2xkZXI6dGV4dC1ibGFjay81MFwiXHJcbiAgICAgICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICAgICAgPGJ1dHRvblxyXG4gICAgICAgICAgICAgICAgICB0eXBlPVwiYnV0dG9uXCJcclxuICAgICAgICAgICAgICAgICAgb25DbGljaz17KCkgPT4gc2V0U2hvd1Bhc3N3b3JkKCFzaG93UGFzc3dvcmQpfVxyXG4gICAgICAgICAgICAgICAgICBjbGFzc05hbWU9XCJ0ZXh0LWJsYWNrLzUwIHRyYW5zaXRpb24tY29sb3JzIGhvdmVyOnRleHQtYmxhY2tcIlxyXG4gICAgICAgICAgICAgICAgPlxyXG4gICAgICAgICAgICAgICAgICA8c3ZnIHdpZHRoPVwiMjRcIiBoZWlnaHQ9XCIyNFwiIHZpZXdCb3g9XCIwIDAgMjQgMjRcIiBmaWxsPVwibm9uZVwiIHhtbG5zPVwiaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmdcIj5cclxuICAgICAgICAgICAgICAgICAgICA8cGF0aCBkPVwiTTIyLjExNDEgOS43MjlMMjAuNTcxMSA5QzE5LjgyMzUgMTAuNjcxMyAxOC42MDg1IDEyLjA5MDYgMTcuMDcyNCAxMy4wODY5QzE1LjUzNjQgMTQuMDgzMiAxMy43NDUgMTQuNjEzOSAxMS45MTQxIDE0LjYxNUMxMC4wODMzIDE0LjYxMzkgOC4yOTE4MyAxNC4wODMyIDYuNzU1NzkgMTMuMDg2OUM1LjIxOTc1IDEyLjA5MDYgNC4wMDQ2OSAxMC42NzEzIDMuMjU3MTEgOUwxLjcxNDExIDkuNzI5QzIuMjk4MjQgMTAuOTg1NiAzLjA5NjA5IDEyLjEzMTMgNC4wNzIxMSAxMy4xMTVMMi40NDIxMSAxNS4wODZMMy43NzIxMSAxNi4yTDUuNDAwMTEgMTQuMjNDNi4wMDAxMSAxNC42NTkgNi42NDMxMSAxNS4wNDQgNy4yODYxMSAxNS4zNDRMNi40MjkxMSAxNy43NDRMOC4wNTcxMSAxOC4zNDRMOC45MTQxMSAxNS45NDRDOS42MTAxOCAxNi4xNTkgMTAuMzI5OCAxNi4yODg2IDExLjA1NzEgMTYuMzNWMTguOUgxMi43NzExVjE2LjMzQzEzLjQ5ODQgMTYuMjg4NiAxNC4yMTggMTYuMTU4OSAxNC45MTQxIDE1Ljk0NEwxNS43NzExIDE4LjM0NEwxNy40MDExIDE3Ljc0NEwxNi41NDMxIDE1LjM0NEMxNy4yMjkxIDE1LjA0NCAxNy44MjkxIDE0LjY1OSAxOC40MjkxIDE0LjIzTDIwLjA1NzEgMTYuMjAxTDIxLjM4NjEgMTUuMDg3TDE5Ljc1NzEgMTMuMTE2QzIwLjc0MzEgMTIuMTMgMjEuNTU3MSAxMS4wMTUgMjIuMTE0MSA5LjcyOVpcIiBmaWxsPVwiYmxhY2tcIiBmaWxsT3BhY2l0eT1cIjAuNVwiLz5cclxuICAgICAgICAgICAgICAgICAgPC9zdmc+XHJcbiAgICAgICAgICAgICAgICA8L2J1dHRvbj5cclxuICAgICAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGgtMTQgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyXCI+XHJcbiAgICAgICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHN3aXRjaE1vZGFsKCdmb3Jnb3QtcGFzc3dvcmQnKX1cclxuICAgICAgICAgICAgICAgICAgY2xhc3NOYW1lPVwiZm9udC1ib2R5IHRleHQtYmFzZSBmb250LW1lZGl1bSB0cmFja2luZy1bLTAuMzJweF0gdGV4dC1ibGFjayB1bmRlcmxpbmUgdW5kZXJsaW5lLW9mZnNldC00IGhvdmVyOm9wYWNpdHktNzBcIlxyXG4gICAgICAgICAgICAgICAgPlxyXG4gICAgICAgICAgICAgICAgICBGb3Jnb3QgUGFzc3dvcmQ/XHJcbiAgICAgICAgICAgICAgICA8L2J1dHRvbj5cclxuICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgPC9kaXY+XHJcblxyXG4gICAgICAgICAgICA8QnV0dG9uIFxyXG4gICAgICAgICAgICAgIHZhcmlhbnQ9XCJwcmltYXJ5XCIgXHJcbiAgICAgICAgICAgICAgY2xhc3NOYW1lPVwiaC0xNCB3LWZ1bGwgcm91bmRlZC1bNDhweF0gYmctYmxhY2sgdGV4dC13aGl0ZSBmb250LWJvZHkgdGV4dC1sZyBmb250LWJvbGQgdHJhY2tpbmctWy0wLjM2cHhdIGhvdmVyOmJnLWJsYWNrLzkwIHRyYW5zaXRpb24tY29sb3JzIGRpc2FibGVkOm9wYWNpdHktNTBcIlxyXG4gICAgICAgICAgICAgIG9uQ2xpY2s9e2hhbmRsZUxvZ2lufVxyXG4gICAgICAgICAgICAgIGRpc2FibGVkPXtsb2FkaW5nfVxyXG4gICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAge2xvYWRpbmcgPyAnTG9nZ2luZyBpbuKApicgOiAnTG9nIGluJ31cclxuICAgICAgICAgICAgPC9CdXR0b24+XHJcblxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggaC0xNCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgZm9udC1ib2R5IHRleHQtYmFzZSBmb250LW1lZGl1bSB0cmFja2luZy1bLTAuMzJweF0gdGV4dC1ibGFja1wiPlxyXG4gICAgICAgICAgICAgIERvbid0IGhhdmUgYW4gYWNjb3VudD97JyAnfVxyXG4gICAgICAgICAgICAgIDxidXR0b25cclxuICAgICAgICAgICAgICAgIG9uQ2xpY2s9eygpID0+IHN3aXRjaE1vZGFsKCdjcmVhdGUtYWNjb3VudCcpfVxyXG4gICAgICAgICAgICAgICAgY2xhc3NOYW1lPVwibWwtMSBmb250LWJvbGQgdW5kZXJsaW5lIHVuZGVybGluZS1vZmZzZXQtNCBob3ZlcjpvcGFjaXR5LTcwXCJcclxuICAgICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgICBDcmVhdGUgQWNjb3VudFxyXG4gICAgICAgICAgICAgIDwvYnV0dG9uPlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICA8L2Rpdj5cclxuICAgIDwvTW9kYWxXcmFwcGVyPlxyXG4gICk7XHJcbn07XHJcbiJdLCJmaWxlIjoiQzovVXNlcnMvVklDVE9SSUEvRG93bmxvYWRzL0hhdmxvL2hhdmxvX2Zyb250ZW5kL3NyYy9jb21wb25lbnRzL21vZGFscy9Mb2dpbk1vZGFsLnRzeCJ9

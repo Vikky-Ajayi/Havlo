@@ -532,6 +532,59 @@ class StaleListingAdminFinalizeRequest(BaseModel):
     report_status: str = "completed"
 
 
+class ProductAccessRequest(BaseModel):
+    email: EmailStr
+
+
+class ProductAccessConsumeRequest(BaseModel):
+    token: str = Field(..., min_length=16, max_length=512)
+
+
+class ProductAccessRequestResponse(BaseModel):
+    ok: bool = True
+    message: str
+
+
+class ProductAccessConsumeResponse(BaseModel):
+    scope: str
+    email: EmailStr
+    session_token: str
+    redirect_path: str
+    outcome: str
+    records_count: int
+    reference: Optional[str] = None
+
+
+class StaleListingPortalItem(BaseModel):
+    assessment_id: str
+    reference: str
+    property_address: str = ""
+    package: str
+    payment_status: str
+    report_status: str
+    created_at: str
+
+
+class StaleListingPortalResponse(BaseModel):
+    email: EmailStr
+    items: list[StaleListingPortalItem] = Field(default_factory=list)
+
+
+class CustomOfferPortalItem(BaseModel):
+    submission_id: str
+    reference: str
+    property_address: str = ""
+    plan_name: str
+    payment_status: str
+    proposal_status: str
+    created_at: str
+
+
+class CustomOfferPortalResponse(BaseModel):
+    email: EmailStr
+    items: list[CustomOfferPortalItem] = Field(default_factory=list)
+
+
 # - Custom Offers -------------------------------------------------------------
 
 class CustomOfferPropertySnapshot(BaseModel):

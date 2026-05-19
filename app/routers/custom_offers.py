@@ -327,6 +327,13 @@ async def submit_custom_offer(
 
     submission.sumup_checkout_id = checkout.get("id") or ""
     submission.sumup_checkout_url = checkout.get("checkout_url") or checkout.get("hosted_checkout_url") or ""
+    if not submission.sumup_checkout_id or not submission.sumup_checkout_url:
+        await db.rollback()
+        logger.error("SumUp checkout missing usable URL for custom offer %s", reference)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to create a secure payment session right now. Please try again.",
+        )
     await db.commit()
 
     return CustomOfferSubmitResponse(

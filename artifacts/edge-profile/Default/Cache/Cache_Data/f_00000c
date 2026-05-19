@@ -1,0 +1,218 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/modals/ForgotPasswordModal.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=520aa8ef"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+var _s = $RefreshSig$();
+import __vite__cjsImport1_react from "/node_modules/.vite/deps/react.js?v=520aa8ef"; const useState = __vite__cjsImport1_react["useState"];
+import { ModalWrapper } from "/src/components/modals/ModalWrapper.tsx";
+import { useModal } from "/src/hooks/useModal.ts";
+import { Button } from "/src/components/ui/Button.tsx";
+import { api } from "/src/lib/api.ts?t=1778970770480";
+export const ForgotPasswordModal = () => {
+  _s();
+  const { closeModal } = useModal();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const handleSubmit = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await api.forgotPassword(normalizedEmail);
+      setSuccess(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send reset link. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /* @__PURE__ */ jsxDEV(ModalWrapper, { children: /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-8 p-8 sm:p-[32px_24px] bg-white", children: [
+    /* @__PURE__ */ jsxDEV("div", { className: "flex items-center justify-between", children: [
+      /* @__PURE__ */ jsxDEV("h2", { className: "font-display text-[32px] font-black leading-none text-black", children: "Forgot Password?" }, void 0, false, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+        lineNumber: 36,
+        columnNumber: 11
+      }, this),
+      /* @__PURE__ */ jsxDEV(
+        "button",
+        {
+          onClick: closeModal,
+          className: "flex h-6 w-6 items-center justify-center rounded-sm transition-colors",
+          children: /* @__PURE__ */ jsxDEV("svg", { width: "14", height: "14", viewBox: "0 0 14 14", fill: "none", xmlns: "http://www.w3.org/2000/svg", children: /* @__PURE__ */ jsxDEV("path", { d: "M1.05 13.3L0 12.25L5.6 6.65L0 1.05L1.05 0L6.65 5.6L12.25 0L13.3 1.05L7.7 6.65L13.3 12.25L12.25 13.3L6.65 7.7L1.05 13.3Z", fill: "black", fillOpacity: "0.8" }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+            lineNumber: 44,
+            columnNumber: 15
+          }, this) }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+            lineNumber: 43,
+            columnNumber: 13
+          }, this)
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+          lineNumber: 39,
+          columnNumber: 11
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+      lineNumber: 35,
+      columnNumber: 9
+    }, this),
+    /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-[80px]", children: [
+      /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-6", children: [
+        /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col items-center justify-center gap-2 rounded-xl border border-black/10 p-[16px_12px]", children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxDEV("svg", { width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg", children: /* @__PURE__ */ jsxDEV("path", { d: "M22 7L13.009 12.727C12.7039 12.9042 12.3573 12.9976 12.0045 12.9976C11.6517 12.9976 11.3051 12.9042 11 12.727L2 7M4 4L20 4C21.1046 4 22 4.89543 22 6V18C22 19.1046 21.1046 20 20 20L4 20C2.89543 20 2 19.1046 2 18L2 6C2 4.89543 2.89543 4 4 4Z", stroke: "black", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, void 0, false, {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+              lineNumber: 54,
+              columnNumber: 19
+            }, this) }, void 0, false, {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+              lineNumber: 53,
+              columnNumber: 17
+            }, this),
+            /* @__PURE__ */ jsxDEV("span", { className: "font-body text-2xl font-bold tracking-[-0.4px] text-black", children: "Enter your email address." }, void 0, false, {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+              lineNumber: 56,
+              columnNumber: 17
+            }, this)
+          ] }, void 0, true, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+            lineNumber: 52,
+            columnNumber: 15
+          }, this),
+          /* @__PURE__ */ jsxDEV("p", { className: "text-center font-body text-base font-medium tracking-[-0.32px] text-black/80", children: success ? "A password reset link has been sent to your email. Please check your inbox." : "We will send you a link to reset your password." }, void 0, false, {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+            lineNumber: 60,
+            columnNumber: 15
+          }, this)
+        ] }, void 0, true, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+          lineNumber: 51,
+          columnNumber: 13
+        }, this),
+        !success && /* @__PURE__ */ jsxDEV("div", { className: "relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4", children: /* @__PURE__ */ jsxDEV(
+          "input",
+          {
+            type: "email",
+            placeholder: "Email",
+            value: email,
+            onChange: (e) => setEmail(e.target.value),
+            onKeyDown: (e) => e.key === "Enter" && handleSubmit(),
+            autoCapitalize: "none",
+            autoCorrect: "off",
+            spellCheck: false,
+            inputMode: "email",
+            autoComplete: "email",
+            className: "w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
+          },
+          void 0,
+          false,
+          {
+            fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+            lineNumber: 69,
+            columnNumber: 17
+          },
+          this
+        ) }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+          lineNumber: 68,
+          columnNumber: 13
+        }, this),
+        error && /* @__PURE__ */ jsxDEV("p", { className: "text-red-500 text-sm font-body", children: error }, void 0, false, {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+          lineNumber: 85,
+          columnNumber: 23
+        }, this)
+      ] }, void 0, true, {
+        fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+        lineNumber: 50,
+        columnNumber: 11
+      }, this),
+      success ? /* @__PURE__ */ jsxDEV(
+        Button,
+        {
+          variant: "primary",
+          className: "h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors",
+          onClick: closeModal,
+          children: "Done"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+          lineNumber: 89,
+          columnNumber: 11
+        },
+        this
+      ) : /* @__PURE__ */ jsxDEV(
+        Button,
+        {
+          variant: "primary",
+          className: "h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors disabled:opacity-50",
+          onClick: handleSubmit,
+          disabled: loading,
+          children: loading ? "Sending..." : "Request password reset"
+        },
+        void 0,
+        false,
+        {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+          lineNumber: 97,
+          columnNumber: 11
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+      lineNumber: 49,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+    lineNumber: 34,
+    columnNumber: 7
+  }, this) }, void 0, false, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx",
+    lineNumber: 33,
+    columnNumber: 5
+  }, this);
+};
+_s(ForgotPasswordModal, "IdBvvVwnCC9Tu4Dj5pP7mSoWvt4=", false, function() {
+  return [useModal];
+});
+_c = ForgotPasswordModal;
+var _c;
+$RefreshReg$(_c, "ForgotPasswordModal");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) {
+  return RefreshRuntime.register(type, "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ForgotPasswordModal.tsx " + id);
+}
+function $RefreshSig$() {
+  return RefreshRuntime.createSignatureFunctionForTransform();
+}
+
+//# sourceMappingURL=data:application/json;base64,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dXNlU3RhdGUiLCJNb2RhbFdyYXBwZXIiLCJ1c2VNb2RhbCIsIkJ1dHRvbiIsImFwaSIsIkZvcmdvdFBhc3N3b3JkTW9kYWwiLCJfcyIsImNsb3NlTW9kYWwiLCJlbWFpbCIsInNldEVtYWlsIiwibG9hZGluZyIsInNldExvYWRpbmciLCJlcnJvciIsInNldEVycm9yIiwic3VjY2VzcyIsInNldFN1Y2Nlc3MiLCJoYW5kbGVTdWJtaXQiLCJub3JtYWxpemVkRW1haWwiLCJ0cmltIiwidG9Mb3dlckNhc2UiLCJmb3Jnb3RQYXNzd29yZCIsImVyciIsIkVycm9yIiwibWVzc2FnZSIsImUiLCJ0YXJnZXQiLCJ2YWx1ZSIsImtleSIsIl9jIl0sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VzIjpbIkZvcmdvdFBhc3N3b3JkTW9kYWwudHN4Il0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBSZWFjdCwgeyB1c2VTdGF0ZSB9IGZyb20gJ3JlYWN0JztcclxuaW1wb3J0IHsgTW9kYWxXcmFwcGVyIH0gZnJvbSAnLi9Nb2RhbFdyYXBwZXInO1xyXG5pbXBvcnQgeyB1c2VNb2RhbCB9IGZyb20gJy4uLy4uL2hvb2tzL3VzZU1vZGFsJztcclxuaW1wb3J0IHsgQnV0dG9uIH0gZnJvbSAnLi4vdWkvQnV0dG9uJztcclxuaW1wb3J0IHsgYXBpIH0gZnJvbSAnLi4vLi4vbGliL2FwaSc7XHJcblxyXG5leHBvcnQgY29uc3QgRm9yZ290UGFzc3dvcmRNb2RhbDogUmVhY3QuRkMgPSAoKSA9PiB7XHJcbiAgY29uc3QgeyBjbG9zZU1vZGFsIH0gPSB1c2VNb2RhbCgpO1xyXG4gIGNvbnN0IFtlbWFpbCwgc2V0RW1haWxdID0gdXNlU3RhdGUoJycpO1xyXG4gIGNvbnN0IFtsb2FkaW5nLCBzZXRMb2FkaW5nXSA9IHVzZVN0YXRlKGZhbHNlKTtcclxuICBjb25zdCBbZXJyb3IsIHNldEVycm9yXSA9IHVzZVN0YXRlKCcnKTtcclxuICBjb25zdCBbc3VjY2Vzcywgc2V0U3VjY2Vzc10gPSB1c2VTdGF0ZShmYWxzZSk7XHJcblxyXG4gIGNvbnN0IGhhbmRsZVN1Ym1pdCA9IGFzeW5jICgpID0+IHtcclxuICAgIGNvbnN0IG5vcm1hbGl6ZWRFbWFpbCA9IGVtYWlsLnRyaW0oKS50b0xvd2VyQ2FzZSgpO1xyXG4gICAgaWYgKCFub3JtYWxpemVkRW1haWwpIHtcclxuICAgICAgc2V0RXJyb3IoJ1BsZWFzZSBlbnRlciB5b3VyIGVtYWlsIGFkZHJlc3MuJyk7XHJcbiAgICAgIHJldHVybjtcclxuICAgIH1cclxuICAgIHNldExvYWRpbmcodHJ1ZSk7XHJcbiAgICBzZXRFcnJvcignJyk7XHJcbiAgICB0cnkge1xyXG4gICAgICBhd2FpdCBhcGkuZm9yZ290UGFzc3dvcmQobm9ybWFsaXplZEVtYWlsKTtcclxuICAgICAgc2V0U3VjY2Vzcyh0cnVlKTtcclxuICAgIH0gY2F0Y2ggKGVycjogdW5rbm93bikge1xyXG4gICAgICBzZXRFcnJvcihlcnIgaW5zdGFuY2VvZiBFcnJvciA/IGVyci5tZXNzYWdlIDogJ0ZhaWxlZCB0byBzZW5kIHJlc2V0IGxpbmsuIFBsZWFzZSB0cnkgYWdhaW4uJyk7XHJcbiAgICB9IGZpbmFsbHkge1xyXG4gICAgICBzZXRMb2FkaW5nKGZhbHNlKTtcclxuICAgIH1cclxuICB9O1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPE1vZGFsV3JhcHBlcj5cclxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGdhcC04IHAtOCBzbTpwLVszMnB4XzI0cHhdIGJnLXdoaXRlXCI+XHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW5cIj5cclxuICAgICAgICAgIDxoMiBjbGFzc05hbWU9XCJmb250LWRpc3BsYXkgdGV4dC1bMzJweF0gZm9udC1ibGFjayBsZWFkaW5nLW5vbmUgdGV4dC1ibGFja1wiPlxyXG4gICAgICAgICAgICBGb3Jnb3QgUGFzc3dvcmQ/XHJcbiAgICAgICAgICA8L2gyPlxyXG4gICAgICAgICAgPGJ1dHRvblxyXG4gICAgICAgICAgICBvbkNsaWNrPXtjbG9zZU1vZGFsfVxyXG4gICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGgtNiB3LTYgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHJvdW5kZWQtc20gdHJhbnNpdGlvbi1jb2xvcnNcIlxyXG4gICAgICAgICAgPlxyXG4gICAgICAgICAgICA8c3ZnIHdpZHRoPVwiMTRcIiBoZWlnaHQ9XCIxNFwiIHZpZXdCb3g9XCIwIDAgMTQgMTRcIiBmaWxsPVwibm9uZVwiIHhtbG5zPVwiaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmdcIj5cclxuICAgICAgICAgICAgICA8cGF0aCBkPVwiTTEuMDUgMTMuM0wwIDEyLjI1TDUuNiA2LjY1TDAgMS4wNUwxLjA1IDBMNi42NSA1LjZMMTIuMjUgMEwxMy4zIDEuMDVMNy43IDYuNjVMMTMuMyAxMi4yNUwxMi4yNSAxMy4zTDYuNjUgNy43TDEuMDUgMTMuM1pcIiBmaWxsPVwiYmxhY2tcIiBmaWxsT3BhY2l0eT1cIjAuOFwiLz5cclxuICAgICAgICAgICAgPC9zdmc+XHJcbiAgICAgICAgICA8L2J1dHRvbj5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGdhcC1bODBweF1cIj5cclxuICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtNlwiPlxyXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggZmxleC1jb2wgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIGdhcC0yIHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1ibGFjay8xMCBwLVsxNnB4XzEycHhdXCI+XHJcbiAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMlwiPlxyXG4gICAgICAgICAgICAgICAgPHN2ZyB3aWR0aD1cIjI0XCIgaGVpZ2h0PVwiMjRcIiB2aWV3Qm94PVwiMCAwIDI0IDI0XCIgZmlsbD1cIm5vbmVcIiB4bWxucz1cImh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnXCI+XHJcbiAgICAgICAgICAgICAgICAgIDxwYXRoIGQ9XCJNMjIgN0wxMy4wMDkgMTIuNzI3QzEyLjcwMzkgMTIuOTA0MiAxMi4zNTczIDEyLjk5NzYgMTIuMDA0NSAxMi45OTc2QzExLjY1MTcgMTIuOTk3NiAxMS4zMDUxIDEyLjkwNDIgMTEgMTIuNzI3TDIgN000IDRMMjAgNEMyMS4xMDQ2IDQgMjIgNC44OTU0MyAyMiA2VjE4QzIyIDE5LjEwNDYgMjEuMTA0NiAyMCAyMCAyMEw0IDIwQzIuODk1NDMgMjAgMiAxOS4xMDQ2IDIgMThMMiA2QzIgNC44OTU0MyAyLjg5NTQzIDQgNCA0WlwiIHN0cm9rZT1cImJsYWNrXCIgc3Ryb2tlV2lkdGg9XCIyXCIgc3Ryb2tlTGluZWNhcD1cInJvdW5kXCIgc3Ryb2tlTGluZWpvaW49XCJyb3VuZFwiLz5cclxuICAgICAgICAgICAgICAgIDwvc3ZnPlxyXG4gICAgICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPVwiZm9udC1ib2R5IHRleHQtMnhsIGZvbnQtYm9sZCB0cmFja2luZy1bLTAuNHB4XSB0ZXh0LWJsYWNrXCI+XHJcbiAgICAgICAgICAgICAgICAgIEVudGVyIHlvdXIgZW1haWwgYWRkcmVzcy5cclxuICAgICAgICAgICAgICAgIDwvc3Bhbj5cclxuICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICA8cCBjbGFzc05hbWU9XCJ0ZXh0LWNlbnRlciBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtbWVkaXVtIHRyYWNraW5nLVstMC4zMnB4XSB0ZXh0LWJsYWNrLzgwXCI+XHJcbiAgICAgICAgICAgICAgICB7c3VjY2Vzc1xyXG4gICAgICAgICAgICAgICAgICA/ICdBIHBhc3N3b3JkIHJlc2V0IGxpbmsgaGFzIGJlZW4gc2VudCB0byB5b3VyIGVtYWlsLiBQbGVhc2UgY2hlY2sgeW91ciBpbmJveC4nXHJcbiAgICAgICAgICAgICAgICAgIDogJ1dlIHdpbGwgc2VuZCB5b3UgYSBsaW5rIHRvIHJlc2V0IHlvdXIgcGFzc3dvcmQuJ31cclxuICAgICAgICAgICAgICA8L3A+XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgICAgeyFzdWNjZXNzICYmIChcclxuICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInJlbGF0aXZlIGZsZXggaXRlbXMtY2VudGVyIHJvdW5kZWQteGwgYm9yZGVyIGJvcmRlci1bcmdiYSg1OCw2MCw2MiwwLjEwKV0gYmctW3JnYmEoMzYsMzgsNDAsMC4wNSldIHAtNFwiPlxyXG4gICAgICAgICAgICAgICAgPGlucHV0XHJcbiAgICAgICAgICAgICAgICAgIHR5cGU9XCJlbWFpbFwiXHJcbiAgICAgICAgICAgICAgICAgIHBsYWNlaG9sZGVyPVwiRW1haWxcIlxyXG4gICAgICAgICAgICAgICAgICB2YWx1ZT17ZW1haWx9XHJcbiAgICAgICAgICAgICAgICAgIG9uQ2hhbmdlPXsoZSkgPT4gc2V0RW1haWwoZS50YXJnZXQudmFsdWUpfVxyXG4gICAgICAgICAgICAgICAgICBvbktleURvd249eyhlKSA9PiBlLmtleSA9PT0gJ0VudGVyJyAmJiBoYW5kbGVTdWJtaXQoKX1cclxuICAgICAgICAgICAgICAgICAgYXV0b0NhcGl0YWxpemU9XCJub25lXCJcclxuICAgICAgICAgICAgICAgICAgYXV0b0NvcnJlY3Q9XCJvZmZcIlxyXG4gICAgICAgICAgICAgICAgICBzcGVsbENoZWNrPXtmYWxzZX1cclxuICAgICAgICAgICAgICAgICAgaW5wdXRNb2RlPVwiZW1haWxcIlxyXG4gICAgICAgICAgICAgICAgICBhdXRvQ29tcGxldGU9XCJlbWFpbFwiXHJcbiAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT1cInctZnVsbCBiZy10cmFuc3BhcmVudCBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtbWVkaXVtIHRyYWNraW5nLVstMC4zMnB4XSB0ZXh0LWJsYWNrIG91dGxpbmUtbm9uZSBwbGFjZWhvbGRlcjp0ZXh0LWJsYWNrLzUwXCJcclxuICAgICAgICAgICAgICAgIC8+XHJcbiAgICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgICl9XHJcblxyXG4gICAgICAgICAgICB7ZXJyb3IgJiYgPHAgY2xhc3NOYW1lPVwidGV4dC1yZWQtNTAwIHRleHQtc20gZm9udC1ib2R5XCI+e2Vycm9yfTwvcD59XHJcbiAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICB7c3VjY2VzcyA/IChcclxuICAgICAgICAgICAgPEJ1dHRvbiBcclxuICAgICAgICAgICAgICB2YXJpYW50PVwicHJpbWFyeVwiIFxyXG4gICAgICAgICAgICAgIGNsYXNzTmFtZT1cImgtMTQgdy1mdWxsIHJvdW5kZWQtWzQ4cHhdIGJnLWJsYWNrIHRleHQtd2hpdGUgZm9udC1ib2R5IHRleHQtbGcgZm9udC1ib2xkIHRyYWNraW5nLVstMC4zNnB4XSBob3ZlcjpiZy1ibGFjay85MCB0cmFuc2l0aW9uLWNvbG9yc1wiXHJcbiAgICAgICAgICAgICAgb25DbGljaz17Y2xvc2VNb2RhbH1cclxuICAgICAgICAgICAgPlxyXG4gICAgICAgICAgICAgIERvbmVcclxuICAgICAgICAgICAgPC9CdXR0b24+XHJcbiAgICAgICAgICApIDogKFxyXG4gICAgICAgICAgICA8QnV0dG9uIFxyXG4gICAgICAgICAgICAgIHZhcmlhbnQ9XCJwcmltYXJ5XCIgXHJcbiAgICAgICAgICAgICAgY2xhc3NOYW1lPVwiaC0xNCB3LWZ1bGwgcm91bmRlZC1bNDhweF0gYmctYmxhY2sgdGV4dC13aGl0ZSBmb250LWJvZHkgdGV4dC1sZyBmb250LWJvbGQgdHJhY2tpbmctWy0wLjM2cHhdIGhvdmVyOmJnLWJsYWNrLzkwIHRyYW5zaXRpb24tY29sb3JzIGRpc2FibGVkOm9wYWNpdHktNTBcIlxyXG4gICAgICAgICAgICAgIG9uQ2xpY2s9e2hhbmRsZVN1Ym1pdH1cclxuICAgICAgICAgICAgICBkaXNhYmxlZD17bG9hZGluZ31cclxuICAgICAgICAgICAgPlxyXG4gICAgICAgICAgICAgIHtsb2FkaW5nID8gJ1NlbmRpbmcuLi4nIDogJ1JlcXVlc3QgcGFzc3dvcmQgcmVzZXQnfVxyXG4gICAgICAgICAgICA8L0J1dHRvbj5cclxuICAgICAgICAgICl9XHJcbiAgICAgICAgPC9kaXY+XHJcbiAgICAgIDwvZGl2PlxyXG4gICAgPC9Nb2RhbFdyYXBwZXI+XHJcbiAgKTtcclxufTtcclxuIl0sImZpbGUiOiJDOi9Vc2Vycy9WSUNUT1JJQS9Eb3dubG9hZHMvSGF2bG8vaGF2bG9fZnJvbnRlbmQvc3JjL2NvbXBvbmVudHMvbW9kYWxzL0ZvcmdvdFBhc3N3b3JkTW9kYWwudHN4In0=

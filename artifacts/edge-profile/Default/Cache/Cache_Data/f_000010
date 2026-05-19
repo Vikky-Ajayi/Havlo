@@ -1,0 +1,213 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/components/modals/ConsultationModal.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=520aa8ef"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+var _s = $RefreshSig$();
+import __vite__cjsImport1_react from "/node_modules/.vite/deps/react.js?v=520aa8ef"; const React = __vite__cjsImport1_react.__esModule ? __vite__cjsImport1_react.default : __vite__cjsImport1_react;
+import { motion, AnimatePresence } from "/node_modules/.vite/deps/motion_react.js?v=9a18ce69";
+import { X, Calendar, MessageCircle, CalendarCheck } from "/node_modules/.vite/deps/lucide-react.js?v=89ec77f2";
+import { useModal } from "/src/hooks/useModal.ts";
+import { useConfig } from "/src/hooks/useConfig.ts?t=1779059963569";
+const WHATSAPP_URL = "https://wa.me/message/PPPAWIAXBS7YK1";
+export const ConsultationModal = () => {
+  _s();
+  const { closeModal } = useModal();
+  const config = useConfig();
+  const CALENDLY_URL = config.calendly_link || "https://calendly.com/hello-heyhavlo/havlo-enquiry-call";
+  React.useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+  return /* @__PURE__ */ jsxDEV(AnimatePresence, { children: /* @__PURE__ */ jsxDEV(
+    motion.div,
+    {
+      className: "fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-[6px] px-4",
+      initial: { opacity: 0 },
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      onClick: closeModal,
+      children: /* @__PURE__ */ jsxDEV(
+        motion.div,
+        {
+          initial: { opacity: 0, scale: 0.95, y: 20 },
+          animate: { opacity: 1, scale: 1, y: 0 },
+          exit: { opacity: 0, scale: 0.95, y: 20 },
+          className: "relative w-full max-w-[520px] rounded-3xl bg-white p-8 shadow-2xl flex flex-col gap-6",
+          onClick: (e) => e.stopPropagation(),
+          children: [
+            /* @__PURE__ */ jsxDEV(
+              "button",
+              {
+                type: "button",
+                "aria-label": "Close",
+                onClick: closeModal,
+                className: "absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors",
+                children: /* @__PURE__ */ jsxDEV(X, { size: 18, className: "text-black/70" }, void 0, false, {
+                  fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                  lineNumber: 43,
+                  columnNumber: 13
+                }, this)
+              },
+              void 0,
+              false,
+              {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                lineNumber: 37,
+                columnNumber: 11
+              },
+              this
+            ),
+            /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col items-center gap-4 text-center", children: [
+              /* @__PURE__ */ jsxDEV("div", { className: "flex h-16 w-16 items-center justify-center rounded-full bg-[#A409D2]/10", children: /* @__PURE__ */ jsxDEV(CalendarCheck, { size: 36, className: "text-[#A409D2]" }, void 0, false, {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                lineNumber: 48,
+                columnNumber: 15
+              }, this) }, void 0, false, {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                lineNumber: 47,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("h2", { className: "font-display text-3xl font-black text-black leading-tight", children: "Let's book your consultation" }, void 0, false, {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                lineNumber: 50,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("p", { className: "font-body text-base text-black/70 leading-relaxed", children: "Speak with a dedicated Havlo advisor about your property goals. Choose the option that suits you best:" }, void 0, false, {
+                fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                lineNumber: 53,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+              lineNumber: 46,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col gap-3", children: [
+              /* @__PURE__ */ jsxDEV(
+                "a",
+                {
+                  href: WHATSAPP_URL,
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                  className: "flex items-center justify-center gap-3 w-full h-14 rounded-full bg-[#25D366] text-white font-body text-base font-bold hover:opacity-90 transition-opacity",
+                  children: [
+                    /* @__PURE__ */ jsxDEV(MessageCircle, { size: 20 }, void 0, false, {
+                      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                      lineNumber: 65,
+                      columnNumber: 15
+                    }, this),
+                    "Chat with us on WhatsApp"
+                  ]
+                },
+                void 0,
+                true,
+                {
+                  fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                  lineNumber: 59,
+                  columnNumber: 13
+                },
+                this
+              ),
+              /* @__PURE__ */ jsxDEV(
+                "a",
+                {
+                  href: CALENDLY_URL,
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                  className: "flex items-center justify-center gap-3 w-full h-14 rounded-full bg-black text-white font-body text-base font-bold hover:bg-black/90 transition-colors",
+                  children: [
+                    /* @__PURE__ */ jsxDEV(Calendar, { size: 20 }, void 0, false, {
+                      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                      lineNumber: 74,
+                      columnNumber: 15
+                    }, this),
+                    "Book a Calendly call"
+                  ]
+                },
+                void 0,
+                true,
+                {
+                  fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                  lineNumber: 68,
+                  columnNumber: 13
+                },
+                this
+              ),
+              /* @__PURE__ */ jsxDEV(
+                "button",
+                {
+                  type: "button",
+                  onClick: closeModal,
+                  className: "mt-2 font-body text-sm font-semibold text-black/60 hover:text-black underline underline-offset-4",
+                  children: "Maybe later"
+                },
+                void 0,
+                false,
+                {
+                  fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+                  lineNumber: 77,
+                  columnNumber: 13
+                },
+                this
+              )
+            ] }, void 0, true, {
+              fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+              lineNumber: 58,
+              columnNumber: 11
+            }, this)
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+          lineNumber: 30,
+          columnNumber: 9
+        },
+        this
+      )
+    },
+    void 0,
+    false,
+    {
+      fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+      lineNumber: 23,
+      columnNumber: 7
+    },
+    this
+  ) }, void 0, false, {
+    fileName: "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx",
+    lineNumber: 22,
+    columnNumber: 5
+  }, this);
+};
+_s(ConsultationModal, "vGg16lYJe5+qdLof43PB9YnLf4E=", false, function() {
+  return [useModal, useConfig];
+});
+_c = ConsultationModal;
+var _c;
+$RefreshReg$(_c, "ConsultationModal");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) {
+  return RefreshRuntime.register(type, "C:/Users/VICTORIA/Downloads/Havlo/havlo_frontend/src/components/modals/ConsultationModal.tsx " + id);
+}
+function $RefreshSig$() {
+  return RefreshRuntime.createSignatureFunctionForTransform();
+}
+
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJtYXBwaW5ncyI6IkFBMENZOztBQTFDWixPQUFPQSxXQUFXO0FBQ2xCLFNBQVNDLFFBQVFDLHVCQUF1QjtBQUN4QyxTQUFTQyxHQUFHQyxVQUFVQyxlQUFlQyxxQkFBcUI7QUFDMUQsU0FBU0MsZ0JBQWdCO0FBQ3pCLFNBQVNDLGlCQUFpQjtBQUUxQixNQUFNQyxlQUFlO0FBRWQsYUFBTUMsb0JBQThCQSxNQUFNO0FBQUFDLEtBQUE7QUFDL0MsUUFBTSxFQUFFQyxXQUFXLElBQUlMLFNBQVM7QUFDaEMsUUFBTU0sU0FBU0wsVUFBVTtBQUN6QixRQUFNTSxlQUFlRCxPQUFPRSxpQkFBaUI7QUFFN0NmLFFBQU1nQixVQUFVLE1BQU07QUFDcEJDLGFBQVNDLEtBQUtDLE1BQU1DLFdBQVc7QUFDL0IsV0FBTyxNQUFNO0FBQ1hILGVBQVNDLEtBQUtDLE1BQU1DLFdBQVc7QUFBQSxJQUNqQztBQUFBLEVBQ0YsR0FBRyxFQUFFO0FBRUwsU0FDRSx1QkFBQyxtQkFDQztBQUFBLElBQUMsT0FBTztBQUFBLElBQVA7QUFBQSxNQUNDLFdBQVU7QUFBQSxNQUNWLFNBQVMsRUFBRUMsU0FBUyxFQUFFO0FBQUEsTUFDdEIsU0FBUyxFQUFFQSxTQUFTLEVBQUU7QUFBQSxNQUN0QixNQUFNLEVBQUVBLFNBQVMsRUFBRTtBQUFBLE1BQ25CLFNBQVNUO0FBQUFBLE1BRVQ7QUFBQSxRQUFDLE9BQU87QUFBQSxRQUFQO0FBQUEsVUFDQyxTQUFTLEVBQUVTLFNBQVMsR0FBR0MsT0FBTyxNQUFNQyxHQUFHLEdBQUc7QUFBQSxVQUMxQyxTQUFTLEVBQUVGLFNBQVMsR0FBR0MsT0FBTyxHQUFHQyxHQUFHLEVBQUU7QUFBQSxVQUN0QyxNQUFNLEVBQUVGLFNBQVMsR0FBR0MsT0FBTyxNQUFNQyxHQUFHLEdBQUc7QUFBQSxVQUN2QyxXQUFVO0FBQUEsVUFDVixTQUFTLENBQUNDLE1BQU1BLEVBQUVDLGdCQUFnQjtBQUFBLFVBRWxDO0FBQUE7QUFBQSxjQUFDO0FBQUE7QUFBQSxnQkFDQyxNQUFLO0FBQUEsZ0JBQ0wsY0FBVztBQUFBLGdCQUNYLFNBQVNiO0FBQUFBLGdCQUNULFdBQVU7QUFBQSxnQkFFVixpQ0FBQyxLQUFFLE1BQU0sSUFBSSxXQUFVLG1CQUF2QjtBQUFBO0FBQUE7QUFBQTtBQUFBLHVCQUFzQztBQUFBO0FBQUEsY0FOeEM7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLFlBT0E7QUFBQSxZQUVBLHVCQUFDLFNBQUksV0FBVSxnREFDYjtBQUFBLHFDQUFDLFNBQUksV0FBVSwyRUFDYixpQ0FBQyxpQkFBYyxNQUFNLElBQUksV0FBVSxvQkFBbkM7QUFBQTtBQUFBO0FBQUE7QUFBQSxxQkFBbUQsS0FEckQ7QUFBQTtBQUFBO0FBQUE7QUFBQSxxQkFFQTtBQUFBLGNBQ0EsdUJBQUMsUUFBRyxXQUFVLDZEQUE0RCw0Q0FBMUU7QUFBQTtBQUFBO0FBQUE7QUFBQSxxQkFFQTtBQUFBLGNBQ0EsdUJBQUMsT0FBRSxXQUFVLHFEQUFvRCxzSEFBakU7QUFBQTtBQUFBO0FBQUE7QUFBQSxxQkFFQTtBQUFBLGlCQVRGO0FBQUE7QUFBQTtBQUFBO0FBQUEsbUJBVUE7QUFBQSxZQUVBLHVCQUFDLFNBQUksV0FBVSx1QkFDYjtBQUFBO0FBQUEsZ0JBQUM7QUFBQTtBQUFBLGtCQUNDLE1BQU1IO0FBQUFBLGtCQUNOLFFBQU87QUFBQSxrQkFDUCxLQUFJO0FBQUEsa0JBQ0osV0FBVTtBQUFBLGtCQUVWO0FBQUEsMkNBQUMsaUJBQWMsTUFBTSxNQUFyQjtBQUFBO0FBQUE7QUFBQTtBQUFBLDJCQUF3QjtBQUFBLG9CQUFHO0FBQUE7QUFBQTtBQUFBLGdCQU43QjtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUEsY0FRQTtBQUFBLGNBQ0E7QUFBQSxnQkFBQztBQUFBO0FBQUEsa0JBQ0MsTUFBTUs7QUFBQUEsa0JBQ04sUUFBTztBQUFBLGtCQUNQLEtBQUk7QUFBQSxrQkFDSixXQUFVO0FBQUEsa0JBRVY7QUFBQSwyQ0FBQyxZQUFTLE1BQU0sTUFBaEI7QUFBQTtBQUFBO0FBQUE7QUFBQSwyQkFBbUI7QUFBQSxvQkFBRztBQUFBO0FBQUE7QUFBQSxnQkFOeEI7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLGNBUUE7QUFBQSxjQUNBO0FBQUEsZ0JBQUM7QUFBQTtBQUFBLGtCQUNDLE1BQUs7QUFBQSxrQkFDTCxTQUFTRjtBQUFBQSxrQkFDVCxXQUFVO0FBQUEsa0JBQWtHO0FBQUE7QUFBQSxnQkFIOUc7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLGNBTUE7QUFBQSxpQkF6QkY7QUFBQTtBQUFBO0FBQUE7QUFBQSxtQkEwQkE7QUFBQTtBQUFBO0FBQUEsUUF0REY7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBLE1BdURBO0FBQUE7QUFBQSxJQTlERjtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUEsRUErREEsS0FoRUY7QUFBQTtBQUFBO0FBQUE7QUFBQSxTQWlFQTtBQUVKO0FBQUVELEdBaEZXRCxtQkFBMkI7QUFBQSxVQUNmSCxVQUNSQyxTQUFTO0FBQUE7QUFBQSxLQUZiRTtBQUEyQixJQUFBZ0I7QUFBQSxhQUFBQSxJQUFBIiwibmFtZXMiOlsiUmVhY3QiLCJtb3Rpb24iLCJBbmltYXRlUHJlc2VuY2UiLCJYIiwiQ2FsZW5kYXIiLCJNZXNzYWdlQ2lyY2xlIiwiQ2FsZW5kYXJDaGVjayIsInVzZU1vZGFsIiwidXNlQ29uZmlnIiwiV0hBVFNBUFBfVVJMIiwiQ29uc3VsdGF0aW9uTW9kYWwiLCJfcyIsImNsb3NlTW9kYWwiLCJjb25maWciLCJDQUxFTkRMWV9VUkwiLCJjYWxlbmRseV9saW5rIiwidXNlRWZmZWN0IiwiZG9jdW1lbnQiLCJib2R5Iiwic3R5bGUiLCJvdmVyZmxvdyIsIm9wYWNpdHkiLCJzY2FsZSIsInkiLCJlIiwic3RvcFByb3BhZ2F0aW9uIiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiQ29uc3VsdGF0aW9uTW9kYWwudHN4Il0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBSZWFjdCBmcm9tICdyZWFjdCc7XHJcbmltcG9ydCB7IG1vdGlvbiwgQW5pbWF0ZVByZXNlbmNlIH0gZnJvbSAnbW90aW9uL3JlYWN0JztcclxuaW1wb3J0IHsgWCwgQ2FsZW5kYXIsIE1lc3NhZ2VDaXJjbGUsIENhbGVuZGFyQ2hlY2sgfSBmcm9tICdsdWNpZGUtcmVhY3QnO1xyXG5pbXBvcnQgeyB1c2VNb2RhbCB9IGZyb20gJy4uLy4uL2hvb2tzL3VzZU1vZGFsJztcclxuaW1wb3J0IHsgdXNlQ29uZmlnIH0gZnJvbSAnLi4vLi4vaG9va3MvdXNlQ29uZmlnJztcclxuXHJcbmNvbnN0IFdIQVRTQVBQX1VSTCA9ICdodHRwczovL3dhLm1lL21lc3NhZ2UvUFBQQVdJQVhCUzdZSzEnO1xyXG5cclxuZXhwb3J0IGNvbnN0IENvbnN1bHRhdGlvbk1vZGFsOiBSZWFjdC5GQyA9ICgpID0+IHtcclxuICBjb25zdCB7IGNsb3NlTW9kYWwgfSA9IHVzZU1vZGFsKCk7XHJcbiAgY29uc3QgY29uZmlnID0gdXNlQ29uZmlnKCk7XHJcbiAgY29uc3QgQ0FMRU5ETFlfVVJMID0gY29uZmlnLmNhbGVuZGx5X2xpbmsgfHwgJ2h0dHBzOi8vY2FsZW5kbHkuY29tL2hlbGxvLWhleWhhdmxvL2hhdmxvLWVucXVpcnktY2FsbCc7XHJcblxyXG4gIFJlYWN0LnVzZUVmZmVjdCgoKSA9PiB7XHJcbiAgICBkb2N1bWVudC5ib2R5LnN0eWxlLm92ZXJmbG93ID0gJ2hpZGRlbic7XHJcbiAgICByZXR1cm4gKCkgPT4ge1xyXG4gICAgICBkb2N1bWVudC5ib2R5LnN0eWxlLm92ZXJmbG93ID0gJ3Vuc2V0JztcclxuICAgIH07XHJcbiAgfSwgW10pO1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPEFuaW1hdGVQcmVzZW5jZT5cclxuICAgICAgPG1vdGlvbi5kaXZcclxuICAgICAgICBjbGFzc05hbWU9XCJmaXhlZCBpbnNldC0wIHotWzEwMF0gZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgYmctYmxhY2svNjAgYmFja2Ryb3AtYmx1ci1bNnB4XSBweC00XCJcclxuICAgICAgICBpbml0aWFsPXt7IG9wYWNpdHk6IDAgfX1cclxuICAgICAgICBhbmltYXRlPXt7IG9wYWNpdHk6IDEgfX1cclxuICAgICAgICBleGl0PXt7IG9wYWNpdHk6IDAgfX1cclxuICAgICAgICBvbkNsaWNrPXtjbG9zZU1vZGFsfVxyXG4gICAgICA+XHJcbiAgICAgICAgPG1vdGlvbi5kaXZcclxuICAgICAgICAgIGluaXRpYWw9e3sgb3BhY2l0eTogMCwgc2NhbGU6IDAuOTUsIHk6IDIwIH19XHJcbiAgICAgICAgICBhbmltYXRlPXt7IG9wYWNpdHk6IDEsIHNjYWxlOiAxLCB5OiAwIH19XHJcbiAgICAgICAgICBleGl0PXt7IG9wYWNpdHk6IDAsIHNjYWxlOiAwLjk1LCB5OiAyMCB9fVxyXG4gICAgICAgICAgY2xhc3NOYW1lPVwicmVsYXRpdmUgdy1mdWxsIG1heC13LVs1MjBweF0gcm91bmRlZC0zeGwgYmctd2hpdGUgcC04IHNoYWRvdy0yeGwgZmxleCBmbGV4LWNvbCBnYXAtNlwiXHJcbiAgICAgICAgICBvbkNsaWNrPXsoZSkgPT4gZS5zdG9wUHJvcGFnYXRpb24oKX1cclxuICAgICAgICA+XHJcbiAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgIHR5cGU9XCJidXR0b25cIlxyXG4gICAgICAgICAgICBhcmlhLWxhYmVsPVwiQ2xvc2VcIlxyXG4gICAgICAgICAgICBvbkNsaWNrPXtjbG9zZU1vZGFsfVxyXG4gICAgICAgICAgICBjbGFzc05hbWU9XCJhYnNvbHV0ZSB0b3AtNCByaWdodC00IGZsZXggaC05IHctOSBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgcm91bmRlZC1mdWxsIGJnLWJsYWNrLzUgaG92ZXI6YmctYmxhY2svMTAgdHJhbnNpdGlvbi1jb2xvcnNcIlxyXG4gICAgICAgICAgPlxyXG4gICAgICAgICAgICA8WCBzaXplPXsxOH0gY2xhc3NOYW1lPVwidGV4dC1ibGFjay83MFwiIC8+XHJcbiAgICAgICAgICA8L2J1dHRvbj5cclxuXHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggZmxleC1jb2wgaXRlbXMtY2VudGVyIGdhcC00IHRleHQtY2VudGVyXCI+XHJcbiAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBoLTE2IHctMTYgaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIHJvdW5kZWQtZnVsbCBiZy1bI0E0MDlEMl0vMTBcIj5cclxuICAgICAgICAgICAgICA8Q2FsZW5kYXJDaGVjayBzaXplPXszNn0gY2xhc3NOYW1lPVwidGV4dC1bI0E0MDlEMl1cIiAvPlxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgPGgyIGNsYXNzTmFtZT1cImZvbnQtZGlzcGxheSB0ZXh0LTN4bCBmb250LWJsYWNrIHRleHQtYmxhY2sgbGVhZGluZy10aWdodFwiPlxyXG4gICAgICAgICAgICAgIExldCdzIGJvb2sgeW91ciBjb25zdWx0YXRpb25cclxuICAgICAgICAgICAgPC9oMj5cclxuICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwiZm9udC1ib2R5IHRleHQtYmFzZSB0ZXh0LWJsYWNrLzcwIGxlYWRpbmctcmVsYXhlZFwiPlxyXG4gICAgICAgICAgICAgIFNwZWFrIHdpdGggYSBkZWRpY2F0ZWQgSGF2bG8gYWR2aXNvciBhYm91dCB5b3VyIHByb3BlcnR5IGdvYWxzLiBDaG9vc2UgdGhlIG9wdGlvbiB0aGF0IHN1aXRzIHlvdSBiZXN0OlxyXG4gICAgICAgICAgICA8L3A+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggZmxleC1jb2wgZ2FwLTNcIj5cclxuICAgICAgICAgICAgPGFcclxuICAgICAgICAgICAgICBocmVmPXtXSEFUU0FQUF9VUkx9XHJcbiAgICAgICAgICAgICAgdGFyZ2V0PVwiX2JsYW5rXCJcclxuICAgICAgICAgICAgICByZWw9XCJub29wZW5lciBub3JlZmVycmVyXCJcclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtMyB3LWZ1bGwgaC0xNCByb3VuZGVkLWZ1bGwgYmctWyMyNUQzNjZdIHRleHQtd2hpdGUgZm9udC1ib2R5IHRleHQtYmFzZSBmb250LWJvbGQgaG92ZXI6b3BhY2l0eS05MCB0cmFuc2l0aW9uLW9wYWNpdHlcIlxyXG4gICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgPE1lc3NhZ2VDaXJjbGUgc2l6ZT17MjB9IC8+XHJcbiAgICAgICAgICAgICAgQ2hhdCB3aXRoIHVzIG9uIFdoYXRzQXBwXHJcbiAgICAgICAgICAgIDwvYT5cclxuICAgICAgICAgICAgPGFcclxuICAgICAgICAgICAgICBocmVmPXtDQUxFTkRMWV9VUkx9XHJcbiAgICAgICAgICAgICAgdGFyZ2V0PVwiX2JsYW5rXCJcclxuICAgICAgICAgICAgICByZWw9XCJub29wZW5lciBub3JlZmVycmVyXCJcclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBnYXAtMyB3LWZ1bGwgaC0xNCByb3VuZGVkLWZ1bGwgYmctYmxhY2sgdGV4dC13aGl0ZSBmb250LWJvZHkgdGV4dC1iYXNlIGZvbnQtYm9sZCBob3ZlcjpiZy1ibGFjay85MCB0cmFuc2l0aW9uLWNvbG9yc1wiXHJcbiAgICAgICAgICAgID5cclxuICAgICAgICAgICAgICA8Q2FsZW5kYXIgc2l6ZT17MjB9IC8+XHJcbiAgICAgICAgICAgICAgQm9vayBhIENhbGVuZGx5IGNhbGxcclxuICAgICAgICAgICAgPC9hPlxyXG4gICAgICAgICAgICA8YnV0dG9uXHJcbiAgICAgICAgICAgICAgdHlwZT1cImJ1dHRvblwiXHJcbiAgICAgICAgICAgICAgb25DbGljaz17Y2xvc2VNb2RhbH1cclxuICAgICAgICAgICAgICBjbGFzc05hbWU9XCJtdC0yIGZvbnQtYm9keSB0ZXh0LXNtIGZvbnQtc2VtaWJvbGQgdGV4dC1ibGFjay82MCBob3Zlcjp0ZXh0LWJsYWNrIHVuZGVybGluZSB1bmRlcmxpbmUtb2Zmc2V0LTRcIlxyXG4gICAgICAgICAgICA+XHJcbiAgICAgICAgICAgICAgTWF5YmUgbGF0ZXJcclxuICAgICAgICAgICAgPC9idXR0b24+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8L21vdGlvbi5kaXY+XHJcbiAgICAgIDwvbW90aW9uLmRpdj5cclxuICAgIDwvQW5pbWF0ZVByZXNlbmNlPlxyXG4gICk7XHJcbn07XHJcbiJdLCJmaWxlIjoiQzovVXNlcnMvVklDVE9SSUEvRG93bmxvYWRzL0hhdmxvL2hhdmxvX2Zyb250ZW5kL3NyYy9jb21wb25lbnRzL21vZGFscy9Db25zdWx0YXRpb25Nb2RhbC50c3gifQ==

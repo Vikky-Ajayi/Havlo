@@ -256,8 +256,6 @@ async def submit_stale_listing(
         sep = "&" if "?" in redirect_url else "?"
         redirect_url = f"{redirect_url}{sep}ref={reference}"
 
-    checkout_url = ""
-    checkout_id = ""
     try:
         checkout = await sumup_service.create_checkout(
             amount=amount,
@@ -268,10 +266,17 @@ async def submit_stale_listing(
         )
         checkout_url = checkout.get("checkout_url") or checkout.get("hosted_checkout_url") or ""
         checkout_id = checkout.get("id") or ""
+        if not checkout_url or not checkout_id:
+            raise SumUpError("SumUp did not return a usable checkout session.")
         assessment.sumup_checkout_id = checkout_id
         assessment.sumup_checkout_url = checkout_url
     except SumUpError as exc:
+        await db.rollback()
         logger.error("SumUp checkout failed for stale listing %s: %s", reference, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to create a secure payment session right now. Please try again.",
+        ) from exc
 
     await db.commit()
 
@@ -309,8 +314,8 @@ async def submit_stale_listing(
     return StaleListingSubmitResponse(
         assessment_id=assessment_id,
         reference=reference,
-        checkout_url=checkout_url,
-        checkout_id=checkout_id,
+        checkout_url=assessment.sumup_checkout_url or "",
+        checkout_id=assessment.sumup_checkout_id or "",
         amount=amount,
         message=f"Assessment submitted. Reference: {reference}.",
     )

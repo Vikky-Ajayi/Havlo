@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 
 const PURPLE = '#A409D2';
 
@@ -221,7 +222,7 @@ export function StaleListingsQuestions() {
         <div className="sl-q-navbar-inner" style={{ maxWidth: '100%', margin: '0 auto', height: 80, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Logo */}
           <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <img src="/stale-logo.png" alt="StaleListings" style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
+            <StaleListingsLogo style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
           </button>
 
           {/* Desktop: secure badge */}

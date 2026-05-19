@@ -409,6 +409,51 @@ export interface BookSessionPayload {
   preferred_time: string;
 }
 
+export interface ProductAccessRequestResponse {
+  ok: boolean;
+  message: string;
+}
+
+export interface ProductAccessConsumeResponse {
+  scope: 'stale-listings' | 'custom-offers';
+  email: string;
+  session_token: string;
+  redirect_path: string;
+  outcome: 'single-record' | 'portal';
+  records_count: number;
+  reference?: string | null;
+}
+
+export interface StaleListingPortalItem {
+  assessment_id: string;
+  reference: string;
+  property_address: string;
+  package: string;
+  payment_status: string;
+  report_status: string;
+  created_at: string;
+}
+
+export interface StaleListingPortalResponse {
+  email: string;
+  items: StaleListingPortalItem[];
+}
+
+export interface CustomOfferPortalItem {
+  submission_id: string;
+  reference: string;
+  property_address: string;
+  plan_name: string;
+  payment_status: string;
+  proposal_status: string;
+  created_at: string;
+}
+
+export interface CustomOfferPortalResponse {
+  email: string;
+  items: CustomOfferPortalItem[];
+}
+
 export const api = {
   register: (payload: RegisterPayload) =>
     request<RegisterResponse>('/auth/register', { method: 'POST', body: payload }),
@@ -839,6 +884,23 @@ export const api = {
       { method: 'POST' }
     ),
 
+  staleListingsAccessRequest: (email: string) =>
+    request<ProductAccessRequestResponse>('/stale-listings/access/request', {
+      method: 'POST',
+      body: { email },
+    }),
+
+  staleListingsAccessConsume: (token: string) =>
+    request<ProductAccessConsumeResponse>('/stale-listings/access/consume', {
+      method: 'POST',
+      body: { token },
+    }),
+
+  staleListingsAccessRecords: (token: string) =>
+    request<StaleListingPortalResponse>('/stale-listings/access/records', {
+      token,
+    }),
+
   staleListingsAdminList: (token: string) =>
     request<{
       assessment_id: string;
@@ -907,6 +969,23 @@ export const api = {
 
   customOffersStatus: (reference: string) =>
     request<CustomOfferStatusResponse>(`/custom-offers/status/${encodeURIComponent(reference)}`),
+
+  customOffersAccessRequest: (email: string) =>
+    request<ProductAccessRequestResponse>('/custom-offers/access/request', {
+      method: 'POST',
+      body: { email },
+    }),
+
+  customOffersAccessConsume: (token: string) =>
+    request<ProductAccessConsumeResponse>('/custom-offers/access/consume', {
+      method: 'POST',
+      body: { token },
+    }),
+
+  customOffersAccessRecords: (token: string) =>
+    request<CustomOfferPortalResponse>('/custom-offers/access/records', {
+      token,
+    }),
 
   customOffersAdminList: (token: string) =>
     request<CustomOffersAdminItem[]>('/custom-offers/admin', { token }),

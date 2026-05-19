@@ -12,6 +12,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 SUMUP_API_BASE = "https://api.sumup.com/v0.1"
+SUMUP_HTTP_TIMEOUT = httpx.Timeout(timeout=15.0, connect=8.0)
 
 
 class SumUpError(Exception):
@@ -73,7 +74,7 @@ async def create_checkout(
 
     try:
         logger.info("SumUp API call POST %s/checkouts", SUMUP_API_BASE)
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=SUMUP_HTTP_TIMEOUT) as client:
             response = await client.post(
                 f"{SUMUP_API_BASE}/checkouts",
                 json=payload,
@@ -142,7 +143,7 @@ async def get_checkout_status(checkout_id: str) -> dict:
     if not checkout_id:
         raise SumUpError("checkout_id is required")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=SUMUP_HTTP_TIMEOUT) as client:
             response = await client.get(
                 f"{SUMUP_API_BASE}/checkouts/{checkout_id}",
                 headers=_auth_headers(),
@@ -186,7 +187,7 @@ async def get_checkout_status(checkout_id: str) -> dict:
 async def verify_credentials() -> dict:
     """Call GET /v0.1/me to verify the API key is valid. Returns the parsed body."""
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=SUMUP_HTTP_TIMEOUT) as client:
             response = await client.get(
                 f"{SUMUP_API_BASE}/me",
                 headers=_auth_headers(),

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 
 interface ComparableSale {
   address: string;
@@ -200,64 +201,79 @@ function printFindingAccent(type: string, index: number) {
 function PrintGauge({ score }: { score: number }) {
   const normalized = Math.max(0, Math.min(100, score));
   const color = scoreBarColor(normalized);
-  const arcPath = 'M 30 118 A 56 88 0 0 1 142 118';
+  const cx = 88;
+  const cy = 84;
+  const radius = 56;
+  const strokeWidth = 13;
+  const trackFraction = 0.8;
+  const circumference = 2 * Math.PI * radius;
+  const visibleLength = circumference * trackFraction;
+  const gapLength = circumference - visibleLength;
+  const activeLength = visibleLength * (normalized / 100);
+  const rotation = 90 + (((1 - trackFraction) * 360) / 2);
+  const trackDash = `${visibleLength.toFixed(2)} ${gapLength.toFixed(2)}`;
+  const activeDash = `${activeLength.toFixed(2)} ${circumference.toFixed(2)}`;
 
   return (
     <svg
-      width="168"
-      height="150"
-      viewBox="0 0 172 150"
+      width="176"
+      height="168"
+      viewBox="0 0 176 168"
       role="img"
       aria-label={`Total score ${normalized}`}
       style={{ overflow: 'visible' }}
     >
-      <path
-        d={arcPath}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
         fill="none"
         stroke="#D9D9D9"
-        strokeWidth="12"
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
-        pathLength={100}
-        strokeDasharray="100 100"
+        strokeDasharray={trackDash}
+        transform={`rotate(${rotation} ${cx} ${cy})`}
       />
-      <path
-        d={arcPath}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={radius}
         fill="none"
         stroke={color}
-        strokeWidth="12"
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
-        pathLength={100}
-        strokeDasharray={`${normalized} 100`}
+        strokeDasharray={activeDash}
+        transform={`rotate(${rotation} ${cx} ${cy})`}
       />
       <text
-        x="86"
-        y="86"
+        x={cx}
+        y="87"
         textAnchor="middle"
         fontFamily='"Plus Jakarta Sans", Arial, sans-serif'
         fontWeight="800"
-        fontSize="38"
+        fontSize="40"
         fill="#111111"
       >
         {normalized}
       </text>
       <text
-        x="86"
-        y="108"
+        x={cx}
+        y="111"
         textAnchor="middle"
         fontFamily="Inter, Arial, sans-serif"
         fontWeight="500"
-        fontSize="10.6"
+        fontSize="10.8"
         fill="#666666"
       >
         TOTAL
       </text>
       <text
-        x="86"
-        y="121"
+        x={cx}
+        y="124"
         textAnchor="middle"
         fontFamily="Inter, Arial, sans-serif"
         fontWeight="500"
-        fontSize="10.6"
+        fontSize="10.8"
         fill="#666666"
       >
         SCORE
@@ -1373,7 +1389,7 @@ export function StaleListingsReport() {
             <div className="slr-screen">
               <header className="slr-topbar">
                 <div className="slr-topbar-inner">
-                  <img src="/stale-logo.png" alt="StaleListings" style={{ height: 54, width: 'auto', display: 'block' }} />
+                  <StaleListingsLogo style={{ height: 54, width: 'auto', display: 'block' }} />
                   <div className="slr-topbar-actions">
                     {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
                     <span className="slr-chip slr-chip--ready">Report ready</span>
@@ -1552,7 +1568,7 @@ export function StaleListingsReport() {
               <div className="slr-pdf-root">
                 <section className="slr-pdf-page">
                   <div className="slr-pdf-header">
-                    <img src="/stale-logo.png" alt="StaleListings" className="slr-pdf-brand" />
+                    <StaleListingsLogo className="slr-pdf-brand" />
                     <div className="slr-pdf-header-copy">
                       <strong>{propertyMeta.address}</strong>
                       <div>{propertyMeta.portalLabel || currentPackage}</div>
@@ -1613,7 +1629,7 @@ export function StaleListingsReport() {
 
                 <section className="slr-pdf-page">
                   <div className="slr-pdf-header">
-                    <img src="/stale-logo.png" alt="StaleListings" className="slr-pdf-brand" />
+                    <StaleListingsLogo className="slr-pdf-brand" />
                     <div className="slr-pdf-header-copy">
                       <strong>{propertyMeta.address}</strong>
                       <div>{propertyMeta.portalLabel || currentPackage}</div>

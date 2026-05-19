@@ -71,11 +71,12 @@ export function CustomOffersPlan() {
         plan_id: selectedPlan,
         redirect_url: `${window.location.origin}/custom-offers/complete`,
       });
-      if (response.checkout_url) {
-        window.location.href = response.checkout_url;
-        return;
+      const checkoutUrl = response.checkout_url?.trim();
+      if (!checkoutUrl) {
+        throw new Error('Unable to create a secure SumUp checkout right now. Please try again in a moment.');
       }
-      navigate(`/custom-offers/complete?ref=${encodeURIComponent(response.reference)}`);
+      window.location.href = checkoutUrl;
+      return;
     } catch (submitError) {
       setLoading(false);
       setError(submitError instanceof Error ? submitError.message : 'Unable to start payment right now.');
@@ -172,6 +173,7 @@ export function CustomOffersPlan() {
           line-height: 1;
         }
         .co-plan-tagline {
+          margin-top: 14px;
           color: #2B2B2B;
           font-size: 14px;
           line-height: 1.45;

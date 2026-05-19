@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 
 const PURPLE = '#A409D2';
 
@@ -129,7 +130,7 @@ export function StaleListingsComplete() {
       {/* NAVBAR */}
       <header className="sl-c-navbar" style={{ display: 'flex', height: 80, padding: '0 56px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F4F4F4', background: '#FFF', boxSizing: 'border-box', flexShrink: 0 }}>
         <button onClick={() => navigate('/stale-listings')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <img src="/stale-logo.png" alt="StaleListings" style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
+          <StaleListingsLogo style={{ height: 40, width: 'auto', display: 'block', flexShrink: 0 }} />
         </button>
         {/* Desktop: secure badge */}
         <div className="sl-c-secure-wrap" style={{ alignItems: 'center', gap: 6 }}>

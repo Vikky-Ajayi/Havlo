@@ -38,12 +38,16 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ defa
 const AdminPanel = React.lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const CheckoutPage = React.lazy(() => import('./pages/Checkout').then(m => ({ default: m.CheckoutPage })));
 const StaleListingsLanding = React.lazy(() => import('./pages/StaleListingsLanding').then(m => ({ default: m.StaleListingsLanding })));
+const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
+const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
 const StaleListingsQuestions = React.lazy(() => import('./pages/StaleListingsQuestions').then(m => ({ default: m.StaleListingsQuestions })));
 const StaleListingsPlan = React.lazy(() => import('./pages/StaleListingsPlan').then(m => ({ default: m.StaleListingsPlan })));
 const StaleListingsComplete = React.lazy(() => import('./pages/StaleListingsComplete').then(m => ({ default: m.StaleListingsComplete })));
 const StaleListingsReport = React.lazy(() => import('./pages/StaleListingsReport').then(m => ({ default: m.StaleListingsReport })));
 const DashboardStaleListings = React.lazy(() => import('./pages/DashboardStaleListings').then(m => ({ default: m.DashboardStaleListings })));
 const CustomOffers = React.lazy(() => import('./pages/CustomOffers').then(m => ({ default: m.CustomOffers })));
+const CustomOffersAccess = React.lazy(() => import('./pages/CustomOffersAccess').then(m => ({ default: m.CustomOffersAccess })));
+const CustomOffersPortal = React.lazy(() => import('./pages/CustomOffersPortal').then(m => ({ default: m.CustomOffersPortal })));
 const CustomOffersProposal = React.lazy(() => import('./pages/CustomOffersProposal').then(m => ({ default: m.CustomOffersProposal })));
 const CustomOffersPlan = React.lazy(() => import('./pages/CustomOffersPlan').then(m => ({ default: m.CustomOffersPlan })));
 const CustomOffersComplete = React.lazy(() => import('./pages/CustomOffersComplete').then(m => ({ default: m.CustomOffersComplete })));
@@ -196,6 +200,8 @@ export default function App() {
               <Route path="/about" element={<Navigate to="/about-us" replace />} />
               <Route path="/buy-property-abroad" element={<BuyAbroad />} />
               <Route path="/custom-offers" element={<CustomOffers />} />
+              <Route path="/custom-offers/access" element={<CustomOffersAccess />} />
+              <Route path="/custom-offers/portal" element={<CustomOffersPortal />} />
               <Route path="/custom-offers/proposal" element={<CustomOffersProposal />} />
               <Route path="/custom-offers/plan" element={<CustomOffersPlan />} />
               <Route path="/custom-offers/complete" element={<CustomOffersComplete />} />
@@ -234,6 +240,8 @@ export default function App() {
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
               <Route path="/stale-listings" element={<StaleListingsLanding />} />
+              <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
+              <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />
               <Route path="/stale-listings/questions" element={<StaleListingsQuestions />} />
               <Route path="/stale-listings/plan" element={<StaleListingsPlan />} />
               <Route path="/stale-listings/complete" element={<StaleListingsComplete />} />

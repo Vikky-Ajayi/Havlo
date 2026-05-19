@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { api } from '../lib/api';
+import { Footer } from '../components/shared/Footer';
+import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
+import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
 import {
   CustomOfferPlanId,
   defaultCustomOfferDraft,
@@ -14,7 +17,7 @@ const PURPLE = '#A409D2';
 
 const navLinks = [
   { label: 'How it works', href: '#how-it-works' },
-  { label: 'Faq', href: '#faq' },
+  { label: 'FAQ', href: '#faq' },
   { label: 'Pricing', href: '#pricing' },
 ];
 
@@ -25,13 +28,13 @@ const stats = [
     label: 'Buyer Proposal Submitted',
   },
   {
-    desktopValue: '9K',
-    mobileValue: '9K',
+    desktopValue: '9K+',
+    mobileValue: '9K+',
     label: 'Flexible Purchase Opportunities',
   },
   {
-    desktopValue: '8K',
-    mobileValue: '8K',
+    desktopValue: '8K+',
+    mobileValue: '8K+',
     label: 'Seller interactions facilitated',
   },
 ];
@@ -118,14 +121,14 @@ const testimonials = [
 
 const faqItems = [
   {
-    question: '1. What is this platform?',
+    question: '1. What is Custom Offer?',
     answer:
-      'We help buyers submit flexible or alternative property proposals directly to homeowners for properties already listed online. Our platform is designed for buyers who want to communicate more than just a standard offer price.\n## Are you an estate agent?\nNo. We are not an estate agency, brokerage, or property listing platform. We do not negotiate sales, handle transactions, or replace estate agents or solicitors. We simply facilitate structured buyer introductions and proposal submissions.',
+      'We help buyers submit flexible or alternative property proposals directly to homeowners for properties already listed online. Custom Offer is designed for buyers who want to communicate more than just a standard offer price.\n## Are you an estate agent?\nNo. We are not an estate agency, brokerage, or property listing business. We do not negotiate sales, handle transactions, or replace estate agents or solicitors. We simply facilitate structured buyer introductions and proposal submissions.',
   },
   {
     question: '2. How does it work?',
     answer:
-      "1. Find a property listed online.\n2. Paste the property URL into our platform.\n3. Build your proposal and explain your terms.\n4. Pay the submission fee.\n5. We professionally contact the homeowner and invite them to review your proposal securely.\nIf the homeowner is interested, they can continue through their estate agent or solicitor.",
+      "1. Find a property listed online.\n2. Paste the property URL into Custom Offer.\n3. Build your proposal and explain your terms.\n4. Pay the submission fee.\n5. We professionally contact the homeowner and invite them to review your proposal securely.\nIf the homeowner is interested, they can continue through their estate agent or solicitor.",
   },
   {
     question: '3. What kind of proposals can I submit?',
@@ -135,12 +138,12 @@ const faqItems = [
   {
     question: '4. Why would a seller use this?',
     answer:
-      "Many homeowners care about more than just the highest offer. Flexibility, certainty, speed, and timing can all influence a seller's decision. Our platform helps sellers review proposals with more context than they may receive through traditional channels.",
+      "Many homeowners care about more than just the highest offer. Flexibility, certainty, speed, and timing can all influence a seller's decision. Custom Offer helps sellers review proposals with more context than they may receive through traditional channels.",
   },
   {
     question: "5. Why wouldn't I just go through the estate agent?",
     answer:
-      'You still can. Our platform is designed to work alongside the traditional process. Some buyers simply want an opportunity to properly explain flexible or unconventional terms that may not normally be fully communicated.',
+      'You still can. Custom Offer is designed to work alongside the traditional process. Some buyers simply want an opportunity to properly explain flexible or unconventional terms that may not normally be fully communicated.',
   },
   {
     question: '6. Do you bypass estate agents?',
@@ -155,7 +158,7 @@ const faqItems = [
   {
     question: '8. Do you guarantee the seller will respond?',
     answer:
-      'No. Sellers are under no obligation to respond, negotiate, or proceed with any proposal submitted through the platform. While we professionally present all submissions, we cannot guarantee a response or engagement from the homeowner.',
+      'No. Sellers are under no obligation to respond, negotiate, or proceed with any proposal submitted through Custom Offer. While we professionally present all submissions, we cannot guarantee a response or engagement from the homeowner.',
   },
   {
     question: '9. Are submission fees refundable?',
@@ -175,7 +178,7 @@ const faqItems = [
   {
     question: '12. Can sellers reject proposals?',
     answer:
-      'Yes. Sellers are under no obligation to respond, negotiate, or proceed with any proposal submitted through the platform.',
+      'Yes. Sellers are under no obligation to respond, negotiate, or proceed with any proposal submitted through Custom Offer.',
   },
   {
     question: '13. Can I submit an offer below asking price?',
@@ -195,7 +198,7 @@ const faqItems = [
   {
     question: '16. Can sellers upload their own properties?',
     answer:
-      'Yes. Homeowners can upload publicly listed property URLs and choose to receive flexible buyer proposals directly through the platform.',
+      'Yes. Homeowners can upload publicly listed property URLs and choose to receive flexible buyer proposals directly through Custom Offer.',
   },
   {
     question: '17. What types of properties can be submitted?',
@@ -203,19 +206,19 @@ const faqItems = [
       'Yes. Any publicly listed residential or commercial property may be eligible, including listings from Rightmove, Zoopla, OnTheMarket, or estate agent websites. We support homeowners across the UK.',
   },
   {
-    question: '18. Who is this platform best suited for?',
+    question: '18. Who is Custom Offer best suited for?',
     answer:
-      'Our platform is particularly useful for:\n• Chain-free buyers\n• Cash buyers\n• Buyers with flexible terms\n• Buyers proposing alternative structures\n• Sellers seeking additional opportunities\n• Homeowners open to creative purchase arrangements',
+      'Custom Offer is particularly useful for:\n• Chain-free buyers\n• Cash buyers\n• Buyers with flexible terms\n• Buyers proposing alternative structures\n• Sellers seeking additional opportunities\n• Homeowners open to creative purchase arrangements',
   },
   {
     question: '19. Does submitting a proposal guarantee a property purchase?',
     answer:
-      'No. The platform simply creates an opportunity for communication and consideration. All purchase decisions remain entirely between the buyer and seller.',
+      'No. Custom Offer simply creates an opportunity for communication and consideration. All purchase decisions remain entirely between the buyer and seller.',
   },
   {
     question: '20. What is your refund policy?',
     answer:
-      'Due to the nature of our service, all submission fees are non-refundable once a proposal has been submitted. Our fees cover the preparation, review, formatting, and professional presentation of your proposal regardless of seller response, engagement, or transaction outcome.\nWe do not guarantee:\n• seller responses,\n• negotiations,\n• property viewings,\n• or successful purchases.\nBy submitting a proposal through the platform, you acknowledge and accept that the service provided is the presentation of your proposal, not the outcome of the proposal or transaction.',
+      'Due to the nature of our service, all submission fees are non-refundable once a proposal has been submitted. Our fees cover the preparation, review, formatting, and professional presentation of your proposal regardless of seller response, engagement, or transaction outcome.\nWe do not guarantee:\n• seller responses,\n• negotiations,\n• property viewings,\n• or successful purchases.\nBy submitting a proposal through Custom Offer, you acknowledge and accept that the service provided is the presentation of your proposal, not the outcome of the proposal or transaction.',
   },
 ];
 
@@ -614,15 +617,21 @@ const FAQRow: React.FC<{ question: string; answer: string }> = ({ question, answ
 export const CustomOffers: React.FC = () => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [accessModalOpen, setAccessModalOpen] = useState(false);
+  const [accessEmail, setAccessEmail] = useState<string | null>(null);
   const [showAllFaq, setShowAllFaq] = useState(false);
   const [listingUrl, setListingUrl] = useState(() => readCustomOfferDraft()?.listingUrl || '');
   const [ctaError, setCtaError] = useState('');
   const [isStartingFlow, setIsStartingFlow] = useState(false);
 
   useEffect(() => {
+    setAccessEmail(readProductAccessSession('custom-offers')?.email ?? null);
+  }, []);
+
+  useEffect(() => {
     const originalOverflow = document.body.style.overflow;
 
-    if (isMobileMenuOpen) {
+    if (isMobileMenuOpen || accessModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = originalOverflow;
@@ -631,7 +640,7 @@ export const CustomOffers: React.FC = () => {
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, [isMobileMenuOpen]);
+  }, [accessModalOpen, isMobileMenuOpen]);
 
   usePageMeta({
     title: 'CustomOffer | Havlo',
@@ -640,6 +649,22 @@ export const CustomOffers: React.FC = () => {
   });
 
   const visibleFaqItems = showAllFaq ? faqItems : faqItems.slice(0, 5);
+
+  const handleOpenPortal = () => {
+    navigate('/custom-offers/portal');
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleOpenSignIn = () => {
+    setAccessModalOpen(true);
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleSignOut = () => {
+    clearProductAccessSession('custom-offers');
+    setAccessEmail(null);
+    setIsMobileMenuOpen(false);
+  };
 
   const beginProposalFlow = async (selectedPlan?: CustomOfferPlanId) => {
     const trimmedUrl = listingUrl.trim();
@@ -739,6 +764,35 @@ export const CustomOffers: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 44px;
+        }
+
+        .co-header-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .co-auth-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .co-auth-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 42px;
+          padding: 0 18px;
+          border-radius: 14px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          background: #ffffff;
+          color: #111111;
+          font-size: 15px;
+          font-weight: 600;
+          letter-spacing: -0.02em;
+          cursor: pointer;
+          text-decoration: none;
         }
 
         .co-nav a {
@@ -1890,6 +1944,10 @@ export const CustomOffers: React.FC = () => {
             display: none;
           }
 
+          .co-auth-row {
+            display: none;
+          }
+
           .co-menu-button {
             display: inline-flex;
           }
@@ -2870,14 +2928,31 @@ export const CustomOffers: React.FC = () => {
       <header className="co-header">
         <div className="co-inner co-header-inner">
           <BrandLockup />
-
-          <nav className="co-nav" aria-label="Custom Offer sections">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href}>
-                {link.label}
-              </a>
-            ))}
-          </nav>
+          <div className="co-header-right">
+            <nav className="co-nav" aria-label="Custom Offer sections">
+              {navLinks.map((link) => (
+                <a key={link.href} href={link.href}>
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+            <div className="co-auth-row">
+              {accessEmail ? (
+                <>
+                  <button type="button" className="co-auth-button" onClick={handleOpenPortal}>
+                    My submissions
+                  </button>
+                  <button type="button" className="co-auth-button" onClick={handleSignOut}>
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="co-auth-button" onClick={handleOpenSignIn}>
+                  Sign in
+                </button>
+              )}
+            </div>
+          </div>
 
           <button
             type="button"
@@ -2912,6 +2987,22 @@ export const CustomOffers: React.FC = () => {
             </a>
           ))}
         </nav>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+          {accessEmail ? (
+            <>
+              <button type="button" className="co-auth-button" onClick={handleOpenPortal}>
+                My submissions
+              </button>
+              <button type="button" className="co-auth-button" onClick={handleSignOut}>
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button type="button" className="co-auth-button" onClick={handleOpenSignIn}>
+              Sign in
+            </button>
+          )}
+        </div>
       </aside>
 
       <main>
@@ -2932,9 +3023,8 @@ export const CustomOffers: React.FC = () => {
                 <span className="co-title-line">Traditional Box</span>
               </h1>
               <p>
-                Found a property you love on Rightmove or Zoopla, but feel your offer or purchase terms may never reach the seller?
-                Our platform helps serious buyers submit alternative and flexible property proposals directly to homeowners -
-                alongside the traditional estate agent process.
+                Found a property you love, but need a better way to explain your offer? Custom Offer helps buyers present
+                flexible terms, stronger context, and seller-friendly proposals alongside the traditional estate agent process.
               </p>
               <form
                 className="co-hero-cta-form"
@@ -2990,11 +3080,11 @@ export const CustomOffers: React.FC = () => {
             <aside className="co-hero-card">
               <h2>Whether you are:</h2>
               <ul>
-                <li>chain-free</li>
-                <li>A cash buyer</li>
-                <li>proposing flexible completion dates</li>
-                <li>offering seller-friendly terms,</li>
-                <li>or simply want your proposal properly considered,</li>
+                <li>chain-free or ready to move quickly</li>
+                <li>a cash buyer or mortgage buyer with strong certainty</li>
+                <li>proposing flexible completion timing</li>
+                <li>offering seller-friendly terms</li>
+                <li>or simply want your proposal properly presented</li>
               </ul>
               <div className="co-hero-card-footer">
                 We help you present your
@@ -3008,9 +3098,8 @@ export const CustomOffers: React.FC = () => {
         <section className="co-statement">
           <div className="co-inner">
             <p>
-              Most homeowners are open to flexible or alternative purchase arrangements when selling - but unconventional offers
-              are often filtered out before they ever reach them. Our platform helps serious buyers present proposals that may not
-              fit the traditional estate agent process.
+              Sellers often care about more than the highest number. Custom Offer helps buyers explain flexibility, timing,
+              certainty, and structure clearly so strong proposals are reviewed in the right context.
             </p>
           </div>
         </section>
@@ -3148,16 +3237,15 @@ export const CustomOffers: React.FC = () => {
         </section>
       </main>
 
-      <footer className="co-footer">
-        <div className="co-inner co-footer-inner">
-          <BrandLockup />
-          <div className="co-footer-copy">© 2026 Custom Offers. All rights reserved.</div>
-          <div className="co-footer-links">
-            <a href="/privacy-policy">Privacy Policy</a>
-            <a href="/terms">Terms</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+      <ProductAccessModal
+        scope="custom-offers"
+        isOpen={accessModalOpen}
+        onClose={() => {
+          setAccessModalOpen(false);
+          setAccessEmail(readProductAccessSession('custom-offers')?.email ?? null);
+        }}
+      />
     </div>
   );
 };
