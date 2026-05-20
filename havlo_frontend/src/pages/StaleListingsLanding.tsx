@@ -348,6 +348,13 @@ export function StaleListingsLanding() {
           flex:1 1 auto;
           min-width:0;
         }
+
+        .sl-stale-logo {
+          display: block;
+          flex-shrink: 0;
+          height: 50px !important;
+          width: auto !important;
+        }
         .sl-step-copy {
           display:flex;
           flex-direction:column;
@@ -858,6 +865,10 @@ export function StaleListingsLanding() {
             gap:12px !important;
             align-items:flex-start !important;
           }
+          .sl-stale-logo {
+            height: 38px !important;
+          }
+
           .sl-footer-links {
             gap:16px !important;
           }
@@ -884,7 +895,7 @@ export function StaleListingsLanding() {
         <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
           <div className="sl-nav-logo-wrap" style={{ display:'flex', alignItems:'center' }}>
-            <StaleListingsLogo style={{ height: 28, width: 'auto' }} />
+            <StaleListingsLogo className="sl-stale-logo" />
           </div>
 
           {/* Nav links (desktop) */}
@@ -961,8 +972,8 @@ export function StaleListingsLanding() {
       >
         {/* Drawer header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:40 }}>
-          <div style={{ display:'flex', alignItems:'center', transform:'scale(0.78)', transformOrigin:'left center' }}>
-            <StaleListingsLogo style={{ height: 28, width: 'auto' }} />
+          <div style={{ display:'flex', alignItems:'center' }}>
+            <StaleListingsLogo className="sl-stale-logo" />
           </div>
           <button
             onClick={() => setMenuOpen(false)}

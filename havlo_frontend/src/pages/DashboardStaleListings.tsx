@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import { clearStaleReviewSession, readStaleReviewSession } from '../lib/staleReviewAccess';
 
 interface ComparableSale { address: string; beds: number; property_type: string; sold_asking: string; is_subject: boolean; }
 interface KeyFinding { title: string; description: string; type: string; icon?: string; }
@@ -118,8 +119,9 @@ const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box'
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' as const, minHeight: 80, lineHeight: 1.55 };
 const sectionTitleStyle: React.CSSProperties = { fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 14, color: '#0A0A0A', marginBottom: 10, borderBottom: '1px solid #F0F0F0', paddingBottom: 6 };
 
-export function DashboardStaleListings() {
+export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: boolean }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { token, user } = useAuth();
   const [items, setItems] = useState<AdminItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,16 +133,83 @@ export function DashboardStaleListings() {
   const [approving, setApproving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (reviewMode) {
+      const session = readStaleReviewSession();
+      if (!session) {
+        setReviewError('This review session has expired. Please open the review email again.');
+        setLoading(false);
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      api.staleListingsReviewAssessment(session.token)
+        .then(data => {
+          if (cancelled) return;
+          const item = data as AdminItem;
+          setItems([item]);
+          setExpanded(item.assessment_id);
+          const parsed = parseReport(item.agent_edited_report_json || item.ai_report_json);
+          setReportEdit(parsed || emptyReport());
+          setAgentNotes(item.agent_notes || '');
+          setLoading(false);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          clearStaleReviewSession();
+          setReviewError(error instanceof Error ? error.message : 'This review session is no longer valid.');
+          setLoading(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
     if (!token) return;
     api.staleListingsAdminList(token)
-      .then(data => { setItems(data as AdminItem[]); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [token]);
+      .then(data => { if (!cancelled) { setItems(data as AdminItem[]); setLoading(false); } })
+      .catch(() => { if (!cancelled) setLoading(false); });
 
-  if (!user?.is_admin) {
+    return () => {
+      cancelled = true;
+    };
+  }, [token, reviewMode]);
+
+  useEffect(() => {
+    if (reviewMode || !items.length) return;
+    const requestedAssessment = (searchParams.get('assessment') || '').trim();
+    if (!requestedAssessment) return;
+    const target = items.find(
+      item => item.assessment_id === requestedAssessment || item.reference.toLowerCase() === requestedAssessment.toLowerCase(),
+    );
+    if (target && expanded !== target.assessment_id) {
+      openExpanded(target);
+    }
+  }, [items, searchParams, reviewMode, expanded]);
+
+  if (!reviewMode && !user?.is_admin) {
     return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}><p style={{ color: '#888' }}>Access denied.</p></div>;
+  }
+
+  if (reviewMode && !loading && reviewError) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#F7F8F8', padding: 24 }}>
+        <div style={{ width: '100%', maxWidth: 560, background: '#fff', borderRadius: 18, border: '1px solid #E5E7EB', padding: 28, textAlign: 'center' }}>
+          <p style={{ margin: '0 0 8px', color: '#A409D2', fontSize: 13, fontWeight: 700, textTransform: 'uppercase' }}>Review access</p>
+          <h1 style={{ margin: '0 0 12px', fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 28 }}>Review session unavailable</h1>
+          <p style={{ margin: '0 0 24px', color: '#555', fontSize: 15, lineHeight: 1.7 }}>{reviewError}</p>
+          <button onClick={() => navigate('/stale-listings')} style={{ padding: '12px 20px', borderRadius: 10, border: 'none', background: '#000', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+            Back to Stale Listings
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const filtered = filter === 'all' ? items : items.filter(i => i.report_status === filter);
@@ -159,14 +228,20 @@ export function DashboardStaleListings() {
   };
 
   const handleSaveDraft = async (item: AdminItem) => {
-    if (!token || !reportEdit) return;
+    const reviewSession = reviewMode ? readStaleReviewSession() : null;
+    if ((!token && !reviewSession) || !reportEdit) return;
     setSaving(true);
     try {
-      await api.staleListingsAdminFinalize(item.assessment_id, {
+      const payload = {
         agent_notes: agentNotes,
         agent_edited_report_json: JSON.stringify(reportEdit),
         report_status: item.report_status === 'completed' ? 'completed' : 'in_review',
-      }, token);
+      };
+      if (reviewMode && reviewSession) {
+        await api.staleListingsReviewFinalize(payload, reviewSession.token);
+      } else if (token) {
+        await api.staleListingsAdminFinalize(item.assessment_id, payload, token);
+      }
       setItems(prev => prev.map(i => i.assessment_id === item.assessment_id
         ? { ...i, agent_edited_report_json: JSON.stringify(reportEdit), agent_notes: agentNotes, report_status: i.report_status === 'completed' ? 'completed' : 'in_review' }
         : i
@@ -178,15 +253,21 @@ export function DashboardStaleListings() {
   };
 
   const handleApprove = async (item: AdminItem) => {
-    if (!token || !reportEdit) return;
+    const reviewSession = reviewMode ? readStaleReviewSession() : null;
+    if ((!token && !reviewSession) || !reportEdit) return;
     if (!confirm(`Approve report for ${item.reference} and send email to ${item.email}?`)) return;
     setApproving(true);
     try {
-      await api.staleListingsAdminFinalize(item.assessment_id, {
+      const payload = {
         agent_notes: agentNotes,
         agent_edited_report_json: JSON.stringify(reportEdit),
         report_status: 'completed',
-      }, token);
+      };
+      if (reviewMode && reviewSession) {
+        await api.staleListingsReviewFinalize(payload, reviewSession.token);
+      } else if (token) {
+        await api.staleListingsAdminFinalize(item.assessment_id, payload, token);
+      }
       setItems(prev => prev.map(i => i.assessment_id === item.assessment_id
         ? { ...i, agent_edited_report_json: JSON.stringify(reportEdit), agent_notes: agentNotes, report_status: 'completed' }
         : i
@@ -259,38 +340,53 @@ export function DashboardStaleListings() {
     try { return JSON.parse(qs); } catch { return {}; }
   };
 
+  const handleReviewSignOut = () => {
+    clearStaleReviewSession();
+    navigate('/stale-listings', { replace: true });
+  };
+
   return (
     <div style={{ background: '#F7F8F8', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid #E8E9EA', padding: '0 32px' }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', height: 64 }}>
-          <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 13, fontFamily: 'Inter, sans-serif', marginRight: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-            ← Dashboard
-          </button>
-          <h1 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 20, letterSpacing: '-0.5px', margin: 0 }}>StaleListings — Agent Dashboard</h1>
-          {loading && <span style={{ marginLeft: 12, color: '#aaa', fontSize: 13 }}>Loading…</span>}
+          {reviewMode ? (
+            <button onClick={handleReviewSignOut} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 13, fontFamily: 'Inter, sans-serif', marginRight: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+              Sign out
+            </button>
+          ) : (
+            <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 13, fontFamily: 'Inter, sans-serif', marginRight: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+              Back to dashboard
+            </button>
+          )}
+          <h1 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 20, letterSpacing: '-0.5px', margin: 0 }}>
+            {reviewMode ? 'StaleListings Report Review' : 'StaleListings - Agent Dashboard'}
+          </h1>
+          {loading && <span style={{ marginLeft: 12, color: '#aaa', fontSize: 13 }}>Loading...</span>}
           <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ background: '#F0F0F0', borderRadius: 20, padding: '4px 12px', fontSize: 13, fontWeight: 600, color: '#555' }}>{items.length} total</span>
-            <span style={{ background: '#FEF3C7', borderRadius: 20, padding: '4px 12px', fontSize: 13, fontWeight: 600, color: '#92400E' }}>{items.filter(i => i.report_status === 'pending').length} pending</span>
+            {!reviewMode && (
+              <span style={{ background: '#FEF3C7', borderRadius: 20, padding: '4px 12px', fontSize: 13, fontWeight: 600, color: '#92400E' }}>{items.filter(i => i.report_status === 'pending').length} pending</span>
+            )}
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px' }}>
         {successMsg && (
-          <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 10, padding: '12px 18px', marginBottom: 16, color: '#065F46', fontWeight: 600, fontSize: 14 }}>
-            ✓ {successMsg}
-          </div>
+          <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 10, padding: '12px 18px', marginBottom: 16, color: '#065F46', fontWeight: 600, fontSize: 14 }}>{successMsg}</div>
         )}
 
         {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {(['all', 'pending', 'in_review', 'completed'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{ padding: '7px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, background: filter === f ? '#0A0A0A' : '#fff', color: filter === f ? '#fff' : '#555', border: filter === f ? 'none' : '1px solid #E5E7EB' } as React.CSSProperties}>
-              {f === 'all' ? 'All' : f === 'in_review' ? 'In Review' : f.charAt(0).toUpperCase() + f.slice(1)} {f === 'all' ? `(${items.length})` : `(${items.filter(i => i.report_status === f).length})`}
-            </button>
-          ))}
-        </div>
+        {!reviewMode && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            {(['all', 'pending', 'in_review', 'completed'] as const).map(f => (
+              <button key={f} onClick={() => setFilter(f)} style={{ padding: '7px 16px', borderRadius: 8, cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, background: filter === f ? '#0A0A0A' : '#fff', color: filter === f ? '#fff' : '#555', border: filter === f ? 'none' : '1px solid #E5E7EB' } as React.CSSProperties}>
+                {f === 'all' ? 'All' : f === 'in_review' ? 'In Review' : f.charAt(0).toUpperCase() + f.slice(1)} {f === 'all' ? `(${items.length})` : `(${items.filter(i => i.report_status === f).length})`}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Assessment list */}
         {filtered.length === 0 && (
@@ -327,18 +423,18 @@ export function DashboardStaleListings() {
                   <span style={{ background: pp.bg, color: pp.text, padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
                     Payment: {item.payment_status}
                   </span>
-                  {item.payment_status !== 'completed' && (
+                  {!reviewMode && item.payment_status !== 'completed' && (
                     <button
                       onClick={e => handleMarkPaid(item, e)}
                       style={{ background: '#065F46', color: '#fff', border: 'none', borderRadius: 10, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                     >
-                      ✓ Mark as Paid
+                      Mark as Paid
                     </button>
                   )}
                   <span style={{ background: sp.bg, color: sp.text, padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
                     {sp.label}
                   </span>
-                  {hasAiReport && <span style={{ background: '#EDE9FE', color: '#5B21B6', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>AI Report ✓</span>}
+                  {hasAiReport && <span style={{ background: '#EDE9FE', color: '#5B21B6', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 700 }}>AI Report Ready</span>}
                 </div>
                 <div style={{ marginLeft: 'auto', color: '#aaa', fontSize: 18 }}>{isOpen ? '▲' : '▼'}</div>
               </div>
@@ -366,10 +462,10 @@ export function DashboardStaleListings() {
                           ))}
                         </div>
                         {item.listing_url && (
-                          <a href={item.listing_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: '#7C3AED', fontWeight: 600 }}>Open Listing ↗</a>
+                          <a href={item.listing_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: '#7C3AED', fontWeight: 600 }}>Open Listing</a>
                         )}
                         {item.report_status === 'completed' && (
-                          <a href={`/stale-listings/report/${item.reference}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, marginLeft: 12, fontSize: 12, color: '#059669', fontWeight: 600 }}>View Report ↗</a>
+                          <a href={`/stale-listings/report/${item.reference}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 8, marginLeft: 12, fontSize: 12, color: '#059669', fontWeight: 600 }}>View Report</a>
                         )}
                       </div>
 
@@ -409,7 +505,7 @@ export function DashboardStaleListings() {
                     <div>
                       {!hasAiReport && (
                         <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#92400E' }}>
-                          ⚠ AI report has not been generated yet. This may be because Groq is not configured or the background task is still running.
+                          AI report has not been generated yet. This may be because Groq is not configured or the background task is still running.
                         </div>
                       )}
                       {reportEdit && (
@@ -458,10 +554,10 @@ export function DashboardStaleListings() {
                                     <option value="strength">Strength</option>
                                   </select>
                                   <select value={f.icon || ''} onChange={e => updateFinding(idx, 'icon', e.target.value)} style={{ ...inputStyle, flex: 1 }}>
-                                    <option value="">— icon —</option>
+                                  <option value="">- icon -</option>
                                     {['price', 'photos', 'description', 'location', 'marketing', 'condition', 'timing'].map(ic => <option key={ic} value={ic}>{ic}</option>)}
                                   </select>
-                                  <button onClick={() => setReportEdit({ ...reportEdit, key_findings: reportEdit.key_findings.filter((_, i) => i !== idx) })} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, padding: '0 10px', cursor: 'pointer', color: '#B91C1C', fontWeight: 700, fontSize: 14 }}>×</button>
+                                  <button onClick={() => setReportEdit({ ...reportEdit, key_findings: reportEdit.key_findings.filter((_, i) => i !== idx) })} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, padding: '0 10px', cursor: 'pointer', color: '#B91C1C', fontWeight: 700, fontSize: 14 }}>X</button>
                                 </div>
                                 <textarea value={f.description} onChange={e => updateFinding(idx, 'description', e.target.value)} placeholder="Finding description…" style={{ ...textareaStyle, minHeight: 60 }} />
                               </div>
@@ -483,14 +579,14 @@ export function DashboardStaleListings() {
                                     <option value="MEDIUM">MEDIUM</option>
                                   </select>
                                   <input value={a.title} onChange={e => updateAction(idx, 'title', e.target.value)} placeholder="Action title" style={{ ...inputStyle, flex: 3 }} />
-                                  <button onClick={() => setReportEdit({ ...reportEdit, action_plan: reportEdit.action_plan.filter((_, i) => i !== idx) })} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, padding: '0 10px', cursor: 'pointer', color: '#B91C1C', fontWeight: 700, fontSize: 14 }}>×</button>
+                                  <button onClick={() => setReportEdit({ ...reportEdit, action_plan: reportEdit.action_plan.filter((_, i) => i !== idx) })} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, padding: '0 10px', cursor: 'pointer', color: '#B91C1C', fontWeight: 700, fontSize: 14 }}>X</button>
                                 </div>
                                 <textarea value={a.description} onChange={e => updateAction(idx, 'description', e.target.value)} placeholder="Action description…" style={{ ...textareaStyle, minHeight: 50, marginBottom: 8 }} />
                                 {a.bullets.map((b, bIdx) => (
                                   <div key={bIdx} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                                     <span style={{ color: '#888', fontSize: 13, paddingTop: 8 }}>•</span>
                                     <input value={b} onChange={e => updateBullet(idx, bIdx, e.target.value)} placeholder={`Bullet ${bIdx + 1}`} style={{ ...inputStyle, flex: 1 }} />
-                                    <button onClick={() => { const bullets = a.bullets.filter((_, i) => i !== bIdx); updateAction(idx, 'description', a.description); const plan = [...reportEdit.action_plan]; plan[idx] = { ...plan[idx], bullets }; setReportEdit({ ...reportEdit, action_plan: plan }); }} style={{ background: '#F5F5F5', border: 'none', borderRadius: 4, padding: '0 8px', cursor: 'pointer', color: '#888' }}>×</button>
+                                    <button onClick={() => { const bullets = a.bullets.filter((_, i) => i !== bIdx); updateAction(idx, 'description', a.description); const plan = [...reportEdit.action_plan]; plan[idx] = { ...plan[idx], bullets }; setReportEdit({ ...reportEdit, action_plan: plan }); }} style={{ background: '#F5F5F5', border: 'none', borderRadius: 4, padding: '0 8px', cursor: 'pointer', color: '#888' }}>X</button>
                                   </div>
                                 ))}
                                 <button onClick={() => { const plan = [...reportEdit.action_plan]; plan[idx] = { ...plan[idx], bullets: [...plan[idx].bullets, ''] }; setReportEdit({ ...reportEdit, action_plan: plan }); }} style={{ fontSize: 11, color: '#7C3AED', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 4 }}>+ Add bullet</button>
@@ -514,7 +610,7 @@ export function DashboardStaleListings() {
                                   <input type="checkbox" checked={c.is_subject} onChange={e => updateComparable(idx, 'is_subject', e.target.checked)} />
                                   Subject
                                 </label>
-                                <button onClick={() => setReportEdit({ ...reportEdit, comparable_sales: reportEdit.comparable_sales.filter((_, i) => i !== idx) })} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#B91C1C', fontWeight: 700 }}>×</button>
+                                <button onClick={() => setReportEdit({ ...reportEdit, comparable_sales: reportEdit.comparable_sales.filter((_, i) => i !== idx) })} style={{ background: '#FEE2E2', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#B91C1C', fontWeight: 700 }}>X</button>
                               </div>
                             ))}
                           </div>
@@ -533,21 +629,23 @@ export function DashboardStaleListings() {
                   {/* Action buttons */}
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 24, paddingTop: 20, borderTop: '1px solid #F0F0F0', flexWrap: 'wrap' }}>
                     <button onClick={() => handleSaveDraft(item)} disabled={saving} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#333', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                      {saving ? 'Saving…' : 'Save Draft'}
+                      {saving ? 'Saving...' : 'Save Draft'}
                     </button>
                     <button onClick={() => handleApprove(item)} disabled={approving || !reportEdit} style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#059669', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 14, color: '#fff', cursor: (approving || !reportEdit) ? 'not-allowed' : 'pointer', opacity: (approving || !reportEdit) ? 0.7 : 1 }}>
-                      {approving ? 'Sending…' : '✓ Approve & Send Report to Client'}
+                      {approving ? 'Sending...' : 'Approve & Send Report to Client'}
                     </button>
                     {item.report_status === 'completed' && (
                       <a href={`/stale-listings/report/${item.reference}`} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #7C3AED', background: '#EDE9FE', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 14, color: '#5B21B6', textDecoration: 'none' }}>
-                        View Report ↗
+                        View Report
                       </a>
                     )}
-                    <div style={{ marginLeft: 'auto' }}>
-                      <button onClick={() => handleDelete(item)} disabled={deleting === item.assessment_id} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #FCA5A5', background: '#FEF2F2', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, color: '#B91C1C', cursor: 'pointer', opacity: deleting === item.assessment_id ? 0.6 : 1 }}>
-                        {deleting === item.assessment_id ? 'Deleting…' : 'Delete'}
-                      </button>
-                    </div>
+                    {!reviewMode && (
+                      <div style={{ marginLeft: 'auto' }}>
+                        <button onClick={() => handleDelete(item)} disabled={deleting === item.assessment_id} style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #FCA5A5', background: '#FEF2F2', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 13, color: '#B91C1C', cursor: 'pointer', opacity: deleting === item.assessment_id ? 0.6 : 1 }}>
+                          {deleting === item.assessment_id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

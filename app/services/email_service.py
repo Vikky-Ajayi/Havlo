@@ -1209,7 +1209,7 @@ def send_custom_offer_buyer_confirmation_sync(
         f"Track status here:\n{status_url}\n"
     )
     return _send_sync(
-        to_email=to_email,
+        to_email=resolved_to_email,
         subject=f"[CustomOffer] Proposal submitted - {reference}",
         html_body=html_body,
         plain_body=plain_body,
@@ -1559,16 +1559,18 @@ def send_stale_listing_agent_notification_sync(
     package: str,
     property_address: str,
     listing_url: str,
+    review_url: str | None = None,
+    to_email: str | None = None,
 ) -> bool:
     """Notify the admin agent that a new AI report is ready for review."""
     s = get_settings()
-    to_email = (s.ADMIN_NOTIFY_EMAIL or "").strip()
-    if not to_email:
+    resolved_to_email = (to_email or s.ADMIN_NOTIFY_EMAIL or "").strip()
+    if not resolved_to_email:
         logger.info("Skipping agent notification (ADMIN_NOTIFY_EMAIL empty).")
         return False
 
     frontend_url = getattr(s, "FRONTEND_URL", None) or "https://heyhavlo.com"
-    admin_url = f"{frontend_url.rstrip('/')}/dashboard/stale-listings"
+    admin_url = (review_url or f"{frontend_url.rstrip('/')}/dashboard/stale-listings").strip()
 
     package_labels = {
         "quick_insight": "Quick Insight (£79.99)",
@@ -1630,57 +1632,7 @@ def send_stale_listing_agent_notification_sync(
         f"Review in dashboard: {admin_url}\n"
     )
     return _send_sync(
-        to_email=to_email,
-        subject=f"[StaleListings] New assessment needs review — {reference}",
-        html_body=html_body,
-        plain_body=plain_body,
-    )
-
-    html_body = f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>New StaleListings Assessment</title></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 20px;">
-  <tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;max-width:600px;width:100%;">
-      <tr><td style="background:#000000;padding:24px 32px;">
-        <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.5px;">StaleListings</span>
-        <span style="color:#9ca3af;font-size:13px;margin-left:8px;">by HAVLO</span>
-      </td></tr>
-      <tr><td style="padding:32px 32px 16px;">
-        <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">New assessment needs review</h1>
-        <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">A new StaleListings assessment has been submitted and the AI report has been generated. Please review and approve before sending to the client.</p>
-      </td></tr>
-      <tr><td style="padding:0 32px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-          {rows_html}
-        </table>
-      </td></tr>
-      <tr><td style="padding:16px 32px 32px;">
-        <a href="{admin_url}" style="background:#000000;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-weight:600;font-size:14px;display:inline-block;">
-          Review in Dashboard →
-        </a>
-      </td></tr>
-      <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;">
-        <p style="margin:0;color:#9ca3af;font-size:12px;">Reference: {_html_lib.escape(reference)} · Sent automatically when an AI report is generated.</p>
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>"""
-
-    plain_body = (
-        f"New StaleListings assessment needs review.\n\n"
-        f"Client: {first_name} {last_name}\n"
-        f"Email: {email}\n"
-        f"Reference: {reference}\n"
-        f"Package: {package_label}\n"
-        f"Property: {property_address or 'Not provided'}\n\n"
-        f"Review in dashboard: {admin_url}\n"
-    )
-
-    return _send_sync(
-        to_email=to_email,
+        to_email=resolved_to_email,
         subject=f"[StaleListings] New assessment needs review — {reference}",
         html_body=html_body,
         plain_body=plain_body,

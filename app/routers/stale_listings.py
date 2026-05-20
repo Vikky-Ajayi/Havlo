@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.models import StaleListingAssessment, User
@@ -106,6 +107,8 @@ async def _generate_and_save_report(
     last_name: str = "",
     email: str = "",
     reference: str = "",
+    mark_in_review_on_success: bool = False,
+    trigger_agent_review_email: bool = True,
 ) -> None:
     from app.db.database import AsyncSessionLocal
     from app.services.groq_service import generate_stale_listing_report
@@ -125,6 +128,7 @@ async def _generate_and_save_report(
         snapshot = {}
 
     try:
+        review_url = ""
         report_dict = await generate_stale_listing_report(
             package=package,
             questions_data=questions_data,
@@ -149,20 +153,40 @@ async def _generate_and_save_report(
                     assessment.listing_snapshot_json = json.dumps(snapshot, ensure_ascii=False)
                     if not assessment.property_address and snapshot.get("address"):
                         assessment.property_address = snapshot["address"]
+                if mark_in_review_on_success and assessment.report_status == "pending":
+                    assessment.report_status = "in_review"
+                review_recipient = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+                review_url = ""
+                if trigger_agent_review_email and review_recipient:
+                    from app.services.stale_review_access import issue_stale_review_magic_link
+
+                    review_url = await issue_stale_review_magic_link(
+                        db,
+                        recipient_email=review_recipient,
+                        assessment_id=str(assessment.id),
+                        reference=assessment.reference,
+                    )
                 await db.commit()
                 logger.info("AI report saved for assessment %s", assessment_id)
 
-        # Notify the agent that a new report needs review
-        try:
-            from app.services.email_service import send_stale_listing_agent_notification_sync
-            import asyncio
-            await asyncio.to_thread(
-                send_stale_listing_agent_notification_sync,
-                first_name, last_name, email, reference,
-                package, property_address or "", listing_url or "",
-            )
-        except Exception as email_exc:
-            logger.warning("Agent notification email failed for %s: %s", assessment_id, email_exc)
+        if trigger_agent_review_email:
+            # Notify the agent that a new report needs review
+            try:
+                from app.services.email_service import send_stale_listing_agent_notification_sync
+                import asyncio
+                await asyncio.to_thread(
+                    send_stale_listing_agent_notification_sync,
+                    first_name,
+                    last_name,
+                    email,
+                    reference,
+                    package,
+                    property_address or "",
+                    listing_url or "",
+                    review_url,
+                )
+            except Exception as email_exc:
+                logger.warning("Agent notification email failed for %s: %s", assessment_id, email_exc)
 
     except Exception as exc:
         logger.error("AI report generation failed for %s: %s", assessment_id, exc)

@@ -10,9 +10,17 @@ GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 def _get_client():
-    import os
     from groq import Groq
+    import os
+
     api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not api_key:
+        try:
+            from app.config import get_settings
+
+            api_key = (get_settings().GROQ_API_KEY or "").strip()
+        except Exception:
+            api_key = ""
     if not api_key:
         raise ValueError("GROQ_API_KEY is not configured.")
     return Groq(api_key=api_key)

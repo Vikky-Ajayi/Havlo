@@ -424,6 +424,14 @@ export interface ProductAccessConsumeResponse {
   reference?: string | null;
 }
 
+export interface StaleListingReviewConsumeResponse {
+  email: string;
+  session_token: string;
+  redirect_path: string;
+  assessment_id: string;
+  reference: string;
+}
+
 export interface StaleListingPortalItem {
   assessment_id: string;
   reference: string;
@@ -896,10 +904,45 @@ export const api = {
       body: { token },
     }),
 
+  staleListingsReviewAccessConsume: (token: string) =>
+    request<StaleListingReviewConsumeResponse>('/stale-listings/review-access/consume', {
+      method: 'POST',
+      body: { token },
+    }),
+
   staleListingsAccessRecords: (token: string) =>
     request<StaleListingPortalResponse>('/stale-listings/access/records', {
       token,
     }),
+
+  staleListingsReviewAssessment: (token: string) =>
+    request<{
+      assessment_id: string;
+      reference: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+      package: string;
+      property_address?: string;
+      listing_url?: string;
+      listing_image_url?: string;
+      questions_data?: string;
+      report_status: string;
+      payment_status: string;
+      created_at: string;
+      ai_report_json?: string;
+      agent_edited_report_json?: string;
+      agent_notes?: string;
+    }>('/stale-listings/review-access/assessment', { token }),
+
+  staleListingsReviewFinalize: (
+    payload: { agent_notes?: string; agent_edited_report_json?: string; report_status: string },
+    token: string,
+  ) =>
+    request<{ ok: boolean; report_status: string }>(
+      '/stale-listings/review-access/assessment/finalize',
+      { method: 'PUT', body: payload, token }
+    ),
 
   staleListingsAdminList: (token: string) =>
     request<{

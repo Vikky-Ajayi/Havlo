@@ -98,7 +98,7 @@ export function CustomOffersPlan() {
           justify-content: space-between;
           align-items: flex-start;
           gap: 20px;
-          padding: 18px 20px;
+          padding: 22px 24px;
           border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 16px;
           background: #FFFFFF;
@@ -107,7 +107,7 @@ export function CustomOffersPlan() {
         .co-plan-summary h2 {
           margin: 0 0 6px;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 21px;
+          font-size: 24px;
           font-weight: 800;
           letter-spacing: -0.04em;
           line-height: 1.1;
@@ -115,7 +115,7 @@ export function CustomOffersPlan() {
         .co-plan-summary p {
           margin: 0;
           color: #444444;
-          font-size: 14px;
+          font-size: 16px;
           line-height: 1.45;
         }
         .co-plan-summary-tag {
@@ -129,23 +129,23 @@ export function CustomOffersPlan() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 12px;
+          padding: 9px 14px;
           border-radius: 999px;
           background: #F5F5F5;
           color: #111111;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 600;
         }
         .co-plan-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 18px;
+          gap: 22px;
         }
         .co-plan-card {
           position: relative;
           background: #FFFFFF;
-          border-radius: 22px;
-          padding: 22px 20px 18px;
+          border-radius: 24px;
+          padding: 26px 24px 22px;
           display: flex;
           flex-direction: column;
           gap: 18px;
@@ -156,38 +156,38 @@ export function CustomOffersPlan() {
           position: absolute;
           top: 12px;
           right: 16px;
-          padding: 5px 9px;
+          padding: 6px 10px;
           border-radius: 999px;
           background: #FF5C67;
           color: #FFFFFF;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 700;
           letter-spacing: -0.01em;
         }
         .co-plan-title {
           margin: 0;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 28px;
+          font-size: 32px;
           font-weight: 800;
           letter-spacing: -0.05em;
           line-height: 1;
         }
         .co-plan-tagline {
-          margin-top: 14px;
+          margin-top: 18px;
           color: #2B2B2B;
-          font-size: 14px;
+          font-size: 16px;
           line-height: 1.45;
-          min-height: 40px;
+          min-height: 46px;
         }
         .co-plan-intro {
           color: #2B2B2B;
-          font-size: 13px;
+          font-size: 14px;
           line-height: 1.45;
           font-weight: 600;
         }
         .co-plan-list {
           display: grid;
-          gap: 9px;
+          gap: 10px;
           margin: 0;
           padding: 0;
           list-style: none;
@@ -197,13 +197,13 @@ export function CustomOffersPlan() {
           align-items: flex-start;
           gap: 8px;
           color: #1B1B1B;
-          font-size: 14px;
+          font-size: 15px;
           line-height: 1.4;
         }
         .co-plan-price {
           margin-top: auto;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 30px;
+          font-size: 34px;
           font-weight: 800;
           letter-spacing: -0.05em;
           line-height: 1;
@@ -217,17 +217,31 @@ export function CustomOffersPlan() {
         @media (max-width: 768px) {
           .co-plan-summary {
             flex-direction: column;
-            gap: 14px;
-            margin-bottom: 22px;
+            gap: 16px;
+            margin-bottom: 24px;
           }
           .co-plan-summary-tag {
             justify-content: flex-start;
           }
           .co-plan-card {
-            border-radius: 18px;
+            border-radius: 20px;
           }
           .co-plan-title {
+            font-size: 28px;
+          }
+          .co-plan-summary h2 {
             font-size: 26px;
+          }
+          .co-plan-summary p,
+          .co-plan-tagline {
+            font-size: 15px;
+          }
+          .co-plan-intro,
+          .co-plan-list li {
+            font-size: 14px;
+          }
+          .co-plan-price {
+            font-size: 30px;
           }
         }
       `}</style>

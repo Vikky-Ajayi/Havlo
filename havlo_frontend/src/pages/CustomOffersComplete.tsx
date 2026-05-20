@@ -112,16 +112,16 @@ export function CustomOffersComplete() {
           gap: 12px;
         }
         .co-complete-check {
-          min-height: 70px;
+          min-height: 78px;
           border: 1.5px solid rgba(0, 0, 0, 0.12);
           border-radius: 10px;
           background: #FFFFFF;
-          padding: 16px 18px;
+          padding: 18px 20px;
           display: flex;
           align-items: center;
           gap: 12px;
           color: #111111;
-          font-size: 16px;
+          font-size: 17px;
           line-height: 1.4;
         }
         .co-complete-check.is-active {
@@ -131,14 +131,14 @@ export function CustomOffersComplete() {
           display: flex;
           justify-content: flex-end;
           gap: 12px;
-          margin-top: 30px;
+          margin-top: 34px;
         }
         .co-complete-actions button {
-          height: 44px;
+          height: 48px;
           border-radius: 6px;
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 500;
-          padding: 0 30px;
+          padding: 0 34px;
         }
         .co-complete-actions .secondary {
           border: 1px solid rgba(0, 0, 0, 0.20);
@@ -154,18 +154,18 @@ export function CustomOffersComplete() {
           left: 50%;
           top: 34px;
           transform: translateX(-50%);
-          width: min(400px, calc(100% - 32px));
+          width: min(430px, calc(100% - 32px));
           border-radius: 18px;
           background: #FFFFFF;
           box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
-          padding: 26px 28px 22px;
+          padding: 30px 32px 26px;
           text-align: center;
           z-index: 1;
         }
         .co-complete-modal h2 {
           margin: 6px 0 10px;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 27px;
+          font-size: 30px;
           font-weight: 800;
           line-height: 1.1;
           letter-spacing: -0.05em;
@@ -173,17 +173,17 @@ export function CustomOffersComplete() {
         .co-complete-modal p {
           margin: 0 0 18px;
           color: #1F1F1F;
-          font-size: 16px;
+          font-size: 17px;
           line-height: 1.45;
         }
         .co-complete-modal button {
           min-width: 102px;
-          height: 44px;
+          height: 48px;
           border-radius: 6px;
           border: 0;
           background: #000000;
           color: #FFFFFF;
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 500;
           cursor: pointer;
         }
@@ -198,10 +198,10 @@ export function CustomOffersComplete() {
           .co-complete-modal {
             top: 12px;
             width: calc(100% - 32px);
-            padding: 24px 20px 18px;
+            padding: 26px 22px 22px;
           }
           .co-complete-modal h2 {
-            font-size: 25px;
+            font-size: 27px;
           }
           .co-complete-actions {
             flex-direction: column;

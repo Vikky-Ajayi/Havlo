@@ -69,7 +69,7 @@ export function CustomOfferFlowShell(props: {
         }
         .cof-logo {
           display: block;
-          height: 50px;
+          height: 54px;
           width: auto;
           flex-shrink: 0;
         }
@@ -78,7 +78,7 @@ export function CustomOfferFlowShell(props: {
           align-items: center;
           gap: 6px;
           color: #111111;
-          font-size: 15px;
+          font-size: 16px;
           letter-spacing: -0.02em;
         }
         .cof-auth-row {
@@ -91,13 +91,13 @@ export function CustomOfferFlowShell(props: {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 44px;
-          padding: 0 18px;
+          height: 46px;
+          padding: 0 20px;
           border-radius: 14px;
           border: 1px solid rgba(0, 0, 0, 0.12);
           background: #FFFFFF;
           color: #111111;
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 600;
           letter-spacing: -0.02em;
           text-decoration: none;
@@ -138,7 +138,7 @@ export function CustomOfferFlowShell(props: {
           transform: translateX(100%);
           transition: transform 0.28s ease;
           z-index: 90;
-          padding: 24px 22px 32px;
+          padding: 26px 24px 36px;
         }
         .cof-drawer.is-open {
           transform: translateX(0);
@@ -162,17 +162,17 @@ export function CustomOfferFlowShell(props: {
           border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
         .cof-page {
-          max-width: ${contentWidth + 112}px;
+          max-width: ${contentWidth + 136}px;
           margin: 0 auto;
-          padding: 26px 56px 72px;
+          padding: 34px 64px 84px;
         }
         .cof-intro {
-          margin-bottom: 26px;
+          margin-bottom: 32px;
         }
         .cof-eyebrow {
           margin: 0 0 8px;
           color: ${PURPLE};
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 700;
           letter-spacing: -0.02em;
           text-transform: uppercase;
@@ -180,7 +180,7 @@ export function CustomOfferFlowShell(props: {
         .cof-title {
           margin: 0;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 28px;
+          font-size: 33px;
           font-weight: 800;
           line-height: 1.14;
           letter-spacing: -0.05em;
@@ -190,7 +190,7 @@ export function CustomOfferFlowShell(props: {
           margin: 4px 0 0;
           max-width: 760px;
           color: #1F1F1F;
-          font-size: 16px;
+          font-size: 18px;
           line-height: 1.48;
           letter-spacing: -0.02em;
         }
@@ -198,13 +198,13 @@ export function CustomOfferFlowShell(props: {
           background: #FFFFFF;
           border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 14px;
-          padding: 16px 18px;
+          padding: 18px 20px;
         }
         .cof-field-label {
           display: block;
           margin: 0 0 10px;
           color: #111111;
-          font-size: 18px;
+          font-size: 20px;
           font-weight: 700;
           line-height: 1.32;
           letter-spacing: -0.03em;
@@ -212,7 +212,7 @@ export function CustomOfferFlowShell(props: {
         .cof-field-help {
           margin: -2px 0 10px;
           color: #555555;
-          font-size: 14px;
+          font-size: 15px;
           line-height: 1.45;
           letter-spacing: -0.02em;
         }
@@ -221,7 +221,7 @@ export function CustomOfferFlowShell(props: {
           font-style: italic;
         }
         .cof-section {
-          padding: 26px 0 0;
+          padding: 30px 0 0;
           border-top: 1px solid rgba(0, 0, 0, 0.10);
         }
         .cof-section:first-of-type {
@@ -231,25 +231,25 @@ export function CustomOfferFlowShell(props: {
         .cof-options-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
+          gap: 12px;
         }
         .cof-actions {
           display: flex;
           justify-content: flex-end;
-          gap: 12px;
-          margin-top: 36px;
+          gap: 14px;
+          margin-top: 40px;
         }
         .cof-actions--stack {
           display: none;
         }
         .cof-button {
-          height: 44px;
+          height: 48px;
           border-radius: 6px;
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 500;
           letter-spacing: -0.02em;
           cursor: pointer;
-          padding: 0 30px;
+          padding: 0 34px;
         }
         .cof-button-primary {
           border: 0;
@@ -264,7 +264,7 @@ export function CustomOfferFlowShell(props: {
         .cof-error {
           margin-top: 8px;
           color: #C02626;
-          font-size: 13px;
+          font-size: 14px;
           line-height: 1.45;
         }
         .cof-input,
@@ -274,13 +274,13 @@ export function CustomOfferFlowShell(props: {
           border-radius: 10px;
           background: #FFFFFF;
           color: #111111;
-          font-size: 15px;
+          font-size: 16px;
           font-family: 'Inter', sans-serif;
-          padding: 18px 16px;
+          padding: 20px 18px;
           outline: none;
         }
         .cof-textarea {
-          min-height: 120px;
+          min-height: 136px;
           resize: vertical;
         }
         .cof-input::placeholder,
@@ -289,11 +289,11 @@ export function CustomOfferFlowShell(props: {
         }
         @media (max-width: 768px) {
           .cof-header-inner {
-            height: 80px;
-            padding: 0 16px;
+            height: 84px;
+            padding: 0 18px;
           }
           .cof-logo {
-            height: 44px;
+            height: 48px;
           }
           .cof-secure {
             display: none;
@@ -305,31 +305,34 @@ export function CustomOfferFlowShell(props: {
             display: inline-flex;
           }
           .cof-page {
-            padding: 16px 16px 52px;
+            padding: 22px 18px 60px;
           }
           .cof-intro {
-            margin-bottom: 16px;
+            margin-bottom: 22px;
           }
           .cof-eyebrow {
-            font-size: 14px;
+            font-size: 15px;
             margin-bottom: 6px;
           }
           .cof-title {
-            font-size: 24px;
+            font-size: 30px;
             line-height: 1.08;
           }
           .cof-subtitle {
             margin-top: 4px;
-            font-size: 16px;
-            line-height: 1.4;
+            font-size: 17px;
+            line-height: 1.45;
           }
           .cof-field-label {
-            font-size: 16px;
+            font-size: 18px;
             line-height: 1.35;
+          }
+          .cof-field-help {
+            font-size: 15px;
           }
           .cof-options-grid {
             grid-template-columns: 1fr;
-            gap: 8px;
+            gap: 10px;
           }
           .cof-actions {
             display: none;
@@ -337,16 +340,16 @@ export function CustomOfferFlowShell(props: {
           .cof-actions--stack {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-top: 28px;
+            gap: 12px;
+            margin-top: 32px;
           }
           .cof-button {
             width: 100%;
-            height: 50px;
+            height: 54px;
             justify-content: center;
           }
           .cof-drawer {
-            padding-top: 20px;
+            padding-top: 22px;
           }
         }
       `}</style>
@@ -502,23 +505,23 @@ export function CustomOfferChoiceCard(props: {
       onClick={onClick}
       style={{
         width: '100%',
-        minHeight: description ? 70 : 52,
-        borderRadius: 10,
+        minHeight: description ? 82 : 60,
+        borderRadius: 12,
         border: `1.5px solid ${selected ? PURPLE : 'rgba(0, 0, 0, 0.10)'}`,
         background: '#FFFFFF',
-        padding: description ? '12px 18px' : '0 18px',
+        padding: description ? '14px 20px' : '0 20px',
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 14,
         cursor: 'pointer',
         textAlign: 'left',
       }}
     >
       {type === 'checkbox' ? <Checkbox selected={selected} /> : <Radio selected={selected} />}
       <span style={{ minWidth: 0 }}>
-        <span style={{ display: 'block', color: '#111111', fontSize: 16, fontWeight: 500, lineHeight: 1.38, letterSpacing: '-0.02em' }}>{title}</span>
+        <span style={{ display: 'block', color: '#111111', fontSize: 18, fontWeight: 500, lineHeight: 1.4, letterSpacing: '-0.02em' }}>{title}</span>
         {description ? (
-          <span style={{ display: 'block', marginTop: 3, color: '#3C3C3C', fontSize: 14, lineHeight: 1.4, letterSpacing: '-0.02em' }}>
+          <span style={{ display: 'block', marginTop: 5, color: '#3C3C3C', fontSize: 15, lineHeight: 1.45, letterSpacing: '-0.02em' }}>
             {description}
           </span>
         ) : null}
@@ -542,8 +545,8 @@ export function CustomOfferChip(props: {
         border: `1.5px solid ${active ? PURPLE : 'rgba(0, 0, 0, 0.12)'}`,
         background: '#FFFFFF',
         color: active ? PURPLE : '#111111',
-        padding: '11px 16px',
-        fontSize: 15,
+        padding: '13px 18px',
+        fontSize: 16,
         fontWeight: 500,
         letterSpacing: '-0.02em',
         cursor: 'pointer',

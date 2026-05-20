@@ -745,7 +745,7 @@ export const CustomOffers: React.FC = () => {
         .co-brand-logo {
           display: block;
           width: auto;
-          height: 46px;
+          height: 50px;
         }
 
         .co-header {
@@ -757,7 +757,7 @@ export const CustomOffers: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          min-height: 72px;
+          min-height: 80px;
         }
 
         .co-nav {
@@ -782,13 +782,13 @@ export const CustomOffers: React.FC = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 42px;
-          padding: 0 18px;
+          height: 46px;
+          padding: 0 20px;
           border-radius: 14px;
           border: 1px solid rgba(0, 0, 0, 0.12);
           background: #ffffff;
           color: #111111;
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 600;
           letter-spacing: -0.02em;
           cursor: pointer;
@@ -798,7 +798,7 @@ export const CustomOffers: React.FC = () => {
         .co-nav a {
           color: #393939;
           text-decoration: none;
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 600;
           letter-spacing: -0.01em;
         }
@@ -895,7 +895,7 @@ export const CustomOffers: React.FC = () => {
           border-bottom: 1px solid rgba(0, 0, 0, 0.08);
           color: #1f1f1f;
           text-decoration: none;
-          font-size: 18px;
+          font-size: 20px;
           font-weight: 600;
           letter-spacing: -0.02em;
         }
@@ -909,9 +909,9 @@ export const CustomOffers: React.FC = () => {
         .co-hero-inner {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 470px;
-          gap: 30px;
-          padding-top: 80px;
-          padding-bottom: 74px;
+          gap: 36px;
+          padding-top: 88px;
+          padding-bottom: 82px;
         }
 
         .co-hero-copy {
@@ -921,7 +921,7 @@ export const CustomOffers: React.FC = () => {
         .co-hero-title {
           margin: 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 47px;
+          font-size: 54px;
           font-weight: 800;
           line-height: 0.96;
           letter-spacing: -0.045em;
@@ -948,8 +948,8 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-hero-copy p {
-          margin: 24px 0 0;
-          font-size: 17px;
+          margin: 26px 0 0;
+          font-size: 18px;
           line-height: 1.45;
           letter-spacing: -0.02em;
           color: #2b2b2b;
@@ -957,7 +957,7 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-hero-cta-form {
-          margin-top: 34px;
+          margin-top: 38px;
           display: flex;
           align-items: center;
           gap: 10px;
@@ -967,11 +967,11 @@ export const CustomOffers: React.FC = () => {
         .co-hero-url-shell {
           flex: 1 1 auto;
           min-width: 0;
-          height: 52px;
+          height: 56px;
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 0 16px;
+          padding: 0 18px;
           border-radius: 12px;
           border: 1px solid rgba(0, 0, 0, 0.06);
           background: #eef0f2;
@@ -989,7 +989,7 @@ export const CustomOffers: React.FC = () => {
           outline: none;
           background: transparent;
           color: #111111;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 500;
           letter-spacing: -0.02em;
           line-height: 1.35;
@@ -1003,14 +1003,14 @@ export const CustomOffers: React.FC = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-width: 206px;
-          height: 52px;
-          padding: 0 24px;
+          min-width: 220px;
+          height: 56px;
+          padding: 0 26px;
           border: 0;
           border-radius: 12px;
           background: #000000;
           color: #ffffff;
-          font-size: 14px;
+          font-size: 16px;
           font-weight: 700;
           letter-spacing: -0.01em;
           cursor: pointer;
@@ -1028,13 +1028,13 @@ export const CustomOffers: React.FC = () => {
         .co-hero-input-error {
           margin-top: 10px;
           color: #b42318;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           letter-spacing: -0.01em;
         }
 
         .co-rating {
-          margin-top: 40px;
+          margin-top: 42px;
           display: flex;
           align-items: center;
           gap: 14px;
@@ -1050,40 +1050,40 @@ export const CustomOffers: React.FC = () => {
 
         .co-rating-main strong,
         .co-rating-copy {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 700;
           letter-spacing: -0.02em;
           color: #191919;
         }
 
         .co-trustpilot-stars {
-          width: 116px;
+          width: 124px;
           height: auto;
           display: block;
         }
 
         .co-stats {
-          margin-top: 34px;
+          margin-top: 38px;
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 18px;
-          max-width: 610px;
+          gap: 22px;
+          max-width: 660px;
         }
 
         .co-stat-value {
           display: block;
           font-family: var(--font-display), sans-serif;
-          font-size: 35px;
-          font-weight: 900;
+          font-size: 40px;
+          font-weight: 700;
           line-height: 1;
           letter-spacing: -0.04em;
           color: #1f1f1f;
         }
 
         .co-stat-label {
-          margin-top: 9px;
+          margin-top: 10px;
           display: block;
-          font-size: 13px;
+          font-size: 14px;
           line-height: 1.35;
           letter-spacing: -0.02em;
           color: #393939;
@@ -1096,18 +1096,18 @@ export const CustomOffers: React.FC = () => {
 
         .co-hero-card {
           align-self: start;
-          margin-top: 34px;
+          margin-top: 38px;
           background: #ffffff;
           border: 3px solid #111111;
           border-radius: 18px;
           box-shadow: 8px 8px 0 #111111;
-          padding: 28px 30px 24px;
+          padding: 30px 32px 26px;
         }
 
         .co-hero-card h2 {
           margin: 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 800;
           line-height: 1.1;
           letter-spacing: -0.03em;
@@ -1115,8 +1115,8 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-hero-card ul {
-          margin: 18px 0 0;
-          padding: 19px 0 18px;
+          margin: 20px 0 0;
+          padding: 20px 0 19px;
           list-style: none;
           border-top: 3px solid #1b1b1b;
           border-bottom: 3px solid #1b1b1b;
@@ -1126,7 +1126,7 @@ export const CustomOffers: React.FC = () => {
           position: relative;
           padding: 15px 0 15px 32px;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 19px;
+          font-size: 20px;
           line-height: 1.22;
           letter-spacing: -0.03em;
           color: #1a1a1a;
@@ -1150,7 +1150,7 @@ export const CustomOffers: React.FC = () => {
         .co-hero-card-footer {
           margin-top: 12px;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 19px;
+          font-size: 20px;
           line-height: 1.35;
           letter-spacing: -0.03em;
           color: #161616;
@@ -1161,7 +1161,7 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-statement {
-          padding: 68px 0 50px;
+          padding: 74px 0 56px;
           background: #ffffff;
         }
 
@@ -1169,7 +1169,7 @@ export const CustomOffers: React.FC = () => {
           margin: 0;
           max-width: 1120px;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 40px;
+          font-size: 46px;
           font-weight: 700;
           line-height: 1.16;
           letter-spacing: -0.035em;
@@ -1177,14 +1177,14 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-features {
-          padding-bottom: 80px;
+          padding-bottom: 86px;
           background: #ffffff;
         }
 
         .co-feature-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 38px;
+          gap: 42px;
         }
 
         .co-feature-item {
@@ -1197,13 +1197,13 @@ export const CustomOffers: React.FC = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 42px;
+          height: 46px;
         }
 
         .co-feature-item h3 {
-          margin: 24px 0 0;
+          margin: 26px 0 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 25px;
+          font-size: 30px;
           font-weight: 700;
           line-height: 1.08;
           letter-spacing: -0.03em;
@@ -1212,8 +1212,8 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-feature-item p {
-          margin: 18px 0 0;
-          font-size: 18px;
+          margin: 20px 0 0;
+          font-size: 19px;
           line-height: 1.45;
           letter-spacing: -0.02em;
           color: #262626;
@@ -1221,14 +1221,14 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-steps {
-          padding: 0 0 72px;
+          padding: 0 0 80px;
           background: #ffffff;
         }
 
         .co-step-list {
           display: flex;
           flex-direction: column;
-          gap: 32px;
+          gap: 36px;
         }
 
         .co-step-card {
@@ -1274,13 +1274,13 @@ export const CustomOffers: React.FC = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-width: 120px;
-          height: 46px;
+          min-width: 126px;
+          height: 50px;
           padding: 0 24px;
           border-radius: 999px;
           background: #000000;
           color: #ffffff;
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 700;
           letter-spacing: -0.02em;
         }
@@ -1288,7 +1288,7 @@ export const CustomOffers: React.FC = () => {
         .co-step-copy h3 {
           margin: 30px 0 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 50px;
+          font-size: 54px;
           font-weight: 700;
           line-height: 1.04;
           letter-spacing: -0.05em;
@@ -1299,7 +1299,7 @@ export const CustomOffers: React.FC = () => {
         .co-step-copy p {
           margin: 18px 0 0;
           max-width: 660px;
-          font-size: 18px;
+          font-size: 19px;
           line-height: 1.55;
           letter-spacing: -0.03em;
           color: #2a2a2a;
@@ -1347,12 +1347,12 @@ export const CustomOffers: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 16px;
-          min-height: 55px;
+          min-height: 58px;
           padding: 0 18px;
           border-radius: 10px;
           background: #edf0f2;
           color: #696969;
-          font-size: 16px;
+          font-size: 17px;
           line-height: 1;
           letter-spacing: -0.025em;
           white-space: nowrap;
@@ -1375,7 +1375,7 @@ export const CustomOffers: React.FC = () => {
           gap: 14px;
           margin-top: 32px;
           color: #666666;
-          font-size: 16px;
+          font-size: 17px;
           line-height: 1.25;
           letter-spacing: -0.025em;
         }
@@ -1392,21 +1392,21 @@ export const CustomOffers: React.FC = () => {
           min-height: 58px;
           border-bottom: 1px solid rgba(0, 0, 0, 0.08);
           color: #666666;
-          font-size: 16px;
+          font-size: 17px;
           line-height: 1.25;
           letter-spacing: -0.025em;
         }
 
         .co-step-table-row strong {
           color: #111111;
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 700;
           letter-spacing: -0.015em;
         }
 
         .co-step-note {
           padding-top: 18px;
-          font-size: 14px;
+          font-size: 15px;
           line-height: 1.4;
           text-align: center;
           letter-spacing: -0.02em;
@@ -1430,14 +1430,14 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-step-message-copy strong {
-          font-size: 17px;
+          font-size: 18px;
           line-height: 1.2;
           color: #181818;
           letter-spacing: -0.03em;
         }
 
         .co-step-message-copy span {
-          font-size: 14px;
+          font-size: 15px;
           line-height: 1.35;
           color: #444444;
           letter-spacing: -0.02em;
@@ -1452,20 +1452,20 @@ export const CustomOffers: React.FC = () => {
           border-radius: 10px;
           background: #edf0f2;
           color: #363636;
-          font-size: 16px;
+          font-size: 17px;
           line-height: 1.25;
           letter-spacing: -0.025em;
         }
 
         .co-testimonials {
           background: #eef0f2;
-          padding: 70px 0 74px;
+          padding: 76px 0 80px;
         }
 
         .co-testimonials h2 {
           margin: 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 34px;
+          font-size: 38px;
           font-weight: 700;
           line-height: 1.08;
           letter-spacing: -0.035em;
@@ -1473,7 +1473,7 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-testimonial-grid {
-          margin-top: 34px;
+          margin-top: 38px;
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 28px 30px;
@@ -1525,15 +1525,15 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-testimonial-card {
-          min-height: 252px;
+          min-height: 260px;
           background: #ffffff;
           border-radius: 24px;
-          padding: 24px 24px 20px;
+          padding: 26px 26px 22px;
         }
 
         .co-testimonial-card p {
-          margin: 20px 0 0;
-          font-size: 18px;
+          margin: 22px 0 0;
+          font-size: 19px;
           line-height: 1.46;
           letter-spacing: -0.02em;
           color: #262626;
@@ -1541,8 +1541,8 @@ export const CustomOffers: React.FC = () => {
 
         .co-testimonial-card strong {
           display: block;
-          margin-top: 22px;
-          font-size: 16px;
+          margin-top: 24px;
+          font-size: 17px;
           font-weight: 800;
           line-height: 1.25;
           letter-spacing: -0.02em;
@@ -1551,13 +1551,13 @@ export const CustomOffers: React.FC = () => {
 
         .co-faq {
           background: #ffffff;
-          padding: 66px 0 78px;
+          padding: 72px 0 84px;
         }
 
         .co-faq h2 {
           margin: 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 34px;
+          font-size: 38px;
           font-weight: 800;
           line-height: 1.04;
           letter-spacing: -0.035em;
@@ -1565,11 +1565,11 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-faq-list {
-          margin-top: 34px;
+          margin-top: 38px;
         }
 
         .co-faq-row {
-          padding: 22px 0 24px;
+          padding: 24px 0 26px;
           border-bottom: 1px solid rgba(0, 0, 0, 0.1);
         }
 
@@ -1582,7 +1582,7 @@ export const CustomOffers: React.FC = () => {
 
         .co-faq-row h3 {
           margin: 0;
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 800;
           line-height: 1.4;
           letter-spacing: -0.02em;
@@ -1590,10 +1590,10 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-faq-row p {
-          margin: 15px 0 0;
+          margin: 16px 0 0;
           max-width: 930px;
           white-space: pre-line;
-          font-size: 17px;
+          font-size: 18px;
           line-height: 1.45;
           letter-spacing: -0.015em;
           color: #232323;
@@ -1602,16 +1602,16 @@ export const CustomOffers: React.FC = () => {
         .co-faq-button-row {
           display: flex;
           justify-content: center;
-          margin-top: 24px;
+          margin-top: 28px;
         }
 
         .co-faq-button {
-          width: 128px;
-          height: 40px;
+          width: 136px;
+          height: 44px;
           border: 0;
           background: #000000;
           color: #ffffff;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 600;
           letter-spacing: -0.01em;
           cursor: pointer;
@@ -1619,7 +1619,7 @@ export const CustomOffers: React.FC = () => {
 
         .co-pricing {
           background: #f5a9df;
-          padding: 66px 0 54px;
+          padding: 72px 0 60px;
         }
 
         .co-pricing-head {
@@ -1633,7 +1633,7 @@ export const CustomOffers: React.FC = () => {
           margin: 0;
           max-width: 930px;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 34px;
+          font-size: 38px;
           font-weight: 700;
           line-height: 1.08;
           letter-spacing: -0.035em;
@@ -1641,16 +1641,16 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-pricing p {
-          margin: 18px 0 0;
+          margin: 20px 0 0;
           max-width: 760px;
-          font-size: 18px;
+          font-size: 19px;
           line-height: 1.45;
           letter-spacing: -0.02em;
           color: #272727;
         }
 
         .co-pricing-grid {
-          margin-top: 32px;
+          margin-top: 36px;
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 24px;
@@ -1662,8 +1662,8 @@ export const CustomOffers: React.FC = () => {
           flex-direction: column;
           background: #ffffff;
           border-radius: 26px;
-          padding: 24px 22px 18px;
-          min-height: 615px;
+          padding: 26px 24px 20px;
+          min-height: 640px;
           border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
@@ -1674,91 +1674,31 @@ export const CustomOffers: React.FC = () => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          height: 30px;
+          height: 32px;
           padding: 0 12px;
           border-radius: 999px;
           background: #f14d67;
           color: #ffffff;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
           letter-spacing: -0.01em;
         }
 
         .co-house-wrap {
-          height: 152px;
+          height: 164px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
         .co-house-svg {
-          width: 158px;
+          width: 166px;
           height: auto;
           display: block;
         }
 
         .co-plan-card h3 {
           margin: 0;
-          font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 20px;
-          font-weight: 800;
-          line-height: 1;
-          letter-spacing: -0.03em;
-          color: #121212;
-        }
-
-        .co-plan-tagline {
-          margin-top: 12px;
-          font-size: 17px;
-          line-height: 1.35;
-          letter-spacing: -0.015em;
-          color: #222222;
-        }
-
-        .co-plan-separator {
-          margin-top: 18px;
-          border-top: 1px solid rgba(0, 0, 0, 0.1);
-          padding-top: 16px;
-        }
-
-        .co-plan-intro {
-          font-size: 15px;
-          line-height: 1.3;
-          letter-spacing: -0.015em;
-          color: #171717;
-          font-weight: 700;
-        }
-
-        .co-plan-list {
-          margin: 14px 0 0;
-          padding: 0;
-          list-style: none;
-        }
-
-        .co-plan-list li {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          font-size: 15px;
-          line-height: 1.3;
-          letter-spacing: -0.015em;
-          color: #1f1f1f;
-        }
-
-        .co-plan-list li + li {
-          margin-top: 13px;
-        }
-
-        .co-plan-footer {
-          margin-top: auto;
-          padding-top: 20px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .co-plan-price {
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
           font-size: 22px;
           font-weight: 800;
@@ -1767,12 +1707,72 @@ export const CustomOffers: React.FC = () => {
           color: #121212;
         }
 
+        .co-plan-tagline {
+          margin-top: 14px;
+          font-size: 18px;
+          line-height: 1.35;
+          letter-spacing: -0.015em;
+          color: #222222;
+        }
+
+        .co-plan-separator {
+          margin-top: 20px;
+          border-top: 1px solid rgba(0, 0, 0, 0.1);
+          padding-top: 18px;
+        }
+
+        .co-plan-intro {
+          font-size: 16px;
+          line-height: 1.3;
+          letter-spacing: -0.015em;
+          color: #171717;
+          font-weight: 700;
+        }
+
+        .co-plan-list {
+          margin: 16px 0 0;
+          padding: 0;
+          list-style: none;
+        }
+
+        .co-plan-list li {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          font-size: 16px;
+          line-height: 1.3;
+          letter-spacing: -0.015em;
+          color: #1f1f1f;
+        }
+
+        .co-plan-list li + li {
+          margin-top: 14px;
+        }
+
+        .co-plan-footer {
+          margin-top: auto;
+          padding-top: 22px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .co-plan-price {
+          font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
+          font-size: 24px;
+          font-weight: 800;
+          line-height: 1;
+          letter-spacing: -0.03em;
+          color: #121212;
+        }
+
         .co-plan-button {
           width: 100%;
-          height: 44px;
+          height: 46px;
           border: 0;
           border-radius: 10px;
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 700;
           letter-spacing: -0.015em;
           cursor: pointer;
@@ -1783,7 +1783,7 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-footer .co-brand-logo {
-          height: 50px;
+          height: 54px;
         }
 
         .co-footer-inner {
@@ -1796,7 +1796,7 @@ export const CustomOffers: React.FC = () => {
 
         .co-footer-copy {
           justify-self: center;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           letter-spacing: -0.01em;
           color: #272727;
@@ -1811,7 +1811,7 @@ export const CustomOffers: React.FC = () => {
 
         .co-footer-links a {
           text-decoration: none;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           letter-spacing: -0.01em;
           color: #2d2d2d;
@@ -1961,11 +1961,11 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-header-inner {
-            min-height: 66px;
+            min-height: 74px;
           }
 
           .co-brand-logo {
-            height: 34px;
+            height: 40px;
           }
 
           .co-hero-wrap {
@@ -1974,9 +1974,9 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-inner {
             grid-template-columns: 1fr;
-            gap: 26px;
-            padding-top: 26px;
-            padding-bottom: 34px;
+            gap: 28px;
+            padding-top: 30px;
+            padding-bottom: 38px;
           }
 
           .co-hero-copy {
@@ -1984,7 +1984,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-hero-title {
-            font-size: 36px;
+            font-size: 44px;
             line-height: 0.98;
           }
 
@@ -1998,7 +1998,7 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-copy p {
             margin-top: 18px;
-            font-size: 13px;
+            font-size: 16px;
             line-height: 1.45;
             max-width: none;
           }
@@ -2006,8 +2006,9 @@ export const CustomOffers: React.FC = () => {
           .co-primary-button {
             width: 100%;
             min-width: 0;
-            height: 42px;
+            height: 50px;
             border-radius: 10px;
+            font-size: 16px;
           }
 
           .co-hero-cta-form {
@@ -2019,13 +2020,13 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-url-shell {
             width: 100%;
-            height: 44px;
-            padding: 0 14px;
+            height: 50px;
+            padding: 0 18px;
             border-radius: 10px;
           }
 
           .co-hero-url-input {
-            font-size: 13px;
+            font-size: 15px;
           }
 
           .co-rating {
@@ -2041,21 +2042,21 @@ export const CustomOffers: React.FC = () => {
 
           .co-rating-main strong,
           .co-rating-copy {
-            font-size: 13px;
+            font-size: 15px;
           }
 
           .co-trustpilot-stars {
-            width: 74px;
+            width: 88px;
           }
 
           .co-stats {
-            margin-top: 18px;
-            gap: 12px;
+            margin-top: 20px;
+            gap: 14px;
             max-width: none;
           }
 
           .co-stat-value {
-            font-size: 24px;
+            font-size: 30px;
           }
 
           .co-stat-value-desktop {
@@ -2068,21 +2069,21 @@ export const CustomOffers: React.FC = () => {
 
           .co-stat-label {
             margin-top: 6px;
-            font-size: 9px;
+            font-size: 12px;
             line-height: 1.35;
-            max-width: 84px;
+            max-width: 112px;
           }
 
           .co-hero-card {
             margin-top: 4px;
-            padding: 18px 16px 18px;
+            padding: 20px 18px 20px;
             border-radius: 14px;
             border-width: 2px;
             box-shadow: 5px 5px 0 #111111;
           }
 
           .co-hero-card h2 {
-            font-size: 14px;
+            font-size: 17px;
           }
 
           .co-hero-card ul {
@@ -2094,7 +2095,7 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-card li {
             padding: 10px 0 10px 18px;
-            font-size: 12px;
+            font-size: 15px;
             line-height: 1.45;
           }
 
@@ -2106,7 +2107,7 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-card-footer {
             margin-top: 10px;
-            font-size: 12px;
+            font-size: 15px;
             line-height: 1.45;
           }
 
@@ -2115,7 +2116,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-statement p {
-            font-size: 21px;
+            font-size: 28px;
             line-height: 1.12;
           }
 
@@ -2130,13 +2131,13 @@ export const CustomOffers: React.FC = () => {
 
           .co-feature-item h3 {
             margin-top: 14px;
-            font-size: 18px;
+            font-size: 24px;
             max-width: 260px;
           }
 
           .co-feature-item p {
             margin-top: 10px;
-            font-size: 13px;
+            font-size: 16px;
             line-height: 1.45;
             max-width: none;
           }
@@ -2162,22 +2163,22 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-step-badge {
-            min-width: 96px;
-            height: 40px;
+            min-width: 104px;
+            height: 44px;
             padding: 0 18px;
-            font-size: 14px;
+            font-size: 16px;
           }
 
           .co-step-copy h3 {
             margin-top: 22px;
-            font-size: 23px;
+            font-size: 30px;
             max-width: 282px;
           }
 
           .co-step-copy p {
             margin-top: 14px;
             max-width: none;
-            font-size: 13px;
+            font-size: 16px;
             line-height: 1.5;
           }
 
@@ -2219,11 +2220,11 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-step-soft-row {
-            min-height: 36px;
+            min-height: 42px;
             gap: 10px;
-            padding: 0 12px;
+            padding: 0 14px;
             border-radius: 8px;
-            font-size: 11px;
+            font-size: 14px;
           }
 
           .co-step-soft-row + .co-step-soft-row {
@@ -2233,7 +2234,7 @@ export const CustomOffers: React.FC = () => {
           .co-step-proof-line {
             gap: 10px;
             margin-top: 22px;
-            font-size: 11px;
+            font-size: 14px;
           }
 
           .co-step-proof-line span {
@@ -2243,17 +2244,17 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-step-table-row {
-            min-height: 34px;
-            font-size: 10px;
+            min-height: 40px;
+            font-size: 13px;
           }
 
           .co-step-table-row strong {
-            font-size: 10px;
+            font-size: 13px;
           }
 
           .co-step-note {
             padding-top: 10px;
-            font-size: 9px;
+            font-size: 12px;
           }
 
           .co-step-message-card {
@@ -2263,11 +2264,11 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-step-message-copy strong {
-            font-size: 13px;
+            font-size: 16px;
           }
 
           .co-step-message-copy span {
-            font-size: 10px;
+            font-size: 13px;
             line-height: 1.3;
           }
 
@@ -2275,7 +2276,7 @@ export const CustomOffers: React.FC = () => {
             min-height: 44px;
             padding: 0 12px;
             gap: 12px;
-            font-size: 10px;
+            font-size: 13px;
           }
 
           .co-testimonials {
@@ -2283,7 +2284,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-testimonials h2 {
-            font-size: 22px;
+            font-size: 28px;
             line-height: 1.1;
             max-width: 320px;
           }
@@ -2302,12 +2303,12 @@ export const CustomOffers: React.FC = () => {
 
           .co-testimonial-card p {
             margin-top: 12px;
-            font-size: 13px;
+            font-size: 16px;
           }
 
           .co-testimonial-card strong {
             margin-top: 16px;
-            font-size: 13px;
+            font-size: 16px;
           }
 
           .co-faq {
@@ -2315,7 +2316,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-faq h2 {
-            font-size: 26px;
+            font-size: 32px;
             line-height: 1.02;
             max-width: 270px;
           }
@@ -2329,7 +2330,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-faq-row h3 {
-            font-size: 15px;
+            font-size: 18px;
             line-height: 1.35;
             max-width: 275px;
           }
@@ -2337,7 +2338,7 @@ export const CustomOffers: React.FC = () => {
           .co-faq-row p {
             margin-top: 10px;
             max-width: none;
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.45;
           }
 
@@ -2346,9 +2347,9 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-faq-button {
-            width: 104px;
-            height: 32px;
-            font-size: 11px;
+            width: 116px;
+            height: 42px;
+            font-size: 14px;
           }
 
           .co-pricing {
@@ -2356,7 +2357,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-pricing h2 {
-            font-size: 18px;
+            font-size: 26px;
             max-width: 330px;
             line-height: 1.04;
           }
@@ -2368,7 +2369,7 @@ export const CustomOffers: React.FC = () => {
           .co-pricing p {
             margin-top: 12px;
             max-width: 320px;
-            font-size: 11px;
+            font-size: 15px;
             line-height: 1.45;
           }
 
@@ -2401,12 +2402,12 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-plan-card h3 {
-            font-size: 16px;
+            font-size: 19px;
           }
 
           .co-plan-tagline {
             margin-top: 8px;
-            font-size: 12px;
+            font-size: 15px;
           }
 
           .co-plan-separator {
@@ -2416,7 +2417,7 @@ export const CustomOffers: React.FC = () => {
 
           .co-plan-intro,
           .co-plan-list li {
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.35;
           }
 
@@ -2430,12 +2431,12 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-plan-price {
-            font-size: 16px;
+            font-size: 22px;
           }
 
           .co-plan-button {
-            height: 38px;
-            font-size: 12px;
+            height: 42px;
+            font-size: 15px;
             border-radius: 8px;
           }
 
@@ -2450,11 +2451,11 @@ export const CustomOffers: React.FC = () => {
 
           .co-footer-copy {
             order: 2;
-            font-size: 12px;
+            font-size: 14px;
           }
 
           .co-footer .co-brand-logo {
-            height: 38px;
+            height: 44px;
           }
 
           .co-footer-links {
@@ -2480,13 +2481,13 @@ export const CustomOffers: React.FC = () => {
 
           .co-testimonial-card p {
             margin-top: 10px;
-            font-size: 14px;
+            font-size: 15px;
             letter-spacing: -0.01em;
           }
 
           .co-testimonial-card strong {
             margin-top: 10px;
-            font-size: 14px;
+            font-size: 15px;
           }
         }
 

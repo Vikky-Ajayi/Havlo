@@ -555,6 +555,14 @@ class ProductAccessConsumeResponse(BaseModel):
     reference: Optional[str] = None
 
 
+class StaleListingReviewConsumeResponse(BaseModel):
+    email: EmailStr
+    session_token: str
+    redirect_path: str
+    assessment_id: str
+    reference: str
+
+
 class StaleListingPortalItem(BaseModel):
     assessment_id: str
     reference: str

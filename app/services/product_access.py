@@ -11,12 +11,18 @@ from app.config import get_settings
 
 STALE_LISTINGS_SCOPE = "stale-listings"
 CUSTOM_OFFERS_SCOPE = "custom-offers"
+STALE_LISTINGS_REVIEW_SCOPE = "stale-listings-review"
 PRODUCT_ACCESS_SCOPES = {STALE_LISTINGS_SCOPE, CUSTOM_OFFERS_SCOPE}
 
 MAGIC_LINK_EXPIRY_MINUTES = 30
 SESSION_EXPIRY_DAYS = 14
 SESSION_AUDIENCE = "havlo-product-access"
 SESSION_TYPE = "product-access-session"
+REVIEW_MAGIC_AUDIENCE = "havlo-stale-review-magic"
+REVIEW_MAGIC_TYPE = "stale-review-magic"
+REVIEW_SESSION_AUDIENCE = "havlo-stale-review-session"
+REVIEW_SESSION_TYPE = "stale-review-session"
+REVIEW_SESSION_EXPIRY_DAYS = 7
 
 
 def utcnow() -> datetime:
@@ -73,6 +79,10 @@ def build_magic_link(scope: str, raw_token: str) -> str:
     return f"{_frontend_base_url()}{scope_access_path(scope)}?token={quote(raw_token)}"
 
 
+def build_stale_review_magic_link(raw_token: str) -> str:
+    return f"{_frontend_base_url()}/stale-listings/review-access?token={quote(raw_token)}"
+
+
 def create_product_access_session(email: str, scope: str) -> str:
     ensure_scope(scope)
     settings = get_settings()
@@ -111,3 +121,91 @@ def decode_product_access_session(token: str, expected_scope: str | None = None)
         raise ValueError("Invalid product access scope.")
 
     return {"email": email, "scope": scope}
+
+
+def create_stale_review_magic_token(email: str, assessment_id: str, reference: str) -> str:
+    settings = get_settings()
+    issued_at = utcnow()
+    payload = {
+        "sub": normalize_email(email),
+        "assessment_id": assessment_id,
+        "reference": reference,
+        "scope": STALE_LISTINGS_REVIEW_SCOPE,
+        "type": REVIEW_MAGIC_TYPE,
+        "aud": REVIEW_MAGIC_AUDIENCE,
+        "iat": int(issued_at.timestamp()),
+        "exp": int((issued_at + timedelta(minutes=MAGIC_LINK_EXPIRY_MINUTES)).timestamp()),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
+def decode_stale_review_magic_token(token: str) -> dict[str, str]:
+    settings = get_settings()
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=["HS256"],
+            audience=REVIEW_MAGIC_AUDIENCE,
+        )
+    except JWTError as exc:
+        raise ValueError("This review link is invalid.") from exc
+
+    token_type = str(payload.get("type") or "")
+    scope = str(payload.get("scope") or "")
+    email = normalize_email(str(payload.get("sub") or ""))
+    assessment_id = str(payload.get("assessment_id") or "")
+    reference = str(payload.get("reference") or "")
+
+    if token_type != REVIEW_MAGIC_TYPE or scope != STALE_LISTINGS_REVIEW_SCOPE or not email or not assessment_id or not reference:
+        raise ValueError("This review link is invalid.")
+
+    return {
+        "email": email,
+        "assessment_id": assessment_id,
+        "reference": reference,
+    }
+
+
+def create_stale_review_session(email: str, assessment_id: str, reference: str) -> str:
+    settings = get_settings()
+    issued_at = utcnow()
+    payload = {
+        "sub": normalize_email(email),
+        "assessment_id": assessment_id,
+        "reference": reference,
+        "scope": STALE_LISTINGS_REVIEW_SCOPE,
+        "type": REVIEW_SESSION_TYPE,
+        "aud": REVIEW_SESSION_AUDIENCE,
+        "iat": int(issued_at.timestamp()),
+        "exp": int((issued_at + timedelta(days=REVIEW_SESSION_EXPIRY_DAYS)).timestamp()),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
+def decode_stale_review_session(token: str) -> dict[str, str]:
+    settings = get_settings()
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=["HS256"],
+            audience=REVIEW_SESSION_AUDIENCE,
+        )
+    except JWTError as exc:
+        raise ValueError("Invalid review session.") from exc
+
+    token_type = str(payload.get("type") or "")
+    scope = str(payload.get("scope") or "")
+    email = normalize_email(str(payload.get("sub") or ""))
+    assessment_id = str(payload.get("assessment_id") or "")
+    reference = str(payload.get("reference") or "")
+
+    if token_type != REVIEW_SESSION_TYPE or scope != STALE_LISTINGS_REVIEW_SCOPE or not email or not assessment_id or not reference:
+        raise ValueError("Invalid review session.")
+
+    return {
+        "email": email,
+        "assessment_id": assessment_id,
+        "reference": reference,
+    }

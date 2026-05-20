@@ -39,6 +39,7 @@ const AdminPanel = React.lazy(() => import('./pages/AdminPanel').then(m => ({ de
 const CheckoutPage = React.lazy(() => import('./pages/Checkout').then(m => ({ default: m.CheckoutPage })));
 const StaleListingsLanding = React.lazy(() => import('./pages/StaleListingsLanding').then(m => ({ default: m.StaleListingsLanding })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
+const StaleListingsReviewAccess = React.lazy(() => import('./pages/StaleListingsReviewAccess').then(m => ({ default: m.StaleListingsReviewAccess })));
 const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
 const StaleListingsQuestions = React.lazy(() => import('./pages/StaleListingsQuestions').then(m => ({ default: m.StaleListingsQuestions })));
 const StaleListingsPlan = React.lazy(() => import('./pages/StaleListingsPlan').then(m => ({ default: m.StaleListingsPlan })));
@@ -241,12 +242,14 @@ export default function App() {
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
               <Route path="/stale-listings" element={<StaleListingsLanding />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
+              <Route path="/stale-listings/review-access" element={<StaleListingsReviewAccess />} />
               <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />
               <Route path="/stale-listings/questions" element={<StaleListingsQuestions />} />
               <Route path="/stale-listings/plan" element={<StaleListingsPlan />} />
               <Route path="/stale-listings/complete" element={<StaleListingsComplete />} />
               <Route path="/stale-listings/report/:reference" element={<StaleListingsReport />} />
               <Route path="/dashboard/stale-listings" element={<AdminRoute><DashboardStaleListings /></AdminRoute>} />
+              <Route path="/stale-listings/review-dashboard" element={<DashboardStaleListings reviewMode />} />
               <Route path="/dashboard/custom-offers" element={<AdminRoute><DashboardCustomOffers /></AdminRoute>} />
             </Routes>
           </Suspense>

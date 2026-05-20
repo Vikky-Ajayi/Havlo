@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,15 +17,25 @@ from app.schemas.schemas import (
     ProductAccessConsumeResponse,
     ProductAccessRequest,
     ProductAccessRequestResponse,
+    StaleListingAdminFinalizeRequest,
+    StaleListingAdminItem,
     StaleListingPortalItem,
     StaleListingPortalResponse,
+    StaleListingReviewConsumeResponse,
 )
-from app.services.email_service import send_product_access_magic_link
+from app.services.email_service import (
+    send_product_access_magic_link,
+    send_stale_listing_report_ready_sync,
+)
 from app.services.product_access import (
     CUSTOM_OFFERS_SCOPE,
     STALE_LISTINGS_SCOPE,
+    STALE_LISTINGS_REVIEW_SCOPE,
     build_magic_link,
     create_product_access_session,
+    create_stale_review_session,
+    decode_stale_review_magic_token,
+    decode_stale_review_session,
     decode_product_access_session,
     ensure_scope,
     generate_magic_token,
@@ -68,6 +79,27 @@ def _custom_offer_address(submission: CustomOfferSubmission) -> str:
         if value:
             return value
     return "Property not confirmed"
+
+
+def _serialize_stale_admin_item(item: StaleListingAssessment) -> StaleListingAdminItem:
+    return StaleListingAdminItem(
+        assessment_id=str(item.id),
+        reference=item.reference,
+        email=item.email,
+        first_name=item.first_name,
+        last_name=item.last_name,
+        package=item.package,
+        property_address=item.property_address,
+        listing_url=item.listing_url,
+        listing_image_url=item.listing_image_url,
+        questions_data=item.questions_data,
+        report_status=item.report_status,
+        payment_status=item.payment_status,
+        created_at=item.created_at.isoformat() if item.created_at else "",
+        ai_report_json=item.ai_report_json,
+        agent_edited_report_json=item.agent_edited_report_json,
+        agent_notes=item.agent_notes,
+    )
 
 
 async def _request_magic_link(
@@ -202,6 +234,14 @@ def _session_email(authorization: str | None, *, scope: Scope) -> str:
     return payload["email"]
 
 
+def _review_session(authorization: str | None) -> dict[str, str]:
+    token = _authorization_token(authorization)
+    try:
+        return decode_stale_review_session(token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+
 @router.post(
     "/stale-listings/access/request",
     response_model=ProductAccessRequestResponse,
@@ -251,6 +291,122 @@ async def stale_listings_portal_records(
         for item in result.scalars().all()
     ]
     return StaleListingPortalResponse(email=email, items=items)
+
+
+@router.post(
+    "/stale-listings/review-access/consume",
+    response_model=StaleListingReviewConsumeResponse,
+)
+async def consume_stale_listings_review_magic_link(
+    payload: ProductAccessConsumeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleListingReviewConsumeResponse:
+    hashed = hash_magic_token(payload.token)
+    result = await db.execute(
+        select(ProductAccessToken).where(
+            ProductAccessToken.product_scope == STALE_LISTINGS_REVIEW_SCOPE,
+            ProductAccessToken.token_hash == hashed,
+        )
+    )
+    access_token = result.scalar_one_or_none()
+    if not access_token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This review link is invalid.")
+    if access_token.used_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This review link has already been used.")
+    if access_token.expires_at <= utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This review link has expired. Please request a new one.")
+
+    try:
+        decoded = decode_stale_review_magic_token(payload.token)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    assessment_result = await db.execute(
+        select(StaleListingAssessment).where(
+            StaleListingAssessment.id == uuid.UUID(decoded["assessment_id"])
+        )
+    )
+    assessment = assessment_result.scalar_one_or_none()
+    if not assessment or assessment.reference != decoded["reference"]:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The assessment for this review link could not be found.")
+
+    access_token.used_at = utcnow()
+    await db.commit()
+
+    session_token = create_stale_review_session(
+        decoded["email"],
+        assessment_id=str(assessment.id),
+        reference=assessment.reference,
+    )
+    return StaleListingReviewConsumeResponse(
+        email=decoded["email"],
+        session_token=session_token,
+        redirect_path=f"/stale-listings/review-dashboard?assessment={assessment.id}",
+        assessment_id=str(assessment.id),
+        reference=assessment.reference,
+    )
+
+
+@router.get(
+    "/stale-listings/review-access/assessment",
+    response_model=StaleListingAdminItem,
+)
+async def stale_listings_review_assessment(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> StaleListingAdminItem:
+    session = _review_session(authorization)
+    result = await db.execute(
+        select(StaleListingAssessment).where(
+            StaleListingAssessment.id == uuid.UUID(session["assessment_id"])
+        )
+    )
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found.")
+    if assessment.reference != session["reference"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This review session is no longer valid.")
+    return _serialize_stale_admin_item(assessment)
+
+
+@router.put(
+    "/stale-listings/review-access/assessment/finalize",
+)
+async def finalize_stale_listings_review_assessment(
+    payload: StaleListingAdminFinalizeRequest,
+    background_tasks: BackgroundTasks,
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    session = _review_session(authorization)
+    result = await db.execute(
+        select(StaleListingAssessment).where(
+            StaleListingAssessment.id == uuid.UUID(session["assessment_id"])
+        )
+    )
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found.")
+    if assessment.reference != session["reference"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This review session is no longer valid.")
+
+    if payload.agent_notes is not None:
+        assessment.agent_notes = payload.agent_notes
+    if payload.agent_edited_report_json is not None:
+        assessment.agent_edited_report_json = payload.agent_edited_report_json
+
+    prev_status = assessment.report_status
+    assessment.report_status = payload.report_status
+    await db.commit()
+
+    if payload.report_status == "completed" and prev_status != "completed":
+        background_tasks.add_task(
+            send_stale_listing_report_ready_sync,
+            to_email=assessment.email,
+            first_name=assessment.first_name,
+            reference=assessment.reference,
+        )
+
+    return {"ok": True, "report_status": assessment.report_status}
 
 
 @router.post(
