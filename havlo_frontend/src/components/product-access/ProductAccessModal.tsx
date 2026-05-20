@@ -241,13 +241,18 @@ export function ProductAccessModal({ scope, isOpen, onClose }: ProductAccessModa
       aria-label="Sign in"
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 'var(--app-viewport-offset-top, 0px)',
+        left: 'var(--app-viewport-offset-left, 0px)',
+        width: '100vw',
+        height: 'var(--app-viewport-height, 100vh)',
         zIndex: 300,
         background: 'rgba(0, 0, 0, 0.28)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
       }}
       onClick={onClose}
     >

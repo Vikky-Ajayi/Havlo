@@ -478,8 +478,17 @@ export const api = {
   forgotPassword: (email: string) =>
     request<{ message: string }>('/auth/forgot-password', { method: 'POST', body: { email } }),
 
-  resetPassword: (token: string, newPassword: string) =>
-    request<{ message: string }>('/auth/reset-password', { method: 'POST', body: { access_token: token, new_password: newPassword } }),
+  verifyResetOtp: (email: string, otp: string) =>
+    request<{ message: string; reset_token: string }>('/auth/verify-reset-otp', {
+      method: 'POST',
+      body: { email, otp },
+    }),
+
+  resetPassword: (resetToken: string, newPassword: string) =>
+    request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: { reset_token: resetToken, new_password: newPassword },
+    }),
 
   updateProfile: (token: string, payload: ProfileUpdatePayload) =>
     request<UserProfile>('/users/profile', { method: 'PATCH', token, body: payload }),
@@ -991,7 +1000,8 @@ export const api = {
     }),
 
   customOffersSubmit: (payload: {
-    listing_url: string;
+    listing_url?: string;
+    property_address?: string;
     property_snapshot: CustomOfferPropertySnapshot;
     property_overrides: CustomOfferPropertyOverrides;
     proposal_data: CustomOfferStepAnswers;

@@ -49,7 +49,14 @@ export function CustomOfferFlowShell(props: {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background, fontFamily: 'Inter, sans-serif', color: '#111111' }}>
+    <div
+      style={{
+        minHeight: 'var(--app-viewport-height, 100vh)',
+        background,
+        fontFamily: 'Inter, sans-serif',
+        color: '#111111',
+      }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
         .cof-root, .cof-root * { box-sizing: border-box; }
@@ -116,7 +123,10 @@ export function CustomOfferFlowShell(props: {
         }
         .cof-drawer-backdrop {
           position: fixed;
-          inset: 0;
+          top: var(--app-viewport-offset-top, 0px);
+          left: var(--app-viewport-offset-left, 0px);
+          width: 100vw;
+          height: var(--app-viewport-height, 100vh);
           background: rgba(0, 0, 0, 0.42);
           opacity: 0;
           pointer-events: none;
@@ -129,10 +139,10 @@ export function CustomOfferFlowShell(props: {
         }
         .cof-drawer {
           position: fixed;
+          top: var(--app-viewport-offset-top, 0px);
           right: 0;
-          top: 0;
-          bottom: 0;
           width: min(280px, 82vw);
+          height: var(--app-viewport-height, 100vh);
           background: #FFFFFF;
           box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
           transform: translateX(100%);

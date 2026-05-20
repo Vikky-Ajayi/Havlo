@@ -14,7 +14,16 @@ export const ModalWrapper: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex justify-center overflow-y-auto p-[10px]">
+      <div
+        className="fixed z-[100] flex justify-center overflow-y-auto p-[10px]"
+        style={{
+          top: 'var(--app-viewport-offset-top, 0px)',
+          left: 'var(--app-viewport-offset-left, 0px)',
+          width: '100vw',
+          height: 'var(--app-viewport-height, 100vh)',
+          overscrollBehavior: 'contain',
+        }}
+      >
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

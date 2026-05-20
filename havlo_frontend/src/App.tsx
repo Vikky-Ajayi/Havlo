@@ -77,6 +77,60 @@ const PageLoader = () => (
   </div>
 );
 
+const ViewportStabilityManager = () => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const inputSelector = 'input, textarea, select, [contenteditable="true"]';
+
+    const updateViewportVars = () => {
+      const viewport = window.visualViewport;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      const offsetTop = viewport?.offsetTop ?? 0;
+      const offsetLeft = viewport?.offsetLeft ?? 0;
+      const active = document.activeElement as HTMLElement | null;
+      const isEditing = Boolean(active?.matches(inputSelector));
+      const keyboardLikelyOpen = Boolean(
+        viewport
+        && isEditing
+        && viewport.height < window.innerHeight - 120,
+      );
+
+      root.style.setProperty('--app-viewport-height', `${Math.round(viewportHeight)}px`);
+      root.style.setProperty('--app-viewport-offset-top', `${Math.round(offsetTop)}px`);
+      root.style.setProperty('--app-viewport-offset-left', `${Math.round(offsetLeft)}px`);
+      root.classList.toggle('keyboard-open', keyboardLikelyOpen);
+      body.classList.toggle('keyboard-open', keyboardLikelyOpen);
+    };
+
+    const deferredUpdate = () => window.setTimeout(updateViewportVars, 40);
+
+    updateViewportVars();
+    window.visualViewport?.addEventListener('resize', updateViewportVars);
+    window.visualViewport?.addEventListener('scroll', updateViewportVars);
+    window.addEventListener('resize', updateViewportVars);
+    document.addEventListener('focusin', deferredUpdate);
+    document.addEventListener('focusout', deferredUpdate);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateViewportVars);
+      window.visualViewport?.removeEventListener('scroll', updateViewportVars);
+      window.removeEventListener('resize', updateViewportVars);
+      document.removeEventListener('focusin', deferredUpdate);
+      document.removeEventListener('focusout', deferredUpdate);
+      root.classList.remove('keyboard-open');
+      body.classList.remove('keyboard-open');
+      root.style.removeProperty('--app-viewport-height');
+      root.style.removeProperty('--app-viewport-offset-top');
+      root.style.removeProperty('--app-viewport-offset-left');
+    };
+  }, []);
+
+  return null;
+};
+
 const ScrollToTop = () => {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -192,6 +246,7 @@ export default function App() {
     <AuthProvider>
     <ModalProvider>
       <Router>
+        <ViewportStabilityManager />
         <ScrollToTop />
         <Layout>
           <Suspense fallback={<PageLoader />}>

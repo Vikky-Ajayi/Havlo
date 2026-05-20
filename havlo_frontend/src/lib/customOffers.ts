@@ -65,6 +65,7 @@ export interface CustomOfferStepAnswers {
 }
 
 export interface CustomOfferDraft {
+  propertyInput: string;
   listingUrl: string;
   property: CustomOfferPropertySnapshot;
   propertyOverrides: CustomOfferPropertyOverrides;
@@ -196,6 +197,7 @@ export function emptyPropertySnapshot(url: string = ''): CustomOfferPropertySnap
 
 export function defaultCustomOfferDraft(): CustomOfferDraft {
   return {
+    propertyInput: '',
     listingUrl: '',
     property: emptyPropertySnapshot(),
     propertyOverrides: {},
@@ -212,6 +214,7 @@ export function readCustomOfferDraft(): CustomOfferDraft | null {
     return {
       ...defaultCustomOfferDraft(),
       ...parsed,
+      propertyInput: typeof parsed?.propertyInput === 'string' ? parsed.propertyInput : (parsed?.listingUrl || ''),
       property: { ...emptyPropertySnapshot(parsed?.listingUrl || ''), ...(parsed?.property || {}) },
       propertyOverrides: { ...(parsed?.propertyOverrides || {}) },
       answers: { ...DEFAULT_CUSTOM_OFFER_ANSWERS, ...(parsed?.answers || {}) },

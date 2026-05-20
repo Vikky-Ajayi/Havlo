@@ -2,17 +2,48 @@ import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../ui/Button';
-import { X, Eye, EyeOff } from 'lucide-react';
+import { api } from '../../lib/api';
+import { clearPasswordResetState, readPasswordResetToken } from '../../lib/passwordReset';
 
 export const NewPasswordModal: React.FC = () => {
   const { closeModal, switchModal } = useModal();
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleContinue = async () => {
+    const resetToken = readPasswordResetToken();
+    if (!resetToken) {
+      setError('Your reset session has expired. Please request a new code.');
+      return;
+    }
+    if (password.trim().length < 8) {
+      setError('Your new password must be at least 8 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('The passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await api.resetPassword(resetToken, password);
+      clearPasswordResetState();
+      switchModal('login');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to reset your password right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ModalWrapper>
       <div className="flex flex-col gap-8 p-8 sm:p-[32px_24px] bg-white">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-[32px] font-black leading-none text-black">
             Create new password
@@ -27,14 +58,18 @@ export const NewPasswordModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Form */}
         <div className="flex flex-col gap-[80px]">
           <div className="flex flex-col gap-6">
-            {/* New Password Input */}
             <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
               <input
                 type={showPassword ? 'text' : 'password'}
                 placeholder="New Password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                autoComplete="new-password"
                 className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
               <button
@@ -48,11 +83,17 @@ export const NewPasswordModal: React.FC = () => {
               </button>
             </div>
 
-            {/* Confirm Password Input */}
             <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="Confirm New Password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setError('');
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
+                autoComplete="new-password"
                 className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
               <button
@@ -67,14 +108,18 @@ export const NewPasswordModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
-          <Button 
-            variant="primary" 
-            className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors"
-            onClick={() => switchModal('login')}
-          >
-            Continue
-          </Button>
+          <div className="flex flex-col gap-4">
+            {error ? <p className="text-sm font-body text-red-500">{error}</p> : null}
+
+            <Button
+              variant="primary"
+              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors disabled:opacity-50"
+              onClick={handleContinue}
+              disabled={loading}
+            >
+              {loading ? 'Updating...' : 'Continue'}
+            </Button>
+          </div>
         </div>
       </div>
     </ModalWrapper>

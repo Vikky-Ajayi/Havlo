@@ -167,7 +167,13 @@ export function CustomOffersProposal() {
 
   useEffect(() => {
     const stored = readCustomOfferDraft();
-    if (!stored || !stored.listingUrl) {
+    const hasSeedProperty = Boolean(
+      stored?.propertyInput?.trim()
+      || stored?.listingUrl?.trim()
+      || stored?.property?.address?.trim()
+      || stored?.property?.title?.trim()
+    );
+    if (!stored || !hasSeedProperty) {
       navigate('/custom-offers', { replace: true });
       return;
     }

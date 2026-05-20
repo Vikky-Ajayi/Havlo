@@ -37,7 +37,13 @@ export function CustomOffersPlan() {
 
   useEffect(() => {
     const stored = readCustomOfferDraft();
-    if (!stored || !stored.listingUrl) {
+    const hasSeedProperty = Boolean(
+      stored?.propertyInput?.trim()
+      || stored?.listingUrl?.trim()
+      || stored?.property?.address?.trim()
+      || stored?.property?.title?.trim()
+    );
+    if (!stored || !hasSeedProperty) {
       navigate('/custom-offers', { replace: true });
       return;
     }
@@ -64,7 +70,8 @@ export function CustomOffersPlan() {
     setError('');
     try {
       const response = await api.customOffersSubmit({
-        listing_url: draft.listingUrl,
+        listing_url: draft.listingUrl || undefined,
+        property_address: mergedProperty.address || draft.propertyInput || undefined,
         property_snapshot: draft.property,
         property_overrides: draft.propertyOverrides,
         proposal_data: draft.answers,
@@ -249,7 +256,7 @@ export function CustomOffersPlan() {
       <div className="co-plan-summary">
         <div>
           <h2>{mergedProperty.address || mergedProperty.title || 'Your chosen property'}</h2>
-          <p>{draft.listingUrl}</p>
+          <p>{draft.propertyInput || draft.listingUrl || 'Property details captured from your submission'}</p>
         </div>
         <div className="co-plan-summary-tag">
           {mergedProperty.price ? <span className="co-plan-pill">{mergedProperty.price}</span> : null}

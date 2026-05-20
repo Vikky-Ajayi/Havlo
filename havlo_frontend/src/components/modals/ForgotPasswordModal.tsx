@@ -3,9 +3,10 @@ import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
+import { clearPasswordResetState, writePasswordResetEmail } from '../../lib/passwordReset';
 
 export const ForgotPasswordModal: React.FC = () => {
-  const { closeModal } = useModal();
+  const { closeModal, switchModal } = useModal();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,9 +22,12 @@ export const ForgotPasswordModal: React.FC = () => {
     setError('');
     try {
       await api.forgotPassword(normalizedEmail);
+      clearPasswordResetState();
+      writePasswordResetEmail(normalizedEmail);
       setSuccess(true);
+      window.setTimeout(() => switchModal('otp'), 250);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset link. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to send reset code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -59,8 +63,8 @@ export const ForgotPasswordModal: React.FC = () => {
               </div>
               <p className="text-center font-body text-base font-medium tracking-[-0.32px] text-black/80">
                 {success
-                  ? 'A password reset link has been sent to your email. Please check your inbox.'
-                  : 'We will send you a link to reset your password.'}
+                  ? 'A one-time reset code has been sent to your email. Please check your inbox.'
+                  : 'We will send you a one-time code to reset your password.'}
               </p>
             </div>
 

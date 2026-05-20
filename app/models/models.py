@@ -107,6 +107,25 @@ class User(Base):
         return f"{self.first_name} {self.last_name}"
 
 
+class PasswordResetOtp(Base):
+    __tablename__ = "password_reset_otps"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    otp_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_password_reset_otps_email_created", "email", "created_at"),
+    )
+
+
 class OnboardingData(Base):
     __tablename__ = "onboarding_data"
 

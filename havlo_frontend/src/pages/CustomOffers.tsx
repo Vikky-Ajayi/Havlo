@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { Footer } from '../components/shared/Footer';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
 import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
+import { parsePropertyInput } from '../lib/propertyInput';
 import {
   CustomOfferPlanId,
   defaultCustomOfferDraft,
@@ -620,7 +621,10 @@ export const CustomOffers: React.FC = () => {
   const [accessModalOpen, setAccessModalOpen] = useState(false);
   const [accessEmail, setAccessEmail] = useState<string | null>(null);
   const [showAllFaq, setShowAllFaq] = useState(false);
-  const [listingUrl, setListingUrl] = useState(() => readCustomOfferDraft()?.listingUrl || '');
+  const [listingUrl, setListingUrl] = useState(() => {
+    const stored = readCustomOfferDraft();
+    return stored?.propertyInput || stored?.listingUrl || '';
+  });
   const [ctaError, setCtaError] = useState('');
   const [isStartingFlow, setIsStartingFlow] = useState(false);
 
@@ -667,9 +671,9 @@ export const CustomOffers: React.FC = () => {
   };
 
   const beginProposalFlow = async (selectedPlan?: CustomOfferPlanId) => {
-    const trimmedUrl = listingUrl.trim();
-    if (!trimmedUrl) {
-      setCtaError('Enter a property URL to continue.');
+    const parsedInput = parsePropertyInput(listingUrl);
+    if (!parsedInput) {
+      setCtaError('Enter a property address or listing URL to continue.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -677,12 +681,33 @@ export const CustomOffers: React.FC = () => {
     setIsStartingFlow(true);
     setCtaError('');
 
+    if (parsedInput.kind === 'address') {
+      const nextDraft = {
+        ...defaultCustomOfferDraft(),
+        propertyInput: parsedInput.value,
+        listingUrl: '',
+        property: {
+          ...emptyPropertySnapshot(),
+          title: parsedInput.value,
+          address: parsedInput.value,
+          platform: 'manual',
+        },
+        propertyNeedsReview: false,
+        selectedPlan,
+      };
+
+      writeCustomOfferDraft(nextDraft);
+      setIsStartingFlow(false);
+      navigate('/custom-offers/proposal');
+      return;
+    }
+
     try {
-      const response = await api.customOffersScrape({ listing_url: trimmedUrl });
+      const response = await api.customOffersScrape({ listing_url: parsedInput.value });
       const property = {
-        ...emptyPropertySnapshot(trimmedUrl),
+        ...emptyPropertySnapshot(parsedInput.value),
         ...(response.property || {}),
-        url: response.property?.url || trimmedUrl,
+        url: response.property?.url || parsedInput.value,
         platform: response.platform || response.property?.platform || '',
       };
       const propertyNeedsReview =
@@ -693,7 +718,8 @@ export const CustomOffers: React.FC = () => {
 
       const nextDraft = {
         ...defaultCustomOfferDraft(),
-        listingUrl: property.url || trimmedUrl,
+        propertyInput: parsedInput.value,
+        listingUrl: property.url || parsedInput.value,
         property,
         propertyNeedsReview,
         selectedPlan,
@@ -1072,22 +1098,22 @@ export const CustomOffers: React.FC = () => {
 
         .co-stat-value {
           display: block;
-          font-family: var(--font-display), sans-serif;
-          font-size: 40px;
-          font-weight: 700;
-          line-height: 1;
-          letter-spacing: -0.04em;
+          font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
+          font-size: 32px;
+          font-weight: 600;
+          line-height: 1.2;
+          letter-spacing: -0.03em;
           color: #1f1f1f;
         }
 
         .co-stat-label {
-          margin-top: 10px;
+          margin-top: 8px;
           display: block;
-          font-size: 14px;
+          font-size: 13px;
           line-height: 1.35;
           letter-spacing: -0.02em;
-          color: #393939;
-          max-width: 162px;
+          color: #000000;
+          max-width: none;
         }
 
         .co-stat-value-mobile {
@@ -2026,7 +2052,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-hero-url-input {
-            font-size: 15px;
+            font-size: 16px;
           }
 
           .co-rating {
@@ -2056,7 +2082,8 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-stat-value {
-            font-size: 30px;
+            font-size: 24px;
+            line-height: 1.2;
           }
 
           .co-stat-value-desktop {
@@ -2069,9 +2096,9 @@ export const CustomOffers: React.FC = () => {
 
           .co-stat-label {
             margin-top: 6px;
-            font-size: 12px;
+            font-size: 13px;
             line-height: 1.35;
-            max-width: 112px;
+            max-width: none;
           }
 
           .co-hero-card {
@@ -2564,13 +2591,15 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-stat-value {
-            font-size: 18px;
+            font-size: 24px;
+            line-height: 1.2;
           }
 
           .co-stat-label {
             margin-top: 4px;
-            font-size: 8px;
-            max-width: 72px;
+            font-size: 13px;
+            line-height: 1.35;
+            max-width: none;
           }
 
           .co-hero-card {
@@ -3034,16 +3063,16 @@ export const CustomOffers: React.FC = () => {
                   void beginProposalFlow();
                 }}
               >
-                <label className="co-hero-url-shell" aria-label="Property URL">
+                <label className="co-hero-url-shell" aria-label="Property address or listing URL">
                   <LinkInputIcon />
                   <input
                     className="co-hero-url-input"
-                    type="url"
-                    inputMode="url"
+                    type="text"
+                    inputMode="text"
                     autoCapitalize="off"
                     autoCorrect="off"
                     spellCheck={false}
-                    placeholder="Paste a Rightmove, Zoopla, or agent listing URL"
+                    placeholder="Enter a property address or listing URL"
                     value={listingUrl}
                     onChange={(event) => {
                       setListingUrl(event.target.value);
@@ -3052,7 +3081,7 @@ export const CustomOffers: React.FC = () => {
                   />
                 </label>
                 <button type="submit" className="co-primary-button" disabled={isStartingFlow}>
-                  {isStartingFlow ? 'Scraping listing...' : 'Make a custom offer'}
+                  {isStartingFlow ? 'Preparing proposal...' : 'Make a custom offer'}
                 </button>
               </form>
               {ctaError ? <div className="co-hero-input-error">{ctaError}</div> : null}

@@ -75,9 +75,19 @@ class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 
+class VerifyResetOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class VerifyResetOtpResponse(BaseModel):
+    message: str
+    reset_token: str
+
+
 class ResetPasswordRequest(BaseModel):
+    reset_token: str = Field(..., min_length=16)
     new_password: str = Field(..., min_length=8)
-    # access_token from Supabase magic link / OTP is sent in Authorization header
 
 
 # ── User / Profile ─────────────────────────────────────────────────────────────
@@ -657,7 +667,8 @@ class CustomOfferScrapeResponse(BaseModel):
 
 
 class CustomOfferSubmitRequest(BaseModel):
-    listing_url: str = Field(..., min_length=8, max_length=2000)
+    listing_url: Optional[str] = Field(None, max_length=2000)
+    property_address: Optional[str] = Field(None, max_length=500)
     property_snapshot: CustomOfferPropertySnapshot
     property_overrides: CustomOfferPropertyOverrides = Field(default_factory=CustomOfferPropertyOverrides)
     proposal_data: CustomOfferStepAnswers

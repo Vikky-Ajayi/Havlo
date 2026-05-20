@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
+import secrets
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +20,7 @@ from app.config import get_settings
 from app.db.database import get_db
 from app.db.database import AsyncSessionLocal
 from app.dependencies import get_current_user
-from app.models.models import Conversation, User, UserRole
+from app.models.models import Conversation, PasswordResetOtp, User, UserRole
 from app.schemas.schemas import (
     ForgotPasswordRequest,
     LoginRequest,
@@ -28,6 +32,8 @@ from app.schemas.schemas import (
     ResetPasswordRequest,
     UpdatePasswordRequest,
     UserProfile,
+    VerifyResetOtpRequest,
+    VerifyResetOtpResponse,
 )
 from app.services import email_service, google_sheets
 from app.services.local_auth import create_access_token, hash_password_async, verify_password_async
@@ -35,6 +41,41 @@ from app.services.local_auth import create_access_token, hash_password_async, ve
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
 security = HTTPBearer()
+
+_PASSWORD_RESET_OTP_MINUTES = 15
+_PASSWORD_RESET_TOKEN_MINUTES = 20
+
+
+def _hash_otp(otp: str) -> str:
+    return hashlib.sha256(otp.encode("utf-8")).hexdigest()
+
+
+def _generate_otp_code() -> str:
+    return "".join(secrets.choice("0123456789") for _ in range(6))
+
+
+def _create_password_reset_token(email: str) -> str:
+    settings = get_settings()
+    payload = {
+        "sub": email.strip().lower(),
+        "purpose": "password_reset",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=_PASSWORD_RESET_TOKEN_MINUTES),
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid.uuid4()),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
+def _decode_password_reset_token(token: str) -> str | None:
+    settings = get_settings()
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+    except JWTError:
+        return None
+    if payload.get("purpose") != "password_reset":
+        return None
+    email = str(payload.get("sub") or "").strip().lower()
+    return email or None
 
 
 async def _create_admin_conversation(user_id: uuid.UUID, db: AsyncSession) -> None:
@@ -293,21 +334,105 @@ async def logout(
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-async def forgot_password(payload: ForgotPasswordRequest) -> MessageResponse:
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    normalized_email = payload.email.strip().lower()
+    result = await db.execute(
+        select(User).where(func.lower(User.email) == normalized_email)
+    )
+    user = result.scalar_one_or_none()
+
+    if user:
+        await db.execute(
+            PasswordResetOtp.__table__.update()
+            .where(
+                PasswordResetOtp.email == normalized_email,
+                PasswordResetOtp.used_at.is_(None),
+            )
+            .values(used_at=datetime.now(timezone.utc))
+        )
+        otp_code = _generate_otp_code()
+        db.add(
+            PasswordResetOtp(
+                email=normalized_email,
+                otp_hash=_hash_otp(otp_code),
+                expires_at=datetime.now(timezone.utc) + timedelta(minutes=_PASSWORD_RESET_OTP_MINUTES),
+            )
+        )
+        await db.commit()
+        try:
+            await asyncio.to_thread(
+                email_service.send_password_reset_otp_sync,
+                normalized_email,
+                otp_code,
+                first_name=user.first_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Password reset OTP email failed for %s: %s", normalized_email, exc)
+
     return MessageResponse(
-        message="If an account with that email exists, a password reset link has been sent."
+        message="If an account with that email exists, a password reset code has been sent."
+    )
+
+
+@router.post("/verify-reset-otp", response_model=VerifyResetOtpResponse)
+async def verify_reset_otp(
+    payload: VerifyResetOtpRequest,
+    db: AsyncSession = Depends(get_db),
+) -> VerifyResetOtpResponse:
+    normalized_email = payload.email.strip().lower()
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(PasswordResetOtp)
+        .where(
+            PasswordResetOtp.email == normalized_email,
+            PasswordResetOtp.used_at.is_(None),
+            PasswordResetOtp.expires_at >= now,
+        )
+        .order_by(PasswordResetOtp.created_at.desc())
+    )
+    otp_record = result.scalars().first()
+    if not otp_record or otp_record.otp_hash != _hash_otp(payload.otp.strip()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="That code is invalid or has expired. Request a new one and try again.",
+        )
+
+    otp_record.used_at = now
+    await db.commit()
+    return VerifyResetOtpResponse(
+        message="Code verified successfully.",
+        reset_token=_create_password_reset_token(normalized_email),
     )
 
 
 @router.post("/reset-password", response_model=MessageResponse)
 async def reset_password(
     payload: ResetPasswordRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Password reset via email link is not available in this environment.",
+    email = _decode_password_reset_token(payload.reset_token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your reset session is invalid or has expired. Request a new code and try again.",
+        )
+
+    result = await db.execute(
+        select(User).where(func.lower(User.email) == email)
     )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your reset session is invalid or has expired. Request a new code and try again.",
+        )
+
+    user.password_hash = await hash_password_async(payload.new_password)
+    await db.commit()
+    return MessageResponse(message="Your password has been reset successfully.")
 
 
 @router.get("/me", response_model=UserProfile)

@@ -1,16 +1,62 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { ModalWrapper } from './ModalWrapper';
 import { useModal } from '../../hooks/useModal';
 import { Button } from '../ui/Button';
-import { X } from 'lucide-react';
+import { api } from '../../lib/api';
+import { readPasswordResetEmail, writePasswordResetToken } from '../../lib/passwordReset';
 
 export const OTPModal: React.FC = () => {
   const { closeModal, switchModal } = useModal();
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState('');
+  const resetEmail = readPasswordResetEmail();
+
+  const handleContinue = async () => {
+    const normalizedEmail = resetEmail.trim().toLowerCase();
+    const code = otp.trim();
+    if (!normalizedEmail) {
+      setError('Start the password reset process again.');
+      return;
+    }
+    if (code.length !== 6) {
+      setError('Enter the 6-digit code from your email.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.verifyResetOtp(normalizedEmail, code);
+      writePasswordResetToken(response.reset_token);
+      switchModal('new-password');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to verify the code right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    const normalizedEmail = resetEmail.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError('Start the password reset process again.');
+      return;
+    }
+    setResending(true);
+    setError('');
+    try {
+      await api.forgotPassword(normalizedEmail);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to resend the code right now.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   return (
     <ModalWrapper>
       <div className="flex flex-col gap-8 p-8 sm:p-[32px_24px] bg-white">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-[32px] font-black leading-none text-black">
             Enter OTP
@@ -25,43 +71,53 @@ export const OTPModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex flex-col gap-[80px]">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col items-center justify-center gap-2 rounded-xl p-[16px_0]">
-              <p className="font-body text-xl font-medium tracking-[-0.4px] text-black/70">
-                Enter the 6 digit Code sent to <span className="font-bold text-black">Freebornehirhere@gmail.com</span>
+              <p className="font-body text-xl font-medium tracking-[-0.4px] text-black/70 text-center">
+                Enter the 6 digit code sent to <span className="font-bold text-black">{resetEmail || 'your email address'}</span>
               </p>
             </div>
 
-            {/* Code Input */}
             <div className="relative flex items-center rounded-xl border border-[rgba(58,60,62,0.10)] bg-[rgba(36,38,40,0.05)] p-4">
               <input
                 type="text"
                 placeholder="Enter Code"
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  setError('');
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 className="w-full bg-transparent font-body text-base font-medium tracking-[-0.32px] text-black outline-none placeholder:text-black/50"
               />
             </div>
+
+            {error ? <p className="text-sm font-body text-red-500">{error}</p> : null}
           </div>
 
           <div className="flex flex-col gap-6">
-            {/* Reset Code */}
             <div className="text-center font-body text-base font-medium tracking-[-0.32px] text-black">
-              Didn’t get Code?{' '}
+              Didn’t get code?{' '}
               <button
-                className="font-bold underline underline-offset-4 hover:opacity-70"
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="font-bold underline underline-offset-4 hover:opacity-70 disabled:opacity-50"
               >
-                Reset Code
+                {resending ? 'Sending...' : 'Resend code'}
               </button>
             </div>
 
-            {/* Submit Button */}
-            <Button 
-              variant="primary" 
-              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors"
-              onClick={() => switchModal('new-password')}
+            <Button
+              variant="primary"
+              className="h-14 w-full rounded-[48px] bg-black text-white font-body text-lg font-bold tracking-[-0.36px] hover:bg-black/90 transition-colors disabled:opacity-50"
+              onClick={handleContinue}
+              disabled={loading}
             >
-              Continue
+              {loading ? 'Verifying...' : 'Continue'}
             </Button>
           </div>
         </div>

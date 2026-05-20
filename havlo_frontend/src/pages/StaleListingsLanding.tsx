@@ -4,6 +4,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { Footer } from '../components/shared/Footer';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
+import { parsePropertyInput } from '../lib/propertyInput';
 import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
 
 const PURPLE = '#A409D2';
@@ -287,18 +288,18 @@ export function StaleListingsLanding() {
   };
 
   const handleStart = () => {
-    const v = input.trim();
-    if (!v) {
+    const parsedInput = parsePropertyInput(input);
+    if (!parsedInput.value) {
       setInputError('Please enter your property address or listing URL to continue.');
       focusHeroInput();
       return;
     }
     setInputError('');
     const params = new URLSearchParams();
-    if (v.startsWith('http') || v.includes('rightmove') || v.includes('zoopla') || v.includes('onthemarket')) {
-      params.set('url', v);
+    if (parsedInput.kind === 'url') {
+      params.set('url', parsedInput.value);
     } else {
-      params.set('address', v);
+      params.set('address', parsedInput.value);
     }
     navigate(`/stale-listings/questions?${params.toString()}`);
   };
@@ -905,32 +906,6 @@ export function StaleListingsLanding() {
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
-            {accessEmail ? (
-              <div className="sl-nav-links" style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <button
-                  type="button"
-                  onClick={handleOpenPortal}
-                  style={{ display:'inline-flex', height:44, padding:'0 18px', alignItems:'center', justifyContent:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
-                >
-                  My assessments
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  style={{ display:'inline-flex', height:44, padding:'0 18px', alignItems:'center', justifyContent:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
-                >
-                  Sign out
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleOpenSignIn}
-                style={{ display:'inline-flex', height:44, padding:'0 22px', alignItems:'center', justifyContent:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
-              >
-                Sign in
-              </button>
-            )}
           </div>
 
           {/* Hamburger (mobile/tablet) */}

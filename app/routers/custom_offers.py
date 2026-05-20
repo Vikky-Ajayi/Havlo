@@ -45,7 +45,7 @@ admin_router = APIRouter(prefix="/custom-offers", tags=["Custom Offers Admin"])
 CO_PLANS: dict[str, dict[str, Any]] = {
     "connect": {
         "name": "Connect",
-        "amount": 49.99,
+        "amount": 1.00,
         "currency": "GBP",
     },
     "standout": {
@@ -284,6 +284,15 @@ async def submit_custom_offer(
         raise HTTPException(status_code=400, detail="Invalid plan selected.")
     if not payload.proposal_data.confirm_responses_not_guaranteed or not payload.proposal_data.confirm_non_refundable or not payload.proposal_data.confirm_information_accurate:
         raise HTTPException(status_code=400, detail="All confirmation statements must be accepted before submission.")
+    property_address = (
+        str(payload.property_address or "").strip()
+        or str(payload.property_overrides.address or "").strip()
+        or str(payload.property_snapshot.address or "").strip()
+        or str(payload.property_snapshot.title or "").strip()
+    )
+    listing_url = str(payload.listing_url or "").strip()
+    if not listing_url and not property_address:
+        raise HTTPException(status_code=400, detail="Enter a property address or listing URL before continuing.")
 
     reference = _generate_reference()
     redirect_url = (payload.redirect_url or "").rstrip("/")
@@ -293,8 +302,8 @@ async def submit_custom_offer(
 
     submission = CustomOfferSubmission(
         reference=reference,
-        listing_url=payload.listing_url,
-        listing_platform=payload.property_snapshot.platform or "generic",
+        listing_url=listing_url,
+        listing_platform=payload.property_snapshot.platform or ("manual" if not listing_url else "generic"),
         property_snapshot_json=_json_dumps(payload.property_snapshot.model_dump()),
         property_override_json=_json_dumps(payload.property_overrides.model_dump(exclude_none=True)),
         form_answers_json=_json_dumps(payload.proposal_data.model_dump()),

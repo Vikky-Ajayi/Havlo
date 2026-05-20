@@ -315,6 +315,55 @@ def _product_access_magic_link_html(
     )
 
 
+def _password_reset_otp_html(
+    email: str,
+    otp_code: str,
+    *,
+    first_name: str = "",
+) -> str:
+    brand = _email_brand()
+    safe_name = _html_lib.escape(first_name.strip() or "there")
+    safe_email = _html_lib.escape(email)
+    safe_code = _html_lib.escape(otp_code)
+    body_html = f"""
+    <tr>
+      <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-subheading" style="margin:0 0 12px 0;">Hi {safe_name},</p>
+        <h1 class="havlo-heading" style="margin:0 0 12px 0;color:#556274;">Use this code to reset your password.</h1>
+        <p class="havlo-body-copy" style="margin:0 0 16px 0;">
+          Enter the one-time code below in Havlo to continue resetting the password for
+          <strong style="color:#111111;"> {safe_email}</strong>.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 18px 48px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:#FFF4FD;border-left:4px solid #8C133B;border-radius:10px;">
+          <tr>
+            <td align="center" style="padding:18px 20px;font-size:34px;line-height:1.1;font-weight:800;letter-spacing:10px;color:#111111;">
+              {safe_code}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p class="havlo-body-copy" style="margin:0 0 12px 0;">This code expires in 15 minutes and can only be used once.</p>
+        <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">If you didn't request a password reset, you can safely ignore this email.</p>
+      </td>
+    </tr>
+    """
+    return _email_shell_html(
+        title="Reset your Havlo password",
+        preheader="Use this one-time code to reset your Havlo password.",
+        body_html=body_html,
+        brand=brand,
+        show_hero=True,
+    )
+
+
 def _email_value_table_html(fields: dict[str, str]) -> str:
     rows = []
     for index, (key, value) in enumerate(fields.items()):
@@ -1451,6 +1500,40 @@ async def send_product_access_magic_link(
     )
 
 
+def send_password_reset_otp_sync(
+    to_email: str,
+    otp_code: str,
+    *,
+    first_name: str = "",
+) -> bool:
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Use this one-time code to reset your Havlo password for {to_email}:\n\n"
+        f"{otp_code}\n\n"
+        "This code expires in 15 minutes and can only be used once.\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject="[Havlo] Your password reset code",
+        html_body=_password_reset_otp_html(to_email, otp_code, first_name=first_name),
+        plain_body=plain_body,
+    )
+
+
+async def send_password_reset_otp(
+    to_email: str,
+    otp_code: str,
+    *,
+    first_name: str = "",
+) -> bool:
+    return await asyncio.to_thread(
+        send_password_reset_otp_sync,
+        to_email,
+        otp_code,
+        first_name=first_name,
+    )
+
+
 def send_stale_listing_report_ready_sync(
     to_email: str,
     first_name: str,
@@ -1662,6 +1745,8 @@ __all__ = [
     "send_inbox_notification_sync",
     "send_product_access_magic_link",
     "send_product_access_magic_link_sync",
+    "send_password_reset_otp",
+    "send_password_reset_otp_sync",
     "send_test_email",
     "diagnostics",
     "is_configured",
