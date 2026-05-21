@@ -15,9 +15,9 @@ const LockIcon = () => (
   </svg>
 );
 
-const CheckIcon = () => (
+const CheckIcon = ({ color = '#000' }: { color?: string }) => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-    <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM14.0667 7.86667L9.26667 12.6667L9.06667 12.8667C8.93333 12.9333 8.8 13 8.66667 13C8.53333 13 8.4 12.9333 8.26667 12.8667L5.93333 10.5333C5.66667 10.2667 5.66667 9.86667 5.93333 9.6C6.2 9.33333 6.6 9.33333 6.86667 9.6L8.66667 11.4L13.2 6.86667C13.4667 6.6 13.8667 6.6 14.1333 6.86667C14.4 7.13333 14.3333 7.6 14.0667 7.86667Z" fill="#000"/>
+    <path d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2ZM14.0667 7.86667L9.26667 12.6667L9.06667 12.8667C8.93333 12.9333 8.8 13 8.66667 13C8.53333 13 8.4 12.9333 8.26667 12.8667L5.93333 10.5333C5.66667 10.2667 5.66667 9.86667 5.93333 9.6C6.2 9.33333 6.6 9.33333 6.86667 9.6L8.66667 11.4L13.2 6.86667C13.4667 6.6 13.8667 6.6 14.1333 6.86667C14.4 7.13333 14.3333 7.6 14.0667 7.86667Z" fill={color}/>
   </svg>
 );
 
@@ -350,10 +350,32 @@ export function StaleListingsPlan() {
           flex-direction: column;
           justify-content: space-between;
           gap: 32px;
-          transition: box-shadow 0.15s;
+          transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s;
         }
         .sl-p-card:hover {
           box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .sl-p-card.is-selected {
+          box-shadow: 0 14px 30px rgba(0,0,0,0.10), 0 0 0 4px rgba(164, 9, 210, 0.10);
+          transform: translateY(-2px);
+        }
+        .sl-p-selected-pill {
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 30px;
+          padding: 0 12px;
+          border-radius: 999px;
+          background: #111111;
+          color: #FFFFFF;
+          font-family: Inter, sans-serif;
+          font-weight: 700;
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
         }
         .sl-p-bottom-bar {
           display: none;
@@ -472,12 +494,29 @@ export function StaleListingsPlan() {
             right: 0;
             background: #fff;
             border-top: 1px solid #EBEBEB;
-            padding: 12px 16px;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
             gap: 10px;
             z-index: 20;
             box-sizing: border-box;
+            align-items: stretch;
           }
-          .sl-p-pay-btn { flex: 1; }
+          .sl-p-back-btn {
+            flex: 0 0 auto;
+            min-width: 112px;
+            padding: 0 14px;
+            font-size: 14px;
+          }
+          .sl-p-pay-btn {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 54px;
+            height: auto;
+            padding: 10px 14px;
+            font-size: 14px;
+            line-height: 1.2;
+            white-space: normal;
+            text-align: center;
+          }
           .sl-p-secure-wrap { display: none !important; }
           .sl-p-hamburger { display: flex !important; }
           .sl-p-order-summary { display: none; }
@@ -525,10 +564,16 @@ export function StaleListingsPlan() {
               return (
                 <div
                   key={p.id}
-                  className="sl-p-card"
+                  className={`sl-p-card${isSelected ? ' is-selected' : ''}`}
                   onClick={() => setSelectedPlan(p.id)}
                   style={{ border }}
                 >
+                  {isSelected && (
+                    <div className="sl-p-selected-pill">
+                      <CheckIcon color="#FFFFFF" />
+                      Selected
+                    </div>
+                  )}
                   {/* BEST VALUE badge */}
                   {p.bestValue && (
                     <div style={{ position: 'absolute', top: 20, right: 20, background: '#E53935', color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: '0.5px', padding: '4px 10px', borderRadius: 20, textTransform: 'uppercase' }}>
@@ -585,8 +630,8 @@ export function StaleListingsPlan() {
                       onClick={(e) => { e.stopPropagation(); setSelectedPlan(p.id); }}
                       style={{ display: 'flex', height: 44, padding: '8px', justifyContent: 'center', alignItems: 'center', gap: 8, borderRadius: 10, background: p.btnBg, color: p.btnColor, fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 16, letterSpacing: '-0.02em', border: 'none', cursor: 'pointer', alignSelf: 'stretch' }}
                     >
-                      Start Assessment
-                      {isSelected && p.btnGold && <CheckIcon />}
+                      {isSelected ? 'Selected plan' : 'Start Assessment'}
+                      {isSelected ? <CheckIcon color={p.btnGold ? '#000000' : '#FFFFFF'} /> : null}
                     </button>
                   </div>
                 </div>
