@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ProductAccessModal } from '../product-access/ProductAccessModal';
 import { clearProductAccessSession, readProductAccessSession } from '../../lib/productAccess';
 
@@ -15,9 +15,11 @@ export function CustomOfferFlowShell(props: {
 }) {
   const { eyebrow, title, subtitle, children, contentWidth = 820, background = '#F5F6F7' } = props;
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [accessModalOpen, setAccessModalOpen] = useState(false);
   const [accessEmail, setAccessEmail] = useState<string | null>(null);
+  const isCheckoutFlow = /^\/custom-offers\/(proposal|plan|complete)/.test(location.pathname);
 
   useEffect(() => {
     setAccessEmail(readProductAccessSession('custom-offers')?.email ?? null);
@@ -44,6 +46,11 @@ export function CustomOfferFlowShell(props: {
   const handleSignOut = () => {
     clearProductAccessSession('custom-offers');
     setAccessEmail(null);
+    setMenuOpen(false);
+    navigate('/custom-offers');
+  };
+
+  const handleLeaveCheckout = () => {
     setMenuOpen(false);
     navigate('/custom-offers');
   };
@@ -175,6 +182,22 @@ export function CustomOfferFlowShell(props: {
           max-width: ${contentWidth + 136}px;
           margin: 0 auto;
           padding: 34px 64px 84px;
+        }
+        .cof-mobile-exit {
+          display: none;
+          margin: 0 0 20px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #4A4A4A;
+          font-size: 16px;
+          font-weight: 600;
+          letter-spacing: -0.02em;
+          cursor: pointer;
+          text-align: left;
+        }
+        .cof-mobile-exit:hover {
+          color: #111111;
         }
         .cof-intro {
           margin-bottom: 32px;
@@ -317,6 +340,11 @@ export function CustomOfferFlowShell(props: {
           .cof-page {
             padding: 22px 18px 60px;
           }
+          .cof-mobile-exit {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+          }
           .cof-intro {
             margin-bottom: 22px;
           }
@@ -406,6 +434,9 @@ export function CustomOfferFlowShell(props: {
           </button>
         </div>
         <nav className="cof-drawer-links">
+          {isCheckoutFlow ? (
+            <a href="/custom-offers" onClick={() => setMenuOpen(false)}>Back to Custom Offers</a>
+          ) : null}
           <a href="/custom-offers#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
           <a href="/custom-offers#faq" onClick={() => setMenuOpen(false)}>FAQ</a>
           <a href="/custom-offers#pricing" onClick={() => setMenuOpen(false)}>Pricing</a>
@@ -430,6 +461,12 @@ export function CustomOfferFlowShell(props: {
 
       <div className="cof-root">
         <div className="cof-page">
+          {isCheckoutFlow ? (
+            <button type="button" className="cof-mobile-exit" onClick={handleLeaveCheckout}>
+              <span aria-hidden="true">←</span>
+              <span>Back to Custom Offers</span>
+            </button>
+          ) : null}
           {(eyebrow || title || subtitle) ? (
             <div className="cof-intro">
               {eyebrow ? <p className="cof-eyebrow">{eyebrow}</p> : null}

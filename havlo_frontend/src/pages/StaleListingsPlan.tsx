@@ -217,7 +217,7 @@ function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
 }
 
 /* ─── NAVBAR ─── */
-function PlanNavbar() {
+function PlanNavbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <header style={{ display: 'flex', width: '100%', height: 72, padding: '0 40px', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F0F0F0', background: '#FFF', boxSizing: 'border-box', position: 'sticky', top: 0, zIndex: 30 }}>
       <StaleListingsLogo style={{ height: 38, width: 'auto', display: 'block', flexShrink: 0 }} />
@@ -227,7 +227,7 @@ function PlanNavbar() {
         <span className="sl-p-secure-text" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 15, color: '#000', letterSpacing: '-0.2px' }}>Secure assessment · SSL encrypted</span>
       </div>
       {/* Mobile: hamburger */}
-      <button className="sl-p-hamburger" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, alignItems: 'center', justifyContent: 'center', display: 'none' }}>
+      <button className="sl-p-hamburger" onClick={onOpenMenu} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, alignItems: 'center', justifyContent: 'center', display: 'none' }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M3 6H21M3 12H21M3 18H21" stroke="#1F1F1E" strokeWidth="2" strokeLinecap="round"/>
         </svg>
@@ -245,6 +245,7 @@ export function StaleListingsPlan() {
   });
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<PlanId>('professional_review');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [form, setForm] = useState({
@@ -310,13 +311,13 @@ export function StaleListingsPlan() {
   };
 
   useEffect(() => {
-    if (showOrderSheet || showFormModal) {
+    if (menuOpen || showOrderSheet || showFormModal) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => { document.body.style.overflow = ''; };
-  }, [showOrderSheet, showFormModal]);
+  }, [menuOpen, showOrderSheet, showFormModal]);
 
   const orderRows = [
     { label: 'Plan', value: plan.name },
@@ -379,6 +380,65 @@ export function StaleListingsPlan() {
         }
         .sl-p-bottom-bar {
           display: none;
+        }
+        .sl-p-mobile-exit {
+          display: none;
+        }
+        .sl-p-drawer-backdrop {
+          position: fixed;
+          top: var(--app-viewport-offset-top, 0px);
+          left: var(--app-viewport-offset-left, 0px);
+          width: 100vw;
+          height: var(--app-viewport-height, 100vh);
+          background: rgba(0, 0, 0, 0.42);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.25s ease;
+          z-index: 81;
+        }
+        .sl-p-drawer-backdrop.is-open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .sl-p-drawer {
+          position: fixed;
+          top: var(--app-viewport-offset-top, 0px);
+          right: 0;
+          width: min(280px, 82vw);
+          height: var(--app-viewport-height, 100vh);
+          background: #FFFFFF;
+          box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+          transform: translateX(100%);
+          transition: transform 0.28s ease;
+          z-index: 82;
+          padding: 22px 24px 36px;
+          display: flex;
+          flex-direction: column;
+        }
+        .sl-p-drawer.is-open {
+          transform: translateX(0);
+        }
+        .sl-p-drawer-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 32px;
+        }
+        .sl-p-drawer-links {
+          display: flex;
+          flex-direction: column;
+        }
+        .sl-p-drawer-link {
+          border: 0;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+          background: transparent;
+          color: #1A1A1A;
+          font-family: Inter, sans-serif;
+          font-size: 17px;
+          font-weight: 600;
+          text-align: left;
+          padding: 14px 0;
+          cursor: pointer;
         }
         .sl-p-back-btn {
           height: 50px;
@@ -521,6 +581,21 @@ export function StaleListingsPlan() {
           .sl-p-hamburger { display: flex !important; }
           .sl-p-order-summary { display: none; }
           .sl-form-box { padding: 28px 20px; }
+          .sl-p-mobile-exit {
+            display: inline-flex !important;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 18px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #4A4A4A;
+            font-family: Inter, sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            cursor: pointer;
+          }
         }
 
         /* Stepper base styles */
@@ -536,12 +611,54 @@ export function StaleListingsPlan() {
         }
       `}</style>
 
-      <PlanNavbar />
+      <PlanNavbar onOpenMenu={() => setMenuOpen(true)} />
       <Stepper activeStep={2} />
+      <div className={`sl-p-drawer-backdrop${menuOpen ? ' is-open' : ''}`} onClick={() => setMenuOpen(false)} />
+      <aside className={`sl-p-drawer${menuOpen ? ' is-open' : ''}`}>
+        <div className="sl-p-drawer-top">
+          <StaleListingsLogo style={{ height: 34, width: 'auto', display: 'block' }} />
+          <button
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            style={{ border: 0, background: 'transparent', padding: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            aria-label="Close navigation menu"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="sl-p-drawer-links">
+          {[
+            { label: 'Back to Stale Listings', href: '/stale-listings' },
+            { label: 'How it works', href: '/stale-listings#how-it-works' },
+            { label: 'FAQ', href: '/stale-listings#faq' },
+            { label: 'Pricing', href: '/stale-listings#pricing' },
+          ].map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className="sl-p-drawer-link"
+              onClick={() => {
+                setMenuOpen(false);
+                window.location.href = item.href;
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </aside>
 
       {/* ── MAIN CONTENT ── */}
       <div className="sl-p-content">
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <button
+            type="button"
+            className="sl-p-mobile-exit"
+            onClick={() => navigate('/stale-listings')}
+          >
+            <span aria-hidden="true">←</span>
+            <span>Back to Stale Listings</span>
+          </button>
 
           {/* Page header */}
           <div style={{ marginBottom: 36 }}>
