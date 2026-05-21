@@ -112,7 +112,8 @@ async def diagnose_sumup(
             "checkout_id": checkout.get("id"),
             "checkout_reference": checkout.get("checkout_reference"),
             "checkout_url": checkout.get("checkout_url"),
-            "checkout_url_correct": test_ref in str(checkout.get("checkout_url", "")),
+            "hosted_checkout_url": checkout.get("hosted_checkout_url"),
+            "checkout_url_present": bool(checkout.get("checkout_url")),
             "raw": checkout,
         }
     except SumUpError as exc:
@@ -174,6 +175,7 @@ async def diagnose_sumup_full(
         "currency": "GBP",
         "merchant_code": merchant_code,
         "description": "Diagnostic test",
+        "hosted_checkout": {"enabled": True},
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
         checkout_response = await client.post(

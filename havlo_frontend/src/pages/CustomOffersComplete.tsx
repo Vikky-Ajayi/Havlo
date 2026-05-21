@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CustomOfferFlowShell } from '../components/custom-offers/CustomOfferFlowUi';
 import { api } from '../lib/api';
@@ -18,6 +18,15 @@ export function CustomOffersComplete() {
   const reference = searchParams.get('ref') || '';
   const [pageState, setPageState] = useState<PageState>(reference ? 'loading' : 'missing');
   const [pollCount, setPollCount] = useState(0);
+  const [longWait, setLongWait] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!reference) {
@@ -25,40 +34,56 @@ export function CustomOffersComplete() {
       return;
     }
 
-    let alive = true;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let attempts = 0;
+    setPageState('loading');
+    setPollCount(0);
+    setLongWait(false);
+    let cancelled = false;
 
     const verify = async () => {
-      attempts += 1;
-      setPollCount(attempts);
       try {
         const result = await api.customOffersVerifyPayment(reference);
-        if (!alive) return;
-        if (result.payment_status === 'completed') {
+        if (!cancelled && result.payment_status === 'completed') {
           clearCustomOfferDraft();
+          stopPolling();
           setPageState('success');
-          return;
+          return true;
         }
-        if (result.payment_status === 'failed') {
+        if (!cancelled && result.payment_status === 'failed') {
+          stopPolling();
           setPageState('failed');
-          return;
+          return true;
         }
       } catch {
-        if (!alive) return;
+        if (cancelled) return true;
       }
-      if (!alive) return;
-      setPageState('verifying');
-      if (attempts < 18) {
-        timer = setTimeout(verify, 4000);
-      }
+      return false;
     };
 
-    verify();
+    const scheduleVerify = (delayMs: number, nextCount: number) => {
+      pollRef.current = setTimeout(async () => {
+        if (cancelled) return;
+        setPollCount(nextCount);
+        if (nextCount >= 18) {
+          setLongWait(true);
+        }
+        const resolved = await verify();
+        if (!resolved && !cancelled) {
+          setPageState('verifying');
+          scheduleVerify(nextCount >= 18 ? 7000 : 4000, nextCount + 1);
+        }
+      }, delayMs);
+    };
+
+    verify().then((done) => {
+      if (!done && !cancelled) {
+        setPageState('verifying');
+        scheduleVerify(4000, 1);
+      }
+    });
 
     return () => {
-      alive = false;
-      if (timer) clearTimeout(timer);
+      cancelled = true;
+      stopPolling();
     };
   }, [reference]);
 
@@ -228,8 +253,33 @@ export function CustomOffersComplete() {
             <p style={{ margin: 0, color: '#555555', fontSize: 15, maxWidth: 420 }}>
               {pageState === 'loading'
                 ? 'Please wait while we verify your secure payment and proposal submission.'
-                : `We are waiting for final confirmation from the payment provider. Attempt ${pollCount} of 18.`}
+                : longWait
+                  ? 'This is taking a little longer than usual. We are still checking with the payment provider and will update this page automatically.'
+                  : `We are waiting for final confirmation from the payment provider. Attempt ${pollCount} and counting.`}
             </p>
+            {pageState === 'verifying' && longWait ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setPageState('loading');
+                  api.customOffersVerifyPayment(reference)
+                    .then((result) => {
+                      if (result.payment_status === 'completed') {
+                        clearCustomOfferDraft();
+                        setPageState('success');
+                      } else if (result.payment_status === 'failed') {
+                        setPageState('failed');
+                      } else {
+                        setPageState('verifying');
+                      }
+                    })
+                    .catch(() => setPageState('verifying'));
+                }}
+                style={{ marginTop: 8, height: 44, borderRadius: 999, border: '1px solid rgba(0, 0, 0, 0.12)', background: '#FFFFFF', padding: '0 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Check again now
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}

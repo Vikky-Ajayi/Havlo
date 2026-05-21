@@ -42,7 +42,7 @@ async def create_checkout(
     reference: Optional[str] = None,
     redirect_url: Optional[str] = None,
 ) -> dict:
-    """Create SumUp checkout and return id plus any returned hosted URL fields."""
+    """Create a SumUp Hosted Checkout and return the hosted payment URL."""
     settings = get_settings()
     merchant_code = (settings.SUMUP_MERCHANT_CODE or "").strip()
     if not merchant_code:
@@ -68,6 +68,7 @@ async def create_checkout(
         "currency": currency_code,
         "merchant_code": merchant_code,
         "description": description,
+        "hosted_checkout": {"enabled": True},
     }
     if redirect:
         payload["redirect_url"] = redirect
@@ -112,17 +113,20 @@ async def create_checkout(
 
     # SumUp does not return a hosted URL in the create-checkout response body.
     # Construct it from the checkout ID — this is the standard hosted pay page format.
-    hosted_checkout_url = (
-        data.get("hosted_page_url")
-        or data.get("checkout_url")
-        or data.get("redirect_url")
-        or f"https://pay.sumup.com/b2c/{internal_id}"
-    )
+    hosted_checkout = data.get("hosted_checkout")
+    hosted_checkout_url = data.get("hosted_checkout_url") or ""
+    if not hosted_checkout_url:
+        raise SumUpError(
+            "SumUp response missing 'hosted_checkout_url' for hosted checkout.",
+            status_code=response.status_code,
+            body=response.text,
+        )
 
     logger.info(
-        "SumUp checkout created id=%s ref=%s hosted_url=%s status=%s",
+        "SumUp hosted checkout created id=%s ref=%s hosted=%s hosted_url=%s status=%s",
         internal_id,
         checkout_reference,
+        hosted_checkout,
         hosted_checkout_url,
         data.get("status"),
     )
