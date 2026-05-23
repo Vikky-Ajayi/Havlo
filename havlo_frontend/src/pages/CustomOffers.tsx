@@ -929,6 +929,7 @@ export const CustomOffers: React.FC = () => {
         }
 
         .co-hero-wrap {
+          overflow-x: clip;
           background:
             radial-gradient(circle at 78% 14%, rgba(255, 199, 232, 0.75), rgba(255, 176, 230, 0.28) 28%, rgba(255, 255, 255, 0) 58%),
             linear-gradient(90deg, #ffffff 0%, #ffffff 44%, #ffb0e6 100%);
@@ -940,10 +941,12 @@ export const CustomOffers: React.FC = () => {
           gap: 36px;
           padding-top: 88px;
           padding-bottom: 82px;
+          min-width: 0;
         }
 
         .co-hero-copy {
           max-width: 688px;
+          min-width: 0;
         }
 
         .co-hero-title {
@@ -967,7 +970,7 @@ export const CustomOffers: React.FC = () => {
           color: #191919;
         }
         .co-hero-title-mobile .co-title-line--keep {
-          white-space: nowrap;
+          white-space: normal;
         }
 
         .co-hero-title .co-title-accent {
@@ -1099,6 +1102,7 @@ export const CustomOffers: React.FC = () => {
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 22px;
           max-width: 660px;
+          min-width: 0;
         }
 
         .co-stat-value {
@@ -1127,6 +1131,8 @@ export const CustomOffers: React.FC = () => {
 
         .co-hero-card {
           align-self: start;
+          min-width: 0;
+          max-width: 100%;
           margin-top: 38px;
           background: #ffffff;
           border: 3px solid #111111;
@@ -1968,7 +1974,7 @@ export const CustomOffers: React.FC = () => {
 
         @media (max-width: 920px) {
           .co-inner {
-            padding: 0 20px;
+            padding: 0 16px;
           }
 
           .co-nav {
@@ -2015,8 +2021,10 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-hero-title {
-            font-size: 44px;
-            line-height: 0.98;
+            max-width: 100%;
+            font-size: clamp(24px, 6.9vw, 32px);
+            line-height: 1.02;
+            letter-spacing: -0.05em;
           }
 
           .co-hero-title-desktop {
@@ -2027,8 +2035,9 @@ export const CustomOffers: React.FC = () => {
             display: block;
           }
           .co-hero-title-mobile .co-title-line--keep {
-            display: inline-flex;
-            gap: 0.18em;
+            display: block;
+            max-width: 100%;
+            white-space: normal;
           }
 
           .co-hero-copy p {
@@ -2116,7 +2125,7 @@ export const CustomOffers: React.FC = () => {
             padding: 20px 18px 20px;
             border-radius: 14px;
             border-width: 2px;
-            box-shadow: 5px 5px 0 #111111;
+            box-shadow: 4px 4px 0 #111111;
           }
 
           .co-hero-card h2 {
@@ -2964,6 +2973,7 @@ export const CustomOffers: React.FC = () => {
             font-size: 11px;
           }
         }
+
       `}</style>
 
       <header className="co-header">
