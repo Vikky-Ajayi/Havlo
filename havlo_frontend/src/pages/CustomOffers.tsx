@@ -2022,8 +2022,8 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-title {
             max-width: 100%;
-            font-size: clamp(24px, 6.9vw, 32px);
-            line-height: 1.02;
+            font-size: clamp(26px, 7.2vw, 34px);
+            line-height: 1;
             letter-spacing: -0.05em;
           }
 
