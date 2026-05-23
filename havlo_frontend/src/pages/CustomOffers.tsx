@@ -952,7 +952,7 @@ export const CustomOffers: React.FC = () => {
         .co-hero-title {
           margin: 0;
           font-family: 'Plus Jakarta Sans', var(--font-body), sans-serif;
-          font-size: 54px;
+          font-size: 62px;
           font-weight: 800;
           line-height: 0.96;
           letter-spacing: -0.045em;
@@ -1869,7 +1869,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-hero-title {
-            font-size: 43px;
+            font-size: 49px;
           }
 
           .co-hero-card li {
@@ -2022,7 +2022,7 @@ export const CustomOffers: React.FC = () => {
 
           .co-hero-title {
             max-width: 100%;
-            font-size: clamp(26px, 7.2vw, 34px);
+            font-size: clamp(30px, 8.3vw, 39px);
             line-height: 1;
             letter-spacing: -0.05em;
           }
@@ -2562,7 +2562,7 @@ export const CustomOffers: React.FC = () => {
           }
 
           .co-hero-title {
-            font-size: 28px;
+            font-size: 32px;
             line-height: 0.98;
             letter-spacing: -0.05em;
           }
