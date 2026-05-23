@@ -514,6 +514,7 @@ class StaleListingReportResponse(BaseModel):
     report_status: str
     payment_status: str
     report_data: Optional[StaleListingReportData]
+    agent_notes: Optional[str] = None
     created_at: str
 
 
@@ -707,6 +708,15 @@ class CustomOfferAdminItem(CustomOfferStatusResponse):
     buyer_email: str
     buyer_phone: str
     admin_notes: Optional[str] = None
+
+
+class CustomOfferPaymentVerifyResponse(BaseModel):
+    payment_status: str
+    proposal_status: str
+    reference: str
+    portal_session_token: Optional[str] = None
+    portal_session_email: Optional[EmailStr] = None
+    portal_redirect_path: Optional[str] = None
 
 
 class CustomOfferAdminUpdateRequest(BaseModel):

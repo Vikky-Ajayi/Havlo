@@ -1,8 +1,10 @@
 """Groq LLM service for AI property analysis reports."""
 from __future__ import annotations
 
+from copy import deepcopy
 import logging
-from typing import Optional
+import re
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +260,275 @@ async def generate_stale_listing_report(
     ]
     property_context = "\n".join(line for line in property_lines if line) or "Property details: not provided"
 
+    minimum_description_length = 1000
+    description_targets = {
+        "quick_insight": 1000,
+        "professional_review": 1150,
+        "premium_strategy": 1300,
+    }
+
+    def _clean_scalar(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            return "; ".join(str(item).strip() for item in value if str(item).strip())
+        return str(value).strip()
+
+    def _clean_copy(value: Any) -> str:
+        text = _clean_scalar(value)
+        replacements = {
+            chr(8212): ", ",
+            chr(8211): " to ",
+            "â€”": ", ",
+            "â€“": " to ",
+            "Â·": ", ",
+            "â€¢": "- ",
+            "â€¦": "...",
+            "\xa0": " ",
+        }
+        for needle, replacement in replacements.items():
+            text = text.replace(needle, replacement)
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
+
+    property_anchor = _clean_scalar(snapshot.get("address") or property_address or snapshot.get("title") or "this property")
+    price_anchor = _clean_scalar(snapshot.get("price") or questions_data.get("q9_asking_price") or "the current asking-price range")
+    viewings_summary = _clean_scalar(questions_data.get("q1_viewings")) or "an unclear level of viewings"
+    feedback_summary = _clean_scalar(questions_data.get("q2_feedback")) or "no detailed buyer feedback"
+    price_reduction_summary = _clean_scalar(questions_data.get("q4_price_reduction")) or "no clear record of price changes"
+    flexibility_summary = _clean_scalar(questions_data.get("q5_flexibility")) or "no clear statement on flexibility"
+    marketing_summary = _clean_scalar(questions_data.get("q6_marketing")) or "limited visibility on marketing channels"
+    features_summary = _clean_scalar(snapshot.get("features") or questions_data.get("q7_listing_features")) or "few standout listing assets"
+    photo_summary = _clean_scalar(questions_data.get("q8_photos")) or "uncertain confidence in the current photo set"
+    challenge_summary = _clean_scalar(questions_data.get("q10_challenge")) or "slow buyer engagement"
+    portal_summary = _clean_scalar(snapshot.get("platform")) or "the main portals already in use"
+    description_summary = _clean_scalar(snapshot.get("description"))[:380]
+    comparable_anchor = f"The home is currently framed around {price_anchor}, the seller reports {viewings_summary}, buyer feedback has been recorded as {feedback_summary}, and the current marketing mix is {marketing_summary}."
+
+    def _ensure_sentence(text: str) -> str:
+        cleaned = _clean_copy(text)
+        if not cleaned:
+            return ""
+        if cleaned[-1] not in ".!?":
+            cleaned += "."
+        return cleaned
+
+    def _pad_to_length(text: str, minimum: int, supplements: list[str]) -> str:
+        output = _clean_copy(text)
+        used: set[str] = set()
+        for supplement in supplements:
+            addition = _clean_copy(supplement)
+            if not addition or addition in used or len(output) >= minimum:
+                continue
+            output = f"{output}\n\n{addition}" if output else addition
+            used.add(addition)
+        fallback = (
+            f"For {property_anchor}, the seller's own answers already tell a coherent commercial story. "
+            f"They describe {viewings_summary}, mention {feedback_summary}, and identify {challenge_summary} as the main obstacle. "
+            f"That is exactly the sort of evidence a good local valuer or instruction-winning agent would probe before deciding whether the next step should be pricing, presentation, marketing pressure, or a full relaunch."
+        )
+        while len(output) < minimum:
+            output = f"{output}\n\n{fallback}" if output else fallback
+        return output
+
+    def _finding_focus(icon: str, finding_type: str) -> str:
+        if icon == "price":
+            return (
+                f"Pricing is the first credibility check buyers apply, especially in the {price_anchor} bracket. "
+                f"When the market sees {price_reduction_summary} alongside {viewings_summary}, buyers start deciding whether the seller is realistic before they ever pick up the phone. "
+                f"If the number feels out of line, buyers do not negotiate first, they usually move on to the next listing that looks easier to justify."
+            )
+        if icon == "photos":
+            return (
+                f"Photos decide whether a home wins a second look, and the seller has described their current imagery as {photo_summary}. "
+                f"That matters because buyers scan dozens of options quickly, and weak first-frame presentation makes the property feel older, harder work, or poorer value even when the fundamentals are not the problem. "
+                f"Once that impression sets in, the description has to work far too hard to recover interest."
+            )
+        if icon == "description":
+            return (
+                f"The written listing has to translate features into buyer motivation, yet the current picture suggests {features_summary}. "
+                f"When key selling points are buried, generic, or unsupported by the order of the copy, buyers conclude that the home lacks a compelling reason to book a viewing. "
+                f"That is why a flat listing often has poor click-to-viewing conversion even when the location or layout is decent."
+            )
+        if icon == "marketing":
+            return (
+                f"Visibility is not just about being online, it is about being visible in the right places with a listing that feels active. "
+                f"The owner says the property is being marketed through {marketing_summary}, and the portal context points to {portal_summary}. "
+                f"If that mix is narrow or stale, the listing starts slipping out of the active consideration set and becomes background noise to fresh buyers."
+            )
+        if icon == "location":
+            strength_lead = "A location-led strength only helps when the listing makes that advantage easy to recognise." if finding_type == "strength" else "Location can still be a drag if the listing fails to frame the right buyer story."
+            return (
+                f"{strength_lead} For {property_anchor}, the market context still sits around {price_anchor}, and that means nearby competition will be judged very quickly on convenience, local reputation, and overall ease of living. "
+                f"If the listing does not connect those strengths to why the buyer should care, the benefit remains latent rather than commercially useful."
+            )
+        if icon == "condition":
+            return (
+                f"Condition issues are rarely judged in isolation. Buyers fold them into their mental estimate of time, effort, and post-move spend. "
+                f"When the seller reports {challenge_summary} and the listing still has {features_summary}, even small signs of neglect or unfinished presentation can push cautious buyers toward homes that feel easier to secure and easier to live in from day one."
+            )
+        return (
+            f"Timing matters because stale stock is interpreted differently from fresh stock. "
+            f"The mix of {viewings_summary}, {feedback_summary}, and {price_reduction_summary} makes buyers ask why the property is still available and whether somebody else has already rejected it for a good reason. "
+            f"That shifts the conversation from desire to doubt, and doubt is expensive in a market where buyers can move on quickly."
+        )
+
+    def _action_focus(title: str, priority: str, bullets: list[str]) -> str:
+        title_lower = title.lower()
+        steps_text = _clean_scalar(bullets) or "a short, specific delivery plan and a visible market response"
+        if "photo" in title_lower or "image" in title_lower or "staging" in title_lower:
+            return (
+                f"This action is about first impressions. The current answers point to {photo_summary}, so the market is probably deciding too much from a weak visual opening frame. "
+                f"The supporting steps already suggest {steps_text}, and that matters because stronger imagery changes click-through quality before it changes anything else."
+            )
+        if "price" in title_lower or "pricing" in title_lower or "reduction" in title_lower:
+            return (
+                f"This action is about regaining price credibility. The seller has described {price_reduction_summary} and is anchored around {price_anchor}, so any pricing move must look deliberate rather than desperate. "
+                f"The suggested execution path, {steps_text}, should be handled as a repositioning exercise, not just a discount."
+            )
+        if "description" in title_lower or "copy" in title_lower or "listing" in title_lower:
+            return (
+                f"This action is aimed at conversion quality. The listing currently has {features_summary}, while buyer feedback is recorded as {feedback_summary}. "
+                f"That means the wording must do a better job of connecting the strongest features to the practical reasons somebody would choose this home over the competing stock they are reviewing this week."
+            )
+        if "agent" in title_lower or "competition" in title_lower or "portal" in title_lower or "marketing" in title_lower:
+            return (
+                f"This action is about market pressure and visibility. The homeowner says the current marketing is {marketing_summary}, and the main challenge is {challenge_summary}. "
+                f"The steps already outlined, {steps_text}, need to be executed in a way that makes the listing feel refreshed, better targeted, and commercially easier to act on."
+            )
+        urgency_line = {
+            "URGENT": "This belongs at the top of the queue because it has the strongest chance of changing buyer behaviour in the next few days.",
+            "HIGH": "This should follow quickly because it improves the odds that the next wave of portal traffic converts more efficiently.",
+            "MEDIUM": "This is still worthwhile, but it delivers best value once the urgent blockers have already been tackled.",
+        }.get(priority, "This action matters because it improves the marketability of the property in a practical way.")
+        return (
+            f"{urgency_line} In this case the seller has reported {viewings_summary}, {feedback_summary}, and {challenge_summary}. "
+            f"The recommended delivery route, {steps_text}, should therefore be judged against a clear outcome: more enquiries, cleaner feedback, and a stronger reason for a buyer to move from curiosity into commitment."
+        )
+
+    def _expand_key_finding_copy(finding: dict[str, Any], selected_package: str) -> str:
+        title = _clean_scalar(finding.get("title")) or "Important sales blocker"
+        icon = _clean_scalar(finding.get("icon")) or "timing"
+        finding_type = _clean_scalar(finding.get("type")) or "issue"
+        base_description = _ensure_sentence(finding.get("description") or f"{title} is affecting saleability.")
+        tier_frame = {
+            "quick_insight": "Even at Quick Insight level, the point is to isolate the commercial blocker that deserves attention first and explain why it is costing the seller momentum now.",
+            "professional_review": "At Professional Review level, the point is to connect the symptom to buyer behaviour, local competition, and the way the listing is currently being interpreted in the market.",
+            "premium_strategy": "At Premium Strategy level, the point is to treat the issue as part of a wider relaunch strategy, including how it affects perception, pricing leverage, and the order in which changes should be made.",
+        }[selected_package]
+        strength_frame = (
+            f"This is one of the few areas that can be used as leverage. If the seller and agent frame it properly, it can offset weaker parts of the listing and make the next round of marketing feel more convincing."
+            if finding_type == "strength"
+            else f"Until this is addressed, buyers will keep rationalising their hesitation with other stock that feels easier, cleaner, or better priced. That is why the issue is not just cosmetic, it is commercial."
+        )
+        supplements = [
+            comparable_anchor,
+            _finding_focus(icon, finding_type),
+            tier_frame,
+            strength_frame,
+            (
+                f"The questionnaire also says the seller is {flexibility_summary} about changing strategy, and that matters because a stale listing normally improves only when the owner is willing to change either the presentation, the price story, the exposure, or the sequencing of all three."
+            ),
+            (
+                f"Viewed together, the case for {property_anchor} is not abstract. It is rooted in {viewings_summary}, feedback that reads as {feedback_summary}, the current photo position of {photo_summary}, and a stated challenge of {challenge_summary}. A serious agent would use that evidence to decide what to fix first rather than treating every issue as equally important."
+            ),
+        ]
+        return _pad_to_length(
+            "\n\n".join([base_description, comparable_anchor, _finding_focus(icon, finding_type), tier_frame, strength_frame]),
+            description_targets[selected_package],
+            supplements,
+        )
+
+    def _expand_action_copy(action: dict[str, Any], selected_package: str) -> str:
+        title = _clean_scalar(action.get("title")) or "Immediate corrective action"
+        priority = _clean_scalar(action.get("priority")) or "HIGH"
+        bullets = [item for item in (_clean_copy(bullet) for bullet in action.get("bullets", [])) if item]
+        base_description = _ensure_sentence(action.get("description") or f"{title} should be completed next.")
+        tier_frame = {
+            "quick_insight": "For this plan, the action still needs to be practical and commercially worthwhile, but it should be something the seller and agent can start within days rather than weeks.",
+            "professional_review": "For this plan, the action should not just fix a symptom. It should also improve how the property is positioned against the homes buyers are comparing it with right now.",
+            "premium_strategy": "For this plan, the action should be treated as part of a broader relaunch sequence. It needs a clear owner, a clear order, and a clear test for whether it has improved the market response.",
+        }[selected_package]
+        supplements = [
+            _action_focus(title, priority, bullets),
+            comparable_anchor,
+            tier_frame,
+            (
+                f"The owner has identified {challenge_summary} as the biggest challenge, so this step only earns its place if it tackles that obstacle directly. If it does not change the quality of enquiry, the tone of buyer feedback, or the speed of the next viewing request, it should be tightened and re-run quickly rather than left to drift."
+            ),
+            (
+                f"The delivery details matter. Current answers indicate {marketing_summary}, {price_reduction_summary}, and {photo_summary}. That combination means the action must be visible in the listing, obvious to the agent, and easy to monitor so the seller can judge whether it has improved click-through, viewings, or the seriousness of incoming conversations."
+            ),
+            (
+                f"For {property_anchor}, this is ultimately about recovering momentum. The aim is not just to complete a task list, it is to remove enough friction that a buyer who currently hesitates can picture a cleaner decision path and is more willing to book, revisit, or offer."
+            ),
+        ]
+        return _pad_to_length(
+            "\n\n".join([base_description, _action_focus(title, priority, bullets), tier_frame]),
+            description_targets[selected_package],
+            supplements,
+        )
+
+    def _normalise_report_output(report: dict[str, Any]) -> dict[str, Any]:
+        normalised = deepcopy(report)
+        normalised.setdefault("days_on_market", None)
+        normalised.setdefault("comparable_sales", [])
+        normalised.setdefault("pricing_recommendation_detail", "")
+        normalised["pricing_recommendation"] = _ensure_sentence(normalised.get("pricing_recommendation") or "")
+        normalised["pricing_recommendation_detail"] = _pad_to_length(
+            _ensure_sentence(normalised.get("pricing_recommendation_detail") or normalised.get("pricing_recommendation") or "The price position needs to be reset against genuine buyer expectations."),
+            max(520, minimum_description_length // 2),
+            [
+                comparable_anchor,
+                f"Price sensitivity is tied directly to {viewings_summary} and {feedback_summary}. In this bracket, buyers respond quickly when a reduction or repositioning looks intentional and is paired with a refreshed listing rather than a tired one.",
+                f"The seller is currently dealing with {challenge_summary}, so price should be discussed as a lever for momentum, not as a standalone admission that the property was wrong before.",
+            ],
+        )
+        normalised["executive_summary"] = _pad_to_length(
+            _ensure_sentence(normalised.get("executive_summary") or "The property is behaving like a stale listing and needs a sharper relaunch plan."),
+            620,
+            [
+                comparable_anchor,
+                f"The combination of {photo_summary}, {price_reduction_summary}, and {marketing_summary} is why the home is not currently converting interest with enough authority. A better result depends on sequencing the next changes properly and judging them against real market feedback rather than hope.",
+            ],
+        )
+
+        findings = normalised.get("key_findings") or []
+        for finding in findings:
+            finding["title"] = _clean_scalar(finding.get("title")) or "Important sales blocker"
+            finding["type"] = (_clean_scalar(finding.get("type")) or "issue").lower()
+            finding["icon"] = _clean_scalar(finding.get("icon")) or "timing"
+            finding["description"] = _expand_key_finding_copy(finding, package)
+
+        actions = normalised.get("action_plan") or []
+        for action in actions:
+            action["priority"] = (_clean_scalar(action.get("priority")) or "HIGH").upper()
+            action["title"] = _clean_scalar(action.get("title")) or "Immediate corrective action"
+            action["bullets"] = [_ensure_sentence(item) for item in action.get("bullets", []) if _clean_scalar(item)]
+            while len(action["bullets"]) < 2:
+                action["bullets"].append(
+                    _ensure_sentence(
+                        f"Use this step to address {challenge_summary} and measure whether the market response improves within the next review cycle."
+                    )
+                )
+            action["bullets"] = action["bullets"][:2]
+            action["description"] = _expand_action_copy(action, package)
+
+        comparable_sales = []
+        for sale in normalised.get("comparable_sales", []):
+            comparable_sales.append(
+                {
+                    "address": _clean_scalar(sale.get("address")) or "Comparable property",
+                    "beds": sale.get("beds") or 3,
+                    "property_type": _clean_scalar(sale.get("property_type")) or "Semi-det.",
+                    "sold_asking": _clean_scalar(sale.get("sold_asking")) or "Price not provided",
+                    "is_subject": bool(sale.get("is_subject")),
+                }
+            )
+        normalised["comparable_sales"] = comparable_sales
+        return normalised
+
     # ── Plan-specific prompts ────────────────────────────────────────────────────
     # Each tier assesses genuinely different dimensions, not just depth of the same
     # things. The JSON schema is identical across all tiers so the frontend stays
@@ -280,22 +551,19 @@ Focus exclusively on these four areas (pick the 4 worst performers):
 
 QUICK INSIGHT format rules:
 - key_findings: EXACTLY 4 items. At most 1 strength ("type":"strength"); the rest must be "issue".
-  Each description should feel like evidence plus consequence, even when concise.
-  Use EXACTLY 2 concise sentences: sentence 1 states the evidence from this seller's answers,
-  sentence 2 states the direct buyer consequence or missed opportunity.
+  Each description must be no less than 1000 characters and should read like a paid consultant note, not a thin AI summary.
+  Write in natural human paragraphs using clear UK property language, reference the seller's actual answers, and explain both the evidence and the buyer consequence.
 - action_plan: EXACTLY 4 items. 2 URGENT, 2 HIGH. No MEDIUM items.
   Each action must be doable within 2 weeks without professional consultancy.
-  Each action description should explain why the action matters now.
+  Each action description must be no less than 1000 characters and explain what to do, why it matters now, and what change the seller should expect to see.
   Each bullet must be a complete sentence with a concrete instruction and a practical outcome.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Keep street names realistic for the area given.
-- pricing_recommendation_detail: EXACTLY 2 sentences. Sentence 1 explains the current mismatch.
-  Sentence 2 explains what immediate benefit a correction unlocks.
-- executive_summary: EXACTLY 3 sentences. Open with the single biggest reason the property is not selling.
-  Sentence 2 should explain how buyers are interpreting the current listing. Sentence 3 should name the fastest-impact fix this week.
-  Be direct, commercial, and specific - never generic."""
+ - pricing_recommendation_detail: give a commercially sharp explanation that references the actual price range, likely buyer reaction, and what a reset should unlock within the next fortnight.
+ - executive_summary: write a short human mini-brief that clearly states the main blocker, how buyers are reading the listing, and what to change first this week.
+  Be direct, commercial, specific, and natural. Never use em dashes."""
 
-        max_tokens_val = 4200
-        system_msg = "You are Mark Williams, a senior UK property sales consultant. Produce a Quick Insight report that is concise, punchy, commercially sharp, and 100% specific to this homeowner's data. Even the shortest plan must feel paid-for and professionally written. Return only valid JSON. No markdown, no code fences."
+        max_tokens_val = 6200
+        system_msg = "You are Mark Williams, a senior UK property sales consultant. Produce a Quick Insight report that still feels paid-for, commercially sharp, and highly specific to this homeowner's data. Write like a real person, not an AI system, and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     elif package == "premium_strategy":
         task_block = """Your task is to produce a PREMIUM STRATEGY report - the most comprehensive property analysis
@@ -341,25 +609,20 @@ Assess ALL SIX of the following dimensions thoroughly:
 
 PREMIUM STRATEGY format rules:
 - key_findings: EXACTLY 6 items. Draw one finding from EACH of the 6 dimensions above (label the title clearly so the homeowner knows which dimension it addresses). Mix: 4-5 issues, 1-2 strengths.
-  Each description must feel materially richer than Professional Review.
-  Use EXACTLY 3 sentences: sentence 1 states the evidence from this property's answers,
-  sentence 2 explains the behavioural or market consequence, and sentence 3 states the strategic implication or missed advantage.
+  Each description must be no less than 1000 characters and must feel materially richer than Professional Review.
+  Write in natural human paragraphs with consultant-level reasoning, tying the evidence to market behaviour, seller risk, and relaunch sequencing.
 - action_plan: EXACTLY 6 items - 2 URGENT, 2 HIGH, 2 MEDIUM. Ordered URGENT -> HIGH -> MEDIUM.
   Each action must read like consultant advice, covering not just WHAT but HOW, in what order, and what result to look for.
-  Each action description should include sequencing or strategic framing.
+  Each action description must be no less than 1000 characters and include sequencing, strategic framing, and the commercial logic behind the recommendation.
   Each bullet must be a complete, specific instruction of at least 16 words with a measurable or observable outcome.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Include sold dates (within 90 days).
   Comp selection must reflect the specific property type and price range from q9_asking_price.
 - pricing_recommendation: One decisive sentence. Include the exact adjusted price or percentage.
-- pricing_recommendation_detail: EXACTLY 4 sentences covering current position vs. market, the psychological impact
-  of the current price, what a reduction unlocks on Rightmove (for example search price bracket re-entry),
-  and the expected timeline to next viewing after a price change. This must feel like premium strategic pricing advice, not a generic reduction note.
-- executive_summary: EXACTLY 5 sentences. Written as a professional consultant briefing for the homeowner.
-  Cover why this property is stale, the biggest opportunity, the biggest risk, the recommended first action this week,
-  and what outcome should be expected if the strategy is followed. Authoritative, commercially sharp, and not reassuring for the sake of it."""
+- pricing_recommendation_detail: provide a premium-level pricing note that covers current position versus market, the psychological effect of the current number, what a reset unlocks on Rightmove, and what timeline to expect after the change.
+- executive_summary: write a consultant briefing for the homeowner covering why the property is stale, the biggest opportunity, the biggest risk, the recommended first action this week, and the likely outcome if the strategy is followed. It must sound human, commercially sharp, and contain no em dashes."""
 
-        max_tokens_val = 7800
-        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Return only valid JSON. No markdown, no code fences."
+        max_tokens_val = 9200
+        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Write like a strong human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     else:
         # professional_review (default)
@@ -397,22 +660,19 @@ Assess these five dimensions in depth:
 
 PROFESSIONAL REVIEW format rules:
 - key_findings: EXACTLY 5 items. One finding from each dimension above. Mix: 3-4 issues, 1-2 strengths.
-  Each description must be noticeably more analytical than Quick Insight.
-  Use EXACTLY 3 sentences: sentence 1 states the specific issue with evidence from the answers,
-  sentence 2 explains why this is costing them viewings or offers, and sentence 3 states the market or buyer-behaviour implication.
+  Each description must be no less than 1000 characters and must be materially more analytical than Quick Insight.
+  Write in natural human paragraphs that connect the issue to buyer behaviour, market positioning, and what competing listings are doing better.
 - action_plan: EXACTLY 5 items - 2 URGENT, 2 HIGH, 1 MEDIUM. Ordered URGENT -> HIGH -> MEDIUM.
   Each action should feel strategic, linking the recommendation to buyer response, portal positioning, or pricing leverage.
-  Each action description should explain why the action matters and what it should improve.
+  Each action description must be no less than 1000 characters and should explain what to do, why it matters, how it should be executed, and what success signal to watch for.
   Each bullet must be a complete, specific instruction with a measurable outcome or clear success signal.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Note sold dates where possible.
 - pricing_recommendation: One specific sentence including the recommended adjusted price or range.
-- pricing_recommendation_detail: EXACTLY 4 sentences covering current position analysis, what a reduction triggers on Rightmove,
-  how buyers are likely interpreting the current price, and the expected change in viewings within 14 days.
-- executive_summary: EXACTLY 4 sentences. Reference viewings count, buyer feedback, marketing gaps, the single most impactful action,
-  and why buyers are choosing competing listings instead. It should sound like a human professional, not an AI summary."""
+- pricing_recommendation_detail: give a fuller pricing note that references current position, likely buyer interpretation, portal search bands, and the expected effect on enquiry levels within 14 days.
+- executive_summary: write a concise but authoritative consultant summary that references viewings, feedback, marketing gaps, and the single most impactful next move. It must sound human and commercially aware, never robotic, and never use em dashes."""
 
-        max_tokens_val = 6400
-        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and more strategic than Quick Insight, while staying deeply specific to this homeowner's data. Cover all five assessment dimensions. Return only valid JSON. No markdown, no code fences."
+        max_tokens_val = 7800
+        system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and strategic than Quick Insight while staying deeply specific to this homeowner's data. Write like a seasoned human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     schema_block = f"""
 {property_context}
@@ -645,7 +905,7 @@ ABSOLUTE RULES — breaking any of these is a failure:
         for finding in parsed.get("key_findings", []):
             finding.setdefault("icon", None)
         logger.info("Stale listing report generated successfully (package=%s)", package)
-        return parsed
+        return _normalise_report_output(parsed)
     except Exception as exc:
         logger.error("Stale listing report generation failed, using fallback: %s", exc)
-        return _DEFAULT_REPORT
+        return _normalise_report_output(deepcopy(_DEFAULT_REPORT))

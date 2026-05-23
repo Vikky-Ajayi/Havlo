@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -47,6 +47,7 @@ interface Assessment {
   report_status: string;
   payment_status: string;
   report_data?: ReportData;
+  agent_notes?: string | null;
   created_at: string;
 }
 
@@ -196,6 +197,47 @@ function printFindingAccent(type: string, index: number) {
     return { bg: '#FFF2F1', border: '#FFD7D1', title: '#E33B2F', dot: '#D93A2E' };
   }
   return { bg: '#FFF4E9', border: '#FFDABB', title: '#E06A00', dot: '#DF6D00' };
+}
+
+function footerHeadingForPackage(packageId: string) {
+  if (packageId === 'premium_strategy') return 'Premium Strategy active';
+  if (packageId === 'professional_review') return 'Ready to step up to Premium Strategy?';
+  return 'Ready for a fuller relaunch plan?';
+}
+
+function footerMessageForPackage(packageId: string) {
+  if (packageId === 'premium_strategy') {
+    return 'You are already on Premium Strategy and this report is your full relaunch plan.';
+  }
+  if (packageId === 'professional_review') {
+    return 'Upgrade to Premium Strategy for a fuller relaunch plan and deeper strategic support.';
+  }
+  return 'Upgrade to a Professional or Premium Strategy for a full relaunch plan.';
+}
+
+function MultilineParagraphs({ text, className }: { text: string; className?: string }) {
+  const blocks = text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return (
+    <>
+      {blocks.map((block, index) => {
+        const lines = block.split(/\n/);
+        return (
+          <p key={`${className || 'paragraph'}-${index}`} className={className}>
+            {lines.map((line, lineIndex) => (
+              <Fragment key={`${index}-${lineIndex}`}>
+                {line}
+                {lineIndex < lines.length - 1 ? <br /> : null}
+              </Fragment>
+            ))}
+          </p>
+        );
+      })}
+    </>
+  );
 }
 
 function PrintGauge({ score }: { score: number }) {
@@ -417,6 +459,7 @@ export function StaleListingsReport() {
   const propertyImage = extractImage(assessment);
   const issues = report?.key_findings.filter((item) => item.type !== 'strength').length || 0;
   const strengths = report?.key_findings.filter((item) => item.type === 'strength').length || 0;
+  const agentComments = (assessment.agent_notes || '').trim();
   const isPending = assessment.payment_status !== 'completed';
   const isProcessing = assessment.payment_status === 'completed' && assessment.report_status !== 'completed';
   const currentPackage = PACKAGE_LABELS[assessment.package] || assessment.package;
@@ -796,25 +839,25 @@ export function StaleListingsReport() {
           gap: 18px;
         }
         .slr-service-card {
-          min-height: 282px;
-          padding: 18px 20px 18px;
+          min-height: 124px;
+          padding: 14px 16px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          gap: 24px;
+          gap: 10px;
         }
         .slr-service-card h3 {
-          margin: 0 0 10px;
+          margin: 0 0 6px;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 20px;
+          font-size: 16px;
           font-weight: 800;
-          line-height: 1.05;
+          line-height: 1.02;
           letter-spacing: -0.04em;
         }
         .slr-service-card p {
           margin: 0;
-          font-size: 15px;
-          line-height: 1.33;
+          font-size: 13px;
+          line-height: 1.28;
           color: #232323;
         }
         .slr-service-logos {
@@ -822,7 +865,28 @@ export function StaleListingsReport() {
           display: flex;
           flex-direction: column;
           align-items: flex-start;
-          gap: 16px;
+          gap: 8px;
+        }
+        .slr-agent-comments-card {
+          padding: 20px 22px;
+        }
+        .slr-agent-comments-card h2,
+        .slr-pdf-agent-comments h2 {
+          margin: 0 0 12px;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 21px;
+          font-weight: 800;
+          line-height: 1.08;
+          letter-spacing: -0.04em;
+        }
+        .slr-agent-comments-copy {
+          margin: 0;
+          font-size: 15px;
+          line-height: 1.62;
+          color: #232323;
+        }
+        .slr-agent-comments-copy + .slr-agent-comments-copy {
+          margin-top: 12px;
         }
         .slr-logo-image {
           display: block;
@@ -1271,6 +1335,15 @@ export function StaleListingsReport() {
           line-height: 1.4;
           color: #e4e4e4;
         }
+        .slr-pdf-agent-comments-copy {
+          margin: 0;
+          font-size: 9.8pt;
+          line-height: 1.6;
+          color: #202020;
+        }
+        .slr-pdf-agent-comments-copy + .slr-pdf-agent-comments-copy {
+          margin-top: 3mm;
+        }
         .slr-pdf-footer-link {
           color: #f0a900;
           font-size: 11pt;
@@ -1536,6 +1609,13 @@ export function StaleListingsReport() {
                       </div>
                     </article>
                   ) : null}
+
+                  {agentComments ? (
+                    <article className="slr-card slr-agent-comments-card">
+                      <h2>Agent Comments</h2>
+                      <MultilineParagraphs text={agentComments} className="slr-agent-comments-copy" />
+                    </article>
+                  ) : null}
                 </section>
 
                 <section className="slr-services-wrap">
@@ -1724,12 +1804,19 @@ export function StaleListingsReport() {
                     </section>
                   ) : null}
 
+                {agentComments ? (
+                  <section className="slr-pdf-block slr-pdf-agent-comments">
+                    <h2 className="slr-pdf-section-title">Agent Comments</h2>
+                    <MultilineParagraphs text={agentComments} className="slr-pdf-agent-comments-copy" />
+                  </section>
+                ) : null}
+
                 <section className="slr-pdf-footer-cta">
                   <div>
-                    <h3>Want deeper support?</h3>
-                    <p>Upgrade to Professional or Premium Strategy for a full re-launch plan and direct agent access.</p>
+                    <h3>{footerHeadingForPackage(assessment.package)}</h3>
+                    <p>{footerMessageForPackage(assessment.package)}</p>
                   </div>
-                  <div className="slr-pdf-footer-link">stalelistings.com →</div>
+                  <div className="slr-pdf-footer-link">heyhavlo.com →</div>
                 </section>
               </section>
             </div>

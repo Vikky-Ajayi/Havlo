@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CustomOfferFlowShell } from '../components/custom-offers/CustomOfferFlowUi';
 import { api } from '../lib/api';
 import { clearCustomOfferDraft } from '../lib/customOffers';
+import { writeProductAccessSession } from '../lib/productAccess';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 type PageState = 'loading' | 'verifying' | 'success' | 'failed' | 'missing';
@@ -19,7 +20,9 @@ export function CustomOffersComplete() {
   const [pageState, setPageState] = useState<PageState>(reference ? 'loading' : 'missing');
   const [pollCount, setPollCount] = useState(0);
   const [longWait, setLongWait] = useState(false);
+  const [portalRedirectPath, setPortalRedirectPath] = useState('/custom-offers/portal');
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const redirectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -27,6 +30,24 @@ export function CustomOffersComplete() {
       pollRef.current = null;
     }
   };
+
+  const stopRedirect = () => {
+    if (redirectRef.current) {
+      clearTimeout(redirectRef.current);
+      redirectRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopRedirect(), []);
+
+  useEffect(() => {
+    stopRedirect();
+    if (pageState !== 'success') return;
+    redirectRef.current = setTimeout(() => {
+      navigate(portalRedirectPath, { replace: true });
+    }, 220);
+    return () => stopRedirect();
+  }, [navigate, pageState, portalRedirectPath]);
 
   useEffect(() => {
     if (!reference) {
@@ -44,6 +65,14 @@ export function CustomOffersComplete() {
         const result = await api.customOffersVerifyPayment(reference);
         if (!cancelled && result.payment_status === 'completed') {
           clearCustomOfferDraft();
+          if (result.portal_session_token && result.portal_session_email) {
+            writeProductAccessSession({
+              scope: 'custom-offers',
+              email: result.portal_session_email,
+              token: result.portal_session_token,
+            });
+          }
+          setPortalRedirectPath(result.portal_redirect_path || '/custom-offers/portal');
           stopPolling();
           setPageState('success');
           return true;
@@ -187,6 +216,12 @@ export function CustomOffersComplete() {
           text-align: center;
           z-index: 1;
         }
+        .co-complete-badge {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin-bottom: 8px;
+        }
         .co-complete-modal h2 {
           margin: 6px 0 10px;
           font-family: 'Plus Jakarta Sans', sans-serif;
@@ -200,6 +235,13 @@ export function CustomOffersComplete() {
           color: #1F1F1F;
           font-size: 17px;
           line-height: 1.45;
+        }
+        .co-complete-redirecting {
+          margin-top: 10px;
+          color: #666666;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 500;
         }
         .co-complete-modal button {
           min-width: 102px;
@@ -227,6 +269,9 @@ export function CustomOffersComplete() {
           }
           .co-complete-modal h2 {
             font-size: 27px;
+          }
+          .co-complete-redirecting {
+            font-size: 12px;
           }
           .co-complete-actions {
             flex-direction: column;
@@ -266,6 +311,14 @@ export function CustomOffersComplete() {
                     .then((result) => {
                       if (result.payment_status === 'completed') {
                         clearCustomOfferDraft();
+                        if (result.portal_session_token && result.portal_session_email) {
+                          writeProductAccessSession({
+                            scope: 'custom-offers',
+                            email: result.portal_session_email,
+                            token: result.portal_session_token,
+                          });
+                        }
+                        setPortalRedirectPath(result.portal_redirect_path || '/custom-offers/portal');
                         setPageState('success');
                       } else if (result.payment_status === 'failed') {
                         setPageState('failed');
@@ -327,10 +380,21 @@ export function CustomOffersComplete() {
           </div>
           <div className="co-complete-dim" />
           <div className="co-complete-modal">
-            <SuccessBadge />
+            <div className="co-complete-badge">
+              <SuccessBadge />
+            </div>
             <h2>Proposal Submitted</h2>
-            <p>Your proposal has been securely delivered for homeowner review. You&apos;ll be notified if the seller chooses to engage.</p>
-            <button type="button" onClick={() => navigate(`/custom-offers/status/${encodeURIComponent(reference)}`)}>Done</button>
+            <p>Your proposal will be sent to the homeowner for review. You&apos;ll be notified if the seller chooses to engage.</p>
+            <div className="co-complete-redirecting">Opening your Custom Offers dashboard…</div>
+            <button
+              type="button"
+              onClick={() => {
+                stopRedirect();
+                navigate(portalRedirectPath, { replace: true });
+              }}
+            >
+              Done
+            </button>
           </div>
         </div>
       ) : null}

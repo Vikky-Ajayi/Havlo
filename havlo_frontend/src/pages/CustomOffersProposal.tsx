@@ -81,7 +81,7 @@ const TIMING_OPTIONS = [
   'Flexible Timing',
 ];
 
-const VIEWED_OPTIONS = ['YES', 'NO'];
+const VIEWED_OPTIONS = ['Yes', 'No'];
 
 const PRESENTATION_OPTIONS = [
   {

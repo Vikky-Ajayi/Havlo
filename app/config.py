@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = ""
     EMAIL_FROM_NAME: str = "Havlo"
     EMAIL_REPLY_TO: str = ""
-    SUPPORT_EMAIL: str = "support@Havlo.com"
+    SUPPORT_EMAIL: str = "hello@heyhavlo.com"
     EMAIL_SOCIAL_FACEBOOK_URL: str = "https://www.facebook.com/profile.php?id=61586495581183"
     EMAIL_SOCIAL_INSTAGRAM_URL: str = "https://www.instagram.com/heyhavlo/"
     EMAIL_SOCIAL_X_URL: str = "https://x.com/heyhavlo?s=21"

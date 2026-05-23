@@ -16,6 +16,7 @@ PRODUCT_ACCESS_SCOPES = {STALE_LISTINGS_SCOPE, CUSTOM_OFFERS_SCOPE}
 
 MAGIC_LINK_EXPIRY_MINUTES = 30
 SESSION_EXPIRY_DAYS = 14
+REVIEW_MAGIC_STORAGE_EXPIRY_DAYS = 36500
 SESSION_AUDIENCE = "havlo-product-access"
 SESSION_TYPE = "product-access-session"
 REVIEW_MAGIC_AUDIENCE = "havlo-stale-review-magic"
@@ -49,6 +50,10 @@ def hash_magic_token(raw_token: str) -> str:
 
 def magic_link_expiry() -> datetime:
     return utcnow() + timedelta(minutes=MAGIC_LINK_EXPIRY_MINUTES)
+
+
+def review_link_storage_expiry() -> datetime:
+    return utcnow() + timedelta(days=REVIEW_MAGIC_STORAGE_EXPIRY_DAYS)
 
 
 def _frontend_base_url() -> str:
@@ -134,7 +139,6 @@ def create_stale_review_magic_token(email: str, assessment_id: str, reference: s
         "type": REVIEW_MAGIC_TYPE,
         "aud": REVIEW_MAGIC_AUDIENCE,
         "iat": int(issued_at.timestamp()),
-        "exp": int((issued_at + timedelta(minutes=MAGIC_LINK_EXPIRY_MINUTES)).timestamp()),
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
@@ -147,6 +151,7 @@ def decode_stale_review_magic_token(token: str) -> dict[str, str]:
             settings.SECRET_KEY,
             algorithms=["HS256"],
             audience=REVIEW_MAGIC_AUDIENCE,
+            options={"verify_exp": False},
         )
     except JWTError as exc:
         raise ValueError("This review link is invalid.") from exc

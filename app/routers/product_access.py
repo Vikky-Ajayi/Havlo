@@ -311,10 +311,6 @@ async def consume_stale_listings_review_magic_link(
     access_token = result.scalar_one_or_none()
     if not access_token:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This review link is invalid.")
-    if access_token.used_at:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This review link has already been used.")
-    if access_token.expires_at <= utcnow():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This review link has expired. Please request a new one.")
 
     try:
         decoded = decode_stale_review_magic_token(payload.token)
@@ -328,9 +324,6 @@ async def consume_stale_listings_review_magic_link(
     assessment = assessment_result.scalar_one_or_none()
     if not assessment or assessment.reference != decoded["reference"]:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="The assessment for this review link could not be found.")
-
-    access_token.used_at = utcnow()
-    await db.commit()
 
     session_token = create_stale_review_session(
         decoded["email"],

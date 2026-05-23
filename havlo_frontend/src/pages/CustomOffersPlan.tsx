@@ -4,7 +4,6 @@ import {
   CustomOfferActions,
   CustomOfferFlowShell,
   CustomOfferHouseArt,
-  CustomOfferSpinner,
 } from '../components/custom-offers/CustomOfferFlowUi';
 import { api } from '../lib/api';
 import {
@@ -159,6 +158,26 @@ export function CustomOffersPlan() {
           cursor: pointer;
           min-height: 100%;
         }
+        .co-plan-card.is-selected {
+          box-shadow: 0 16px 38px rgba(164, 9, 210, 0.14), 0 0 0 1px rgba(164, 9, 210, 0.08);
+          transform: translateY(-2px);
+        }
+        .co-plan-selected-pill {
+          position: absolute;
+          top: 14px;
+          left: 16px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          background: #111111;
+          color: #FFFFFF;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          z-index: 1;
+        }
         .co-plan-badge {
           position: absolute;
           top: 12px;
@@ -273,13 +292,18 @@ export function CustomOffersPlan() {
           return (
             <article
               key={plan.id}
-              className="co-plan-card"
+              className={`co-plan-card${isSelected ? ' is-selected' : ''}`}
               onClick={() => setSelectedPlan(plan.id)}
               style={{
                 border: `3px solid ${isSelected ? '#A409D2' : plan.borderColor}`,
-                boxShadow: isSelected ? '0 0 0 1px rgba(164, 9, 210, 0.08)' : 'none',
               }}
             >
+              {isSelected ? (
+                <div className="co-plan-selected-pill">
+                  <span aria-hidden="true">✓</span>
+                  Selected
+                </div>
+              ) : null}
               {plan.badge ? <div className="co-plan-badge">{plan.badge}</div> : null}
 
               <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
@@ -316,12 +340,6 @@ export function CustomOffersPlan() {
         continueLabel={loading ? 'Preparing payment...' : 'Continue to payment'}
         continueDisabled={loading}
       />
-
-      {loading ? (
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', color: '#111111', fontSize: 14, fontWeight: 600 }}>
-          <CustomOfferSpinner label="Creating your secure checkout" />
-        </div>
-      ) : null}
     </CustomOfferFlowShell>
   );
 }

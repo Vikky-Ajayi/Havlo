@@ -462,6 +462,15 @@ export interface CustomOfferPortalResponse {
   items: CustomOfferPortalItem[];
 }
 
+export interface CustomOfferPaymentVerifyResponse {
+  payment_status: string;
+  proposal_status: string;
+  reference: string;
+  portal_session_token?: string | null;
+  portal_session_email?: string | null;
+  portal_redirect_path?: string | null;
+}
+
 export const api = {
   register: (payload: RegisterPayload) =>
     request<RegisterResponse>('/auth/register', { method: 'POST', body: payload }),
@@ -1015,7 +1024,7 @@ export const api = {
     }),
 
   customOffersVerifyPayment: (reference: string) =>
-    request<{ payment_status: string; proposal_status: string; reference: string }>(
+    request<CustomOfferPaymentVerifyResponse>(
       `/custom-offers/payment-verify/${encodeURIComponent(reference)}`,
       { method: 'POST', timeout: 30000 }
     ),

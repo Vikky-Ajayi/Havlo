@@ -964,6 +964,9 @@ export const CustomOffers: React.FC = () => {
           display: block;
           color: #191919;
         }
+        .co-hero-title-mobile .co-title-line--keep {
+          white-space: nowrap;
+        }
 
         .co-hero-title .co-title-accent {
           color: ${PURPLE};
@@ -2021,6 +2024,10 @@ export const CustomOffers: React.FC = () => {
           .co-hero-title-mobile {
             display: block;
           }
+          .co-hero-title-mobile .co-title-line--keep {
+            display: inline-flex;
+            gap: 0.18em;
+          }
 
           .co-hero-copy p {
             margin-top: 18px;
@@ -2084,6 +2091,7 @@ export const CustomOffers: React.FC = () => {
           .co-stat-value {
             font-size: 24px;
             line-height: 1.2;
+            font-weight: 600;
           }
 
           .co-stat-value-desktop {
@@ -2593,6 +2601,7 @@ export const CustomOffers: React.FC = () => {
           .co-stat-value {
             font-size: 24px;
             line-height: 1.2;
+            font-weight: 600;
           }
 
           .co-stat-label {
@@ -3046,8 +3055,8 @@ export const CustomOffers: React.FC = () => {
                 <span className="co-title-line">Don't Fit the Traditional Box</span>
               </h1>
               <h1 className="co-hero-title co-hero-title-mobile">
-                <span className="co-title-line">
-                  Make <span className="co-title-accent">Property Offers</span>
+                <span className="co-title-line co-title-line--keep">
+                  <span>Make</span> <span className="co-title-accent">Property Offers</span>
                 </span>
                 <span className="co-title-line">That Don't Fit the</span>
                 <span className="co-title-line">Traditional Box</span>
@@ -3128,8 +3137,7 @@ export const CustomOffers: React.FC = () => {
         <section className="co-statement">
           <div className="co-inner">
             <p>
-              Sellers often care about more than the highest number. Custom Offer helps buyers explain flexibility, timing,
-              certainty, and structure clearly so strong proposals are reviewed in the right context.
+              Sellers value certainty and serious intent, not just straightforward offers.
             </p>
           </div>
         </section>

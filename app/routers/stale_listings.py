@@ -391,6 +391,7 @@ async def get_stale_listing_report(
         report_status=assessment.report_status,
         payment_status=assessment.payment_status,
         report_data=report_data,
+        agent_notes=assessment.agent_notes,
         created_at=assessment.created_at.isoformat() if assessment.created_at else "",
     )
 

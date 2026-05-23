@@ -19,6 +19,7 @@ from app.models.models import CustomOfferSubmission, User
 from app.schemas.schemas import (
     CustomOfferAdminItem,
     CustomOfferAdminUpdateRequest,
+    CustomOfferPaymentVerifyResponse,
     CustomOfferPropertyOverrides,
     CustomOfferPropertySnapshot,
     CustomOfferScrapeRequest,
@@ -35,6 +36,12 @@ from app.services.email_service import (
     send_custom_offer_status_update_sync,
 )
 from app.services.listing_scraper import scrape_listing_for_public_flow
+from app.services.product_access import (
+    CUSTOM_OFFERS_SCOPE,
+    create_product_access_session,
+    normalize_email,
+    scope_portal_path,
+)
 from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
@@ -356,12 +363,12 @@ async def submit_custom_offer(
     )
 
 
-@public_router.post("/payment-verify/{reference}")
+@public_router.post("/payment-verify/{reference}", response_model=CustomOfferPaymentVerifyResponse)
 async def verify_custom_offer_payment(
     reference: str,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
+) -> CustomOfferPaymentVerifyResponse:
     result = await db.execute(
         select(CustomOfferSubmission).where(CustomOfferSubmission.reference == reference.upper())
     )
@@ -372,18 +379,22 @@ async def verify_custom_offer_payment(
     if submission.payment_status == "completed":
         if _needs_paid_effects(submission):
             background_tasks.add_task(_process_paid_submission_effects, str(submission.id))
-        return {
-            "payment_status": submission.payment_status,
-            "proposal_status": submission.proposal_status,
-            "reference": submission.reference,
-        }
+        normalized_email = normalize_email(submission.buyer_email)
+        return CustomOfferPaymentVerifyResponse(
+            payment_status=submission.payment_status,
+            proposal_status=submission.proposal_status,
+            reference=submission.reference,
+            portal_session_token=create_product_access_session(normalized_email, CUSTOM_OFFERS_SCOPE),
+            portal_session_email=normalized_email,
+            portal_redirect_path=scope_portal_path(CUSTOM_OFFERS_SCOPE),
+        )
 
     if not submission.sumup_checkout_id:
-        return {
-            "payment_status": submission.payment_status,
-            "proposal_status": submission.proposal_status,
-            "reference": submission.reference,
-        }
+        return CustomOfferPaymentVerifyResponse(
+            payment_status=submission.payment_status,
+            proposal_status=submission.proposal_status,
+            reference=submission.reference,
+        )
 
     try:
         checkout_data = await sumup_service.get_checkout_status(submission.sumup_checkout_id)
@@ -400,11 +411,20 @@ async def verify_custom_offer_payment(
     except SumUpError as exc:
         logger.error("SumUp verification failed for custom offer %s: %s", reference, exc)
 
-    return {
-        "payment_status": submission.payment_status,
-        "proposal_status": submission.proposal_status,
-        "reference": submission.reference,
-    }
+    normalized_email = normalize_email(submission.buyer_email)
+    session_token = (
+        create_product_access_session(normalized_email, CUSTOM_OFFERS_SCOPE)
+        if submission.payment_status == "completed"
+        else None
+    )
+    return CustomOfferPaymentVerifyResponse(
+        payment_status=submission.payment_status,
+        proposal_status=submission.proposal_status,
+        reference=submission.reference,
+        portal_session_token=session_token,
+        portal_session_email=normalized_email if session_token else None,
+        portal_redirect_path=scope_portal_path(CUSTOM_OFFERS_SCOPE) if session_token else None,
+    )
 
 
 @public_router.get("/status/{reference}", response_model=CustomOfferStatusResponse)

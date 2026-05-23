@@ -176,7 +176,7 @@ def _email_asset_url(
 
 def _email_brand(frontend_base_url: str | None = None, *, preview: bool = False) -> dict[str, str]:
     s = get_settings()
-    support_email = (s.SUPPORT_EMAIL or "support@Havlo.com").strip()
+    support_email = (s.SUPPORT_EMAIL or "hello@heyhavlo.com").strip()
     phone_display = (s.EMAIL_SUPPORT_PHONE_DISPLAY or "+44 292 1819 1819").strip()
     phone_link = (s.EMAIL_SUPPORT_PHONE_LINK or "+4429218191819").strip().replace(" ", "")
     hero_url = (s.EMAIL_HERO_IMAGE_URL or "").strip() or _email_asset_url(
@@ -743,7 +743,7 @@ def _welcome_html(first_name: str, support_email: str) -> str:
         brand=brand,
         show_hero=True,
     )
-    safe_support = _html_lib.escape(support_email or "support@Havlo.com")
+    safe_support = _html_lib.escape(support_email or "hello@heyhavlo.com")
 
     # Email-client-safe HTML: tables for layout, inline styles for everything,
     # @media query for the mobile breakpoint. Keep <style> minimal so Outlook
@@ -984,7 +984,7 @@ def _welcome_plain(first_name: str, support_email: str) -> str:
 def send_welcome_email_sync(to_email: str, first_name: str) -> bool:
     """Send the welcome email synchronously (intended for FastAPI BackgroundTasks)."""
     s = get_settings()
-    support_email = s.SUPPORT_EMAIL or "support@Havlo.com"
+    support_email = s.SUPPORT_EMAIL or "hello@heyhavlo.com"
     return _send_sync(
         to_email=to_email,
         subject="Welcome to Havlo — the future of property is here",
