@@ -837,8 +837,8 @@ export const CustomOffers: React.FC = () => {
           display: none;
           align-items: center;
           justify-content: center;
-          width: 36px;
-          height: 36px;
+          width: 48px;
+          height: 48px;
           border: 0;
           background: transparent;
           padding: 0;
@@ -847,6 +847,8 @@ export const CustomOffers: React.FC = () => {
 
         .co-menu-button svg {
           display: block;
+          width: 28px;
+          height: 28px;
         }
 
         .co-mobile-nav-links a:hover {
