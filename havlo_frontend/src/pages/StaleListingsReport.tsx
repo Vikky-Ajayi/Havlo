@@ -598,6 +598,16 @@ export function StaleListingsReport() {
         throw new Error('No printable report pages found.');
       }
 
+      exportPages.forEach((pageNode) => {
+        pageNode.style.minHeight = '0';
+        pageNode.style.height = 'auto';
+        pageNode.style.pageBreakBefore = 'auto';
+        pageNode.style.breakBefore = 'auto';
+      });
+      exportRoot.querySelectorAll<HTMLElement>('.slr-pdf-footer-cta').forEach((footerNode) => {
+        footerNode.style.marginTop = '6mm';
+      });
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -607,7 +617,7 @@ export function StaleListingsReport() {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      let hasWrittenPage = false;
+      let currentY = 0;
 
       for (let pageIndex = 0; pageIndex < exportPages.length; pageIndex += 1) {
         const pageNode = exportPages[pageIndex];
@@ -622,28 +632,33 @@ export function StaleListingsReport() {
         const imageData = canvas.toDataURL('image/png');
         const imageHeight = (canvas.height * pdfWidth) / canvas.width;
 
-        if (hasWrittenPage) {
-          pdf.addPage();
+        if (imageHeight <= pdfHeight) {
+          const remainingHeight = pdfHeight - currentY;
+          if (currentY > 0 && imageHeight > remainingHeight) {
+            pdf.addPage();
+            currentY = 0;
+          }
+          pdf.addImage(imageData, 'PNG', 0, currentY, pdfWidth, imageHeight, undefined, 'FAST');
+          currentY += imageHeight;
+          continue;
         }
 
-        if (imageHeight <= pdfHeight) {
-          pdf.addImage(imageData, 'PNG', 0, 0, pdfWidth, imageHeight, undefined, 'FAST');
-          hasWrittenPage = true;
-          continue;
+        if (currentY > 0) {
+          pdf.addPage();
+          currentY = 0;
         }
 
         let remainingHeight = imageHeight;
         let offsetY = 0;
-        pdf.addImage(imageData, 'PNG', 0, offsetY, pdfWidth, imageHeight, undefined, 'FAST');
-        remainingHeight -= pdfHeight;
-        hasWrittenPage = true;
-
-        while (remainingHeight > 0.5) {
+        while (remainingHeight > pdfHeight) {
+          pdf.addImage(imageData, 'PNG', 0, -offsetY, pdfWidth, imageHeight, undefined, 'FAST');
           pdf.addPage();
-          offsetY = remainingHeight - imageHeight;
-          pdf.addImage(imageData, 'PNG', 0, offsetY, pdfWidth, imageHeight, undefined, 'FAST');
+          offsetY += pdfHeight;
           remainingHeight -= pdfHeight;
         }
+
+        pdf.addImage(imageData, 'PNG', 0, -offsetY, pdfWidth, imageHeight, undefined, 'FAST');
+        currentY = remainingHeight >= pdfHeight - 0.5 ? 0 : remainingHeight;
       }
 
       const fileName = `${assessment.reference}.pdf`;
@@ -949,10 +964,6 @@ export function StaleListingsReport() {
           line-height: 1.72;
           color: #2a2a2a;
         }
-        .slr-readable-copy p:first-child {
-          font-weight: 600;
-          color: #1f1f1f;
-        }
         .slr-summary-note {
           margin-top: 8px;
           padding: 18px 22px;
@@ -1024,6 +1035,8 @@ export function StaleListingsReport() {
         }
         .slr-recommendation-box .slr-readable-copy {
           margin-top: 4px;
+          max-width: none;
+          width: 100%;
         }
         .slr-recommendation-box .slr-readable-copy p {
           color: #303030;
@@ -1333,6 +1346,9 @@ export function StaleListingsReport() {
           display: flex;
           flex-direction: column;
         }
+        .slr-pdf-page--continuation {
+          padding-top: 0;
+        }
         .slr-pdf-page + .slr-pdf-page {
           page-break-before: always;
         }
@@ -1499,9 +1515,6 @@ export function StaleListingsReport() {
           line-height: 1.58;
           color: #222222;
         }
-        .slr-pdf-readable-copy p:first-child {
-          font-weight: 600;
-        }
         .slr-pdf-block {
           margin-bottom: 8.5mm;
         }
@@ -1622,7 +1635,7 @@ export function StaleListingsReport() {
           line-height: 1.42;
         }
         .slr-pdf-footer-cta {
-          margin-top: auto;
+          margin-top: 6mm;
           background: #0e0e0e;
           color: #ffffff;
           padding: 5mm 5.5mm;
@@ -2054,15 +2067,7 @@ export function StaleListingsReport() {
                   </div>
                 </section>
 
-                <section className="slr-pdf-page">
-                  <div className="slr-pdf-header">
-                    <StaleListingsLogo className="slr-pdf-brand" />
-                    <div className="slr-pdf-header-copy">
-                      <strong>{propertyMeta.address}</strong>
-                      <div>{propertyMeta.portalLabel || currentPackage}</div>
-                    </div>
-                  </div>
-
+                <section className="slr-pdf-page slr-pdf-page--continuation">
                   {pdfAdditionalFindings.length > 0 ? (
                     <section className="slr-pdf-block">
                       <h2 className="slr-pdf-section-title">Additional Findings</h2>
