@@ -176,7 +176,7 @@ function AIReportPage({ listing, token, onBack, onReportGenerated }: AIReportPag
 <title>Listing Audit — ${listing.title || 'Property'}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Georgia,serif;font-size:13px;line-height:1.65;color:#111;padding:40px 52px;max-width:780px;margin:auto}
+  body{font-family:Georgia,serif;font-size:13px;line-height:1.65;color:#111;padding:0;max-width:none;margin:0}
   .header{border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:28px}
   .brand{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#A409D2;font-weight:700;margin-bottom:8px}
   h1{font-size:22px;font-weight:900;margin-bottom:4px}
@@ -190,7 +190,7 @@ function AIReportPage({ listing, token, onBack, onReportGenerated }: AIReportPag
   ul,ol{margin:6px 0}
   strong{font-weight:700}
   .footer{margin-top:40px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#999;display:flex;justify-content:space-between}
-  @media print{body{padding:30px 40px}@page{margin:1cm;size:A4}}
+  @media print{body{padding:0;max-width:none;margin:0}@page{margin:1.5cm 1.8cm;size:A4}}
 </style></head><body>
 <div class="header">
   <div class="brand">Havlo Listing Intelligence — Complimentary</div>

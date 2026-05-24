@@ -486,8 +486,9 @@ export function StaleListingsReport() {
   const [polling, setPolling] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pdfExportRef = useRef<HTMLDivElement | null>(null);
+  const printTriggeredRef = useRef(false);
   const reviewPreviewRequested = searchParams.get('preview') === 'review';
+  const printRequested = searchParams.get('print') === '1';
   const reviewSession = reviewPreviewRequested ? readStaleReviewSession() : null;
   const reviewPreviewSnapshot = reviewPreviewRequested ? readStaleReviewPreview(reference) : null;
 
@@ -559,127 +560,49 @@ export function StaleListingsReport() {
     };
   }, [assessment?.report_status, assessment?.payment_status]);
 
-  const handleDownloadPDF = async () => {
+  useEffect(() => {
+    const printableReady = Boolean(
+      printRequested &&
+      assessment &&
+      assessment.report_data &&
+      (assessment.report_status === 'completed' || assessment.preview_mode || reviewPreviewRequested),
+    );
+
+    if (!printableReady || printTriggeredRef.current) return;
+
+    printTriggeredRef.current = true;
+    const timer = window.setTimeout(() => {
+      window.print();
+    }, 350);
+
+    const handleAfterPrint = () => {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('print');
+      const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
+      window.history.replaceState(null, '', nextUrl);
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [assessment, printRequested, reviewPreviewRequested]);
+
+  const handleDownloadPDF = () => {
     if (pdfGenerating) return;
-    const source = pdfExportRef.current;
-    if (!source || !assessment) return;
+    if (!assessment) return;
 
     setPdfGenerating(true);
-    let exportHost: HTMLDivElement | null = null;
-
-    try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ]);
-
-      exportHost = document.createElement('div');
-      exportHost.setAttribute('aria-hidden', 'true');
-      Object.assign(exportHost.style, {
-        position: 'fixed',
-        left: '-100000px',
-        top: '0',
-        width: '210mm',
-        opacity: '0',
-        pointerEvents: 'none',
-        zIndex: '-1',
-        background: '#ffffff',
-      });
-
-      const exportRoot = source.cloneNode(true) as HTMLDivElement;
-      exportRoot.style.display = 'block';
-      exportHost.appendChild(exportRoot);
-      document.body.appendChild(exportHost);
-
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-      const exportPages = Array.from(exportRoot.querySelectorAll<HTMLElement>('.slr-pdf-page'));
-      if (!exportPages.length) {
-        throw new Error('No printable report pages found.');
-      }
-
-      exportPages.forEach((pageNode) => {
-        pageNode.style.minHeight = '0';
-        pageNode.style.height = 'auto';
-        pageNode.style.pageBreakBefore = 'auto';
-        pageNode.style.breakBefore = 'auto';
-      });
-      exportRoot.querySelectorAll<HTMLElement>('.slr-pdf-footer-cta').forEach((footerNode) => {
-        footerNode.style.marginTop = '6mm';
-      });
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      let currentY = 0;
-
-      for (let pageIndex = 0; pageIndex < exportPages.length; pageIndex += 1) {
-        const pageNode = exportPages[pageIndex];
-        const canvas = await html2canvas(pageNode, {
-          backgroundColor: '#ffffff',
-          scale: Math.min(window.devicePixelRatio || 1, 2),
-          useCORS: true,
-          logging: false,
-          imageTimeout: 0,
-        });
-
-        const imageData = canvas.toDataURL('image/png');
-        const imageHeight = (canvas.height * pdfWidth) / canvas.width;
-
-        if (imageHeight <= pdfHeight) {
-          const remainingHeight = pdfHeight - currentY;
-          if (currentY > 0 && imageHeight > remainingHeight) {
-            pdf.addPage();
-            currentY = 0;
-          }
-          pdf.addImage(imageData, 'PNG', 0, currentY, pdfWidth, imageHeight, undefined, 'FAST');
-          currentY += imageHeight;
-          continue;
-        }
-
-        if (currentY > 0) {
-          pdf.addPage();
-          currentY = 0;
-        }
-
-        let remainingHeight = imageHeight;
-        let offsetY = 0;
-        while (remainingHeight > pdfHeight) {
-          pdf.addImage(imageData, 'PNG', 0, -offsetY, pdfWidth, imageHeight, undefined, 'FAST');
-          pdf.addPage();
-          offsetY += pdfHeight;
-          remainingHeight -= pdfHeight;
-        }
-
-        pdf.addImage(imageData, 'PNG', 0, -offsetY, pdfWidth, imageHeight, undefined, 'FAST');
-        currentY = remainingHeight >= pdfHeight - 0.5 ? 0 : remainingHeight;
-      }
-
-      const fileName = `${assessment.reference}.pdf`;
-      const pdfBlob = pdf.output('blob');
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileName;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-    } catch (downloadError) {
-      console.error('Failed to generate report PDF', downloadError);
-      window.print();
-    } finally {
-      exportHost?.remove();
-      setPdfGenerating(false);
+    const params = new URLSearchParams(searchParams);
+    params.set('print', '1');
+    const printUrl = `/stale-listings/report/${assessment.reference}?${params.toString()}`;
+    const printWindow = window.open(printUrl, '_blank');
+    if (!printWindow) {
+      window.location.assign(printUrl);
+      return;
     }
+    window.setTimeout(() => setPdfGenerating(false), 500);
   };
 
   if (loading) {
@@ -1331,26 +1254,15 @@ export function StaleListingsReport() {
           display: none;
         }
         .slr-pdf-root {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
+          display: block;
         }
         .slr-pdf-page {
           width: 210mm;
-          min-height: 297mm;
           box-sizing: border-box;
-          padding: 10mm 8mm 8mm;
-          background: #f5f5f5;
+          padding: 0;
+          background: #ffffff;
           color: #111111;
           font-family: 'Inter', Arial, sans-serif;
-          display: flex;
-          flex-direction: column;
-        }
-        .slr-pdf-page--continuation {
-          padding-top: 0;
-        }
-        .slr-pdf-page + .slr-pdf-page {
-          page-break-before: always;
         }
         .slr-pdf-header {
           display: flex;
@@ -1379,7 +1291,9 @@ export function StaleListingsReport() {
           border: 1px solid #e9e3dc;
           border-radius: 6mm;
           padding: 5mm 6.5mm;
-          margin-bottom: 8.5mm;
+          margin-bottom: 7mm;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
         }
         .slr-pdf-summary-title {
           margin: 0 0 2mm;
@@ -1424,7 +1338,9 @@ export function StaleListingsReport() {
           grid-template-columns: minmax(0, 1fr) 64mm;
           gap: 7mm;
           align-items: start;
-          margin-bottom: 9mm;
+          margin-bottom: 7mm;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
         }
         .slr-pdf-kicker {
           margin: 0 0 4.5mm;
@@ -1466,35 +1382,42 @@ export function StaleListingsReport() {
           padding-right: 0;
         }
         .slr-pdf-section-title {
-          margin: 0 0 5mm;
+          margin: 0 0 3.4mm;
           font-family: 'Plus Jakarta Sans', Arial, sans-serif;
           font-size: 18pt;
           line-height: 1.05;
           letter-spacing: -0.04em;
           font-weight: 800;
+          break-after: avoid-page;
+          page-break-after: avoid;
         }
         .slr-pdf-finding-list {
-          display: flex;
-          flex-direction: column;
-          gap: 4.2mm;
+          display: block;
         }
         .slr-pdf-finding-card {
           display: grid;
           grid-template-columns: 5mm 1fr;
-          gap: 5mm;
-          border-radius: 4.5mm;
-          border: 1px solid #ffd4cf;
-          padding: 4.5mm 5mm;
-          break-inside: avoid;
+          gap: 4mm;
+          border-radius: 0;
+          border: none;
+          padding: 0;
+          background: transparent !important;
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+        .slr-pdf-finding-card + .slr-pdf-finding-card {
+          border-top: 1px solid #efe7dd;
+          margin-top: 3.6mm;
+          padding-top: 3.6mm;
         }
         .slr-pdf-finding-dot {
           width: 4mm;
           height: 4mm;
           border-radius: 50%;
-          margin-top: 1.8mm;
+          margin-top: 1.4mm;
         }
         .slr-pdf-finding-title {
-          margin: 0 0 1.6mm;
+          margin: 0 0 1.4mm;
           font-size: 12pt;
           line-height: 1.18;
           font-weight: 800;
@@ -1514,15 +1437,20 @@ export function StaleListingsReport() {
           font-size: 9.8pt;
           line-height: 1.58;
           color: #222222;
+          orphans: 3;
+          widows: 3;
         }
         .slr-pdf-block {
-          margin-bottom: 8.5mm;
+          margin: 5.2mm 0 0;
         }
         .slr-pdf-table {
           width: 100%;
           border-collapse: collapse;
           font-size: 9.6pt;
           margin-bottom: 4mm;
+        }
+        .slr-pdf-table thead {
+          display: table-header-group;
         }
         .slr-pdf-table thead th {
           background: #111111;
@@ -1537,6 +1465,11 @@ export function StaleListingsReport() {
           border-bottom: 1px solid #e9e9e9;
           color: #212121;
           vertical-align: top;
+          page-break-inside: avoid;
+        }
+        .slr-pdf-table tbody tr {
+          break-inside: avoid-page;
+          page-break-inside: avoid;
         }
         .slr-pdf-table tbody tr:last-child td {
           border-bottom: none;
@@ -1549,13 +1482,16 @@ export function StaleListingsReport() {
           font-weight: 700;
         }
         .slr-pdf-recommendation {
-          background: #ffffff;
-          border: 1px solid #e7e7e7;
-          padding: 4mm;
+          background: transparent;
+          border: none;
+          padding: 0;
+          margin-top: 3mm;
+          break-inside: auto;
+          page-break-inside: auto;
         }
         .slr-pdf-recommendation strong {
           display: block;
-          margin-bottom: 2mm;
+          margin-bottom: 1.8mm;
           color: #eb6200;
           font-size: 12pt;
           font-weight: 800;
@@ -1564,22 +1500,30 @@ export function StaleListingsReport() {
           font-size: 10pt;
           line-height: 1.56;
           color: #242424;
+          orphans: 3;
+          widows: 3;
         }
         .slr-pdf-action-list {
-          display: flex;
-          flex-direction: column;
-          gap: 4mm;
+          display: block;
         }
         .slr-pdf-action-card {
-          background: #ffffff;
-          border: 1px solid #ececec;
-          display: grid;
-          grid-template-columns: 8mm 1fr;
-          gap: 4mm;
-          padding: 4mm;
-          break-inside: avoid;
+          background: transparent;
+          border: none;
+          display: block;
+          position: relative;
+          padding: 0 0 0 11mm;
+          break-inside: auto;
+          page-break-inside: auto;
+        }
+        .slr-pdf-action-card + .slr-pdf-action-card {
+          border-top: 1px solid #ececec;
+          margin-top: 3.8mm;
+          padding-top: 3.8mm;
         }
         .slr-pdf-action-index {
+          position: absolute;
+          left: 0;
+          top: 0;
           font-family: 'Plus Jakarta Sans', Arial, sans-serif;
           font-size: 13pt;
           line-height: 1;
@@ -1587,15 +1531,15 @@ export function StaleListingsReport() {
           color: #111111;
         }
         .slr-pdf-action-body {
-          border-left: 1px solid #ececec;
-          padding-left: 4mm;
+          border-left: none;
+          padding-left: 0;
         }
         .slr-pdf-action-head {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
           gap: 3mm;
-          margin-bottom: 1.5mm;
+          margin-bottom: 1.2mm;
         }
         .slr-pdf-action-priority {
           font-size: 10pt;
@@ -1627,6 +1571,8 @@ export function StaleListingsReport() {
           font-size: 10pt;
           line-height: 1.56;
           color: #202020;
+          orphans: 3;
+          widows: 3;
         }
         .slr-pdf-action-bullets {
           margin: 0;
@@ -1643,7 +1589,8 @@ export function StaleListingsReport() {
           align-items: center;
           justify-content: space-between;
           gap: 8mm;
-          break-inside: avoid;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
         }
         .slr-pdf-footer-cta h3 {
           margin: 0 0 1mm;
@@ -1661,6 +1608,8 @@ export function StaleListingsReport() {
           font-size: 9.8pt;
           line-height: 1.6;
           color: #202020;
+          orphans: 3;
+          widows: 3;
         }
         .slr-pdf-agent-comments-copy + .slr-pdf-agent-comments-copy {
           margin-top: 3mm;
@@ -1680,6 +1629,8 @@ export function StaleListingsReport() {
           font-size: 9.8pt;
           line-height: 1.6;
           color: #202020;
+          orphans: 3;
+          widows: 3;
         }
         .slr-pdf-footer-link {
           color: #f0a900;
@@ -1773,9 +1724,13 @@ export function StaleListingsReport() {
           .pdf-print-area {
             display: block !important;
           }
+          .slr-pdf-page {
+            width: auto;
+            padding: 0;
+          }
           @page {
             size: A4;
-            margin: 0;
+            margin: 1.5cm 1.8cm;
           }
         }
       `}</style>
@@ -1817,7 +1772,7 @@ export function StaleListingsReport() {
                     {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
                     <span className="slr-chip slr-chip--ready">Report ready</span>
                     <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF} disabled={pdfGenerating}>
-                      {pdfGenerating ? 'Preparing PDF…' : 'Download PDF'}
+                      {pdfGenerating ? 'Opening print view…' : 'Download PDF'}
                     </button>
                   </div>
                 </div>
@@ -1830,7 +1785,7 @@ export function StaleListingsReport() {
                     {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
                     <span className="slr-chip slr-chip--ready">Report ready</span>
                     <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF} disabled={pdfGenerating}>
-                      {pdfGenerating ? 'Preparing PDF…' : 'Download PDF'}
+                      {pdfGenerating ? 'Opening print view…' : 'Download PDF'}
                     </button>
                   </div>
                   <h1>Your listing report</h1>
@@ -2004,7 +1959,7 @@ export function StaleListingsReport() {
               </main>
             </div>
 
-            <div className="pdf-print-area" ref={pdfExportRef}>
+            <div className="pdf-print-area">
               <div className="slr-pdf-root">
                 <section className="slr-pdf-page">
                   <div className="slr-pdf-header">
@@ -2067,7 +2022,6 @@ export function StaleListingsReport() {
                   </div>
                 </section>
 
-                <section className="slr-pdf-page slr-pdf-page--continuation">
                   {pdfAdditionalFindings.length > 0 ? (
                     <section className="slr-pdf-block">
                       <h2 className="slr-pdf-section-title">Additional Findings</h2>
@@ -2170,7 +2124,6 @@ export function StaleListingsReport() {
                   </div>
                   <div className="slr-pdf-footer-link">heyhavlo.com →</div>
                 </section>
-              </section>
             </div>
             </div>
           </>
