@@ -8,7 +8,7 @@ import string
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,7 @@ from app.schemas.schemas import (
 )
 from app.services import google_sheets, sumup_service
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
+from app.services.product_access import decode_stale_review_session
 from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,18 @@ SL_PACKAGES: dict[str, dict] = {
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
 admin_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings Admin"])
+
+
+def _review_preview_session(authorization: str | None) -> dict[str, str] | None:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    try:
+        return decode_stale_review_session(token.strip())
+    except ValueError:
+        return None
 
 
 def _generate_reference() -> str:
@@ -349,6 +362,7 @@ async def submit_stale_listing(
 async def get_stale_listing_report(
     reference: str,
     background_tasks: BackgroundTasks,
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> StaleListingReportResponse:
     """Fetch report by reference code."""
@@ -370,9 +384,16 @@ async def get_stale_listing_report(
             listing_url=assessment.listing_url or "",
         )
 
+    review_session = _review_preview_session(authorization)
+    is_review_preview = bool(
+        review_session
+        and review_session.get("assessment_id") == str(assessment.id)
+        and review_session.get("reference") == assessment.reference
+    )
+
     report_data = None
     raw_json = assessment.agent_edited_report_json or assessment.ai_report_json
-    if raw_json and assessment.report_status == "completed":
+    if raw_json and (assessment.report_status == "completed" or is_review_preview):
         try:
             parsed = json.loads(raw_json)
             report_data = StaleListingReportData(**parsed)
@@ -391,6 +412,7 @@ async def get_stale_listing_report(
         report_status=assessment.report_status,
         payment_status=assessment.payment_status,
         report_data=report_data,
+        preview_mode=is_review_preview,
         agent_notes=assessment.agent_notes,
         created_at=assessment.created_at.isoformat() if assessment.created_at else "",
     )

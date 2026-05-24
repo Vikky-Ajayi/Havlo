@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { readStaleReviewPreview, readStaleReviewSession } from '../lib/staleReviewAccess';
 
 interface ComparableSale {
   address: string;
@@ -47,6 +48,7 @@ interface Assessment {
   report_status: string;
   payment_status: string;
   report_data?: ReportData;
+  preview_mode?: boolean;
   agent_notes?: string | null;
   created_at: string;
 }
@@ -216,7 +218,7 @@ function footerMessageForPackage(packageId: string) {
 }
 
 function MultilineParagraphs({ text, className }: { text: string; className?: string }) {
-  const blocks = text
+  const blocks = normalizeLongFormText(text)
     .split(/\n\s*\n/)
     .map((block) => block.trim())
     .filter(Boolean);
@@ -224,7 +226,37 @@ function MultilineParagraphs({ text, className }: { text: string; className?: st
   return (
     <>
       {blocks.map((block, index) => {
-        const lines = block.split(/\n/);
+        const lines = block
+          .split(/\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        const bulletLines = lines.filter((line) => /^[-*•]\s+/.test(line));
+        const numberedLines = lines.filter((line) => /^\d+[.)]\s+/.test(line));
+
+        if (lines.length && bulletLines.length === lines.length) {
+          return (
+            <ul key={`${className || 'list'}-${index}`} className={className ? `${className}-list` : undefined}>
+              {lines.map((line, lineIndex) => (
+                <li key={`${index}-${lineIndex}`} className={className}>
+                  {line.replace(/^[-*•]\s+/, '')}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        if (lines.length && numberedLines.length === lines.length) {
+          return (
+            <ol key={`${className || 'list'}-${index}`} className={className ? `${className}-list` : undefined}>
+              {lines.map((line, lineIndex) => (
+                <li key={`${index}-${lineIndex}`} className={className}>
+                  {line.replace(/^\d+[.)]\s+/, '')}
+                </li>
+              ))}
+            </ol>
+          );
+        }
+
         return (
           <p key={`${className || 'paragraph'}-${index}`} className={className}>
             {lines.map((line, lineIndex) => (
@@ -237,6 +269,74 @@ function MultilineParagraphs({ text, className }: { text: string; className?: st
         );
       })}
     </>
+  );
+}
+
+function normalizeLongFormText(text: string) {
+  return text
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function splitReadableParagraphs(text: string) {
+  const normalized = normalizeLongFormText(text);
+  if (!normalized) return [];
+
+  const explicitBlocks = normalized
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (explicitBlocks.length > 1) {
+    return explicitBlocks;
+  }
+
+  const sentences = normalized
+    .replace(/\n+/g, ' ')
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  if (sentences.length <= 2) {
+    return [normalized];
+  }
+
+  const paragraphs: string[] = [];
+  let current = '';
+
+  sentences.forEach((sentence, index) => {
+    current = current ? `${current} ${sentence}` : sentence;
+    const sentenceCount = current.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    const isBoundary =
+      sentenceCount >= 3 ||
+      current.length >= 340 ||
+      /(?:however|meanwhile|separately|in practice|because of this|as a result|to improve matters|the next issue)/i.test(sentence);
+
+    if (isBoundary || index === sentences.length - 1) {
+      paragraphs.push(current.trim());
+      current = '';
+    }
+  });
+
+  if (current.trim()) {
+    paragraphs.push(current.trim());
+  }
+
+  return paragraphs;
+}
+
+function ReadableLongForm({ text, className }: { text: string; className?: string }) {
+  const paragraphs = splitReadableParagraphs(text);
+  if (!paragraphs.length) return null;
+
+  return (
+    <div className={className}>
+      {paragraphs.map((paragraph, index) => (
+        <p key={`${className || 'readable'}-${index}`}>{paragraph}</p>
+      ))}
+    </div>
   );
 }
 
@@ -378,25 +478,61 @@ export function StaleListingsReport() {
   });
 
   const { reference } = useParams<{ reference: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [polling, setPolling] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pdfExportRef = useRef<HTMLDivElement | null>(null);
+  const reviewPreviewRequested = searchParams.get('preview') === 'review';
+  const reviewSession = reviewPreviewRequested ? readStaleReviewSession() : null;
+  const reviewPreviewSnapshot = reviewPreviewRequested ? readStaleReviewPreview(reference) : null;
 
   const fetchReport = () => {
     if (!reference) return;
-    api.staleListingsGetReport(reference)
+    api.staleListingsGetReport(reference, reviewSession?.token)
       .then((data) => {
-        setAssessment(data as Assessment);
+        const merged = reviewPreviewSnapshot
+          ? ({
+              ...data,
+              package: reviewPreviewSnapshot.package || data.package,
+              property_address: data.property_address || reviewPreviewSnapshot.propertyAddress,
+              report_status: reviewPreviewSnapshot.reportStatus || data.report_status,
+              payment_status: reviewPreviewSnapshot.paymentStatus || data.payment_status,
+              report_data: data.report_data || (reviewPreviewSnapshot.reportData as ReportData),
+              preview_mode: data.preview_mode ?? Boolean(reviewPreviewSnapshot.reportData),
+              agent_notes: reviewPreviewSnapshot.agentNotes || data.agent_notes,
+              created_at: data.created_at || reviewPreviewSnapshot.createdAt || '',
+            } as Assessment)
+          : (data as Assessment);
+        setAssessment(merged);
         setLoading(false);
-        if (data.report_status === 'completed') {
+        if (merged.report_status === 'completed' || merged.preview_mode) {
           if (pollRef.current) clearInterval(pollRef.current);
           setPolling(false);
         }
       })
       .catch(() => {
+        if (reviewPreviewSnapshot) {
+          setAssessment({
+            assessment_id: reviewPreviewSnapshot.assessmentId,
+            reference,
+            email: '',
+            package: reviewPreviewSnapshot.package,
+            property_address: reviewPreviewSnapshot.propertyAddress,
+            report_status: reviewPreviewSnapshot.reportStatus,
+            payment_status: reviewPreviewSnapshot.paymentStatus,
+            report_data: reviewPreviewSnapshot.reportData as ReportData,
+            preview_mode: true,
+            agent_notes: reviewPreviewSnapshot.agentNotes,
+            created_at: reviewPreviewSnapshot.createdAt || '',
+          });
+          setLoading(false);
+          return;
+        }
         setError('Report not found or not yet available.');
         setLoading(false);
       });
@@ -413,6 +549,7 @@ export function StaleListingsReport() {
 
   useEffect(() => {
     if (!assessment) return;
+    if (reviewPreviewRequested || assessment.preview_mode) return;
     if (assessment.report_status !== 'completed' && assessment.payment_status === 'completed') {
       setPolling(true);
       pollRef.current = setInterval(fetchReport, 8000);
@@ -422,8 +559,112 @@ export function StaleListingsReport() {
     };
   }, [assessment?.report_status, assessment?.payment_status]);
 
-  const handleDownloadPDF = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (pdfGenerating) return;
+    const source = pdfExportRef.current;
+    if (!source || !assessment) return;
+
+    setPdfGenerating(true);
+    let exportHost: HTMLDivElement | null = null;
+
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
+      exportHost = document.createElement('div');
+      exportHost.setAttribute('aria-hidden', 'true');
+      Object.assign(exportHost.style, {
+        position: 'fixed',
+        left: '-100000px',
+        top: '0',
+        width: '210mm',
+        opacity: '0',
+        pointerEvents: 'none',
+        zIndex: '-1',
+        background: '#ffffff',
+      });
+
+      const exportRoot = source.cloneNode(true) as HTMLDivElement;
+      exportRoot.style.display = 'block';
+      exportHost.appendChild(exportRoot);
+      document.body.appendChild(exportHost);
+
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const exportPages = Array.from(exportRoot.querySelectorAll<HTMLElement>('.slr-pdf-page'));
+      if (!exportPages.length) {
+        throw new Error('No printable report pages found.');
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      let hasWrittenPage = false;
+
+      for (let pageIndex = 0; pageIndex < exportPages.length; pageIndex += 1) {
+        const pageNode = exportPages[pageIndex];
+        const canvas = await html2canvas(pageNode, {
+          backgroundColor: '#ffffff',
+          scale: Math.min(window.devicePixelRatio || 1, 2),
+          useCORS: true,
+          logging: false,
+          imageTimeout: 0,
+        });
+
+        const imageData = canvas.toDataURL('image/png');
+        const imageHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        if (hasWrittenPage) {
+          pdf.addPage();
+        }
+
+        if (imageHeight <= pdfHeight) {
+          pdf.addImage(imageData, 'PNG', 0, 0, pdfWidth, imageHeight, undefined, 'FAST');
+          hasWrittenPage = true;
+          continue;
+        }
+
+        let remainingHeight = imageHeight;
+        let offsetY = 0;
+        pdf.addImage(imageData, 'PNG', 0, offsetY, pdfWidth, imageHeight, undefined, 'FAST');
+        remainingHeight -= pdfHeight;
+        hasWrittenPage = true;
+
+        while (remainingHeight > 0.5) {
+          pdf.addPage();
+          offsetY = remainingHeight - imageHeight;
+          pdf.addImage(imageData, 'PNG', 0, offsetY, pdfWidth, imageHeight, undefined, 'FAST');
+          remainingHeight -= pdfHeight;
+        }
+      }
+
+      const fileName = `${assessment.reference}.pdf`;
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    } catch (downloadError) {
+      console.error('Failed to generate report PDF', downloadError);
+      window.print();
+    } finally {
+      exportHost?.remove();
+      setPdfGenerating(false);
+    }
   };
 
   if (loading) {
@@ -460,8 +701,9 @@ export function StaleListingsReport() {
   const issues = report?.key_findings.filter((item) => item.type !== 'strength').length || 0;
   const strengths = report?.key_findings.filter((item) => item.type === 'strength').length || 0;
   const agentComments = (assessment.agent_notes || '').trim();
-  const isPending = assessment.payment_status !== 'completed';
-  const isProcessing = assessment.payment_status === 'completed' && assessment.report_status !== 'completed';
+  const isReviewPreview = Boolean(assessment.preview_mode && report);
+  const isPending = assessment.payment_status !== 'completed' && !isReviewPreview;
+  const isProcessing = assessment.payment_status === 'completed' && assessment.report_status !== 'completed' && !isReviewPreview;
   const currentPackage = PACKAGE_LABELS[assessment.package] || assessment.package;
   const pdfPrimaryFindings = report?.key_findings.slice(0, 4) ?? [];
   const pdfAdditionalFindings = report?.key_findings.slice(4) ?? [];
@@ -696,11 +938,20 @@ export function StaleListingsReport() {
           letter-spacing: -0.04em;
           line-height: 1.1;
         }
-        .slr-finding-copy p {
+        .slr-readable-copy {
+          display: grid;
+          gap: 10px;
+          max-width: 72ch;
+        }
+        .slr-readable-copy p {
           margin: 0;
-          font-size: 16px;
-          line-height: 1.55;
+          font-size: 15px;
+          line-height: 1.72;
           color: #2a2a2a;
+        }
+        .slr-readable-copy p:first-child {
+          font-weight: 600;
+          color: #1f1f1f;
         }
         .slr-summary-note {
           margin-top: 8px;
@@ -708,8 +959,18 @@ export function StaleListingsReport() {
           border-radius: 20px;
           background: #f7f8f8;
           border: 1px solid #ececec;
-          font-size: 15px;
-          line-height: 1.65;
+        }
+        .slr-summary-note-title {
+          display: inline-block;
+          margin-bottom: 10px;
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #5f5f5f;
+        }
+        .slr-summary-note .slr-readable-copy p {
+          font-size: 14px;
+          line-height: 1.7;
           color: #424242;
         }
         .slr-analysis-stack {
@@ -761,11 +1022,13 @@ export function StaleListingsReport() {
           color: #eb6200;
           font-size: 16px;
         }
-        .slr-recommendation-box p {
-          margin: 0 0 10px;
+        .slr-recommendation-box .slr-readable-copy {
+          margin-top: 4px;
+        }
+        .slr-recommendation-box .slr-readable-copy p {
           color: #303030;
           font-size: 14px;
-          line-height: 1.55;
+          line-height: 1.7;
         }
         .slr-action-list {
           display: flex;
@@ -791,6 +1054,7 @@ export function StaleListingsReport() {
         .slr-action-copy {
           border-left: 1px solid #ededed;
           padding-left: 12px;
+          min-width: 0;
         }
         .slr-action-copy h3 {
           margin: 0 0 8px;
@@ -810,11 +1074,15 @@ export function StaleListingsReport() {
           letter-spacing: 0.02em;
           text-transform: uppercase;
         }
-        .slr-action-copy p {
-          margin: 0 0 8px;
+        .slr-action-copy .slr-readable-copy {
+          margin-bottom: 10px;
+          max-width: none;
+          width: 100%;
+        }
+        .slr-action-copy .slr-readable-copy p {
           color: #303030;
           font-size: 15px;
-          line-height: 1.5;
+          line-height: 1.72;
         }
         .slr-action-copy ul {
           margin: 0;
@@ -887,6 +1155,22 @@ export function StaleListingsReport() {
         }
         .slr-agent-comments-copy + .slr-agent-comments-copy {
           margin-top: 12px;
+        }
+        .slr-agent-comments-copy-list {
+          margin: 0;
+          padding-left: 22px;
+          display: grid;
+          gap: 10px;
+        }
+        .slr-agent-comments-copy-list + .slr-agent-comments-copy,
+        .slr-agent-comments-copy + .slr-agent-comments-copy-list,
+        .slr-agent-comments-copy-list + .slr-agent-comments-copy-list {
+          margin-top: 12px;
+        }
+        .slr-agent-comments-copy-list li {
+          color: #232323;
+          font-size: 15px;
+          line-height: 1.62;
         }
         .slr-logo-image {
           display: block;
@@ -1012,6 +1296,10 @@ export function StaleListingsReport() {
         .slr-chip--ready {
           background: #d9f8ea;
           color: #0d7a4e;
+        }
+        .slr-chip--preview {
+          background: #f3e8ff;
+          color: #7c3aed;
         }
         .slr-chip--button {
           background: #ffffff;
@@ -1201,6 +1489,19 @@ export function StaleListingsReport() {
           line-height: 1.42;
           color: #222222;
         }
+        .slr-pdf-readable-copy {
+          display: grid;
+          gap: 2.4mm;
+        }
+        .slr-pdf-readable-copy p {
+          margin: 0;
+          font-size: 9.8pt;
+          line-height: 1.58;
+          color: #222222;
+        }
+        .slr-pdf-readable-copy p:first-child {
+          font-weight: 600;
+        }
         .slr-pdf-block {
           margin-bottom: 8.5mm;
         }
@@ -1246,14 +1547,10 @@ export function StaleListingsReport() {
           font-size: 12pt;
           font-weight: 800;
         }
-        .slr-pdf-recommendation p {
-          margin: 0 0 2mm;
+        .slr-pdf-recommendation .slr-pdf-readable-copy p {
           font-size: 10pt;
-          line-height: 1.42;
+          line-height: 1.56;
           color: #242424;
-        }
-        .slr-pdf-recommendation p:last-child {
-          margin-bottom: 0;
         }
         .slr-pdf-action-list {
           display: flex;
@@ -1307,6 +1604,17 @@ export function StaleListingsReport() {
           font-size: 10pt;
           line-height: 1.42;
         }
+        .slr-pdf-action-readable {
+          display: grid;
+          gap: 2mm;
+          margin: 0 0 1.5mm;
+        }
+        .slr-pdf-action-readable p {
+          margin: 0;
+          font-size: 10pt;
+          line-height: 1.56;
+          color: #202020;
+        }
         .slr-pdf-action-bullets {
           margin: 0;
           padding-left: 4.6mm;
@@ -1343,6 +1651,22 @@ export function StaleListingsReport() {
         }
         .slr-pdf-agent-comments-copy + .slr-pdf-agent-comments-copy {
           margin-top: 3mm;
+        }
+        .slr-pdf-agent-comments-copy-list {
+          margin: 0;
+          padding-left: 5mm;
+          display: grid;
+          gap: 1.8mm;
+        }
+        .slr-pdf-agent-comments-copy-list + .slr-pdf-agent-comments-copy,
+        .slr-pdf-agent-comments-copy + .slr-pdf-agent-comments-copy-list,
+        .slr-pdf-agent-comments-copy-list + .slr-pdf-agent-comments-copy-list {
+          margin-top: 3mm;
+        }
+        .slr-pdf-agent-comments-copy-list li {
+          font-size: 9.8pt;
+          line-height: 1.6;
+          color: #202020;
         }
         .slr-pdf-footer-link {
           color: #f0a900;
@@ -1392,6 +1716,18 @@ export function StaleListingsReport() {
           }
           .slr-services-grid {
             grid-template-columns: 1fr;
+          }
+          .slr-finding-item {
+            padding: 18px 16px;
+            gap: 12px;
+          }
+          .slr-readable-copy {
+            gap: 8px;
+            max-width: 100%;
+          }
+          .slr-readable-copy p {
+            font-size: 14px;
+            line-height: 1.68;
           }
           .slr-service-card {
             min-height: 0;
@@ -1457,16 +1793,19 @@ export function StaleListingsReport() {
           </div>
         )}
 
-        {assessment.report_status === 'completed' && report && (
+        {(assessment.report_status === 'completed' || isReviewPreview) && report && (
           <>
             <div className="slr-screen">
               <header className="slr-topbar">
                 <div className="slr-topbar-inner">
                   <StaleListingsLogo style={{ height: 54, width: 'auto', display: 'block' }} />
                   <div className="slr-topbar-actions">
+                    {isReviewPreview ? <span className="slr-chip slr-chip--preview">Agent preview</span> : null}
                     {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
                     <span className="slr-chip slr-chip--ready">Report ready</span>
-                    <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF}>Download PDF</button>
+                    <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF} disabled={pdfGenerating}>
+                      {pdfGenerating ? 'Preparing PDF…' : 'Download PDF'}
+                    </button>
                   </div>
                 </div>
               </header>
@@ -1474,9 +1813,12 @@ export function StaleListingsReport() {
               <main className="slr-shell">
                 <div className="slr-title-wrap">
                   <div className="slr-mobile-chip-row">
+                    {isReviewPreview ? <span className="slr-chip slr-chip--preview">Agent preview</span> : null}
                     {report.days_on_market ? <span className="slr-chip slr-chip--market">On market {report.days_on_market} days</span> : null}
                     <span className="slr-chip slr-chip--ready">Report ready</span>
-                    <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF}>Download PDF</button>
+                    <button type="button" className="slr-chip slr-chip--button" onClick={handleDownloadPDF} disabled={pdfGenerating}>
+                      {pdfGenerating ? 'Preparing PDF…' : 'Download PDF'}
+                    </button>
                   </div>
                   <h1>Your listing report</h1>
                   <p>{propertyMeta.address}{propertyMeta.portalLabel ? ` · ${propertyMeta.portalLabel}` : ` · ${currentPackage}`}</p>
@@ -1533,12 +1875,17 @@ export function StaleListingsReport() {
                             </div>
                             <div className="slr-finding-copy">
                               <h3 style={{ color: accent.title }}>{finding.title}</h3>
-                              <p>{finding.description}</p>
+                              <ReadableLongForm text={finding.description} className="slr-readable-copy" />
                             </div>
                           </div>
                         );
                       })}
-                      {report.executive_summary ? <div className="slr-summary-note">{report.executive_summary}</div> : null}
+                      {report.executive_summary ? (
+                        <div className="slr-summary-note">
+                          <strong className="slr-summary-note-title">Executive summary</strong>
+                          <ReadableLongForm text={report.executive_summary} className="slr-readable-copy" />
+                        </div>
+                      ) : null}
                     </div>
                   </article>
                 </section>
@@ -1572,8 +1919,8 @@ export function StaleListingsReport() {
                       {(report.pricing_recommendation || report.pricing_recommendation_detail) ? (
                         <div className="slr-recommendation-box">
                           <strong>Recommendation</strong>
-                          {report.pricing_recommendation ? <p>{report.pricing_recommendation}</p> : null}
-                          {report.pricing_recommendation_detail ? <p>{report.pricing_recommendation_detail}</p> : null}
+                          {report.pricing_recommendation ? <ReadableLongForm text={report.pricing_recommendation} className="slr-readable-copy" /> : null}
+                          {report.pricing_recommendation_detail ? <ReadableLongForm text={report.pricing_recommendation_detail} className="slr-readable-copy" /> : null}
                         </div>
                       ) : null}
                     </article>
@@ -1594,7 +1941,7 @@ export function StaleListingsReport() {
                                   <span>—</span>
                                   <span>{item.title}</span>
                                 </h3>
-                                <p>{item.description}</p>
+                                <ReadableLongForm text={item.description} className="slr-readable-copy" />
                                 {item.bullets.length > 0 ? (
                                   <ul>
                                     {item.bullets.map((bullet, bulletIndex) => (
@@ -1644,7 +1991,7 @@ export function StaleListingsReport() {
               </main>
             </div>
 
-            <div className="pdf-print-area">
+            <div className="pdf-print-area" ref={pdfExportRef}>
               <div className="slr-pdf-root">
                 <section className="slr-pdf-page">
                   <div className="slr-pdf-header">
@@ -1699,7 +2046,7 @@ export function StaleListingsReport() {
                           <div className="slr-pdf-finding-dot" style={{ background: accent.dot }} />
                           <div>
                             <h3 className="slr-pdf-finding-title" style={{ color: accent.title }}>{finding.title}</h3>
-                            <p className="slr-pdf-finding-copy">{finding.description}</p>
+                            <ReadableLongForm text={finding.description} className="slr-pdf-readable-copy" />
                           </div>
                         </article>
                       );
@@ -1731,7 +2078,7 @@ export function StaleListingsReport() {
                               <div className="slr-pdf-finding-dot" style={{ background: accent.dot }} />
                               <div>
                                 <h3 className="slr-pdf-finding-title" style={{ color: accent.title }}>{finding.title}</h3>
-                                <p className="slr-pdf-finding-copy">{finding.description}</p>
+                                <ReadableLongForm text={finding.description} className="slr-pdf-readable-copy" />
                               </div>
                             </article>
                           );
@@ -1766,8 +2113,8 @@ export function StaleListingsReport() {
                       {(report.pricing_recommendation || report.pricing_recommendation_detail) ? (
                         <div className="slr-pdf-recommendation">
                           <strong>Recommendation</strong>
-                          {report.pricing_recommendation ? <p>{report.pricing_recommendation}</p> : null}
-                          {report.pricing_recommendation_detail ? <p>{report.pricing_recommendation_detail}</p> : null}
+                          {report.pricing_recommendation ? <ReadableLongForm text={report.pricing_recommendation} className="slr-pdf-readable-copy" /> : null}
+                          {report.pricing_recommendation_detail ? <ReadableLongForm text={report.pricing_recommendation_detail} className="slr-pdf-readable-copy" /> : null}
                         </div>
                       ) : null}
                     </section>
@@ -1788,7 +2135,7 @@ export function StaleListingsReport() {
                                   <span className="slr-pdf-action-divider">—</span>
                                   <span className="slr-pdf-action-title">{item.title}</span>
                                 </div>
-                                <p className="slr-pdf-action-description">{item.description}</p>
+                                <ReadableLongForm text={item.description} className="slr-pdf-action-readable" />
                                 {item.bullets.length > 0 ? (
                                   <ul className="slr-pdf-action-bullets">
                                     {item.bullets.map((bullet, bulletIndex) => (

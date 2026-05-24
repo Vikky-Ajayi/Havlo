@@ -869,7 +869,7 @@ export const api = {
       message: string;
     }>('/stale-listings/submit', { method: 'POST', body: payload }),
 
-  staleListingsGetReport: (reference: string) =>
+  staleListingsGetReport: (reference: string, token?: string) =>
     request<{
       assessment_id: string;
       reference: string;
@@ -901,8 +901,9 @@ export const api = {
         pricing_recommendation_detail: string;
         executive_summary: string;
       };
+      preview_mode?: boolean;
       created_at: string;
-    }>(`/stale-listings/report/${encodeURIComponent(reference)}`, { timeout: 30000 }),
+    }>(`/stale-listings/report/${encodeURIComponent(reference)}`, { timeout: 30000, token }),
 
   staleListingsVerifyPayment: (reference: string) =>
     request<{ payment_status: string; reference: string }>(

@@ -514,6 +514,7 @@ class StaleListingReportResponse(BaseModel):
     report_status: str
     payment_status: str
     report_data: Optional[StaleListingReportData]
+    preview_mode: bool = False
     agent_notes: Optional[str] = None
     created_at: str
 
