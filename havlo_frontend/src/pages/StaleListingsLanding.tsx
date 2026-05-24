@@ -338,6 +338,11 @@ export function StaleListingsLanding() {
 
         /* ── DESKTOP-ONLY ELEMENTS ── */
         .sl-nav-links { display:flex; }
+        .sl-nav-cta-desktop {
+          display:flex;
+          align-items:center;
+          gap:12px;
+        }
         .sl-hero-right { display:flex !important; }
         .sl-features-cols { display:flex; flex-direction:row; }
         .sl-testimonial-row { display:flex; flex-direction:row; }
@@ -906,6 +911,34 @@ export function StaleListingsLanding() {
                 <a key={i} href={href} style={{ color:'#000', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', opacity:0.8, textDecoration:'none' }}>{label}</a>
               ))}
             </nav>
+            <div className="sl-nav-cta-desktop">
+              {accessEmail ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleOpenPortal}
+                    style={{ display:'flex', height:48, padding:'0 18px', justifyContent:'center', alignItems:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+                  >
+                    My assessments
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    style={{ display:'flex', height:48, padding:'0 18px', justifyContent:'center', alignItems:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleOpenSignIn}
+                  style={{ display:'flex', height:48, padding:'0 18px', justifyContent:'center', alignItems:'center', borderRadius:14, border:'1px solid rgba(0,0,0,0.12)', background:'#FFFFFF', color:'#111111', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:600, letterSpacing:'-0.02em', cursor:'pointer' }}
+                >
+                  Sign in
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Hamburger (mobile/tablet) */}
