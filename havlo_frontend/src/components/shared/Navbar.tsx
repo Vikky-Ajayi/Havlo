@@ -62,7 +62,6 @@ export const Navbar: React.FC = () => {
       vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector.svg",
       dropdownItems: [
         { name: 'Buy Property Abroad', href: '/buy-property-abroad' },
-        { name: 'Property Matching', href: '/property-matching' },
         { name: 'Custom Offers', href: '/custom-offers' },
       ]
     },
@@ -71,9 +70,8 @@ export const Navbar: React.FC = () => {
       href: '#',
       vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector-1.svg",
       dropdownItems: [
-        { name: 'Elite Property Introduction', href: '/elite-property' },
         { name: 'Sell Faster', href: '/sell-your-property' },
-        { name: 'Property Sale Audit', href: '/property-audit' },
+        { name: 'Stale Listings', href: '/stale-listings' },
       ]
     },
     {
@@ -82,6 +80,7 @@ export const Navbar: React.FC = () => {
       vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector-2.svg",
       dropdownItems: [
         { name: 'International Buyer Network', href: '/buyer-network' },
+        { name: 'Listing Recovery', href: '/stale-listings' },
       ]
     },
   ];

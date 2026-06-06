@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Check, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { HeroSection } from '../components/shared/HeroSection';
 import { HeroBackground } from '../components/shared/HeroBackground';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { useModal } from '../hooks/useModal';
@@ -102,7 +103,15 @@ export const BuyerNetwork: React.FC = () => {
   return (
     <div className="flex flex-col w-full bg-white">
       {/* 1. Hero Section */}
-      <section className="relative flex flex-col items-center px-6 lg:px-[100px] bg-gradient-to-b from-[#FF8FDD] via-[#FFC78A] to-[#FFD85C] overflow-hidden md:min-h-[680px] py-10 my-0 pb-[126px] lg:pb-10">
+      <HeroSection
+        title="Your Listings Aren't Reaching the Right Buyers. We Fix That."
+        subtitle="Access a curated network of vetted international buyers actively looking for UK property so you can sell faster and win more instructions."
+        imageSrc="/Mask group2.png"
+        buttonText="Join the International Buyer Network"
+        onButtonClick={() => openModal('create-account')}
+        titleStyle={{ fontSize: '80px', lineHeight: '1.0' }}
+      />
+      <section className="hidden">
         <div className="relative z-10 flex flex-col items-center text-center max-w-[1144px] mx-auto">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}

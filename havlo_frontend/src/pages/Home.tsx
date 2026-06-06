@@ -107,7 +107,7 @@ export const Home: React.FC = () => {
         customActions={
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px] px-4 sm:px-6 lg:px-0 mb-12 sm:pb-0">
               <button
-                onClick={() => navigate('/property-audit')}
+                onClick={() => navigate('/sell-your-property')}
                 className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-3 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer sm:h-14 whitespace-nowrap"
               >
                 Sell My Property Faster
@@ -238,12 +238,6 @@ export const Home: React.FC = () => {
                     className="bg-white"
                   />
                   <ServiceCard
-                    title="Property Matching"
-                    description="Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent."
-                    href="/property-matching"
-                    className="bg-white"
-                  />
-                  <ServiceCard
                     title="Custom Offers"
                     description="Submit flexible or non-standard property proposals directly to homeowners and present your terms professionally when a standard offer alone does not tell the full story."
                     href="/custom-offers"
@@ -265,15 +259,9 @@ export const Home: React.FC = () => {
                     className="bg-white"
                   />
                   <ServiceCard
-                    title="Stale listings"
+                    title="Stale Listings"
                     description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                     href="/stale-listings"
-                    className="bg-white"
-                  />
-                  <ServiceCard
-                    title="Elite Property Introductions"
-                    description="Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking."
-                    href="/elite-property"
                     className="bg-white"
                   />
                 </div>
@@ -289,6 +277,12 @@ export const Home: React.FC = () => {
                     title="International Buyer Network"
                     description="Sell properties faster by going beyond property portals and connecting listings with a curated network of qualified, ready-to-buy international buyers."
                     href="/buyer-network"
+                    className="bg-white"
+                  />
+                  <ServiceCard
+                    title="Listing Recovery"
+                    description="Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale."
+                    href="/stale-listings"
                     className="bg-white"
                   />
                 </div>
@@ -312,16 +306,10 @@ export const Home: React.FC = () => {
                 className="flex-1 bg-white"
               />
               <ServiceCard
-                title="Stale listings"
+                title="Stale Listings"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                 href="/stale-listings"
                 className="flex-[2] bg-white"
-              />
-              <ServiceCard
-                title="Elite Property Introductions"
-                description="Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking."
-                href="/elite-property"
-                className="bg-white"
               />
             </div>
           </div>
@@ -336,12 +324,6 @@ export const Home: React.FC = () => {
                 title="Buy Property Abroad"
                 description="Expert advisory for acquiring residential and commercial property abroad. We handle the complexity so you don't have to."
                 href="/buy-property-abroad"
-                className="flex-1 bg-white"
-              />
-              <ServiceCard
-                title="Property Matching"
-                description="Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent."
-                href="/property-matching"
                 className="flex-1 bg-white"
               />
               <ServiceCard
@@ -365,7 +347,12 @@ export const Home: React.FC = () => {
                 href="/buyer-network"
                 className="flex-1 bg-white"
               />
-              <div className="flex-1" />
+              <ServiceCard
+                title="Listing Recovery"
+                description="Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale."
+                href="/stale-listings"
+                className="flex-1 bg-white"
+              />
             </div>
           </div>
         </div>

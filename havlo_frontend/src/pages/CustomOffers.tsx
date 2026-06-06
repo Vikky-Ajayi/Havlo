@@ -937,15 +937,16 @@ export const CustomOffers: React.FC = () => {
 
         .co-hero-inner {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 470px;
-          gap: 36px;
+          grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+          gap: 48px;
           padding-top: 88px;
           padding-bottom: 82px;
           min-width: 0;
+          align-items: start;
         }
 
         .co-hero-copy {
-          max-width: 688px;
+          max-width: 720px;
           min-width: 0;
         }
 
@@ -961,7 +962,7 @@ export const CustomOffers: React.FC = () => {
 
         .co-hero-title-desktop .co-title-line {
           display: block;
-          white-space: nowrap;
+          white-space: normal;
           color: #191919;
         }
 
@@ -1133,7 +1134,7 @@ export const CustomOffers: React.FC = () => {
           align-self: start;
           min-width: 0;
           max-width: 100%;
-          margin-top: 38px;
+          margin-top: 20px;
           background: #ffffff;
           border: 3px solid #111111;
           border-radius: 18px;
@@ -1195,6 +1196,22 @@ export const CustomOffers: React.FC = () => {
 
         .co-hero-card-footer span {
           color: ${PURPLE};
+        }
+
+        @media (min-width: 921px) and (max-width: 1180px) {
+          .co-hero-inner {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 32px;
+          }
+
+          .co-hero-copy {
+            max-width: 780px;
+          }
+
+          .co-hero-card {
+            max-width: 560px;
+            margin-top: 0;
+          }
         }
 
         .co-statement {

@@ -18,38 +18,38 @@ const serviceCards: ServiceCard[] = [
     background: '#FFEBF9',
   },
   {
-    title: 'Property Matching',
+    title: 'Custom Offers',
     description:
-      'Get matched to the right property and enjoy discounted legal fees when buying through our nominated agent.',
-    href: '/property-matching',
+      'Submit flexible or non-standard property proposals directly to homeowners and present your terms professionally when a standard offer alone does not tell the full story.',
+    href: '/custom-offers',
     background: '#EBFFF6',
-  },
-  {
-    title: 'Elite Property Introductions',
-    description:
-      'Showcase your property to a curated list of ready-to-buy offshore buyers who are actively seeking.',
-    href: '/elite-property',
-    background: '#FFFEEB',
   },
   {
     title: 'Sell Faster (Havlo Relaunch\u2122)',
     description:
       'A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer.',
     href: '/sell-your-property',
-    background: '#EBF4FF',
+    background: '#FFFEEB',
   },
   {
-    title: 'Property Sale Audit (Havlo Relaunch Assessment)',
+    title: 'Stale Listings',
     description:
       "Uncover why your property hasn't sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers.",
-    href: '/property-audit',
-    background: '#FDECEE',
+    href: '/stale-listings',
+    background: '#EBF4FF',
   },
   {
     title: 'International Buyer Network',
     description:
       'Sell properties faster by going beyond property portals and connecting listings with a curated network of qualified, ready-to-buy international buyers.',
     href: '/buyer-network',
+    background: '#FDECEE',
+  },
+  {
+    title: 'Listing Recovery',
+    description:
+      "Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale.",
+    href: '/stale-listings',
     background: '#FFEBF9',
   },
 ];
@@ -92,8 +92,8 @@ export const AboutUs: React.FC = () => {
               <span className="font-bold">simple, transparent, and accessible,</span> not limited by geography.
             </p>
             <p>
-              Havlo is a trading style of Sprint Technologies Ltd, 2nd Floor,{' '}
-              <span className="font-bold">Berkeley Square, London, England, W1J 6BD.</span> Registered in England and Wales with Company No. 14949509. VAT Registration Number: 511860708.
+              Havlo Ltd, registered in England and Wales (Company No. 15369975). Office:{' '}
+              <span className="font-bold">2nd Floor, Berkeley Square, London, England, W1J 6BD.</span>
             </p>
           </div>
         </div>

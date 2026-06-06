@@ -36,6 +36,7 @@ export const Footer: React.FC = () => {
   const serviceLinks = [
     { name: 'Elite Property Introduction', href: '/elite-property' },
     { name: 'Sell Faster', href: '/sell-your-property' },
+    { name: 'Stale Listings', href: '/stale-listings' },
     { name: 'Property Sale Audit', href: '/property-audit' },
     { name: 'Buy Property Abroad', href: '/buy-property-abroad' },
     { name: 'Property Matching', href: '/property-matching' },
@@ -145,11 +146,11 @@ export const Footer: React.FC = () => {
 
         {/* Disclaimer */}
         <div className="font-body text-sm lg:text-base font-medium leading-normal tracking-[-0.32px] text-white/80 text-left">
-          Havlo is a trading style of Sprint Technologies, registered in England and Wales (Company No. 14949509). Office: 2nd Floor, Berkeley Square, London, England, W1J 6BD. Havlo provides property marketing, international property exposure, and purchase advisory services. Havlo does not act as a real estate agent, broker, lawyer, financial advisor, or tax advisor, unless explicitly stated otherwise. All information provided is for general guidance only and does not constitute legal, financial, tax, or investment advice. Property laws, regulations, taxation, and ownership structures vary by jurisdiction and are subject to change. Users are responsible for conducting their own due diligence and obtaining independent professional advice before making any property-related decisions.
+          Havlo Ltd, registered in England and Wales (Company No. 15369975). Office: 2nd Floor, Berkeley Square, London, England, W1J 6BD. Havlo provides property marketing, international property exposure, and purchase advisory services. Havlo does not act as a real estate agent, broker, lawyer, financial advisor, or tax advisor, unless explicitly stated otherwise. All information provided is for general guidance only and does not constitute legal, financial, tax, or investment advice. Property laws, regulations, taxation, and ownership structures vary by jurisdiction and are subject to change. Users are responsible for conducting their own due diligence and obtaining independent professional advice before making any property-related decisions.
           <br /><br />
           Havlo accepts no responsibility for decisions made based on information provided through the platform, nor for the actions, performance, or services of any third-party providers, partners, or local professionals.
           <br /><br />
-          Use of this website and Havlo’s services is subject to applicable terms and conditions.
+          Use of this website and Havlo's services is subject to applicable terms and conditions.
         </div>
 
         {/* Copyright */}
