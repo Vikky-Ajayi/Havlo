@@ -345,13 +345,13 @@ export const Home: React.FC = () => {
                 title="International Buyer Network"
                 description="Sell properties faster by going beyond property portals and connecting listings with a curated network of qualified, ready-to-buy international buyers."
                 href="/buyer-network"
-                className="flex-1 bg-white"
+                className="bg-white"
               />
               <ServiceCard
                 title="Listing Recovery"
                 description="Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale."
                 href="/stale-listings"
-                className="flex-1 bg-white"
+                className="bg-white"
               />
             </div>
           </div>
