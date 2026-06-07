@@ -501,7 +501,7 @@ export function StaleListingsLanding() {
           width:100%;
           max-width:767px;
           height:auto;
-          aspect-ratio:767 / 499;
+          aspect-ratio:797 / 529;
           border-radius:18px;
           overflow:hidden;
           background:#FFFFFF;
@@ -513,25 +513,6 @@ export function StaleListingsLanding() {
           object-fit:cover;
           object-position:top left;
           display:block;
-        }
-        .sl-report-preview-title-mask {
-          position:absolute;
-          left:9px;
-          top:250px;
-          width:249px;
-          min-height:21px;
-          padding:4px 5px;
-          box-sizing:border-box;
-          background:#FFFFFF;
-          color:#1F1F1E;
-          font-family:'Plus Jakarta Sans', sans-serif;
-          font-size:14px;
-          font-weight:800;
-          line-height:120%;
-          letter-spacing:-0.03em;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
         }
         .sl-report-preview-mobile-stack {
           display:none;
@@ -600,15 +581,7 @@ export function StaleListingsLanding() {
           .sl-report-preview-frame {
             max-width:100% !important;
             height:auto !important;
-            aspect-ratio:767 / 499;
-          }
-          .sl-report-preview-title-mask {
-            top:50.1% !important;
-            left:1.2% !important;
-            width:32.5% !important;
-            min-height:auto !important;
-            font-size:clamp(9px, 1.7vw, 14px) !important;
-            padding:0.55% 0.65% !important;
+            aspect-ratio:797 / 529;
           }
         }
 
@@ -680,15 +653,7 @@ export function StaleListingsLanding() {
           .sl-report-preview-frame {
             max-width:100% !important;
             height:auto !important;
-            aspect-ratio:767 / 499;
-          }
-          .sl-report-preview-title-mask {
-            top:50.1% !important;
-            left:1.2% !important;
-            width:32.5% !important;
-            min-height:auto !important;
-            font-size:clamp(9px, 1.7vw, 14px) !important;
-            padding:0.55% 0.65% !important;
+            aspect-ratio:797 / 529;
           }
           .sl-testimonials-section { padding:60px 40px !important; }
           .sl-faq-section { padding:60px 40px !important; }
@@ -932,13 +897,6 @@ export function StaleListingsLanding() {
           .sl-report-preview-mobile-stack {
             display:block !important;
             width:100% !important;
-          }
-          .sl-report-preview-title-mask {
-            top:50.1% !important;
-            left:1.2% !important;
-            width:32.5% !important;
-            font-size:clamp(7px, 2.2vw, 10px) !important;
-            padding:0.5% 0.6% !important;
           }
           .sl-agent-backed-block {
             align-items:center !important;
@@ -1517,10 +1475,9 @@ export function StaleListingsLanding() {
             <div className="sl-report-preview-frame" aria-label="Stale Listings report preview">
               <img
                 className="sl-report-preview-image"
-                src="/stale-report-preview-4k.png"
+                src="/stale-report-preview-desktop-4k.png"
                 alt="Preview of a Stale Listings report with property score and key findings"
               />
-              <div className="sl-report-preview-title-mask">Willow House, 83 Conduit Road</div>
             </div>
 
             <div className="sl-report-preview-mobile-stack" aria-label="Mobile preview of a Stale Listings report">
@@ -1537,11 +1494,16 @@ export function StaleListingsLanding() {
                 Recommendations backed by the experience of agents actively selling homes in markets like yours
               </p>
               <div className="sl-agent-avatar-row" aria-label="Agent reviewers">
-                {[1, 2, 3, 4].map((avatar) => (
+                {[
+                  'agent-avatar-woman-1.jpg',
+                  'agent-avatar-man-1.jpg',
+                  'agent-avatar-man-2.jpg',
+                  'agent-avatar-woman-2.jpg',
+                ].map((avatar) => (
                   <img
                     key={avatar}
                     className="sl-agent-avatar"
-                    src={`/team-avatars/avatar${avatar}.jpg`}
+                    src={`/team-avatars/${avatar}`}
                     alt=""
                     aria-hidden="true"
                   />
