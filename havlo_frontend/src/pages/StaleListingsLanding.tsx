@@ -453,11 +453,11 @@ export function StaleListingsLanding() {
           overflow:hidden;
         }
         .sl-report-preview-inner {
-          width:1256px;
-          max-width:none;
-          margin:0;
+          width:100%;
+          max-width:1440px;
+          margin:0 auto;
           display:grid;
-          grid-template-columns:457px 767px;
+          grid-template-columns:minmax(320px, 457px) minmax(0, 1fr);
           align-items:start;
           gap:32px;
         }
@@ -492,13 +492,16 @@ export function StaleListingsLanding() {
           flex-direction:column;
           gap:32px;
           align-items:stretch;
+          justify-self:end;
+          width:min(100%, 767px);
           min-width:0;
         }
         .sl-report-preview-frame {
           position:relative;
           width:100%;
           max-width:767px;
-          height:499px;
+          height:auto;
+          aspect-ratio:767 / 499;
           border-radius:18px;
           overflow:hidden;
           background:#FFFFFF;
