@@ -533,6 +533,57 @@ export function StaleListingsLanding() {
           overflow:hidden;
           text-overflow:ellipsis;
         }
+        .sl-report-preview-mobile-stack {
+          display:none;
+        }
+        .sl-mobile-report-crop {
+          position:relative;
+          width:100%;
+          overflow:hidden;
+          background:#FFFFFF;
+          border-radius:18px;
+          box-shadow:0 12px 24px rgba(0,0,0,0.10);
+        }
+        .sl-mobile-report-crop img {
+          position:absolute;
+          top:0;
+          height:auto;
+          max-width:none;
+          display:block;
+        }
+        .sl-mobile-report-crop--summary {
+          aspect-ratio:356 / 522;
+        }
+        .sl-mobile-report-crop--summary img {
+          left:0;
+          width:261%;
+        }
+        .sl-mobile-report-crop--findings {
+          margin-top:12px;
+          aspect-ratio:356 / 318;
+        }
+        .sl-mobile-report-crop--findings img {
+          left:-67.4%;
+          width:167.4%;
+        }
+        .sl-mobile-report-title-mask {
+          position:absolute;
+          left:4.1%;
+          top:58%;
+          width:88%;
+          padding:2px 4px;
+          box-sizing:border-box;
+          background:#FFFFFF;
+          color:#1F1F1E;
+          font-family:'Plus Jakarta Sans', sans-serif;
+          font-size:clamp(14px, 4.5vw, 18px);
+          font-weight:800;
+          line-height:120%;
+          letter-spacing:-0.03em;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
         .sl-agent-backed-block {
           display:flex;
           flex-direction:column;
@@ -913,15 +964,16 @@ export function StaleListingsLanding() {
             letter-spacing:-0.03em !important;
           }
           .sl-report-preview-visual {
-            gap:28px !important;
+            gap:24px !important;
+            width:100% !important;
+            justify-self:stretch !important;
           }
           .sl-report-preview-frame {
+            display:none !important;
+          }
+          .sl-report-preview-mobile-stack {
+            display:block !important;
             width:100% !important;
-            max-width:100% !important;
-            height:auto !important;
-            aspect-ratio:767 / 499;
-            border-radius:14px !important;
-            box-shadow:-4px 1px 12px rgba(0,0,0,0.10) !important;
           }
           .sl-report-preview-title-mask {
             top:50.1% !important;
@@ -931,17 +983,25 @@ export function StaleListingsLanding() {
             padding:0.5% 0.6% !important;
           }
           .sl-agent-backed-block {
-            gap:16px !important;
+            align-items:center !important;
+            gap:18px !important;
+            margin-top:2px !important;
+            text-align:center !important;
           }
           .sl-agent-backed-title {
-            font-size:28px !important;
+            max-width:340px !important;
+            font-size:32px !important;
+            line-height:116% !important;
           }
           .sl-agent-backed-copy {
-            font-size:16px !important;
-            max-width:100% !important;
+            max-width:360px !important;
+            font-size:18px !important;
+            line-height:150% !important;
+            text-align:center !important;
           }
           .sl-agent-avatar-row {
             height:50px !important;
+            justify-content:center !important;
           }
           .sl-agent-avatar {
             width:50px !important;
@@ -1503,6 +1563,16 @@ export function StaleListingsLanding() {
                 alt="Preview of a Stale Listings report with property score and key findings"
               />
               <div className="sl-report-preview-title-mask">Willow House, 83 Conduit Road</div>
+            </div>
+
+            <div className="sl-report-preview-mobile-stack" role="img" aria-label="Mobile preview of a Stale Listings report">
+              <div className="sl-mobile-report-crop sl-mobile-report-crop--summary">
+                <img src="/stale-report-preview.png" alt="" aria-hidden="true" />
+                <div className="sl-mobile-report-title-mask">Willow House, 83 Conduit Road</div>
+              </div>
+              <div className="sl-mobile-report-crop sl-mobile-report-crop--findings">
+                <img src="/stale-report-preview.png" alt="" aria-hidden="true" />
+              </div>
             </div>
 
             <div className="sl-agent-backed-block">
