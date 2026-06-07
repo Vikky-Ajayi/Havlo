@@ -447,6 +447,159 @@ export function StaleListingsLanding() {
         }
 
         /* ── FAQ ITEM SHARED ── */
+        .sl-report-preview-section {
+          padding:80px 100px;
+          background:#FFFFFF;
+          overflow:hidden;
+        }
+        .sl-report-preview-inner {
+          width:1256px;
+          max-width:none;
+          margin:0;
+          display:grid;
+          grid-template-columns:457px 767px;
+          align-items:start;
+          gap:32px;
+        }
+        .sl-report-preview-copy {
+          display:flex;
+          flex-direction:column;
+          gap:24px;
+          align-items:flex-start;
+        }
+        .sl-report-preview-heading {
+          margin:0;
+          max-width:403px;
+          color:#1F1F1E;
+          font-family:'Plus Jakarta Sans', sans-serif;
+          font-size:40px;
+          font-weight:700;
+          line-height:120%;
+          letter-spacing:-0.03em;
+        }
+        .sl-report-preview-description {
+          margin:0;
+          max-width:457px;
+          color:#000000;
+          font-family:Inter, sans-serif;
+          font-size:20px;
+          font-weight:400;
+          line-height:150%;
+          letter-spacing:-0.03em;
+        }
+        .sl-report-preview-visual {
+          display:flex;
+          flex-direction:column;
+          gap:32px;
+          align-items:stretch;
+          min-width:0;
+        }
+        .sl-report-preview-frame {
+          position:relative;
+          width:100%;
+          max-width:767px;
+          height:499px;
+          border-radius:18px;
+          overflow:hidden;
+          background:#FFFFFF;
+          box-shadow:-7px 1px 15px rgba(0,0,0,0.10);
+        }
+        .sl-report-preview-image {
+          width:100%;
+          height:100%;
+          object-fit:cover;
+          object-position:top left;
+          display:block;
+        }
+        .sl-report-preview-title-mask {
+          position:absolute;
+          left:9px;
+          top:250px;
+          width:249px;
+          min-height:21px;
+          padding:4px 5px;
+          box-sizing:border-box;
+          background:#FFFFFF;
+          color:#1F1F1E;
+          font-family:'Plus Jakarta Sans', sans-serif;
+          font-size:14px;
+          font-weight:800;
+          line-height:120%;
+          letter-spacing:-0.03em;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .sl-agent-backed-block {
+          display:flex;
+          flex-direction:column;
+          align-items:flex-start;
+          gap:20px;
+        }
+        .sl-agent-backed-title {
+          margin:0;
+          color:#1F1F1E;
+          font-family:'Plus Jakarta Sans', sans-serif;
+          font-size:32px;
+          font-weight:700;
+          line-height:120%;
+          letter-spacing:-0.03em;
+        }
+        .sl-agent-backed-copy {
+          margin:0;
+          max-width:542px;
+          color:#000000;
+          font-family:Inter, sans-serif;
+          font-size:18px;
+          font-weight:400;
+          line-height:150%;
+          letter-spacing:-0.03em;
+        }
+        .sl-agent-avatar-row {
+          display:flex;
+          align-items:center;
+          height:56px;
+        }
+        .sl-agent-avatar {
+          width:56px;
+          height:56px;
+          border-radius:50%;
+          border:4px solid #FFFFFF;
+          object-fit:cover;
+          box-sizing:border-box;
+          background:#EEF0F2;
+        }
+        .sl-agent-avatar + .sl-agent-avatar {
+          margin-left:-10px;
+        }
+
+        @media(max-width:1180px) {
+          .sl-report-preview-section { padding:60px 40px !important; }
+          .sl-report-preview-inner {
+            width:auto !important;
+            max-width:100% !important;
+            grid-template-columns:1fr !important;
+            gap:40px !important;
+          }
+          .sl-report-preview-copy,
+          .sl-report-preview-description {
+            max-width:100% !important;
+          }
+          .sl-report-preview-frame {
+            max-width:100% !important;
+            height:auto !important;
+            aspect-ratio:767 / 499;
+          }
+          .sl-report-preview-title-mask {
+            top:50.1% !important;
+            left:1.2% !important;
+            width:32.5% !important;
+            min-height:auto !important;
+            font-size:clamp(9px, 1.7vw, 14px) !important;
+            padding:0.55% 0.65% !important;
+          }
+        }
+
         .sl-faq-item {
           display:flex;
           padding:24px 0;
@@ -503,6 +656,28 @@ export function StaleListingsLanding() {
           .sl-hero-heading { font-size:38px !important; }
           .sl-features-section { padding:60px 40px !important; }
           .sl-how-section { padding:40px 40px !important; }
+          .sl-report-preview-section { padding:60px 40px !important; }
+          .sl-report-preview-inner {
+            grid-template-columns:1fr !important;
+            gap:40px !important;
+          }
+          .sl-report-preview-copy,
+          .sl-report-preview-description {
+            max-width:100% !important;
+          }
+          .sl-report-preview-frame {
+            max-width:100% !important;
+            height:auto !important;
+            aspect-ratio:767 / 499;
+          }
+          .sl-report-preview-title-mask {
+            top:50.1% !important;
+            left:1.2% !important;
+            width:32.5% !important;
+            min-height:auto !important;
+            font-size:clamp(9px, 1.7vw, 14px) !important;
+            padding:0.55% 0.65% !important;
+          }
           .sl-testimonials-section { padding:60px 40px !important; }
           .sl-faq-section { padding:60px 40px !important; }
           .sl-pricing-section { padding:60px 40px !important; }
@@ -713,6 +888,65 @@ export function StaleListingsLanding() {
           /* How it works */
           .sl-how-section {
             padding:24px 16px !important;
+          }
+          .sl-report-preview-section {
+            padding:48px 16px !important;
+          }
+          .sl-report-preview-inner {
+            grid-template-columns:1fr !important;
+            gap:32px !important;
+          }
+          .sl-report-preview-copy {
+            gap:16px !important;
+          }
+          .sl-report-preview-heading {
+            max-width:100% !important;
+            font-size:34px !important;
+            letter-spacing:-0.04em !important;
+          }
+          .sl-report-preview-description {
+            max-width:100% !important;
+            font-size:18px !important;
+            letter-spacing:-0.03em !important;
+          }
+          .sl-report-preview-visual {
+            gap:28px !important;
+          }
+          .sl-report-preview-frame {
+            width:100% !important;
+            max-width:100% !important;
+            height:auto !important;
+            aspect-ratio:767 / 499;
+            border-radius:14px !important;
+            box-shadow:-4px 1px 12px rgba(0,0,0,0.10) !important;
+          }
+          .sl-report-preview-title-mask {
+            top:50.1% !important;
+            left:1.2% !important;
+            width:32.5% !important;
+            font-size:clamp(7px, 2.2vw, 10px) !important;
+            padding:0.5% 0.6% !important;
+          }
+          .sl-agent-backed-block {
+            gap:16px !important;
+          }
+          .sl-agent-backed-title {
+            font-size:28px !important;
+          }
+          .sl-agent-backed-copy {
+            font-size:16px !important;
+            max-width:100% !important;
+          }
+          .sl-agent-avatar-row {
+            height:50px !important;
+          }
+          .sl-agent-avatar {
+            width:50px !important;
+            height:50px !important;
+            border-width:3px !important;
+          }
+          .sl-agent-avatar + .sl-agent-avatar {
+            margin-left:-8px !important;
           }
           .sl-step-card {
             padding:24px 20px 0 !important;
@@ -1249,6 +1483,46 @@ export function StaleListingsLanding() {
       </section>
 
       {/* ── TESTIMONIALS ── */}
+      <section className="sl-report-preview-section">
+        <div className="sl-report-preview-inner">
+          <div className="sl-report-preview-copy">
+            <h2 className="sl-report-preview-heading">What Your Report Looks Like</h2>
+            <p className="sl-report-preview-description">
+              A personalised assessment highlighting opportunities to improve your property's chances of selling.
+            </p>
+          </div>
+
+          <div className="sl-report-preview-visual">
+            <div className="sl-report-preview-frame" aria-label="Stale Listings report preview">
+              <img
+                className="sl-report-preview-image"
+                src="/stale-report-preview.png"
+                alt="Preview of a Stale Listings report with property score and key findings"
+              />
+              <div className="sl-report-preview-title-mask">Willow House, 83 Conduit Road</div>
+            </div>
+
+            <div className="sl-agent-backed-block">
+              <h3 className="sl-agent-backed-title">Agent-Backed Recommendations</h3>
+              <p className="sl-agent-backed-copy">
+                Recommendations backed by the experience of agents actively selling homes in markets like yours
+              </p>
+              <div className="sl-agent-avatar-row" aria-label="Agent reviewers">
+                {[1, 2, 3, 4].map((avatar) => (
+                  <img
+                    key={avatar}
+                    className="sl-agent-avatar"
+                    src={`/team-avatars/avatar${avatar}.jpg`}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="sl-testimonials-section" style={{ padding:'80px 100px', background:'#EEF0F2' }}>
         <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', gap:24 }}>
           <h2 className="sl-testimonials-heading" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:48, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:713 }}>
