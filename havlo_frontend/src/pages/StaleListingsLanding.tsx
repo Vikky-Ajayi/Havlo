@@ -536,53 +536,11 @@ export function StaleListingsLanding() {
         .sl-report-preview-mobile-stack {
           display:none;
         }
-        .sl-mobile-report-crop {
-          position:relative;
-          width:100%;
-          overflow:hidden;
-          background:#FFFFFF;
-          border-radius:18px;
-          box-shadow:0 12px 24px rgba(0,0,0,0.10);
-        }
-        .sl-mobile-report-crop img {
-          position:absolute;
-          top:0;
-          height:auto;
-          max-width:none;
+        .sl-report-preview-mobile-image {
           display:block;
-        }
-        .sl-mobile-report-crop--summary {
-          aspect-ratio:356 / 522;
-        }
-        .sl-mobile-report-crop--summary img {
-          left:0;
-          width:261%;
-        }
-        .sl-mobile-report-crop--findings {
-          margin-top:12px;
-          aspect-ratio:356 / 318;
-        }
-        .sl-mobile-report-crop--findings img {
-          left:-67.4%;
-          width:167.4%;
-        }
-        .sl-mobile-report-title-mask {
-          position:absolute;
-          left:4.1%;
-          top:58%;
-          width:88%;
-          padding:2px 4px;
-          box-sizing:border-box;
-          background:#FFFFFF;
-          color:#1F1F1E;
-          font-family:'Plus Jakarta Sans', sans-serif;
-          font-size:clamp(14px, 4.5vw, 18px);
-          font-weight:800;
-          line-height:120%;
-          letter-spacing:-0.03em;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
+          width:100%;
+          height:auto;
+          filter:drop-shadow(0 12px 24px rgba(0,0,0,0.10));
         }
         .sl-agent-backed-block {
           display:flex;
@@ -1565,14 +1523,12 @@ export function StaleListingsLanding() {
               <div className="sl-report-preview-title-mask">Willow House, 83 Conduit Road</div>
             </div>
 
-            <div className="sl-report-preview-mobile-stack" role="img" aria-label="Mobile preview of a Stale Listings report">
-              <div className="sl-mobile-report-crop sl-mobile-report-crop--summary">
-                <img src="/stale-report-preview-4k.png" alt="" aria-hidden="true" />
-                <div className="sl-mobile-report-title-mask">Willow House, 83 Conduit Road</div>
-              </div>
-              <div className="sl-mobile-report-crop sl-mobile-report-crop--findings">
-                <img src="/stale-report-preview-4k.png" alt="" aria-hidden="true" />
-              </div>
+            <div className="sl-report-preview-mobile-stack" aria-label="Mobile preview of a Stale Listings report">
+              <img
+                className="sl-report-preview-mobile-image"
+                src="/stale-report-preview-mobile-4k.png"
+                alt="Mobile preview of a Stale Listings report with property score and key findings"
+              />
             </div>
 
             <div className="sl-agent-backed-block">
