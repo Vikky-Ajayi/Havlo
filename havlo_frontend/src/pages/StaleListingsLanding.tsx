@@ -1559,7 +1559,7 @@ export function StaleListingsLanding() {
             <div className="sl-report-preview-frame" aria-label="Stale Listings report preview">
               <img
                 className="sl-report-preview-image"
-                src="/stale-report-preview.png"
+                src="/stale-report-preview-4k.png"
                 alt="Preview of a Stale Listings report with property score and key findings"
               />
               <div className="sl-report-preview-title-mask">Willow House, 83 Conduit Road</div>
@@ -1567,11 +1567,11 @@ export function StaleListingsLanding() {
 
             <div className="sl-report-preview-mobile-stack" role="img" aria-label="Mobile preview of a Stale Listings report">
               <div className="sl-mobile-report-crop sl-mobile-report-crop--summary">
-                <img src="/stale-report-preview.png" alt="" aria-hidden="true" />
+                <img src="/stale-report-preview-4k.png" alt="" aria-hidden="true" />
                 <div className="sl-mobile-report-title-mask">Willow House, 83 Conduit Road</div>
               </div>
               <div className="sl-mobile-report-crop sl-mobile-report-crop--findings">
-                <img src="/stale-report-preview.png" alt="" aria-hidden="true" />
+                <img src="/stale-report-preview-4k.png" alt="" aria-hidden="true" />
               </div>
             </div>
 
