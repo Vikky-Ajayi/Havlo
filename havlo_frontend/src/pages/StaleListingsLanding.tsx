@@ -272,11 +272,22 @@ export function StaleListingsLanding() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [accessModalOpen, setAccessModalOpen] = useState(false);
   const [accessEmail, setAccessEmail] = useState<string | null>(null);
+  const [isMobileHeroInput, setIsMobileHeroInput] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  ));
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setAccessEmail(readProductAccessSession('stale-listings')?.email ?? null);
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 768px)');
+    const syncMobileState = () => setIsMobileHeroInput(query.matches);
+    syncMobileState();
+    query.addEventListener('change', syncMobileState);
+    return () => query.removeEventListener('change', syncMobileState);
   }, []);
 
   const focusHeroInput = () => {
@@ -353,6 +364,9 @@ export function StaleListingsLanding() {
           gap:8px;
           flex:1 1 auto;
           min-width:0;
+        }
+        .sl-input-placeholder-mobile {
+          display:none;
         }
 
         .sl-stale-logo {
@@ -773,13 +787,33 @@ export function StaleListingsLanding() {
           .sl-input-field-wrap {
             width:100% !important;
             min-width:0 !important;
-            overflow:hidden !important;
+            min-height:44px !important;
+            position:relative !important;
+            overflow:visible !important;
           }
           .sl-input-input {
             width:100% !important;
-            font-size:14px !important;
-            line-height:18px !important;
+            font-size:16px !important;
+            line-height:20px !important;
             min-width:0 !important;
+            height:44px !important;
+          }
+          .sl-input-placeholder-mobile {
+            display:block !important;
+            position:absolute !important;
+            left:32px !important;
+            right:0 !important;
+            top:50% !important;
+            transform:translateY(-50%) !important;
+            color:#7A7A7A !important;
+            font-family:"Libre Franklin", sans-serif !important;
+            font-size:15px !important;
+            font-weight:500 !important;
+            line-height:18px !important;
+            letter-spacing:-0.03em !important;
+            white-space:normal !important;
+            overflow:visible !important;
+            pointer-events:none !important;
           }
           .sl-input-btn {
             width:100% !important;
@@ -1296,9 +1330,14 @@ export function StaleListingsLanding() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleStart()}
-                  placeholder="Enter property address or Rightmove/Zoopla URL…"
-                  style={{ flex:1, background:'transparent', border:'none', outline:'none', fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:14, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'17px', minWidth:0 }}
+                  placeholder={isMobileHeroInput ? '' : 'Enter property address or Rightmove/Zoopla URL…'}
+                  style={{ flex:1, background:'transparent', border:'none', outline:'none', fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:16, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'20px', minWidth:0 }}
                   />
+                  {isMobileHeroInput && !input && (
+                    <span className="sl-input-placeholder-mobile">
+                      Enter property address or Rightmove/Zoopla URL…
+                    </span>
+                  )}
                 </div>
                 <button
                   className="sl-input-btn"
