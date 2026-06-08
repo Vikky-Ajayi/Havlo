@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { trackMetaPixelEvent } from '../lib/metaPixel';
 
 const PURPLE = '#A409D2';
 
@@ -159,6 +160,12 @@ export function StaleListingsQuestions() {
     sessionStorage.setItem('sl_answers', JSON.stringify(answers));
     sessionStorage.setItem('sl_listing_url', listingUrl);
     sessionStorage.setItem('sl_address', address);
+    trackMetaPixelEvent('Lead', {
+      content_name: 'Stale Listings Assessment Form',
+      content_category: 'stale_listings',
+      property_input_type: listingUrl ? 'listing_url' : address ? 'property_address' : 'unknown',
+      questions_answered: Object.keys(answers).length,
+    }, `stale_lead_${Date.now()}`);
     navigate('/stale-listings/plan');
   };
 

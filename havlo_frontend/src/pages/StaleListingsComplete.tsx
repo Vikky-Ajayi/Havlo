@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { staleListingsPlanParams, trackMetaPixelEvent } from '../lib/metaPixel';
 
 const PURPLE = '#A409D2';
 
@@ -52,6 +53,30 @@ export function StaleListingsComplete() {
     }
   };
 
+  const trackPurchaseOnce = (ref: string, packageKey: string) => {
+    const storageKey = `sl_meta_purchase_${ref}`;
+    try {
+      if (window.localStorage.getItem(storageKey)) return;
+    } catch {
+      // Ignore storage access issues and still attempt tracking.
+    }
+
+    const eventId = `stale_purchase_${ref}`;
+    const didTrack = trackMetaPixelEvent('Purchase', {
+      ...staleListingsPlanParams(packageKey),
+      order_id: ref,
+      num_items: 1,
+    }, eventId);
+
+    if (didTrack) {
+      try {
+        window.localStorage.setItem(storageKey, eventId);
+      } catch {
+        // Storage is only used for client-side dedupe.
+      }
+    }
+  };
+
   const verifyAndFetch = async (ref: string) => {
     try {
       const result = await api.staleListingsVerifyPayment(ref);
@@ -59,14 +84,17 @@ export function StaleListingsComplete() {
 
       if (payment_status === 'completed') {
         stopPolling();
+        let completedPlanKey = sessionStorage.getItem('sl_selected_plan') || 'professional_review';
         try {
           const assessment = await api.staleListingsGetReport(ref);
           const a = assessment as { email: string; package: string };
           setUserEmail(a.email || '');
-          setPlanKey(a.package || 'professional_review');
+          completedPlanKey = a.package || 'professional_review';
+          setPlanKey(completedPlanKey);
         } catch {
           // Non-fatal. The payment is already confirmed.
         }
+        trackPurchaseOnce(ref, completedPlanKey);
         setPageState('success');
         return true;
       }

@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { staleListingsPlanParams, trackMetaPixelEvent } from '../lib/metaPixel';
 
 const PURPLE = '#A409D2';
 const TEAL = '#006163';
@@ -282,6 +283,11 @@ export function StaleListingsPlan() {
     const answers = JSON.parse(sessionStorage.getItem('sl_answers') || '{}');
     setLoading(true);
     setError('');
+    sessionStorage.setItem('sl_selected_plan', selectedPlan);
+    trackMetaPixelEvent('AddToCart', {
+      ...staleListingsPlanParams(selectedPlan),
+      property_input_type: listingUrl ? 'listing_url' : address ? 'property_address' : 'unknown',
+    }, `stale_add_to_cart_${selectedPlan}_${Date.now()}`);
     try {
       const result = await api.staleListingsSubmit({
         ...form,
