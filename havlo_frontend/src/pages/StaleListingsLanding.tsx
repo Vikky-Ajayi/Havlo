@@ -166,9 +166,9 @@ const PLANS = [
     id: 'professional_review', name: 'Professional Review', price: '£299.99',
     tagline: 'Serious sellers wanting expert guidance to improve saleability.',
     preNote: 'Includes everything in Quick Insight, plus',
-    preNoteDetail: 'a detailed review by an estate agent actively selling similar properties in the local area.',
+    preNoteDetail: 'an in-depth assessment from a panel of experienced estate agents currently selling properties similar to yours in the local market.',
     turnaround: 'Turnaround: 24 hours',
-    features: ['Buyer appeal analysis','Listing photography & description review','Local competition benchmarking','"Why buyers may be overlooking this property" section','Recommended pricing strategy','Priority turnaround'],
+    features: ['Buyer appeal analysis','Listing photography & description review','Local competition benchmarking','Why buyers may be overlooking this property section','Recommended pricing strategy','Priority turnaround'],
     popular: true,
   },
   {
