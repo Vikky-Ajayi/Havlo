@@ -1319,7 +1319,7 @@ export function StaleListingsLanding() {
             <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
               <div
                 className="sl-input-bar"
-                style={{ display:'flex', flexDirection:'row', alignItems:'center', width:570, height:56, padding:'4px 4px 4px 16px', boxSizing:'border-box', background:'#EEF0F2', borderBottom:'1px solid rgba(0,0,0,0.05)', borderRadius:12, gap:8 }}
+                style={{ display:'flex', flexDirection:'row', alignItems:'center', width:592, height:56, padding:'4px 4px 4px 16px', boxSizing:'border-box', background:'#EEF0F2', borderBottom:'1px solid rgba(0,0,0,0.05)', borderRadius:12, gap:8 }}
               >
                 <div className="sl-input-field-wrap">
                   <HomeInputIcon />
@@ -1342,7 +1342,7 @@ export function StaleListingsLanding() {
                 <button
                   className="sl-input-btn"
                   onClick={handleStart}
-                  style={{ display:'flex', width:169, height:48, padding:'12px 20px', justifyContent:'center', alignItems:'center', gap:4, background:'#000000', color:'#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, letterSpacing:'-0.02em', borderRadius:12, border:'none', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}
+                  style={{ display:'flex', width:160, height:48, padding:'12px 18px', justifyContent:'center', alignItems:'center', gap:4, background:'#000000', color:'#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, letterSpacing:'-0.02em', borderRadius:12, border:'none', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}
                 >
                   Assess my home
                 </button>

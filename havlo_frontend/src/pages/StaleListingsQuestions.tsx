@@ -9,6 +9,12 @@ const PURPLE = '#A409D2';
 /* ─── QUESTIONS DATA ─── */
 const QUESTIONS = [
   {
+    id: 'q0_user_type',
+    title: 'Which best describes you?',
+    options: ['Homeowner', 'Real Estate Agent', 'Other'],
+    multiSelect: false,
+  },
+  {
     id: 'q1_viewings',
     title: 'How many viewings has the property had since being listed?',
     subtitle: 'Your answers help us identify potential friction points, buyer concerns, and opportunities to improve saleability.',
