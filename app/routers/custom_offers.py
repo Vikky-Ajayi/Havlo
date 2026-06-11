@@ -52,7 +52,7 @@ admin_router = APIRouter(prefix="/custom-offers", tags=["Custom Offers Admin"])
 CO_PLANS: dict[str, dict[str, Any]] = {
     "connect": {
         "name": "Connect",
-        "amount": 1.00,
+        "amount": 49.99,
         "currency": "GBP",
     },
     "standout": {
