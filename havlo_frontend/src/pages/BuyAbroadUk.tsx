@@ -374,7 +374,7 @@ export const BuyAbroadUk: React.FC = () => {
 
         <section id="process" className="buk-process">
           <div className="buk-inner">
-            <span>THE PROCESS</span>
+            <span className="buk-eyebrow">THE PROCESS</span>
             <h2>Your advisor handles everything. You just decide.</h2>
             <div className="buk-process-grid">
               {[
@@ -554,7 +554,6 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-tags-blue span { color: #1a4db5; background: #dbeafe; border-color: #bdd7fa; }
         .buk-tags-purple span { color: #7300aa; background: #f2e3fd; border-color: #ddb8f5; }
         .buk-process { background: #050807; color: #fff; padding: 72px 0; text-align: center; }
-        .buk-process > .buk-inner > span { font-weight: 900; color: #bbb; }
         .buk-process h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 14px 0 54px; }
         .buk-process-grid { display: grid; grid-template-columns: 1fr 90px 1fr 90px 1fr 90px 1fr; gap: 12px; align-items: center; }
         .buk-process-step b { display: inline-flex; width: 24px; height: 24px; border-radius: 999px; align-items: center; justify-content: center; background: #b100df; margin-bottom: 12px; }
