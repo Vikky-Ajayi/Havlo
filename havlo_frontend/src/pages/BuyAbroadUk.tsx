@@ -563,7 +563,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-testimonial-grid { text-align: left; }
         .buk-tcard { background: #f7f8fa !important; border: 1px solid #e8e9ec !important; border-radius: 16px !important; padding: 28px 28px 26px !important; display: flex; flex-direction: column; }
         .buk-quote { color: #8b00d4; font-size: 52px; line-height: 1; font-weight: 900; margin-bottom: 10px; font-family: Georgia, serif; letter-spacing: -2px; }
-        .buk-tcard-body { font-size: 14px; line-height: 1.65; color: #1a1a1a; margin: 0 0 0; flex: 1; }
+        .buk-tcard-body { font-family: Inter, sans-serif; font-size: 20px; font-weight: 400; line-height: 1.5; letter-spacing: -0.03em; color: #1a1a1a; margin: 0 0 0; flex: 1; }
         .buk-rating { color: #f59e0b; font-size: 18px; margin: 20px 0 14px; letter-spacing: 3px; }
         .buk-tcard-name { display: block; font-size: 15px; font-weight: 800; color: #111; }
         .buk-tcard-meta { display: block; font-size: 13px; color: #888; margin-top: 3px; font-weight: 400; }
