@@ -1107,11 +1107,11 @@ export function StaleListingsAgents() {
           }
 
           .sla-header-inner {
-            height: 39px;
+            height: 60px;
           }
 
           .sla-logo {
-            width: 67px;
+            width: 120px;
           }
 
           .sla-nav {
@@ -1120,15 +1120,15 @@ export function StaleListingsAgents() {
 
           .sla-menu-button {
             display: flex;
-            width: 24px;
-            height: 24px;
+            width: 36px;
+            height: 36px;
           }
 
           .sla-menu-button span,
           .sla-menu-button::before,
           .sla-menu-button::after {
-            width: 15px;
-            height: 1.5px;
+            width: 22px;
+            height: 2px;
           }
 
           .sla-mobile-menu.is-open {
@@ -1145,321 +1145,392 @@ export function StaleListingsAgents() {
 
           .sla-hero-inner {
             min-height: 0;
-            padding-top: 24px;
-            padding-bottom: 28px;
-            gap: 20px;
+            padding-top: 32px;
+            padding-bottom: 32px;
+            gap: 28px;
           }
 
           .sla-hero-copy h1 {
             width: 100%;
-            margin-bottom: 13px;
-            font-size: 28px;
-            line-height: 1.08;
-            letter-spacing: -0.84px;
+            margin-bottom: 16px;
+            font-size: 36px;
+            line-height: 1.1;
+            letter-spacing: -1.08px;
           }
 
           .sla-hero-copy p {
-            margin-bottom: 9px;
-            font-size: 10px;
+            margin-bottom: 12px;
+            font-size: 16px;
             line-height: 1.5;
-            letter-spacing: -0.2px;
+            letter-spacing: -0.48px;
           }
 
           .sla-submit-form {
             width: 100%;
-            height: 40px;
-            margin: 16px 0 16px;
-            padding: 3px 3px 3px 8px;
-            border-radius: 4px;
+            height: 52px;
+            margin: 20px 0 16px;
+            padding: 4px 4px 4px 12px;
+            border-radius: 8px;
             grid-template-columns: minmax(0, 1fr) auto;
           }
 
           .sla-input-wrap {
-            height: 34px;
-            gap: 6px;
+            height: 44px;
+            gap: 8px;
           }
 
           .sla-input-wrap svg {
-            width: 14px;
-            height: 14px;
+            width: 18px;
+            height: 18px;
           }
 
           .sla-input-wrap input {
-            font-size: 9px;
-            letter-spacing: -0.27px;
+            font-size: 14px;
+            letter-spacing: -0.42px;
           }
 
           .sla-submit-form button {
-            min-width: 93px;
-            height: 34px;
-            padding: 0 10px;
-            border-radius: 6px;
-            font-size: 9px;
-            letter-spacing: -0.18px;
+            min-width: 130px;
+            height: 44px;
+            padding: 0 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            letter-spacing: -0.28px;
           }
 
           .sla-trust-row {
-            gap: 6px;
+            gap: 8px;
           }
 
           .sla-trust-row strong {
-            font-size: 10px;
+            font-size: 16px;
           }
 
           .sla-trust-row > span:last-child {
-            font-size: 8px;
-            letter-spacing: -0.16px;
+            font-size: 14px;
+            letter-spacing: -0.28px;
           }
 
           .sla-stars span {
-            width: 16px;
-            height: 16px;
-            font-size: 11px;
+            width: 24px;
+            height: 24px;
+            font-size: 17px;
           }
 
           .sla-metrics {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            margin-top: 18px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 28px;
           }
 
           .sla-metric strong {
-            font-size: 10px;
-            letter-spacing: -0.3px;
+            font-size: 16px;
+            letter-spacing: -0.48px;
           }
 
           .sla-metric span {
-            margin-top: 7px;
-            font-size: 7px;
+            margin-top: 8px;
+            font-size: 13px;
             line-height: 1.45;
-            letter-spacing: -0.14px;
+            letter-spacing: -0.26px;
           }
 
           .sla-hero-visual {
-            width: 151px;
+            width: 100%;
             height: auto;
           }
 
           .sla-hero-visual img {
-            width: 151px;
+            width: 100%;
             height: auto;
           }
 
           .sla-section {
-            padding: 28px 0;
+            padding: 48px 0;
           }
 
           .sla-section h2 {
             width: 100%;
             margin-bottom: 32px;
-            font-size: 22px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 40px;
+            font-weight: 600;
             line-height: 1.2;
-            letter-spacing: -0.66px;
+            letter-spacing: -0.03em;
           }
 
           .sla-quiet-grid,
           .sla-steps-grid,
           .sla-analysis-grid {
             grid-template-columns: 1fr;
-            gap: 18px;
+            gap: 24px;
           }
 
           .sla-quiet-grid {
-            margin-bottom: 24px;
+            margin-bottom: 32px;
           }
 
           .sla-line-icon {
-            width: 18px;
-            height: 18px;
+            width: 32px;
+            height: 32px;
           }
 
           .sla-quiet-card h3 {
-            margin: 13px 0 9px;
-            font-size: 12px;
-            letter-spacing: -0.36px;
+            margin: 24px 0 12px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-quiet-card p,
           .sla-section-intro {
-            font-size: 9px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
             line-height: 1.5;
-            letter-spacing: -0.27px;
+            letter-spacing: -0.03em;
           }
 
           .sla-steps {
-            padding-top: 20px;
+            padding-top: 0;
           }
 
           .sla-step-card {
-            min-height: 136px;
-            padding: 16px;
-            border-radius: 8px;
+            min-height: 0;
+            padding: 28px;
+            border-radius: 16px;
           }
 
           .sla-step-card span {
-            margin-bottom: 33px;
-            font-size: 18px;
-            letter-spacing: -0.54px;
+            margin-bottom: 48px;
+            font-size: 32px;
+            letter-spacing: -0.96px;
           }
 
           .sla-step-card h3 {
-            margin-bottom: 14px;
-            font-size: 11px;
-            letter-spacing: -0.33px;
+            margin-bottom: 16px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-step-card p {
-            font-size: 9px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
             line-height: 1.5;
-            letter-spacing: -0.27px;
+            letter-spacing: -0.03em;
           }
 
           .sla-dark .sla-shell {
-            padding-top: 32px;
-            padding-bottom: 32px;
+            padding-top: 48px;
+            padding-bottom: 48px;
           }
 
           .sla-dark h2 {
-            margin-bottom: 12px;
-            font-size: 22px;
-            letter-spacing: -1.2px;
+            margin-bottom: 16px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 40px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-dark-sub {
-            margin-bottom: 24px;
-            font-size: 9px;
+            margin-bottom: 32px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+            letter-spacing: -0.03em;
           }
 
           .sla-analysis-card {
-            min-height: 92px;
-            padding: 12px;
-            border-radius: 8px;
+            min-height: 0;
+            padding: 24px;
+            border-radius: 16px;
           }
 
           .sla-small-icon {
-            width: 18px;
-            height: 18px;
-            margin-bottom: 22px;
+            width: 28px;
+            height: 28px;
+            margin-bottom: 32px;
           }
 
           .sla-analysis-card h3 {
-            margin-bottom: 8px;
-            font-size: 10px;
-            letter-spacing: -0.32px;
+            margin-bottom: 12px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-analysis-card p {
-            font-size: 8px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.5;
+            letter-spacing: -0.03em;
           }
 
           .sla-recovery {
-            gap: 22px;
+            gap: 32px;
           }
 
           .sla-recovery h2 {
-            width: 230px;
-            margin-bottom: 5px;
-            font-size: 18px;
-            letter-spacing: -0.54px;
+            width: 100%;
+            margin-bottom: 16px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 40px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-agent-only {
-            margin-bottom: 8px;
-            font-size: 8px;
+            margin-bottom: 16px;
+            font-size: 18px;
           }
 
           .sla-recovery li {
-            font-size: 8px;
-            line-height: 1.55;
-            letter-spacing: -0.24px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            line-height: 1.6;
+            letter-spacing: -0.03em;
           }
 
           .sla-report-card {
-            padding: 14px;
+            padding: 24px;
           }
 
           .sla-report-score strong {
-            font-size: 24px;
+            font-size: 40px;
           }
 
           .sla-report-row {
-            grid-template-columns: 76px minmax(0, 1fr) 38px;
-            gap: 8px;
-            font-size: 8px;
+            grid-template-columns: 100px minmax(0, 1fr) 52px;
+            gap: 10px;
+            font-size: 14px;
           }
 
           .sla-report-findings li {
-            font-size: 8px;
+            font-size: 14px;
           }
 
           .sla-pricing h2 {
-            font-size: 22px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 40px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-pricing > p {
-            font-size: 9px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.5;
+            letter-spacing: -0.03em;
           }
 
           .sla-plan-card {
             min-height: 0;
-            padding: 16px;
-            border-radius: 18px;
+            padding: 28px;
+            border-radius: 20px;
           }
 
           .sla-plan-card h3 {
-            font-size: 28px;
+            font-size: 40px;
           }
 
           .sla-plan-card strong {
-            font-size: 13px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-plan-card p,
           .sla-plan-card li {
-            font-size: 9px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.5;
+            letter-spacing: -0.03em;
           }
 
           .sla-case-grid {
             grid-template-columns: 1fr;
-            gap: 12px;
+            gap: 16px;
           }
 
           .sla-case-block {
-            padding: 14px;
+            padding: 24px;
           }
 
-          .sla-case-block h3,
+          .sla-case-block h3 {
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+          }
+
           .sla-case-block h4 {
-            font-size: 10px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-case-block li,
           .sla-case-block p {
-            font-size: 9px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.5;
+            letter-spacing: -0.03em;
           }
 
           .sla-faq h2 {
-            font-size: 22px;
-            margin-bottom: 18px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 40px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+            margin-bottom: 24px;
           }
 
           .sla-faq-item {
-            padding: 14px 0;
+            padding: 20px 0;
           }
 
           .sla-faq-item h3 {
-            font-size: 9px;
+            font-family: 'Plus Jakarta Sans', Inter, Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
           }
 
           .sla-faq-item p {
-            font-size: 8px;
-            letter-spacing: -0.2px;
+            font-family: Inter, Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.5;
+            letter-spacing: -0.03em;
           }
 
           .sla-faq-toggle {
-            min-width: 72px;
-            height: 26px;
-            font-size: 8px;
+            min-width: 120px;
+            height: 44px;
+            font-size: 16px;
           }
 
           .sla-footer-inner {
@@ -1469,7 +1540,7 @@ export function StaleListingsAgents() {
           }
 
           .sla-footer-logo {
-            width: 98px;
+            width: 128px;
           }
 
           .sla-footer-links {
