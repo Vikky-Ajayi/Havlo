@@ -555,7 +555,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-tags-purple span { color: #7300aa; background: #f2e3fd; border-color: #ddb8f5; }
         .buk-process { background: #050807; color: #fff; padding: 72px 0; text-align: center; }
         .buk-process > .buk-inner > span { font-weight: 900; color: #bbb; }
-        .buk-process h2 { font-size: 44px; line-height: 1; margin: 14px 0 54px; }
+        .buk-process h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 14px 0 54px; }
         .buk-process-grid { display: grid; grid-template-columns: 1fr 90px 1fr 90px 1fr 90px 1fr; gap: 12px; align-items: center; }
         .buk-process-step b { display: inline-flex; width: 24px; height: 24px; border-radius: 999px; align-items: center; justify-content: center; background: #b100df; margin-bottom: 12px; }
         .buk-process-step h3 { margin: 0 0 8px; font-size: 16px; font-weight: 1000; }
