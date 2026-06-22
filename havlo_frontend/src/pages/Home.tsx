@@ -383,7 +383,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* 7. Bottom CTA Section */}
-      <section className="relative flex flex-col items-center bg-white lg:pt-[120px] lg:pb-12 overflow-hidden py-5 my-0 pt-[30px] pb-[0px]">
+      <section className="relative flex flex-col items-center bg-white overflow-hidden my-0 pt-[92px] pb-[72px] sm:pt-[110px] sm:pb-[88px] lg:pt-[120px] lg:pb-12">
         <div className="relative z-20 flex max-w-[903px] flex-col items-center gap-8 px-4 text-center">
           <h2 className="font-display text-[36px] sm:text-[56px] md:text-[64px] lg:text-[80px] font-black leading-tight lg:leading-none tracking-[-0.96px] lg:tracking-[-1.6px] text-black">
             Ready to Take the Next Step?
@@ -402,7 +402,7 @@ export const Home: React.FC = () => {
         </div>
 
         {/* Decorative Torn Edge Background */}
-        <div className="absolute top-0 left-0 right-0 h-[200px] lg:h-[400px] z-10">
+        <div className="absolute -top-[118px] left-0 right-0 h-[220px] sm:-top-[92px] sm:h-[240px] lg:top-0 lg:h-[400px] z-10">
           <HeroBackground 
             showTop={true}
             showBottom={false}

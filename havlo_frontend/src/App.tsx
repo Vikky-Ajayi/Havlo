@@ -8,6 +8,7 @@ import { useModal } from './hooks/useModal';
 const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const AboutUs = React.lazy(() => import('./pages/AboutUs').then(m => ({ default: m.AboutUs })));
 const BuyAbroad = React.lazy(() => import('./pages/BuyAbroad').then(m => ({ default: m.BuyAbroad })));
+const BuyAbroadUk = React.lazy(() => import('./pages/BuyAbroadUk').then(m => ({ default: m.BuyAbroadUk })));
 const RelaunchAssessment = React.lazy(() => import('./pages/RelaunchAssessment').then(m => ({ default: m.RelaunchAssessment })));
 const EliteProperty = React.lazy(() => import('./pages/EliteProperty').then(m => ({ default: m.EliteProperty })));
 const BuyHome = React.lazy(() => import('./pages/BuyHome').then(m => ({ default: m.BuyHome })));
@@ -38,6 +39,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ defa
 const AdminPanel = React.lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const CheckoutPage = React.lazy(() => import('./pages/Checkout').then(m => ({ default: m.CheckoutPage })));
 const StaleListingsLanding = React.lazy(() => import('./pages/StaleListingsLanding').then(m => ({ default: m.StaleListingsLanding })));
+const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents').then(m => ({ default: m.StaleListingsAgents })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
 const StaleListingsReviewAccess = React.lazy(() => import('./pages/StaleListingsReviewAccess').then(m => ({ default: m.StaleListingsReviewAccess })));
 const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
@@ -225,8 +227,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = pathname.startsWith('/admin');
   const isStaleListings = pathname.startsWith('/stale-listings');
   const isCustomOffers = pathname.startsWith('/custom-offers');
+  const isBuyAbroadUk = pathname.startsWith('/buyabroad/uk');
 
-  if (isDashboard || isAdmin || isStaleListings || isCustomOffers) {
+  if (isDashboard || isAdmin || isStaleListings || isCustomOffers || isBuyAbroadUk) {
     return <main className="flex-grow">{children}</main>;
   }
 
@@ -255,6 +258,7 @@ export default function App() {
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/about" element={<Navigate to="/about-us" replace />} />
               <Route path="/buy-property-abroad" element={<BuyAbroad />} />
+              <Route path="/buyabroad/uk" element={<BuyAbroadUk />} />
               <Route path="/custom-offers" element={<CustomOffers />} />
               <Route path="/custom-offers/access" element={<CustomOffersAccess />} />
               <Route path="/custom-offers/portal" element={<CustomOffersPortal />} />
@@ -296,6 +300,7 @@ export default function App() {
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
               <Route path="/stale-listings" element={<StaleListingsLanding />} />
+              <Route path="/stale-listings/agents" element={<StaleListingsAgents />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
               <Route path="/stale-listings/review-access" element={<StaleListingsReviewAccess />} />
               <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />

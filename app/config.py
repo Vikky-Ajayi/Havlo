@@ -99,7 +99,7 @@ class Settings(BaseSettings):
 
     # ── Session fee ──────────────────────────────────────────────────────
     SESSION_FEE_AMOUNT: float = 200.0
-    SESSION_FEE_CURRENCY: str = "USD"
+    SESSION_FEE_CURRENCY: str = "GBP"
 
     # ── Frontend ─────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:5173"
