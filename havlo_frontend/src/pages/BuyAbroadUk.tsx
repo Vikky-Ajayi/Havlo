@@ -543,16 +543,16 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-eyebrow { color: #b100df; font-size: 14px; font-weight: 1000; }
         .buk-section h2 { font-size: 48px; line-height: 1; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .buk-property-card { border: 1px solid #e6e6e6; border-radius: 12px; background: #fff; overflow: hidden; }
+        .buk-property-card { border: 1px solid #e6e6e6; border-radius: 14px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
         .buk-property-card img { width: 100%; height: 190px; object-fit: cover; display: block; }
-        .buk-property-card div { padding: 22px; }
-        .buk-property-card h3 { font-size: 24px; font-weight: 1000; margin: 0 0 10px; }
-        .buk-property-card p { font-size: 14px; line-height: 1.5; color: #333; }
-        .buk-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-        .buk-tags span { font-size: 11px; font-weight: 900; }
-        .buk-tags-green span { color: #00a868; }
-        .buk-tags-blue span { color: #3478f6; }
-        .buk-tags-purple span { color: #c000e8; }
+        .buk-property-card > div { padding: 20px 22px 22px; }
+        .buk-property-card h3 { font-size: 19px; font-weight: 800; color: #111; margin: 0 0 8px; letter-spacing: -0.01em; }
+        .buk-property-card p { font-size: 14px; line-height: 1.55; color: #444; margin: 0; }
+        .buk-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+        .buk-tags span { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 12px; background: transparent; }
+        .buk-tags-green span { color: #00955a; border: 1.5px solid #00955a; }
+        .buk-tags-blue span { color: #2563eb; border: 1.5px solid #2563eb; }
+        .buk-tags-purple span { color: #9b00cc; border: 1.5px solid #9b00cc; }
         .buk-process { background: #050807; color: #fff; padding: 72px 0; text-align: center; }
         .buk-process > .buk-inner > span { font-weight: 900; color: #bbb; }
         .buk-process h2 { font-size: 44px; line-height: 1; margin: 14px 0 54px; }
