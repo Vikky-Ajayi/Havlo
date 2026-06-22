@@ -530,7 +530,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-market h2 { font-size: 44px; line-height: 1.05; margin-bottom: 12px; }
         .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; }
         .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
-        .buk-market-body:first-of-type { margin-top: 40px; }
+        .buk-section-lead + .buk-market-body { margin-top: 40px; }
         .buk-market-body + .buk-market-body { margin-top: 32px; }
         .buk-stats { display: flex; flex-direction: column; }
         .buk-stat-item { border-left: 4px solid #8b00d4; padding: 4px 0 24px 22px; }
