@@ -336,9 +336,9 @@ export const BuyAbroadUk: React.FC = () => {
         <section className="buk-market">
           <div className="buk-inner">
             <h2>The UK remains one of the most stable property markets in the world</h2>
+            <p className="buk-section-lead">For Nigerian investors, the UK offers legal clarity, strong rental demand, and long-term capital growth, backed by a system you can trust even when you’re 4,000 miles away.</p>
             <div className="buk-market-grid">
               <div>
-                <p className="buk-section-lead">For Nigerian investors, the UK offers legal clarity, strong rental demand, and long-term capital growth, backed by a system you can trust even when you’re 4,000 miles away.</p>
                 <p className="buk-market-body">The UK housing market has consistently outperformed inflation over 20 years. London alone has a structural undersupply of 30,000+ homes per year. For buy-to-let investors, average gross yields in cities like Birmingham, Manchester, and Leeds sit between 6-9%.</p>
                 <p className="buk-market-body">And unlike many markets, the UK has no restrictions on foreign ownership. With Havlo Buy Abroad, you get a dedicated advisor who connects you to the right agent, solicitor, and conveyancer — and tells you exactly what to pay and how to pay it.</p>
               </div>
@@ -527,12 +527,11 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-strip-item { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 800; }
         .buk-strip-item svg { color: #b100df; }
         .buk-market { background: #f4f4f4; padding: 72px 0; }
-        .buk-market-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 80px; align-items: start; margin-top: 14px; }
+        .buk-market-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 80px; align-items: start; margin-top: 40px; }
         .buk-market h2, .buk-section h2, .buk-process h2, .buk-bottom-cta h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
         .buk-market h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 40px; font-weight: 600; line-height: 1.3; letter-spacing: -0.03em; margin-bottom: 12px; }
         .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; }
         .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
-        .buk-section-lead + .buk-market-body { margin-top: 40px; }
         .buk-market-body + .buk-market-body { margin-top: 32px; }
         .buk-stats { display: flex; flex-direction: column; }
         .buk-stat-item { border-left: 4px solid #8b00d4; padding: 4px 0 24px 22px; }
