@@ -400,12 +400,12 @@ export const BuyAbroadUk: React.FC = () => {
             <h2>Nigerians buying UK property — without the stress</h2>
             <div className="buk-testimonial-grid">
               {testimonials.map((item) => (
-                <article key={item.author}>
+                <article key={item.author} className="buk-tcard">
                   <div className="buk-quote">“</div>
-                  <p>{item.quote}</p>
+                  <p className="buk-tcard-body">{item.quote}</p>
                   <div className="buk-rating">★★★★★</div>
-                  <strong>{item.author}</strong>
-                  <span>{item.meta}</span>
+                  <strong className="buk-tcard-name">{item.author}</strong>
+                  <span className="buk-tcard-meta">{item.meta}</span>
                 </article>
               ))}
             </div>
@@ -538,7 +538,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-eyebrow { color: #b100df; font-size: 14px; font-weight: 1000; }
         .buk-section h2 { font-size: 48px; line-height: 1; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .buk-property-card, .buk-testimonial-grid article { border: 1px solid #e6e6e6; border-radius: 12px; background: #fff; overflow: hidden; }
+        .buk-property-card { border: 1px solid #e6e6e6; border-radius: 12px; background: #fff; overflow: hidden; }
         .buk-property-card img { width: 100%; height: 190px; object-fit: cover; display: block; }
         .buk-property-card div { padding: 22px; }
         .buk-property-card h3 { font-size: 24px; font-weight: 1000; margin: 0 0 10px; }
@@ -558,12 +558,12 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-arrow { width: 76px; justify-self: center; }
         .buk-testimonials { text-align: center; }
         .buk-testimonial-grid { text-align: left; }
-        .buk-testimonial-grid article { padding: 28px; }
-        .buk-quote { color: #b100df; font-size: 64px; line-height: .5; font-weight: 1000; }
-        .buk-testimonial-grid p { font-size: 15px; line-height: 1.5; }
-        .buk-rating { color: #ff7a1a; margin: 18px 0; letter-spacing: 2px; }
-        .buk-testimonial-grid strong, .buk-testimonial-grid span { display: block; }
-        .buk-testimonial-grid span { font-size: 12px; color: #555; margin-top: 4px; }
+        .buk-tcard { background: #f7f8fa !important; border: 1px solid #e8e9ec !important; border-radius: 16px !important; padding: 28px 28px 26px !important; display: flex; flex-direction: column; }
+        .buk-quote { color: #8b00d4; font-size: 52px; line-height: 1; font-weight: 900; margin-bottom: 10px; font-family: Georgia, serif; letter-spacing: -2px; }
+        .buk-tcard-body { font-size: 14px; line-height: 1.65; color: #1a1a1a; margin: 0 0 0; flex: 1; }
+        .buk-rating { color: #f59e0b; font-size: 18px; margin: 20px 0 14px; letter-spacing: 3px; }
+        .buk-tcard-name { display: block; font-size: 15px; font-weight: 800; color: #111; }
+        .buk-tcard-meta { display: block; font-size: 13px; color: #888; margin-top: 3px; font-weight: 400; }
         .buk-faq { text-align: center; }
         .buk-faq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px 44px; text-align: left; margin-top: 44px; }
         .buk-faq-grid article { border-bottom: 1px solid #e4e4e4; padding-bottom: 22px; }
