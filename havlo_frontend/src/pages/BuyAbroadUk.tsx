@@ -343,9 +343,9 @@ export const BuyAbroadUk: React.FC = () => {
                 <p className="buk-market-body">And unlike many markets, the UK has no restrictions on foreign ownership. With Havlo Buy Abroad, you get a dedicated advisor who connects you to the right agent, solicitor, and conveyancer — and tells you exactly what to pay and how to pay it.</p>
               </div>
               <div className="buk-stats">
-                <div className="buk-stat-item"><strong>£285bn</strong><span>UK property purchased by overseas buyers in the last 5 years</span></div>
-                <div className="buk-stat-item"><strong>6-9%</strong><span>Average gross rental yields in major UK cities outside London</span></div>
-                <div className="buk-stat-item"><strong>No cap</strong><span>Foreign nationals face zero ownership restrictions in the UK</span></div>
+                <div className="buk-stat-item mb-[20px]"><strong>£285bn</strong><span>UK property purchased by overseas buyers in the last 5 years</span></div>
+                <div className="buk-stat-item mb-[20px]"><strong>6-9%</strong><span>Average gross rental yields in major UK cities outside London</span></div>
+                <div className="buk-stat-item mb-[20px]"><strong>No cap</strong><span>Foreign nationals face zero ownership restrictions in the UK</span></div>
               </div>
             </div>
           </div>
