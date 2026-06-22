@@ -432,7 +432,7 @@ export const BuyAbroadUk: React.FC = () => {
         <section className="buk-bottom-cta">
           <div className="buk-inner">
             <div className="buk-cta-card">
-              <h2>Your UK property move starts<br />with one free call.</h2>
+              <h2>Your UK property move starts<br />with <span>one free call.</span></h2>
               <p>No commitment. A dedicated advisor will map out exactly what’s possible for your budget and goals.</p>
               <button type="button" onClick={openConsultation}>Get Free Consultation</button>
             </div>
@@ -575,7 +575,8 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-faq-grid p { font-family: Inter, sans-serif; font-size: 16px; font-weight: 400; line-height: 1.5; letter-spacing: -0.003em; color: #333; margin: 0; }
         .buk-bottom-cta { padding: 60px 0 76px; }
         .buk-cta-card { background: #b100df url('/buyabroad-uk/abstract-bg.png') center/cover no-repeat; border-radius: 18px; padding: 54px 30px; text-align: center; color: #fff; }
-        .buk-cta-card h2 { font-size: 42px; line-height: .95; }
+        .buk-cta-card h2 { font-family: Inter, sans-serif; font-size: 44px; font-weight: 600; line-height: 1; letter-spacing: -0.08em; text-align: center; }
+        .buk-cta-card h2 span { font-style: italic; }
         .buk-cta-card p { max-width: 520px; margin: 18px auto; color: rgba(255,255,255,.9); }
         .buk-cta-card button { height: 38px; border: 0; border-radius: 8px; padding: 0 22px; background: #fff; color: #111; font-weight: 900; cursor: pointer; }
         .buk-footer { padding: 24px 0; }
@@ -633,7 +634,7 @@ export const BuyAbroadUk: React.FC = () => {
           .buk-arrow { display: none; }
           .buk-process-step { max-width: 320px; margin: 0 auto; }
           .buk-cta-card { padding: 40px 20px; }
-          .buk-cta-card h2 { font-size: 30px; }
+          .buk-cta-card h2 { font-size: clamp(28px, 7vw, 38px); }
           .buk-footer .buk-inner { flex-direction: column; text-align: center; }
         }
 
