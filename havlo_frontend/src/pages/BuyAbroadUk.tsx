@@ -541,7 +541,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-stat-item span { color: #555; font-size: 14px; line-height: 1.45; }
         .buk-section { padding: 72px 0; }
         .buk-eyebrow { color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; text-transform: uppercase; }
-        .buk-section h2 { font-size: 48px; line-height: 1; margin: 10px 0 32px; }
+        .buk-section h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
         .buk-property-card { border: 1px solid #e6e6e6; border-radius: 14px; background: #fff; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
         .buk-property-card img { width: 100%; height: 190px; object-fit: cover; display: block; }
