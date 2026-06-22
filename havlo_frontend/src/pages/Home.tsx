@@ -282,7 +282,7 @@ export const Home: React.FC = () => {
                   <ServiceCard
                     title="Listing Recovery"
                     description="Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale."
-                    href="/stale-listings"
+                    href="/stale-listings/agents"
                     className="bg-white"
                   />
                 </div>
@@ -350,7 +350,7 @@ export const Home: React.FC = () => {
               <ServiceCard
                 title="Listing Recovery"
                 description="Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale."
-                href="/stale-listings"
+                href="/stale-listings/agents"
                 className="bg-white"
               />
             </div>
