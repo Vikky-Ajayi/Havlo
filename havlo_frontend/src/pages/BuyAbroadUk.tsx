@@ -549,10 +549,10 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-property-card h3 { font-size: 19px; font-weight: 800; color: #111; margin: 0 0 8px; letter-spacing: -0.01em; }
         .buk-property-card p { font-size: 14px; line-height: 1.55; color: #444; margin: 0; }
         .buk-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
-        .buk-tags span { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 12px; background: transparent; }
-        .buk-tags-green span { color: #00955a; border: 1.5px solid #00955a; }
-        .buk-tags-blue span { color: #2563eb; border: 1.5px solid #2563eb; }
-        .buk-tags-purple span { color: #9b00cc; border: 1.5px solid #9b00cc; }
+        .buk-tags span { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 4px 12px; border: 1.5px solid transparent; }
+        .buk-tags-green span { color: #006b3f; background: #ddf5ec; border-color: #b8e8d4; }
+        .buk-tags-blue span { color: #1a4db5; background: #dbeafe; border-color: #bdd7fa; }
+        .buk-tags-purple span { color: #7300aa; background: #f2e3fd; border-color: #ddb8f5; }
         .buk-process { background: #050807; color: #fff; padding: 72px 0; text-align: center; }
         .buk-process > .buk-inner > span { font-weight: 900; color: #bbb; }
         .buk-process h2 { font-size: 44px; line-height: 1; margin: 14px 0 54px; }
