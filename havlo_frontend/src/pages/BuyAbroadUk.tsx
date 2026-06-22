@@ -529,8 +529,8 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-market { background: #f4f4f4; padding: 72px 0; }
         .buk-market-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 80px; align-items: start; margin-top: 40px; }
         .buk-market h2, .buk-section h2, .buk-process h2, .buk-bottom-cta h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
-        .buk-market h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 40px; font-weight: 600; line-height: 1.3; letter-spacing: -0.03em; margin-bottom: 12px; max-width: 100%; }
-        .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; max-width: 100%; }
+        .buk-market h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 40px; font-weight: 600; line-height: 1.3; letter-spacing: -0.03em; margin-bottom: 12px; max-width: 65vw; }
+        .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; max-width: 65vw; }
         .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
         .buk-market-body + .buk-market-body { margin-top: 32px; }
         .buk-stats { display: flex; flex-direction: column; }
@@ -597,6 +597,7 @@ export const BuyAbroadUk: React.FC = () => {
         /* ── Tablet / Mobile: collapse to single column ── */
         @media (max-width: 900px) {
           .buk-inner { width: min(100% - 40px, 620px); }
+          .buk-market h2, .buk-section-lead { max-width: 100%; }
           .buk-header { height: 68px; padding: 0 20px; }
           .buk-logo img { width: 82px; }
           .buk-logo span { font-size: 11px; font-weight: 600; margin-top: -2px; }
