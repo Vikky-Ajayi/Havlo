@@ -389,7 +389,7 @@ export const BuyAbroadUk: React.FC = () => {
                     <h3>{stepItem[1]}</h3>
                     <p>{stepItem[2]}</p>
                   </div>
-                  {index < 3 && <img className="buk-arrow" src="/buyabroad-uk/process-arrow.png" alt="" />}
+                  {index < 3 && <img className="buk-arrow" src={index === 1 ? "/arrow-process.png" : "/buyabroad-uk/process-arrow.png"} alt="" />}
                 </React.Fragment>
               ))}
             </div>
