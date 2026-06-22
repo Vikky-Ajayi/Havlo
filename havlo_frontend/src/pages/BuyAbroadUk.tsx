@@ -479,15 +479,15 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-header-cta { border: 0; border-radius: 12px; background: #050505; color: white; height: 48px; padding: 0 20px; font-weight: 800; cursor: pointer; }
         .buk-menu { display: none; border: 0; background: none; font-size: 24px; }
         .buk-hero { background: linear-gradient(90deg, #fff 0%, #fff 45%, #ffd3f2 100%); padding: 80px 0 72px; }
-        .buk-hero-grid { display: grid; grid-template-columns: minmax(0, 657px) 541px; gap: 42px; align-items: center; }
-        .buk-hero-copy h1 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; line-height: 1.2; letter-spacing: -0.03em; font-weight: 800; margin: 0 0 24px; max-width: 657px; }
+        .buk-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 541px); gap: 42px; align-items: center; }
+        .buk-hero-copy h1 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: clamp(36px, 4vw, 52px); line-height: 1.15; letter-spacing: -0.03em; font-weight: 800; margin: 0 0 24px; }
         .buk-hero-copy h1 span { color: #b100df; }
-        .buk-hero-copy p { max-width: 657px; font-size: 16px; line-height: 1.5; margin: 0 0 26px; }
+        .buk-hero-copy p { font-size: clamp(14px, 1.4vw, 16px); line-height: 1.55; margin: 0 0 26px; }
         .buk-hero-cta { height: 48px; border: 0; border-radius: 12px; background: #050505; color: #fff; padding: 0 26px; font-weight: 900; cursor: pointer; margin-bottom: 26px; }
         .buk-trust { display: flex; align-items: center; gap: 12px; font-size: 14px; }
         .buk-stars { color: #fff; background: #00b67a; letter-spacing: 2px; padding: 4px 6px; font-size: 18px; line-height: 1; }
-        .buk-form-card { background: #fff; border: 3px solid #050505; border-radius: 16px; padding: 32px; min-height: 585px; box-shadow: 6px 6px 0 #000; }
-        .buk-form-preview { width: 541px; display: flex; flex-direction: column; }
+        .buk-form-card { background: #fff; border: 3px solid #050505; border-radius: 16px; padding: 32px; min-height: 560px; box-shadow: 6px 6px 0 #000; }
+        .buk-form-preview { width: 100%; display: flex; flex-direction: column; }
         .buk-card-head h2 { font-family: Inter, sans-serif; font-size: 27px; line-height: 1.15; font-weight: 800; margin: 0 0 10px; }
         .buk-card-head p { font-size: 20px; line-height: 1.25; margin: 0; }
         .buk-divider { border-top: 3px solid #111; margin: 18px 0 36px; }
@@ -585,45 +585,73 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-footer nav { display: flex; gap: 24px; }
         .buk-footer a { color: #111; font-size: 13px; font-weight: 800; text-decoration: none; }
 
+        /* ── Mid desktop: tighten the grid before it collapses ── */
+        @media (max-width: 1100px) {
+          .buk-inner { width: min(100% - 80px, 1240px); }
+          .buk-hero { padding: 60px 0 56px; }
+          .buk-hero-grid { gap: 32px; }
+          .buk-form-card { padding: 26px; min-height: 520px; box-shadow: 5px 5px 0 #000; }
+          .buk-card-head h2 { font-size: 24px; }
+          .buk-card-head p { font-size: 18px; }
+        }
+
+        /* ── Tablet / Mobile: collapse to single column ── */
         @media (max-width: 900px) {
-          .buk-inner { width: min(100% - 32px, 620px); }
-          .buk-header { height: 72px; padding: 0 22px; }
+          .buk-inner { width: min(100% - 40px, 620px); }
+          .buk-header { height: 68px; padding: 0 20px; }
           .buk-logo img { width: 82px; }
           .buk-logo span { font-size: 11px; font-weight: 600; margin-top: -2px; }
           .buk-header-cta { display: none; }
           .buk-menu { display: block; }
-          .buk-hero { padding: 36px 0 22px; background: linear-gradient(180deg, #fff 0%, #ffd3f2 100%); }
+          .buk-hero { padding: 36px 0 36px; background: linear-gradient(180deg, #fff 0%, #ffd3f2 100%); }
           .buk-hero-grid { display: flex; flex-direction: column; gap: 28px; }
-          .buk-hero-copy h1 { font-size: clamp(36px, 10.6vw, 48px); line-height: 1.08; margin-bottom: 16px; }
-          .buk-hero-copy p { font-size: 15px; line-height: 1.45; margin-bottom: 18px; }
-          .buk-hero-cta { width: 100%; margin-bottom: 18px; }
+          .buk-hero-copy h1 { font-size: clamp(28px, 8.5vw, 44px); line-height: 1.1; margin-bottom: 14px; }
+          .buk-hero-copy p { font-size: 15px; line-height: 1.5; margin-bottom: 18px; }
+          .buk-hero-cta { width: 100%; margin-bottom: 16px; }
           .buk-trust { flex-wrap: wrap; gap: 8px; font-size: 12px; }
-          .buk-form-card { width: 100%; border-width: 3px; padding: 20px; min-height: 416px; box-shadow: 4px 4px 0 #000; }
-          .buk-form-preview { width: 100%; min-height: 416px; }
-          .buk-card-head h2 { font-size: 26px; line-height: 1.12; }
-          .buk-card-head p { font-size: 16px; }
-          .buk-divider { margin: 16px 0 26px; }
-          .buk-form-spacer { height: 82px; }
-          .buk-result { min-height: 420px; }
-          .buk-result-emoji { font-size: 52px; margin-bottom: 22px; }
-          .buk-result h3 { font-size: 25px; }
-          .buk-result p { font-size: 17px; line-height: 1.25; }
+          .buk-form-card { width: 100%; border-width: 3px; padding: 22px; min-height: 0; box-shadow: 4px 4px 0 #000; }
+          .buk-form-preview { width: 100%; min-height: 0; }
+          .buk-card-head h2 { font-size: 24px; line-height: 1.12; }
+          .buk-card-head p { font-size: 15px; }
+          .buk-divider { margin: 14px 0 22px; }
+          .buk-preview-fields { gap: 22px; }
+          .buk-form-spacer { height: 32px; }
+          .buk-result { min-height: 0; padding: 24px 0; }
+          .buk-result-emoji { font-size: 48px; margin-bottom: 18px; }
+          .buk-result h3 { font-size: 24px; }
+          .buk-result p { font-size: 16px; line-height: 1.35; }
           .buk-modal { padding: 14px; align-items: center; }
-          .buk-modal-card { width: min(358px, calc(100vw - 20px)); max-height: calc(100dvh - 20px); }
+          .buk-modal-card { width: min(480px, calc(100vw - 20px)); max-height: calc(100dvh - 20px); }
           .buk-modal-close { top: 10px; right: 10px; }
-          .buk-strip-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+          .buk-strip-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
           .buk-strip-item { font-size: 12px; align-items: flex-start; }
-          .buk-market { padding: 46px 0; }
-          .buk-market-grid { grid-template-columns: 1fr; gap: 26px; }
-          .buk-market h2, .buk-section h2, .buk-process h2 { font-size: 34px; }
+          .buk-market { padding: 44px 0; }
+          .buk-market-grid { grid-template-columns: 1fr; gap: 24px; }
+          .buk-market h2, .buk-section h2, .buk-process h2 { font-size: clamp(26px, 7vw, 36px); }
           .buk-section { padding: 48px 0; }
           .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid { grid-template-columns: 1fr; }
           .buk-process-grid { grid-template-columns: 1fr; gap: 28px; }
           .buk-arrow { display: none; }
           .buk-process-step { max-width: 320px; margin: 0 auto; }
-          .buk-cta-card { padding: 42px 20px; }
-          .buk-cta-card h2 { font-size: 32px; }
+          .buk-cta-card { padding: 40px 20px; }
+          .buk-cta-card h2 { font-size: 30px; }
           .buk-footer .buk-inner { flex-direction: column; text-align: center; }
+        }
+
+        /* ── Small mobile: sub-400px refinements ── */
+        @media (max-width: 420px) {
+          .buk-inner { width: calc(100% - 28px); }
+          .buk-hero-copy h1 { font-size: clamp(26px, 8vw, 32px); }
+          .buk-hero { padding: 28px 0 28px; }
+          .buk-hero-cta { height: 44px; font-size: 14px; }
+          .buk-form-card { padding: 18px; border-width: 2px; box-shadow: 3px 3px 0 #000; }
+          .buk-card-head h2 { font-size: 21px; }
+          .buk-card-head p { font-size: 13px; }
+          .buk-divider { margin: 12px 0 18px; }
+          .buk-preview-fields { gap: 18px; }
+          .buk-primary { height: 44px; font-size: 14px; }
+          .buk-trust { font-size: 11px; gap: 6px; }
+          .buk-stars { font-size: 14px; }
         }
       `}</style>
     </div>
