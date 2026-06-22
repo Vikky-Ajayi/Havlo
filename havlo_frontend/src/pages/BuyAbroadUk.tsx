@@ -572,7 +572,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-faq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 26px 44px; text-align: left; margin-top: 44px; }
         .buk-faq-grid article { border-bottom: 1px solid #e4e4e4; padding-bottom: 22px; }
         .buk-faq-grid h3 { font-family: Inter, sans-serif; font-size: 20px; font-weight: 700; line-height: 1.5; letter-spacing: -0.03em; margin: 0 0 8px; }
-        .buk-faq-grid p { font-size: 14px; line-height: 1.5; color: #333; margin: 0; }
+        .buk-faq-grid p { font-family: Inter, sans-serif; font-size: 16px; font-weight: 400; line-height: 1.5; letter-spacing: -0.003em; color: #333; margin: 0; }
         .buk-bottom-cta { padding: 60px 0 76px; }
         .buk-cta-card { background: #b100df url('/buyabroad-uk/abstract-bg.png') center/cover no-repeat; border-radius: 18px; padding: 54px 30px; text-align: center; color: #fff; }
         .buk-cta-card h2 { font-size: 42px; line-height: .95; }
