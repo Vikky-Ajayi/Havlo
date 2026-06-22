@@ -750,6 +750,14 @@ export function StaleListingsAgents() {
           display: contents;
         }
 
+        .sla-report-desktop-img {
+          width: 686px;
+          max-width: 100%;
+          height: auto;
+          display: block;
+          border-radius: 12px;
+        }
+
         .sla-report-mobile-img {
           display: none;
         }
@@ -1416,7 +1424,7 @@ export function StaleListingsAgents() {
             width: 100%;
           }
 
-          .sla-report-card {
+          .sla-report-desktop-img {
             display: none;
           }
 
@@ -1688,7 +1696,7 @@ export function StaleListingsAgents() {
               </ul>
             </div>
             <div className="sla-report-visual-wrap">
-              <ReportMockup />
+              <img className="sla-report-desktop-img" src="/stale-report-desktop.png" alt="Example recovery report" />
               <img className="sla-report-mobile-img" src="/stale-report-mobile.png" alt="Example recovery report" />
             </div>
           </div>
