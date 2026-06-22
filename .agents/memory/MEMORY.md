@@ -1,0 +1,2 @@
+- [PyJWT migration](pyjwt-migration.md) — python-jose is blocked by Replit security policy; replaced with PyJWT across all JWT files.
+- [frontend-blocked-dep](frontend-blocked-dep.md) — @google/genai pulls in protobufjs which is blocked; removed from package.json (unused in src/).

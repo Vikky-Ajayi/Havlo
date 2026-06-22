@@ -5,7 +5,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError as JWTError
 
 from app.config import get_settings
 
