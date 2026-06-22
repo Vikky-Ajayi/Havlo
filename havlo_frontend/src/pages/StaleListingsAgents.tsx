@@ -936,6 +936,8 @@ export function StaleListingsAgents() {
         }
 
         .sla-case-card {
+          display: flex;
+          flex-direction: column;
           overflow: hidden;
           border: 1px solid rgba(0,0,0,0.05);
           border-radius: 12px;
@@ -943,6 +945,7 @@ export function StaleListingsAgents() {
         }
 
         .sla-case-block {
+          flex: 1;
           padding: 24px;
         }
 
@@ -1480,7 +1483,12 @@ export function StaleListingsAgents() {
             gap: 16px;
           }
 
+          .sla-case-card {
+            display: block;
+          }
+
           .sla-case-block {
+            flex: unset;
             padding: 24px;
           }
 
