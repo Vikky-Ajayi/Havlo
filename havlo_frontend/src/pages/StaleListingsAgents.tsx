@@ -746,6 +746,14 @@ export function StaleListingsAgents() {
           font-weight: 900;
         }
 
+        .sla-report-visual-wrap {
+          display: contents;
+        }
+
+        .sla-report-mobile-img {
+          display: none;
+        }
+
         .sla-report-card {
           width: 686px;
           max-width: 100%;
@@ -1403,22 +1411,20 @@ export function StaleListingsAgents() {
             letter-spacing: -0.03em;
           }
 
+          .sla-report-visual-wrap {
+            display: block;
+            width: 100%;
+          }
+
           .sla-report-card {
-            padding: 24px;
+            display: none;
           }
 
-          .sla-report-score strong {
-            font-size: 40px;
-          }
-
-          .sla-report-row {
-            grid-template-columns: 100px minmax(0, 1fr) 52px;
-            gap: 10px;
-            font-size: 14px;
-          }
-
-          .sla-report-findings li {
-            font-size: 14px;
+          .sla-report-mobile-img {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 16px;
           }
 
           .sla-pricing h2 {
@@ -1681,7 +1687,10 @@ export function StaleListingsAgents() {
                 <li>Our role is to provide independent listing intelligence.</li>
               </ul>
             </div>
-            <ReportMockup />
+            <div className="sla-report-visual-wrap">
+              <ReportMockup />
+              <img className="sla-report-mobile-img" src="/stale-report-mobile.png" alt="Example recovery report" />
+            </div>
           </div>
         </section>
 
