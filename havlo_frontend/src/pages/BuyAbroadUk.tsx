@@ -338,13 +338,13 @@ export const BuyAbroadUk: React.FC = () => {
             <div>
               <h2>The UK remains one of the most stable property markets in the world</h2>
               <p className="buk-section-lead">For Nigerian investors, the UK offers legal clarity, strong rental demand, and long-term capital growth, backed by a system you can trust even when you’re 4,000 miles away.</p>
-              <p>The UK housing market has consistently outperformed inflation over 20 years. London alone has a structural undersupply of 30,000+ homes per year. For buy-to-let investors, average gross yields in cities like Birmingham, Manchester, and Leeds sit between 6-9%.</p>
-              <p>And unlike many markets, the UK has no restrictions on foreign ownership. With Havlo Buy Abroad, you get a dedicated advisor who connects you to the right agent, solicitor, and conveyancer, and tells you exactly what to pay and how to pay it.</p>
+              <p className="buk-market-body">The UK housing market has consistently outperformed inflation over 20 years. London alone has a structural undersupply of 30,000+ homes per year. For buy-to-let investors, average gross yields in cities like Birmingham, Manchester, and Leeds sit between 6-9%.</p>
+              <p className="buk-market-body">And unlike many markets, the UK has no restrictions on foreign ownership. With Havlo Buy Abroad, you get a dedicated advisor who connects you to the right agent, solicitor, and conveyancer — and tells you exactly what to pay and how to pay it.</p>
             </div>
             <div className="buk-stats">
-              <div><strong>£285bn</strong><span>UK property purchased by overseas buyers in the last 5 years</span></div>
-              <div><strong>6-9%</strong><span>Average gross rental yields in major UK cities outside London</span></div>
-              <div><strong>No cap</strong><span>Foreign nationals face zero ownership restrictions in the UK</span></div>
+              <div className="buk-stat-item"><strong>£285bn</strong><span>UK property purchased by overseas buyers in the last 5 years</span></div>
+              <div className="buk-stat-item"><strong>6-9%</strong><span>Average gross rental yields in major UK cities outside London</span></div>
+              <div className="buk-stat-item"><strong>No cap</strong><span>Foreign nationals face zero ownership restrictions in the UK</span></div>
             </div>
           </div>
         </section>
@@ -524,16 +524,19 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-strip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
         .buk-strip-item { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 800; }
         .buk-strip-item svg { color: #b100df; }
-        .buk-market { background: #eee; padding: 72px 0; }
-        .buk-market-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 80px; align-items: center; }
+        .buk-market { background: #f4f4f4; padding: 72px 0; }
+        .buk-market-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 80px; align-items: start; }
         .buk-market h2, .buk-section h2, .buk-process h2, .buk-bottom-cta h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
-        .buk-market h2 { font-size: 44px; line-height: 1; margin-bottom: 14px; }
-        .buk-market p { font-size: 16px; line-height: 1.5; max-width: 610px; }
-        .buk-section-lead { color: #555; }
-        .buk-stats { display: grid; gap: 30px; }
-        .buk-stats div { border-left: 4px solid #b100df; padding-left: 20px; }
-        .buk-stats strong { display: block; font-size: 34px; line-height: 1; margin-bottom: 8px; }
-        .buk-stats span { color: #333; font-size: 14px; }
+        .buk-market h2 { font-size: 44px; line-height: 1.05; margin-bottom: 12px; }
+        .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; }
+        .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
+        .buk-market-body:first-of-type { margin-top: 40px; }
+        .buk-market-body + .buk-market-body { margin-top: 32px; }
+        .buk-stats { display: flex; flex-direction: column; }
+        .buk-stat-item { border-left: 4px solid #8b00d4; padding: 4px 0 24px 22px; }
+        .buk-stat-item:not(:last-child) { border-bottom: 1px solid #d8d8d8; margin-bottom: 24px; }
+        .buk-stat-item strong { display: block; font-size: 36px; line-height: 1; font-weight: 900; color: #111; margin-bottom: 6px; }
+        .buk-stat-item span { color: #555; font-size: 14px; line-height: 1.45; }
         .buk-section { padding: 72px 0; }
         .buk-eyebrow { color: #b100df; font-size: 14px; font-weight: 1000; }
         .buk-section h2 { font-size: 48px; line-height: 1; margin: 10px 0 32px; }
