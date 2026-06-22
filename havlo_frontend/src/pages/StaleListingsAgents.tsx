@@ -1279,11 +1279,30 @@ export function StaleListingsAgents() {
           .sla-steps-grid,
           .sla-analysis-grid {
             grid-template-columns: 1fr;
-            gap: 24px;
+            gap: 0;
           }
 
           .sla-quiet-grid {
             margin-bottom: 32px;
+          }
+
+          .sla-quiet-card {
+            padding-bottom: 40px;
+            margin-bottom: 40px;
+            border-bottom: 1px solid rgba(0,0,0,0.10);
+          }
+
+          .sla-quiet-card:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+          }
+
+          .sla-steps-grid {
+            gap: 20px;
+          }
+
+          .sla-analysis-grid {
+            gap: 16px;
           }
 
           .sla-line-icon {
