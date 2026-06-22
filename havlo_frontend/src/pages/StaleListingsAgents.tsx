@@ -90,10 +90,10 @@ function SmallIcon({ index }: { index: number }) {
 
 function ReportMockup() {
   const rows = [
-    ['PRICING', 62],
-    ['PHOTOGRAPHY', 47],
-    ['DESCRIPTION', 52],
-    ['COMPETITION', 51],
+    ['PRICING', 62, 6],
+    ['PHOTOGRAPHY', 47, 4],
+    ['DESCRIPTION', 52, 5],
+    ['COMPETITION', 51, 7],
   ];
 
   return (
@@ -104,18 +104,18 @@ function ReportMockup() {
         <small>For agencies with multiple stale listings each month.</small>
       </div>
       <div className="sla-report-bars">
-        {rows.map(([label, score]) => (
+        {rows.map(([label, pct, score]) => (
           <div key={label as string} className="sla-report-row">
             <span>{label}</span>
-            <div><i style={{ width: `${score}%` }} /></div>
-            <b>{score}/100</b>
+            <div><i style={{ width: `${pct}%` }} /></div>
+            <b>{score}/10</b>
           </div>
         ))}
       </div>
       <div className="sla-report-findings">
         <h4>KEY FINDINGS</h4>
         <ul>
-          <li>Hero image is underperforming, not reflecting the property&apos;s strongest features.</li>
+          <li>Hero image is underperforming — not reflecting the property&apos;s strongest features.</li>
           <li>Description lacks differentiation from comparable listings in the area.</li>
           <li>Competing stock is positioned more effectively at a similar price point.</li>
           <li>Current pricing is creating buyer hesitation rather than urgency.</li>
@@ -728,12 +728,12 @@ export function StaleListingsAgents() {
 
         .sla-recovery li {
           position: relative;
-          margin: 0;
+          margin: 0 0 8px;
           padding-left: 18px;
           color: #000;
           font-size: 20px;
           font-weight: 400;
-          line-height: 1.8;
+          line-height: 1.5;
           letter-spacing: -0.6px;
         }
 
@@ -757,7 +757,7 @@ export function StaleListingsAgents() {
         .sla-report-card {
           width: 686px;
           max-width: 100%;
-          padding: 24px 32px;
+          padding: 40px;
           border-radius: 12px;
           background: #fff3e6;
         }
@@ -775,7 +775,7 @@ export function StaleListingsAgents() {
         }
 
         .sla-report-score p {
-          margin: 7px 0 2px;
+          margin: 10px 0 4px;
           font-size: 14px;
           font-weight: 800;
         }
@@ -787,7 +787,7 @@ export function StaleListingsAgents() {
         }
 
         .sla-report-bars {
-          margin: 22px 0;
+          margin: 32px 0;
         }
 
         .sla-report-row {
@@ -795,7 +795,7 @@ export function StaleListingsAgents() {
           grid-template-columns: 118px minmax(0, 1fr) 50px;
           align-items: center;
           gap: 14px;
-          margin: 10px 0;
+          margin: 16px 0;
           font-size: 12px;
           font-weight: 800;
         }
@@ -813,8 +813,13 @@ export function StaleListingsAgents() {
           background: #f28a00;
         }
 
+        .sla-report-findings {
+          padding-top: 24px;
+          border-top: 1px solid rgba(0,0,0,0.08);
+        }
+
         .sla-report-findings h4 {
-          margin: 0 0 14px;
+          margin: 0 0 20px;
           font-size: 14px;
           font-weight: 900;
         }
@@ -825,10 +830,10 @@ export function StaleListingsAgents() {
         }
 
         .sla-report-findings li {
-          margin: 5px 0;
+          margin: 10px 0;
           font-size: 13px;
           font-weight: 600;
-          line-height: 1.45;
+          line-height: 1.5;
         }
 
         .sla-pricing {
