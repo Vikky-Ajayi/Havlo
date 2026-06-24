@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, ChevronDown, MessageCircle, Phone, Users, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -121,6 +121,13 @@ export const BuyAbroadUk: React.FC = () => {
     description: 'A dedicated advisory service for Nigerian buyers purchasing residential, commercial, and investment property in the UK.',
     canonical: 'https://www.heyhavlo.com/buyabroad/uk',
   });
+
+  useEffect(() => {
+    if (typeof window.fbq === 'function') {
+      window.fbq('init', '1514478260143146');
+      window.fbq('track', 'PageView');
+    }
+  }, []);
 
   const [step, setStep] = useState<EligibilityStep>('eligibility');
   const [propertyType, setPropertyType] = useState('');

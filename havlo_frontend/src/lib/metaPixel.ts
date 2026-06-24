@@ -4,12 +4,11 @@ type MetaPixelParams = Record<string, unknown>;
 
 declare global {
   interface Window {
-    fbq?: (
-      command: 'track',
-      eventName: MetaPixelEventName,
-      params?: MetaPixelParams,
-      options?: MetaPixelParams
-    ) => void;
+    fbq?: {
+      (command: 'init', pixelId: string): void;
+      (command: 'track', eventName: MetaPixelEventName, params?: MetaPixelParams, options?: MetaPixelParams): void;
+    };
+    _fbq?: unknown;
   }
 }
 
