@@ -179,7 +179,33 @@ const PLANS = [
   },
 ];
 
-type PlanId = 'quick_insight' | 'professional_review' | 'premium_strategy';
+const AGENT_PLAN = {
+  id: 'listing_recovery_assessment' as const,
+  name: 'Listing Recovery Assessment',
+  price: '£149.99',
+  amount: 149.99,
+  tagline: 'For individual stale listings.',
+  turnaround: 'Delivered within 5 working days',
+  priceLabel: '£149.99 per report',
+  preNote: null as string | null,
+  features: [
+    'Full Listing Recovery Report',
+    'Pricing review',
+    'Photography review',
+    'Listing copy review',
+    'Competitive analysis',
+    'Recovery recommendations',
+  ],
+  Illustration: GoldHouseIllustration,
+  bestValue: false,
+  btnBg: '#000',
+  btnColor: '#fff',
+  btnGold: false,
+  borderColor: '1.5px solid #E8E8E8',
+  selectedBorderColor: '2px solid #000',
+};
+
+type PlanId = 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment';
 
 /* ─── STEPPER ─── */
 function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
@@ -245,7 +271,9 @@ export function StaleListingsPlan() {
     canonical: 'https://www.heyhavlo.com/stale-listings/plan',
   });
   const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('professional_review');
+  const isAgentFlow = sessionStorage.getItem('sl_agent_flow') === 'true';
+  const visiblePlans = isAgentFlow ? [AGENT_PLAN] : PLANS;
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>(isAgentFlow ? 'listing_recovery_assessment' : 'professional_review');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -259,7 +287,7 @@ export function StaleListingsPlan() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const plan = PLANS.find(p => p.id === selectedPlan)!;
+  const plan = visiblePlans.find(p => p.id === selectedPlan)!
 
   const address = sessionStorage.getItem('sl_address') || '';
   const listingUrl = sessionStorage.getItem('sl_listing_url') || '';
@@ -268,6 +296,7 @@ export function StaleListingsPlan() {
 
   const turnaroundLabel = selectedPlan === 'quick_insight' ? '24–48 hours'
     : selectedPlan === 'professional_review' ? '24 hours (priority)'
+    : selectedPlan === 'listing_recovery_assessment' ? 'Within 5 working days'
     : '24 hours + follow-up support';
 
   const handlePaySubmit = async () => {
@@ -672,16 +701,18 @@ export function StaleListingsPlan() {
               ALMOST THERE
             </div>
             <h1 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 30, color: '#0A0A0A', letterSpacing: '-0.5px', margin: '0 0 10px', lineHeight: '1.2' }}>
-              Choose your assessment plan
+              {isAgentFlow ? 'Your Listing Recovery Assessment' : 'Choose your assessment plan'}
             </h1>
             <p style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 15, color: '#555', lineHeight: '1.5', margin: 0, maxWidth: 480 }}>
-              Find out why buyers might be overlooking your property and get a personalised roadmap to improve visibility, pricing and buyer interest.
+              {isAgentFlow
+                ? 'A structured report showing what\'s holding the listing back, where buyer interest breaks down, and the highest-priority actions to take.'
+                : 'Find out why buyers might be overlooking your property and get a personalised roadmap to improve visibility, pricing and buyer interest.'}
             </p>
           </div>
 
           {/* Plan cards */}
           <div className="sl-p-cards">
-            {PLANS.map((p) => {
+            {visiblePlans.map((p) => {
               const isSelected = selectedPlan === p.id;
               const border = isSelected ? p.selectedBorderColor : p.borderColor;
               return (

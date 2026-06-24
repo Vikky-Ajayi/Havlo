@@ -33,9 +33,10 @@ from app.services.sumup_service import SumUpError
 logger = logging.getLogger(__name__)
 
 SL_PACKAGES: dict[str, dict] = {
-    "quick_insight":        {"name": "Quick Insight",        "amount": 79.99, "currency": "GBP"},
-    "professional_review":  {"name": "Professional Review",  "amount": 299.99, "currency": "GBP"},
-    "premium_strategy":     {"name": "Premium Strategy",     "amount": 1499.99, "currency": "GBP"},
+    "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
+    "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
+    "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
+    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 149.99,  "currency": "GBP"},
 }
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])

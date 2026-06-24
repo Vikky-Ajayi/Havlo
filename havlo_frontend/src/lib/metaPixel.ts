@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-export type StaleListingsPixelPlanId = 'quick_insight' | 'professional_review' | 'premium_strategy';
+export type StaleListingsPixelPlanId = 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment';
 
 export const STALE_LISTINGS_PIXEL_PLANS: Record<
   StaleListingsPixelPlanId,
@@ -34,6 +34,12 @@ export const STALE_LISTINGS_PIXEL_PLANS: Record<
     id: 'premium_strategy',
     name: 'Premium Strategy',
     value: 1499.99,
+    currency: 'GBP',
+  },
+  listing_recovery_assessment: {
+    id: 'listing_recovery_assessment',
+    name: 'Listing Recovery Assessment',
+    value: 149.99,
     currency: 'GBP',
   },
 };
