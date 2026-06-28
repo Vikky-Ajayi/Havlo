@@ -434,7 +434,7 @@ class StaleListingSubmitRequest(BaseModel):
     email: EmailStr
     phone_country_code: str = Field("+44", max_length=10)
     phone: str = Field(..., min_length=4, max_length=30)
-    package: str = Field(..., pattern="^(quick_insight|professional_review|premium_strategy|listing_recovery_assessment)$")
+    package: str = Field(..., pattern="^(quick_insight|professional_review|premium_strategy|listing_recovery_assessment|free_trial_assessment)$")
     property_address: Optional[str] = Field(None, max_length=500)
     listing_url: Optional[str] = Field(None, max_length=2000)
     questions_data: dict = Field(default_factory=dict)
