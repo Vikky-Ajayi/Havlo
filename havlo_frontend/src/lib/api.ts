@@ -854,7 +854,7 @@ export const api = {
     email: string;
     phone_country_code: string;
     phone: string;
-    package: 'quick_insight' | 'professional_review' | 'premium_strategy';
+    package: 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment' | 'free_trial_assessment';
     property_address?: string;
     listing_url?: string;
     questions_data: Record<string, string | string[]>;

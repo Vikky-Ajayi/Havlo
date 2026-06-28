@@ -11,6 +11,8 @@ const PACKAGE_LABELS: Record<string, { name: string; turnaround: string }> = {
   quick_insight: { name: 'Quick Insight', turnaround: '48 hours' },
   professional_review: { name: 'Professional Review', turnaround: '24 hours (priority)' },
   premium_strategy: { name: 'Premium Strategy', turnaround: '12 hours (express)' },
+  listing_recovery_assessment: { name: 'Listing Recovery Assessment', turnaround: 'Within 5 working days' },
+  free_trial_assessment: { name: 'Free Trial Assessment', turnaround: 'Within 5 working days' },
 };
 
 const LockIcon = () => (

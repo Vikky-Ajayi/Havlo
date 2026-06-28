@@ -187,11 +187,19 @@ export function StaleListingsAgents() {
       sessionStorage.removeItem('sl_listing_url');
     }
     sessionStorage.setItem('sl_agent_flow', 'true');
+    sessionStorage.removeItem('sl_free_plan');
     navigate(`/stale-listings/questions?${params.toString()}`);
   };
 
   const startBlank = () => {
     sessionStorage.setItem('sl_agent_flow', 'true');
+    sessionStorage.removeItem('sl_free_plan');
+    navigate('/stale-listings/questions');
+  };
+
+  const startFree = () => {
+    sessionStorage.setItem('sl_agent_flow', 'true');
+    sessionStorage.setItem('sl_free_plan', 'true');
     navigate('/stale-listings/questions');
   };
 
@@ -1737,7 +1745,7 @@ export function StaleListingsAgents() {
                 subtitle="For first-time agencies."
                 features={['Listing review', 'Pricing analysis', 'Photography review', 'Market positioning assessment', 'Recovery recommendations']}
                 button="Submit Free Listing"
-                onClick={startBlank}
+                onClick={startFree}
               />
               <PlanCard
                 price="£149.99"

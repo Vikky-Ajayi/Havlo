@@ -37,6 +37,7 @@ SL_PACKAGES: dict[str, dict] = {
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
     "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 149.99,  "currency": "GBP"},
+    "free_trial_assessment":         {"name": "Free Trial Assessment",         "amount": 0.00,    "currency": "GBP"},
 }
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
@@ -294,42 +295,62 @@ async def submit_stale_listing(
         sep = "&" if "?" in redirect_url else "?"
         redirect_url = f"{redirect_url}{sep}ref={reference}"
 
-    try:
-        checkout = await sumup_service.create_checkout(
-            amount=amount,
-            currency=currency,
-            description=f"StaleListings {package_name} — {payload.email}",
-            reference=f"SL-{uuid.uuid4().hex[:12].upper()}",
-            redirect_url=redirect_url or None,
+    checkout_url = ""
+    checkout_id = ""
+
+    if amount == 0:
+        # Free plan — skip SumUp entirely and mark payment as completed immediately
+        assessment.payment_status = "completed"
+        await db.commit()
+        background_tasks.add_task(
+            _generate_and_save_report,
+            assessment_id=assessment_id,
+            package=payload.package,
+            questions_data=payload.questions_data or {},
+            property_address=payload.property_address or "",
+            listing_url=payload.listing_url or "",
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            email=payload.email,
+            reference=reference,
         )
-        checkout_url = checkout.get("checkout_url") or checkout.get("hosted_checkout_url") or ""
-        checkout_id = checkout.get("id") or ""
-        if not checkout_url or not checkout_id:
-            raise SumUpError("SumUp did not return a usable checkout session.")
-        assessment.sumup_checkout_id = checkout_id
-        assessment.sumup_checkout_url = checkout_url
-    except SumUpError as exc:
-        await db.rollback()
-        logger.error("SumUp checkout failed for stale listing %s: %s", reference, exc)
-        raise HTTPException(
-            status_code=502,
-            detail="Unable to create a secure payment session right now. Please try again.",
-        ) from exc
+    else:
+        try:
+            checkout = await sumup_service.create_checkout(
+                amount=amount,
+                currency=currency,
+                description=f"StaleListings {package_name} — {payload.email}",
+                reference=f"SL-{uuid.uuid4().hex[:12].upper()}",
+                redirect_url=redirect_url or None,
+            )
+            checkout_url = checkout.get("checkout_url") or checkout.get("hosted_checkout_url") or ""
+            checkout_id = checkout.get("id") or ""
+            if not checkout_url or not checkout_id:
+                raise SumUpError("SumUp did not return a usable checkout session.")
+            assessment.sumup_checkout_id = checkout_id
+            assessment.sumup_checkout_url = checkout_url
+        except SumUpError as exc:
+            await db.rollback()
+            logger.error("SumUp checkout failed for stale listing %s: %s", reference, exc)
+            raise HTTPException(
+                status_code=502,
+                detail="Unable to create a secure payment session right now. Please try again.",
+            ) from exc
 
-    await db.commit()
+        await db.commit()
 
-    background_tasks.add_task(
-        _generate_and_save_report,
-        assessment_id=assessment_id,
-        package=payload.package,
-        questions_data=payload.questions_data or {},
-        property_address=payload.property_address or "",
-        listing_url=payload.listing_url or "",
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        email=payload.email,
-        reference=reference,
-    )
+        background_tasks.add_task(
+            _generate_and_save_report,
+            assessment_id=assessment_id,
+            package=payload.package,
+            questions_data=payload.questions_data or {},
+            property_address=payload.property_address or "",
+            listing_url=payload.listing_url or "",
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            email=payload.email,
+            reference=reference,
+        )
 
     background_tasks.add_task(
         google_sheets.record_stale_listing,

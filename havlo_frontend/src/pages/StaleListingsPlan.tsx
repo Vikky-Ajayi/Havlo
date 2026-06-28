@@ -205,7 +205,32 @@ const AGENT_PLAN = {
   selectedBorderColor: '2px solid #000',
 };
 
-type PlanId = 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment';
+const FREE_PLAN = {
+  id: 'free_trial_assessment' as const,
+  name: 'Free Trial Assessment',
+  price: '£0',
+  amount: 0,
+  tagline: 'For first-time agencies.',
+  turnaround: 'Delivered within 5 working days',
+  priceLabel: 'Free',
+  preNote: null as string | null,
+  features: [
+    'Listing review',
+    'Pricing analysis',
+    'Photography review',
+    'Market positioning assessment',
+    'Recovery recommendations',
+  ],
+  Illustration: BlueHouseIllustration,
+  bestValue: false,
+  btnBg: '#000',
+  btnColor: '#fff',
+  btnGold: false,
+  borderColor: '1.5px solid #E8E8E8',
+  selectedBorderColor: '2px solid #000',
+};
+
+type PlanId = 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment' | 'free_trial_assessment';
 
 /* ─── STEPPER ─── */
 function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
@@ -272,8 +297,11 @@ export function StaleListingsPlan() {
   });
   const navigate = useNavigate();
   const isAgentFlow = sessionStorage.getItem('sl_agent_flow') === 'true';
-  const visiblePlans = isAgentFlow ? [AGENT_PLAN] : PLANS;
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>(isAgentFlow ? 'listing_recovery_assessment' : 'professional_review');
+  const isFreePlan = sessionStorage.getItem('sl_free_plan') === 'true';
+  const visiblePlans = isFreePlan ? [FREE_PLAN] : isAgentFlow ? [AGENT_PLAN] : PLANS;
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>(
+    isFreePlan ? 'free_trial_assessment' : isAgentFlow ? 'listing_recovery_assessment' : 'professional_review'
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -297,6 +325,7 @@ export function StaleListingsPlan() {
   const turnaroundLabel = selectedPlan === 'quick_insight' ? '24–48 hours'
     : selectedPlan === 'professional_review' ? '24 hours (priority)'
     : selectedPlan === 'listing_recovery_assessment' ? 'Within 5 working days'
+    : selectedPlan === 'free_trial_assessment' ? 'Within 5 working days'
     : '24 hours + follow-up support';
 
   const handlePaySubmit = async () => {
@@ -313,10 +342,12 @@ export function StaleListingsPlan() {
     setLoading(true);
     setError('');
     sessionStorage.setItem('sl_selected_plan', selectedPlan);
-    trackMetaPixelEvent('AddToCart', {
-      ...staleListingsPlanParams(selectedPlan),
-      property_input_type: listingUrl ? 'listing_url' : address ? 'property_address' : 'unknown',
-    }, `stale_add_to_cart_${selectedPlan}_${Date.now()}`);
+    if (selectedPlan !== 'free_trial_assessment') {
+      trackMetaPixelEvent('AddToCart', {
+        ...staleListingsPlanParams(selectedPlan),
+        property_input_type: listingUrl ? 'listing_url' : address ? 'property_address' : 'unknown',
+      }, `stale_add_to_cart_${selectedPlan}_${Date.now()}`);
+    }
     try {
       const result = await api.staleListingsSubmit({
         ...form,
@@ -326,6 +357,11 @@ export function StaleListingsPlan() {
         questions_data: answers,
         redirect_url: `${window.location.origin}/stale-listings/complete`,
       });
+      if (selectedPlan === 'free_trial_assessment') {
+        sessionStorage.removeItem('sl_free_plan');
+        navigate(`/stale-listings/complete?ref=${result.reference}`);
+        return;
+      }
       const checkoutUrl = result.checkout_url?.trim();
       if (!checkoutUrl) {
         throw new Error('Unable to create a secure SumUp checkout right now. Please try again in a moment.');
@@ -831,7 +867,7 @@ export function StaleListingsPlan() {
                   onClick={handlePayClick}
                   style={{ height: 48, padding: '0 24px', borderRadius: 8, border: 'none', background: '#000', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
                 >
-                  Pay Securely and start Assessment
+                  {isFreePlan ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
                 </button>
               </div>
 
@@ -847,7 +883,7 @@ export function StaleListingsPlan() {
           Back to Questions
         </button>
         <button className="sl-p-pay-btn" onClick={handlePayClick}>
-          Pay Securely and start Assessment
+          {isFreePlan ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
         </button>
       </div>
 
@@ -998,7 +1034,7 @@ export function StaleListingsPlan() {
               disabled={loading}
               style={{ width: '100%', height: 50, borderRadius: 8, border: 'none', background: loading ? '#888' : '#000', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Processing…' : 'Pay Securely and start Assessment'}
+              {loading ? 'Processing…' : isFreePlan ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
             </button>
           </div>
         </div>
