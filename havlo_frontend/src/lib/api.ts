@@ -1063,4 +1063,17 @@ export const api = {
       body: payload,
       token,
     }),
+
+  submitAgencyPricingRequest: (payload: {
+    agency_name: string;
+    website: string;
+    contact_person: string;
+    phone: string;
+    email: string;
+    preferred_callback_time: string;
+  }) =>
+    request<{ ok: boolean }>('/stale-listings/agency-pricing-request', {
+      method: 'POST',
+      body: payload,
+    }),
 };

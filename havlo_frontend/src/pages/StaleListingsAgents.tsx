@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../lib/api';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { usePageMeta } from '../hooks/usePageMeta';
 
@@ -167,6 +168,36 @@ export function StaleListingsAgents() {
   const [faqExpanded, setFaqExpanded] = useState(false);
   const [listingInput, setListingInput] = useState('');
   const [error, setError] = useState('');
+  const [agencyModalOpen, setAgencyModalOpen] = useState(false);
+  const [agencyConfirmed, setAgencyConfirmed] = useState(false);
+  const [agencyLoading, setAgencyLoading] = useState(false);
+  const [agencyError, setAgencyError] = useState('');
+  const [agencyForm, setAgencyForm] = useState({
+    agency_name: '',
+    website: '',
+    contact_person: '',
+    phone: '',
+    email: '',
+    preferred_callback_time: '',
+  });
+
+  const handleAgencySubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setAgencyError('');
+    if (!agencyForm.agency_name.trim() || !agencyForm.contact_person.trim() || !agencyForm.phone.trim() || !agencyForm.email.trim() || !agencyForm.preferred_callback_time.trim()) {
+      setAgencyError('Please fill in all required fields.');
+      return;
+    }
+    setAgencyLoading(true);
+    try {
+      await api.submitAgencyPricingRequest(agencyForm);
+      setAgencyConfirmed(true);
+    } catch {
+      setAgencyError('Something went wrong. Please try again.');
+    } finally {
+      setAgencyLoading(false);
+    }
+  };
 
   const startListing = (event?: FormEvent) => {
     event?.preventDefault();
@@ -1761,7 +1792,7 @@ export function StaleListingsAgents() {
                 subtitle="For agencies with multiple stale listings each month."
                 features={['Multiple monthly assessments', 'Priority turnaround', 'Quarterly portfolio reviews', 'Dedicated support contact']}
                 button="Request Agency Pricing"
-                onClick={() => navigate('/contact-us')}
+                onClick={() => { setAgencyConfirmed(false); setAgencyError(''); setAgencyForm({ agency_name: '', website: '', contact_person: '', phone: '', email: '', preferred_callback_time: '' }); setAgencyModalOpen(true); }}
               />
             </div>
           </div>
@@ -1844,6 +1875,145 @@ export function StaleListingsAgents() {
           </nav>
         </div>
       </footer>
+
+      {/* ── AGENCY PRICING MODAL ── */}
+      {agencyModalOpen && (
+        <div
+          onClick={() => setAgencyModalOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: '40px 36px 36px', position: 'relative', fontFamily: 'Inter, sans-serif' }}
+          >
+            {/* Close */}
+            <button
+              onClick={() => setAgencyModalOpen(false)}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+              aria-label="Close"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M15 5L5 15M5 5l10 10" stroke="#555" strokeWidth="1.8" strokeLinecap="round"/></svg>
+            </button>
+
+            {agencyConfirmed ? (
+              /* ── CONFIRMATION STATE ── */
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F0FBF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#22C55E" fillOpacity="0.15"/><path d="M9 16.5l5 5 9-10" stroke="#22C55E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 700, fontSize: 22, color: '#000', margin: '0 0 12px', letterSpacing: '-0.4px' }}>
+                  Request received!
+                </h2>
+                <p style={{ fontSize: 15, color: '#555', lineHeight: '160%', margin: '0 0 28px' }}>
+                  Thanks for reaching out. Our team has received your details and will be in touch within 1 business day to discuss custom agency pricing.
+                </p>
+                <button
+                  onClick={() => setAgencyModalOpen(false)}
+                  style={{ height: 48, padding: '0 32px', borderRadius: 8, border: 'none', background: '#000', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              /* ── FORM STATE ── */
+              <>
+                <h2 style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 700, fontSize: 22, color: '#000', margin: '0 0 6px', letterSpacing: '-0.4px' }}>
+                  Request Agency Pricing
+                </h2>
+                <p style={{ fontSize: 14, color: '#666', margin: '0 0 28px', lineHeight: '150%' }}>
+                  Tell us about your agency and we'll get back to you with a custom plan within 1 business day.
+                </p>
+
+                <form onSubmit={handleAgencySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* Agency Name */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Agency Name <span style={{ color: '#E53E3E' }}>*</span></label>
+                    <input
+                      type="text"
+                      value={agencyForm.agency_name}
+                      onChange={e => setAgencyForm(f => ({ ...f, agency_name: e.target.value }))}
+                      placeholder="e.g. Smith & Partners Estate Agents"
+                      style={{ width: '100%', height: 46, borderRadius: 8, border: '1.5px solid #E0E0E0', padding: '0 14px', fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* Website */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Website</label>
+                    <input
+                      type="text"
+                      value={agencyForm.website}
+                      onChange={e => setAgencyForm(f => ({ ...f, website: e.target.value }))}
+                      placeholder="e.g. www.smithpartners.co.uk"
+                      style={{ width: '100%', height: 46, borderRadius: 8, border: '1.5px solid #E0E0E0', padding: '0 14px', fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* Contact Person */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Contact Person <span style={{ color: '#E53E3E' }}>*</span></label>
+                    <input
+                      type="text"
+                      value={agencyForm.contact_person}
+                      onChange={e => setAgencyForm(f => ({ ...f, contact_person: e.target.value }))}
+                      placeholder="e.g. James Smith"
+                      style={{ width: '100%', height: 46, borderRadius: 8, border: '1.5px solid #E0E0E0', padding: '0 14px', fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Phone Number <span style={{ color: '#E53E3E' }}>*</span></label>
+                    <input
+                      type="tel"
+                      value={agencyForm.phone}
+                      onChange={e => setAgencyForm(f => ({ ...f, phone: e.target.value }))}
+                      placeholder="e.g. +44 7700 900000"
+                      style={{ width: '100%', height: 46, borderRadius: 8, border: '1.5px solid #E0E0E0', padding: '0 14px', fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Email <span style={{ color: '#E53E3E' }}>*</span></label>
+                    <input
+                      type="email"
+                      value={agencyForm.email}
+                      onChange={e => setAgencyForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="e.g. james@smithpartners.co.uk"
+                      style={{ width: '100%', height: 46, borderRadius: 8, border: '1.5px solid #E0E0E0', padding: '0 14px', fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {/* Preferred callback time */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#333', marginBottom: 6 }}>Preferred Callback Time <span style={{ color: '#E53E3E' }}>*</span></label>
+                    <input
+                      type="text"
+                      value={agencyForm.preferred_callback_time}
+                      onChange={e => setAgencyForm(f => ({ ...f, preferred_callback_time: e.target.value }))}
+                      placeholder="e.g. Weekdays 9am–12pm"
+                      style={{ width: '100%', height: 46, borderRadius: 8, border: '1.5px solid #E0E0E0', padding: '0 14px', fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  {agencyError && (
+                    <p style={{ fontSize: 13, color: '#E53E3E', margin: 0 }}>{agencyError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={agencyLoading}
+                    style={{ height: 50, borderRadius: 8, border: 'none', background: agencyLoading ? '#888' : '#000', color: '#fff', fontWeight: 600, fontSize: 16, cursor: agencyLoading ? 'not-allowed' : 'pointer', marginTop: 4, fontFamily: 'Inter, sans-serif' }}
+                  >
+                    {agencyLoading ? 'Sending…' : 'Send Request'}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

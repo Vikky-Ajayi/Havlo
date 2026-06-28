@@ -17,6 +17,7 @@ from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.models import StaleListingAssessment, User
 from app.schemas.schemas import (
+    AgencyPricingRequest,
     StaleListingAdminFinalizeRequest,
     StaleListingAdminItem,
     StaleListingListingSnapshot,
@@ -25,7 +26,7 @@ from app.schemas.schemas import (
     StaleListingSubmitRequest,
     StaleListingSubmitResponse,
 )
-from app.services import google_sheets, sumup_service
+from app.services import email_service, google_sheets, sumup_service
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services.sumup_service import SumUpError
@@ -573,6 +574,29 @@ async def mark_stale_listing_paid(
     assessment.payment_status = "completed"
     await db.commit()
     return {"ok": True, "payment_status": "completed", "reference": assessment.reference}
+
+
+@public_router.post("/agency-pricing-request")
+async def agency_pricing_request(
+    payload: AgencyPricingRequest,
+    background_tasks: BackgroundTasks,
+) -> dict:
+    """Receive an agency custom pricing enquiry and email ADMIN_NOTIFY_EMAIL."""
+    fields = {
+        "Agency Name": payload.agency_name,
+        "Website": payload.website or "—",
+        "Contact Person": payload.contact_person,
+        "Phone": payload.phone,
+        "Email": payload.email,
+        "Preferred Callback Time": payload.preferred_callback_time,
+    }
+    background_tasks.add_task(
+        email_service.send_admin_notification_sync,
+        "Agency Pricing Requests",
+        f"New agency pricing enquiry from {payload.agency_name} ({payload.email})",
+        fields,
+    )
+    return {"ok": True}
 
 
 @admin_router.delete("/admin/{assessment_id}")

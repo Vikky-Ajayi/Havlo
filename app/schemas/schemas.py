@@ -450,6 +450,15 @@ class StaleListingSubmitResponse(BaseModel):
     message: str
 
 
+class AgencyPricingRequest(BaseModel):
+    agency_name: str = Field(..., min_length=1, max_length=200)
+    website: Optional[str] = Field(None, max_length=500)
+    contact_person: str = Field(..., min_length=1, max_length=200)
+    phone: str = Field(..., min_length=4, max_length=50)
+    email: EmailStr
+    preferred_callback_time: str = Field(..., min_length=1, max_length=200)
+
+
 class StaleListingScores(BaseModel):
     photos: int = 50
     pricing: int = 50
