@@ -298,7 +298,7 @@ export function StaleListingsPlan() {
   const navigate = useNavigate();
   const isAgentFlow = sessionStorage.getItem('sl_agent_flow') === 'true';
   const isFreePlan = sessionStorage.getItem('sl_free_plan') === 'true';
-  const visiblePlans = isFreePlan ? [FREE_PLAN] : isAgentFlow ? [AGENT_PLAN] : PLANS;
+  const visiblePlans = isAgentFlow ? [FREE_PLAN, AGENT_PLAN] : PLANS;
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
     isFreePlan ? 'free_trial_assessment' : isAgentFlow ? 'listing_recovery_assessment' : 'professional_review'
   );
@@ -867,7 +867,7 @@ export function StaleListingsPlan() {
                   onClick={handlePayClick}
                   style={{ height: 48, padding: '0 24px', borderRadius: 8, border: 'none', background: '#000', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
                 >
-                  {isFreePlan ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+                  {selectedPlan === 'free_trial_assessment' ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
                 </button>
               </div>
 
@@ -883,7 +883,7 @@ export function StaleListingsPlan() {
           Back to Questions
         </button>
         <button className="sl-p-pay-btn" onClick={handlePayClick}>
-          {isFreePlan ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+          {selectedPlan === 'free_trial_assessment' ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
         </button>
       </div>
 
@@ -1034,7 +1034,7 @@ export function StaleListingsPlan() {
               disabled={loading}
               style={{ width: '100%', height: 50, borderRadius: 8, border: 'none', background: loading ? '#888' : '#000', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Processing…' : isFreePlan ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+              {loading ? 'Processing…' : selectedPlan === 'free_trial_assessment' ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
             </button>
           </div>
         </div>
