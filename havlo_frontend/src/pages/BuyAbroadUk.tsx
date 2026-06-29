@@ -10,7 +10,7 @@ const CALL_DISPLAY = '0903 986 1006';
 const CALL_LINK = '+2349039861006';
 
 const propertyOptions = ['Residential', 'Commercial', 'Investment', 'Not sure yet'];
-const budgetOptions = ['Under £100,000', '£100,000 - £250,000', '£250,000 - £500,000', '£500,000+'];
+const budgetOptions = ['Under £50,000', '£50,000 - £200,000', '£200,000 - £500,000', '£500,000+'];
 const timelineOptions = ['Immediately', '1-3 months', '3-6 months', '6+ months', 'Just exploring'];
 
 const featureStrip = [
@@ -161,8 +161,8 @@ export const BuyAbroadUk: React.FC = () => {
   const submitLead = async () => {
     setSubmitting(true);
     setError('');
-    const outcome = budget === 'Under £100,000' ? 'Not currently eligible' : 'Great fit';
-    const nextStep = budget === 'Under £100,000' ? 'not-fit' : 'fit';
+    const outcome = budget === 'Under £50,000' ? 'Not currently eligible' : 'Great fit';
+    const nextStep = budget === 'Under £50,000' ? 'not-fit' : 'fit';
 
     try {
       await api.submitContactForm({
@@ -200,7 +200,7 @@ export const BuyAbroadUk: React.FC = () => {
           <p>
             {isFit
               ? 'Your budget and timeline match exactly what we work with. Reach out now via WhatsApp or give us a call — your consultation is free.'
-              : "Our advisory service is tailored for buyers with a budget of £100,000 (≈ ₦190m) or more. At this stage, we wouldn't be able to add the value you deserve. We wish you all the best — and if your budget changes, we'd love to hear from you."}
+              : "Our advisory service is tailored for buyers with a budget of £50,000 or more. At this stage, we wouldn't be able to add the value you deserve. We wish you all the best — and if your budget changes, we'd love to hear from you."}
           </p>
           <button className="buk-whatsapp" type="button" onClick={openWhatsApp}>
             <MessageCircle size={18} /> Chat on WhatsApp
