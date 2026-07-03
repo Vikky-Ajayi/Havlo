@@ -445,6 +445,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
 
         <section className="buk-section buk-fee-section buk-tight-section">
           <div className="buk-inner">
+            <h2>Fee Structure for Your Clients</h2>
             <p className="buk-section-lead">The following represents our standard advisory service fees for clients purchasing property in the UK through Havlo. These fees cover our full end-to-end property acquisition support, including sourcing, due diligence, negotiation, and transaction management.</p>
             <ul className="buk-fee-list">
               {feeTiers.map((tier) => (
@@ -457,12 +458,14 @@ export const BuyAbroadUkAgents: React.FC = () => {
 
         <section className="buk-section buk-commission-section buk-tight-section">
           <div className="buk-inner">
+            <h2>Partner Referral Commission</h2>
             <p className="buk-section-lead">For every successfully completed purchase introduced via our partner network, we pay <strong>25% of our advisory fee</strong> to the referring agent or partner. As our fee is typically paid by clients in stages throughout the transaction, we pass on 25% of each stage payment to you as it's received — ensuring you're rewarded progressively, in step with the deal. Clients, in turn, receive full end-to-end advisory support throughout their UK property purchase.</p>
           </div>
         </section>
 
         <section className="buk-section buk-why-section buk-tight-section">
           <div className="buk-inner">
+            <h2>Why Havlo Is the Right Fit for Your Clients</h2>
             <p className="buk-section-lead">Through Havlo's independent property advisory service, we support clients in achieving a wide range of UK and international property investment goals, including:</p>
             <ul className="buk-why-list">
               {whyHavloForClients.map(([title, body]) => (

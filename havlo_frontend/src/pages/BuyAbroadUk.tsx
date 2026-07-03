@@ -419,6 +419,7 @@ export const BuyAbroadUk: React.FC = () => {
 
         <section className="buk-section buk-why-section buk-tight-section">
           <div className="buk-inner">
+            <h2>Why Havlo Is the Right Fit for You</h2>
             <p className="buk-section-lead">Through Havlo's independent property advisory service, we support you in achieving a wide range of UK and international property investment goals, including:</p>
             <ul className="buk-why-list">
               {whyHavloForYou.map(([title, body]) => (
