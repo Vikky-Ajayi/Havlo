@@ -82,6 +82,7 @@ SHEET_TABS: dict[str, list[str]] = {
         "Timestamp", "Assessment ID", "Reference", "Email",
         "First Name", "Last Name", "Phone", "Package",
         "Property Address", "Listing URL", "Payment Status", "Report Status",
+        "Promo Applied",
     ],
     "Custom Offers": [
         "Timestamp", "Submission ID", "Reference", "Buyer Name", "Buyer Email",
@@ -417,6 +418,7 @@ def record_stale_listing(form_data: dict[str, Any]) -> None:
         form_data.get("listing_url", ""),
         form_data.get("payment_status", "pending"),
         form_data.get("report_status", "pending"),
+        form_data.get("promo_applied", "no"),
     ]
     _append_row("Stale Listings", row)
 

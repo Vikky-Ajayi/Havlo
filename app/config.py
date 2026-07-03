@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     SUMUP_API_KEY: str = ""
     SUMUP_MERCHANT_CODE: str = ""
 
+    # ── Promo codes ──────────────────────────────────────────────────────
+    LISTING_RECOVERY_PROMO_CODE: str = ""
+
     # ── Groq LLM ─────────────────────────────────────────────────────────
     GROQ_API_KEY: str = ""
 

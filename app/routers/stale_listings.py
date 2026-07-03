@@ -21,6 +21,8 @@ from app.schemas.schemas import (
     StaleListingAdminFinalizeRequest,
     StaleListingAdminItem,
     StaleListingListingSnapshot,
+    StaleListingPromoVerifyRequest,
+    StaleListingPromoVerifyResponse,
     StaleListingReportData,
     StaleListingReportResponse,
     StaleListingSubmitRequest,
@@ -252,6 +254,30 @@ async def _backfill_listing_snapshot(
             logger.warning("Deferred listing snapshot backfill failed for %s: %s", assessment_id, exc)
 
 
+def _promo_code_valid(package: str, code: str | None) -> bool:
+    """Check a submitted promo code against the configured value for a package."""
+    if package != "listing_recovery_assessment":
+        return False
+    configured = get_settings().LISTING_RECOVERY_PROMO_CODE.strip()
+    submitted = (code or "").strip()
+    if not configured or not submitted:
+        return False
+    return submitted.upper() == configured.upper()
+
+
+@public_router.post(
+    "/verify-promo",
+    response_model=StaleListingPromoVerifyResponse,
+)
+async def verify_stale_listing_promo(
+    payload: StaleListingPromoVerifyRequest,
+) -> StaleListingPromoVerifyResponse:
+    """Verify a promo code for a stale listing package without submitting."""
+    if _promo_code_valid(payload.package, payload.code):
+        return StaleListingPromoVerifyResponse(valid=True, message="Promo code applied — this plan is now free.")
+    return StaleListingPromoVerifyResponse(valid=False, message="That promo code is not valid.")
+
+
 @public_router.post(
     "/submit",
     response_model=StaleListingSubmitResponse,
@@ -270,6 +296,11 @@ async def submit_stale_listing(
     amount = float(package_info["amount"])
     currency = str(package_info["currency"])
     package_name = str(package_info["name"])
+
+    promo_applied = False
+    if amount > 0 and payload.promo_code and _promo_code_valid(payload.package, payload.promo_code):
+        amount = 0.0
+        promo_applied = True
 
     reference = _generate_reference()
 
@@ -366,8 +397,9 @@ async def submit_stale_listing(
             "package": payload.package,
             "property_address": payload.property_address or "",
             "listing_url": payload.listing_url or "",
-            "payment_status": "pending",
+            "payment_status": assessment.payment_status,
             "report_status": "pending",
+            "promo_applied": "yes" if promo_applied else "no",
         },
     )
 

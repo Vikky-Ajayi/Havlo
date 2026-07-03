@@ -859,6 +859,7 @@ export const api = {
     listing_url?: string;
     questions_data: Record<string, string | string[]>;
     redirect_url?: string;
+    promo_code?: string;
   }) =>
     request<{
       assessment_id: string;
@@ -868,6 +869,12 @@ export const api = {
       amount: number;
       message: string;
     }>('/stale-listings/submit', { method: 'POST', body: payload }),
+
+  staleListingsVerifyPromo: (payload: {
+    code: string;
+    package: 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment' | 'free_trial_assessment';
+  }) =>
+    request<{ valid: boolean; message: string }>('/stale-listings/verify-promo', { method: 'POST', body: payload }),
 
   staleListingsGetReport: (reference: string, token?: string) =>
     request<{

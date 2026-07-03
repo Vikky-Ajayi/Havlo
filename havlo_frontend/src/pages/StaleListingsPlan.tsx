@@ -314,6 +314,10 @@ export function StaleListingsPlan() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoVerified, setPromoVerified] = useState(false);
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoError, setPromoError] = useState('');
 
   const plan = visiblePlans.find(p => p.id === selectedPlan)!
 
@@ -327,6 +331,30 @@ export function StaleListingsPlan() {
     : selectedPlan === 'listing_recovery_assessment' ? 'Within 5 working days'
     : selectedPlan === 'free_trial_assessment' ? 'Within 5 working days'
     : '24 hours + follow-up support';
+
+  const handleVerifyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a promo code.');
+      return;
+    }
+    setPromoChecking(true);
+    setPromoError('');
+    try {
+      const result = await api.staleListingsVerifyPromo({ code: promoCode.trim(), package: selectedPlan });
+      if (result.valid) {
+        setPromoVerified(true);
+        setPromoError('');
+      } else {
+        setPromoVerified(false);
+        setPromoError(result.message || 'That promo code is not valid.');
+      }
+    } catch (err: unknown) {
+      setPromoVerified(false);
+      setPromoError(err instanceof Error ? err.message : 'Unable to verify promo code right now.');
+    } finally {
+      setPromoChecking(false);
+    }
+  };
 
   const handlePaySubmit = async () => {
     if (!form.first_name || !form.last_name || !form.email || !form.phone) {
@@ -356,8 +384,9 @@ export function StaleListingsPlan() {
         listing_url: listingUrl || undefined,
         questions_data: answers,
         redirect_url: `${window.location.origin}/stale-listings/complete`,
+        promo_code: promoVerified ? promoCode.trim() : undefined,
       });
-      if (selectedPlan === 'free_trial_assessment') {
+      if (selectedPlan === 'free_trial_assessment' || result.amount === 0) {
         sessionStorage.removeItem('sl_free_plan');
         navigate(`/stale-listings/complete?ref=${result.reference}`);
         return;
@@ -1011,6 +1040,53 @@ export function StaleListingsPlan() {
               </div>
             </div>
 
+            {/* Promo code */}
+            {selectedPlan === 'listing_recovery_assessment' && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, color: '#444', marginBottom: 6 }}>Promo code (optional)</label>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={e => {
+                      setPromoCode(e.target.value);
+                      setPromoVerified(false);
+                      setPromoError('');
+                    }}
+                    disabled={promoVerified}
+                    placeholder="Enter promo code"
+                    style={{ flex: 1, border: promoVerified ? '1px solid #22C55E' : '1px solid #E0E0E0', borderRadius: 8, padding: '10px 14px', fontFamily: 'Inter, sans-serif', fontSize: 14, outline: 'none', background: promoVerified ? '#F0FDF4' : '#fff' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyPromo}
+                    disabled={promoChecking || promoVerified || !promoCode.trim()}
+                    style={{
+                      flexShrink: 0,
+                      padding: '0 18px',
+                      borderRadius: 8,
+                      border: '1px solid #000',
+                      background: promoVerified ? '#22C55E' : '#fff',
+                      color: promoVerified ? '#fff' : '#000',
+                      fontFamily: 'Inter, sans-serif',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: promoChecking || promoVerified || !promoCode.trim() ? 'default' : 'pointer',
+                      opacity: promoChecking ? 0.6 : 1,
+                    }}
+                  >
+                    {promoVerified ? 'Applied' : promoChecking ? 'Checking…' : 'Verify'}
+                  </button>
+                </div>
+                {promoError && (
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#DC2626', marginTop: 6 }}>{promoError}</div>
+                )}
+                {promoVerified && (
+                  <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#16A34A', marginTop: 6 }}>Promo code applied — this plan is now free.</div>
+                )}
+              </div>
+            )}
+
             {/* Mini order summary */}
             <div style={{ background: '#F8F8F8', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -1019,7 +1095,14 @@ export function StaleListingsPlan() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#666' }}>Total</span>
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, color: '#000' }}>{plan.price}</span>
+                {promoVerified ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#999', textDecoration: 'line-through' }}>{plan.price}</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, color: '#16A34A' }}>Free</span>
+                  </span>
+                ) : (
+                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 700, color: '#000' }}>{plan.price}</span>
+                )}
               </div>
             </div>
 
@@ -1034,7 +1117,7 @@ export function StaleListingsPlan() {
               disabled={loading}
               style={{ width: '100%', height: 50, borderRadius: 8, border: 'none', background: loading ? '#888' : '#000', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Processing…' : selectedPlan === 'free_trial_assessment' ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+              {loading ? 'Processing…' : selectedPlan === 'free_trial_assessment' || promoVerified ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
             </button>
           </div>
         </div>

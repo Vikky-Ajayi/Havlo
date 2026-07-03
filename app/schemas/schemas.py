@@ -439,6 +439,7 @@ class StaleListingSubmitRequest(BaseModel):
     listing_url: Optional[str] = Field(None, max_length=2000)
     questions_data: dict = Field(default_factory=dict)
     redirect_url: Optional[str] = Field(None, max_length=2000)
+    promo_code: Optional[str] = Field(None, max_length=100)
 
 
 class StaleListingSubmitResponse(BaseModel):
@@ -447,6 +448,16 @@ class StaleListingSubmitResponse(BaseModel):
     checkout_url: str
     checkout_id: str
     amount: float
+    message: str
+
+
+class StaleListingPromoVerifyRequest(BaseModel):
+    code: str = Field(..., min_length=1, max_length=100)
+    package: str = Field(..., pattern="^(quick_insight|professional_review|premium_strategy|listing_recovery_assessment|free_trial_assessment)$")
+
+
+class StaleListingPromoVerifyResponse(BaseModel):
+    valid: bool
     message: str
 
 
