@@ -71,20 +71,6 @@ const faqs = [
   ['What is the minimum budget to get started?', 'Our advisory service is for buyers with a minimum budget of £50,000. Properties at this level are typically found in more affordable regions such as the North East of England and parts of Lancashire. Buyers looking for city-level amenities at a higher budget can expect entry prices from around £75,000–£100,000. London entry points are typically £350,000.'],
 ];
 
-const whyHavloForYou = [
-  ['Buy-to-Let Property Acquisition', 'Purchase a residential investment property designed to generate rental income and long-term capital growth.'],
-  ['Commercial Property Investment', 'Access retail units, office spaces, warehouses, and mixed-use commercial assets.'],
-  ['Off-Market Property Access', 'Get access to discreet and off-market opportunities not publicly listed on major property portals.'],
-  ['International Property Diversification', 'Diversify your portfolio by investing in UK property from anywhere in the world.'],
-  ['End-to-End Purchase Management', 'We manage your entire acquisition process from sourcing and negotiation through to legal completion.'],
-  ['Negotiation & Price Optimisation', 'We represent you to secure the property at the most competitive market price.'],
-  ['Due Diligence & Risk Reduction', 'Comprehensive market analysis, comparable sales reviews, and legal/financial checks to reduce your purchase risk.'],
-  ['Mortgage & Finance Introductions', 'We connect you with trusted UK mortgage brokers and financing partners where required.'],
-  ['Legal & Conveyancing Support Coordination', 'We work alongside solicitors to ensure a smooth and compliant transaction process.'],
-  ['Anonymous / Discreet Property Acquisition (Legally Structured)', 'We support buyers who require privacy by using lawful structures such as corporate ownership, trusts, or nominee arrangements where appropriate and compliant with UK regulations.'],
-  ['Flexible & Alternative Payment Options', 'We also support alternative payment methods, including crypto-based transactions, where legally permissible and fully compliant with UK regulatory and due diligence requirements.'],
-];
-
 const SelectField = ({
   label,
   value,
@@ -417,22 +403,6 @@ export const BuyAbroadUk: React.FC = () => {
           </div>
         </section>
 
-        <section className="buk-section buk-why-section">
-          <div className="buk-inner">
-            <span className="buk-eyebrow">WHY HAVLO</span>
-            <h2>Why Havlo Is the Right Fit for You</h2>
-            <p className="buk-section-lead">Through Havlo's independent property advisory service, we support you in achieving a wide range of UK and international property investment goals, including:</p>
-            <ul className="buk-why-list">
-              {whyHavloForYou.map(([title, body]) => (
-                <li key={title}>
-                  <strong>{title}</strong>
-                  <span>{body}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
         <section className="buk-section buk-testimonials">
           <div className="buk-inner">
             <span className="buk-eyebrow">WHAT OUR BUYERS SAY</span>
@@ -570,17 +540,12 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; max-width: 65vw; }
         .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
         .buk-market-body + .buk-market-body { margin-top: 32px; }
-        .buk-why-section .buk-section-lead { max-width: 100%; margin-bottom: 24px; }
-        .buk-why-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 40px; }
-        .buk-why-list li { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid #b100df; padding-left: 18px; }
-        .buk-why-list strong { font-family: Inter, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: #111; }
-        .buk-why-list span { font-size: 14px; line-height: 1.55; color: #444; }
         .buk-stats { display: flex; flex-direction: column; }
         .buk-stat-item { border-left: 4px solid #8b00d4; padding: 2px 0 13px 22px; }
         .buk-stat-item:not(:last-child) { margin-bottom: 13px; }
         .buk-stat-item strong { display: block; font-family: "Clash Display Variable", "Clash Display", Inter, sans-serif; font-size: 36px; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; color: #111; margin-bottom: 4px; }
         .buk-stat-item span { color: #555; font-size: 14px; line-height: 1.45; }
-        .buk-section { padding: 72px 0; }
+        .buk-section { padding: 44px 0; }
         .buk-eyebrow { color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; text-transform: uppercase; }
         .buk-section h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -670,8 +635,8 @@ export const BuyAbroadUk: React.FC = () => {
           .buk-market { padding: 44px 0; }
           .buk-market-grid { grid-template-columns: 1fr; gap: 24px; }
           .buk-market h2, .buk-section h2, .buk-process h2 { font-size: clamp(26px, 7vw, 36px); }
-          .buk-section { padding: 48px 0; }
-          .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid, .buk-why-list { grid-template-columns: 1fr; }
+          .buk-section { padding: 32px 0; }
+          .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid { grid-template-columns: 1fr; }
           .buk-process-grid { grid-template-columns: 1fr; gap: 28px; }
           .buk-arrow { display: none; }
           .buk-process-step { max-width: 320px; margin: 0 auto; }

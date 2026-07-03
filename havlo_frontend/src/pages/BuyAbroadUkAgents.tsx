@@ -23,27 +23,6 @@ const featureStrip = [
   { icon: <Phone size={20} />, text: 'WhatsApp-first support' },
 ];
 
-const feeTiers = [
-  '£5,000 for properties valued between £50,000 – £100,000',
-  '£7,000 for properties valued between £100,000 – £150,000',
-  '£10,000 for properties valued between £150,000 – £300,000',
-  '£20,000 for properties valued between £300,000 – £500,000',
-];
-
-const whyHavloForClients = [
-  ['Buy-to-Let Property Acquisition', 'Helping clients purchase residential investment properties designed to generate rental income and long-term capital growth.'],
-  ['Commercial Property Investment', 'Assisting with the acquisition of retail units, office spaces, warehouses, and mixed-use commercial assets.'],
-  ['Off-Market Property Access', 'Providing access to discreet and off-market opportunities not publicly listed on major property portals.'],
-  ['International Property Diversification', 'Helping clients diversify their portfolio by investing in UK property from overseas markets.'],
-  ['End-to-End Purchase Management', 'Managing the entire acquisition process from sourcing and negotiation through to legal completion.'],
-  ['Negotiation & Price Optimisation', 'Representing clients to secure properties at the most competitive market price.'],
-  ['Due Diligence & Risk Reduction', 'Conducting comprehensive market analysis, comparable sales reviews, and legal/financial checks to reduce purchase risk.'],
-  ['Mortgage & Finance Introductions', 'Connecting clients with trusted UK mortgage brokers and financing partners where required.'],
-  ['Legal & Conveyancing Support Coordination', 'Working alongside solicitors to ensure a smooth and compliant transaction process.'],
-  ['Anonymous / Discreet Property Acquisition (Legally Structured)', 'Assisting clients who require privacy by using lawful structures such as corporate ownership, trusts, or nominee arrangements where appropriate and compliant with UK regulations.'],
-  ['Flexible & Alternative Payment Options', 'We also support clients who require alternative payment methods, including crypto-based transactions, where legally permissible and fully compliant with UK regulatory and due diligence requirements.'],
-];
-
 const propertyCards = [
   {
     title: 'Residential',
@@ -443,44 +422,6 @@ export const BuyAbroadUkAgents: React.FC = () => {
           </div>
         </section>
 
-        <section className="buk-section buk-fee-section">
-          <div className="buk-inner">
-            <span className="buk-eyebrow">PRICING</span>
-            <h2>Fee Structure for Your Clients</h2>
-            <p className="buk-section-lead">The following represents our standard advisory service fees for clients purchasing property in the UK through Havlo. These fees cover our full end-to-end property acquisition support, including sourcing, due diligence, negotiation, and transaction management.</p>
-            <ul className="buk-fee-list">
-              {feeTiers.map((tier) => (
-                <li key={tier}>{tier}</li>
-              ))}
-            </ul>
-            <p className="buk-fee-note">For properties valued above £500,000, the advisory fee will be discussed and agreed based on the client's requirements and investment profile.</p>
-          </div>
-        </section>
-
-        <section className="buk-section buk-commission-section">
-          <div className="buk-inner">
-            <span className="buk-eyebrow">EARNINGS</span>
-            <h2>Partner Referral Commission</h2>
-            <p className="buk-section-lead">For every successfully completed purchase introduced via our partner network, we pay <strong>25% of our advisory fee</strong> to the referring agent or partner. As our fee is typically paid by clients in stages throughout the transaction, we pass on 25% of each stage payment to you as it's received — ensuring you're rewarded progressively, in step with the deal. Clients, in turn, receive full end-to-end advisory support throughout their UK property purchase.</p>
-          </div>
-        </section>
-
-        <section className="buk-section buk-why-section">
-          <div className="buk-inner">
-            <span className="buk-eyebrow">WHY HAVLO</span>
-            <h2>Why Havlo Is the Right Fit for Your Clients</h2>
-            <p className="buk-section-lead">Through Havlo's independent property advisory service, we support clients in achieving a wide range of UK and international property investment goals, including:</p>
-            <ul className="buk-why-list">
-              {whyHavloForClients.map(([title, body]) => (
-                <li key={title}>
-                  <strong>{title}</strong>
-                  <span>{body}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
         <section className="buk-section buk-testimonials">
           <div className="buk-inner">
             <span className="buk-eyebrow">WHAT OUR BUYERS SAY</span>
@@ -618,22 +559,12 @@ export const BuyAbroadUkAgents: React.FC = () => {
         .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; max-width: 65vw; }
         .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
         .buk-market-body + .buk-market-body { margin-top: 32px; }
-        .buk-fee-section .buk-section-lead, .buk-commission-section .buk-section-lead, .buk-why-section .buk-section-lead { max-width: 100%; margin-bottom: 24px; }
-        .buk-fee-list { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-        .buk-fee-list li { position: relative; padding-left: 26px; font-size: 15px; line-height: 1.55; color: #1a1a1a; }
-        .buk-fee-list li::before { content: ''; position: absolute; left: 0; top: 8px; width: 10px; height: 10px; border-radius: 999px; background: #b100df; }
-        .buk-fee-note { font-size: 15px; line-height: 1.6; color: #444; margin: 0; }
-        .buk-commission-section .buk-section-lead { font-size: 17px; line-height: 1.7; }
-        .buk-why-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 40px; }
-        .buk-why-list li { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid #b100df; padding-left: 18px; }
-        .buk-why-list strong { font-family: Inter, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: #111; }
-        .buk-why-list span { font-size: 14px; line-height: 1.55; color: #444; }
         .buk-stats { display: flex; flex-direction: column; }
         .buk-stat-item { border-left: 4px solid #8b00d4; padding: 2px 0 13px 22px; }
         .buk-stat-item:not(:last-child) { margin-bottom: 13px; }
         .buk-stat-item strong { display: block; font-family: "Clash Display Variable", "Clash Display", Inter, sans-serif; font-size: 36px; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; color: #111; margin-bottom: 4px; }
         .buk-stat-item span { color: #555; font-size: 14px; line-height: 1.45; }
-        .buk-section { padding: 72px 0; }
+        .buk-section { padding: 44px 0; }
         .buk-eyebrow { color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; text-transform: uppercase; }
         .buk-section h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -647,7 +578,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
         .buk-tags-green span { color: #006b3f; background: #ddf5ec; border-color: #b8e8d4; }
         .buk-tags-blue span { color: #1a4db5; background: #dbeafe; border-color: #bdd7fa; }
         .buk-tags-purple span { color: #7300aa; background: #f2e3fd; border-color: #ddb8f5; }
-        .buk-process { background: #050807; color: #fff; padding: 72px 0; text-align: center; }
+        .buk-process { background: #050807; color: #fff; padding: 48px 0; text-align: center; }
         .buk-process h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 14px 0 54px; }
         .buk-process-grid { display: grid; grid-template-columns: 1fr 90px 1fr 90px 1fr 90px 1fr; gap: 12px; align-items: center; }
         .buk-process-step b { display: inline-flex; width: 24px; height: 24px; border-radius: 999px; align-items: center; justify-content: center; background: #b100df; margin-bottom: 12px; }
@@ -723,8 +654,8 @@ export const BuyAbroadUkAgents: React.FC = () => {
           .buk-market { padding: 44px 0; }
           .buk-market-grid { grid-template-columns: 1fr; gap: 24px; }
           .buk-market h2, .buk-section h2, .buk-process h2 { font-size: clamp(26px, 7vw, 36px); }
-          .buk-section { padding: 48px 0; }
-          .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid, .buk-why-list { grid-template-columns: 1fr; }
+          .buk-section { padding: 32px 0; }
+          .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid { grid-template-columns: 1fr; }
           .buk-process-grid { grid-template-columns: 1fr; gap: 28px; }
           .buk-arrow { display: none; }
           .buk-process-step { max-width: 320px; margin: 0 auto; }
