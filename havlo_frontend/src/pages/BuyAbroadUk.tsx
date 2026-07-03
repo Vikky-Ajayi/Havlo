@@ -572,6 +572,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-why-section .buk-section-lead { max-width: 100%; margin-bottom: 24px; }
         .buk-why-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 40px; }
         .buk-why-list li { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid #b100df; padding-left: 18px; }
+        .buk-why-list li:last-child:nth-child(odd) { grid-column: 1 / -1; align-items: center; text-align: center; border-left: none; padding-left: 0; }
         .buk-why-list strong { font-family: Inter, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: #111; }
         .buk-why-list span { font-size: 14px; line-height: 1.55; color: #444; }
         .buk-stats { display: flex; flex-direction: column; }
