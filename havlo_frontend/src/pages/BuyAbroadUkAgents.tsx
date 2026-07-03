@@ -443,10 +443,8 @@ export const BuyAbroadUkAgents: React.FC = () => {
           </div>
         </section>
 
-        <section className="buk-section buk-fee-section">
+        <section className="buk-section buk-fee-section buk-tight-section">
           <div className="buk-inner">
-            <span className="buk-eyebrow">PRICING</span>
-            <h2>Fee Structure for Your Clients</h2>
             <p className="buk-section-lead">The following represents our standard advisory service fees for clients purchasing property in the UK through Havlo. These fees cover our full end-to-end property acquisition support, including sourcing, due diligence, negotiation, and transaction management.</p>
             <ul className="buk-fee-list">
               {feeTiers.map((tier) => (
@@ -457,18 +455,14 @@ export const BuyAbroadUkAgents: React.FC = () => {
           </div>
         </section>
 
-        <section className="buk-section buk-commission-section">
+        <section className="buk-section buk-commission-section buk-tight-section">
           <div className="buk-inner">
-            <span className="buk-eyebrow">EARNINGS</span>
-            <h2>Partner Referral Commission</h2>
             <p className="buk-section-lead">For every successfully completed purchase introduced via our partner network, we pay <strong>25% of our advisory fee</strong> to the referring agent or partner. As our fee is typically paid by clients in stages throughout the transaction, we pass on 25% of each stage payment to you as it's received — ensuring you're rewarded progressively, in step with the deal. Clients, in turn, receive full end-to-end advisory support throughout their UK property purchase.</p>
           </div>
         </section>
 
-        <section className="buk-section buk-why-section">
+        <section className="buk-section buk-why-section buk-tight-section">
           <div className="buk-inner">
-            <span className="buk-eyebrow">WHY HAVLO</span>
-            <h2>Why Havlo Is the Right Fit for Your Clients</h2>
             <p className="buk-section-lead">Through Havlo's independent property advisory service, we support clients in achieving a wide range of UK and international property investment goals, including:</p>
             <ul className="buk-why-list">
               {whyHavloForClients.map(([title, body]) => (
@@ -634,6 +628,9 @@ export const BuyAbroadUkAgents: React.FC = () => {
         .buk-stat-item strong { display: block; font-family: "Clash Display Variable", "Clash Display", Inter, sans-serif; font-size: 36px; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; color: #111; margin-bottom: 4px; }
         .buk-stat-item span { color: #555; font-size: 14px; line-height: 1.45; }
         .buk-section { padding: 72px 0; }
+        .buk-tight-section { padding: 28px 0; }
+        .buk-fee-section.buk-tight-section { padding-top: 40px; }
+        .buk-why-section.buk-tight-section { padding-bottom: 40px; }
         .buk-eyebrow { color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; text-transform: uppercase; }
         .buk-section h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }

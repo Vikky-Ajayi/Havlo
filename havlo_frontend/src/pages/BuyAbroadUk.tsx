@@ -417,10 +417,8 @@ export const BuyAbroadUk: React.FC = () => {
           </div>
         </section>
 
-        <section className="buk-section buk-why-section">
+        <section className="buk-section buk-why-section buk-tight-section">
           <div className="buk-inner">
-            <span className="buk-eyebrow">WHY HAVLO</span>
-            <h2>Why Havlo Is the Right Fit for You</h2>
             <p className="buk-section-lead">Through Havlo's independent property advisory service, we support you in achieving a wide range of UK and international property investment goals, including:</p>
             <ul className="buk-why-list">
               {whyHavloForYou.map(([title, body]) => (
@@ -581,6 +579,7 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-stat-item strong { display: block; font-family: "Clash Display Variable", "Clash Display", Inter, sans-serif; font-size: 36px; font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; color: #111; margin-bottom: 4px; }
         .buk-stat-item span { color: #555; font-size: 14px; line-height: 1.45; }
         .buk-section { padding: 72px 0; }
+        .buk-tight-section { padding: 28px 0; }
         .buk-eyebrow { color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; text-transform: uppercase; }
         .buk-section h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 48px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; margin: 10px 0 32px; }
         .buk-property-grid, .buk-testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
