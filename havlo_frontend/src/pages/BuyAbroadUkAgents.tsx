@@ -3,21 +3,45 @@ import { Building2, ChevronDown, MessageCircle, Phone, Users, X } from 'lucide-r
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 
-type EligibilityStep = 'eligibility' | 'timeline' | 'details' | 'fit' | 'not-fit';
+type ApplicationStep = 'contact' | 'business' | 'referral' | 'submitted';
 
 const WHATSAPP_NUMBER = '2349039861006';
 const CALL_DISPLAY = '0903 986 1006';
 const CALL_LINK = '+2349039861006';
 
-const propertyOptions = ['Residential', 'Commercial', 'Investment', 'Not sure yet'];
-const budgetOptions = ['Under £50,000', '£50,000 - £200,000', '£200,000 - £500,000', '£500,000+'];
-const timelineOptions = ['Immediately', '1-3 months', '3-6 months', '6+ months', 'Just exploring'];
+const referralVolumeOptions = ['1-2 clients', '3-5 clients', '6-10 clients', '10+ clients'];
+const minimumPriceOptions = [
+  '£50,000 - £200,000 (₦90,000,000 – ₦360,000,000)',
+  '£200,000 - £500,000 (₦360,000,000 – ₦900,000,000)',
+  '£500,000+ (₦900,000,000 and above)',
+];
 
 const featureStrip = [
   { icon: <Building2 size={20} />, text: 'UK property advisory service' },
   { icon: <Users size={20} />, text: 'Vetted agents, solicitors & conveyancers' },
   { icon: <MessageCircle size={20} />, text: 'Free consultation - no obligation' },
   { icon: <Phone size={20} />, text: 'WhatsApp-first support' },
+];
+
+const feeTiers = [
+  '£5,000 for properties valued between £50,000 – £100,000',
+  '£7,000 for properties valued between £100,000 – £150,000',
+  '£10,000 for properties valued between £150,000 – £300,000',
+  '£20,000 for properties valued between £300,000 – £500,000',
+];
+
+const whyHavloForClients = [
+  ['Buy-to-Let Property Acquisition', 'Helping clients purchase residential investment properties designed to generate rental income and long-term capital growth.'],
+  ['Commercial Property Investment', 'Assisting with the acquisition of retail units, office spaces, warehouses, and mixed-use commercial assets.'],
+  ['Off-Market Property Access', 'Providing access to discreet and off-market opportunities not publicly listed on major property portals.'],
+  ['International Property Diversification', 'Helping clients diversify their portfolio by investing in UK property from overseas markets.'],
+  ['End-to-End Purchase Management', 'Managing the entire acquisition process from sourcing and negotiation through to legal completion.'],
+  ['Negotiation & Price Optimisation', 'Representing clients to secure properties at the most competitive market price.'],
+  ['Due Diligence & Risk Reduction', 'Conducting comprehensive market analysis, comparable sales reviews, and legal/financial checks to reduce purchase risk.'],
+  ['Mortgage & Finance Introductions', 'Connecting clients with trusted UK mortgage brokers and financing partners where required.'],
+  ['Legal & Conveyancing Support Coordination', 'Working alongside solicitors to ensure a smooth and compliant transaction process.'],
+  ['Anonymous / Discreet Property Acquisition (Legally Structured)', 'Assisting clients who require privacy by using lawful structures such as corporate ownership, trusts, or nominee arrangements where appropriate and compliant with UK regulations.'],
+  ['Flexible & Alternative Payment Options', 'We also support clients who require alternative payment methods, including crypto-based transactions, where legally permissible and fully compliant with UK regulatory and due diligence requirements.'],
 ];
 
 const propertyCards = [
@@ -63,12 +87,23 @@ const testimonials = [
 ];
 
 const faqs = [
-  ['Can Nigerians legally buy property in the UK?', 'Yes, completely. There are no restrictions on foreign nationals purchasing UK property, residential or commercial. You do not need a visa, residency, or UK bank account to buy.'],
-  ['Do I need to travel to the UK to purchase?', 'No. With the right legal setup, the entire process can be completed remotely. We coordinate viewings, solicitors, and signing on your behalf via video and secure digital systems.'],
-  ['Can I get a mortgage as a non-UK resident?', 'Yes, though the process is different. Several UK lenders offer non-resident mortgages. We work with specialist brokers who handle overseas applications regularly, including Nigerian buyers.'],
-  ['How do I transfer money from Nigeria to the UK?', 'We guide you through compliant international transfer options, including FX specialists who offer better rates than high-street banks and understand CBN regulations.'],
-  ['What taxes will I pay as a Nigerian buyer?', 'Stamp Duty Land Tax applies, with an overseas buyer surcharge of 2% on top of standard rates. Rental income is taxable in the UK, but deductions apply. We connect you with a UK tax advisor.'],
-  ['What is the minimum budget to get started?', 'Our advisory service is for buyers with a minimum budget of £100,000. Properties in strong Northern UK cities like Birmingham, Manchester, and Leeds start from around this level. London entry points are typically £350,000+.'],
+  ['What is Havlo?', 'Havlo is a UK property advisory platform that helps international buyers purchase property in the UK — from initial search and pricing guidance through to negotiation, legal completion, and beyond. We work alongside agents and partners worldwide to give their clients trusted, end-to-end support throughout the entire buying journey.'],
+  ['Who can become a Havlo partner?', 'We work with independent estate agents and agencies, financial advisors and wealth managers, immigration and relocation consultants, diaspora community networks and associations, and any professional with clients interested in buying property in the UK. You don\u2019t need to be a licensed UK estate agent to refer clients to us — our partner network is intentionally broad.'],
+  ['How does the referral process work?', 'You refer your client — send us their details along with basic information about what they\u2019re looking for (budget, location, timeline). We take over the advisory process, guiding your client on pricing, negotiation, and secure payment structuring, and connecting them with trusted solicitors and conveyancers. We support the client through to completion, managing the process end-to-end. Once the purchase is successfully completed, your commission is paid to you.'],
+  ['What\u2019s in it for my clients?', 'Your clients receive full end-to-end advisory support throughout their UK property purchase, including guidance on realistic pricing and market conditions, support with negotiation strategy, secure and compliant payment structuring, introductions to vetted, trusted solicitors and conveyancers, and a single point of contact managing the process from start to finish. This means a smoother, more transparent transaction — and a partner (you) who looks credible and well-connected in the eyes of your client.'],
+  ['How much commission do I earn?', 'For every successfully completed purchase introduced via our partner network, we pay 25% of our advisory fee to the referring agent or partner.'],
+  ['When and how do I get paid?', 'Our advisory fee is typically paid by clients in stages throughout the transaction. As each stage payment is received, we pass on 25% of that payment to you — meaning you\u2019re paid progressively as the deal moves forward, not just at the very end.'],
+  ['Is there a minimum property value or deal size to qualify?', 'Our advisory service is for buyers with a minimum budget of £50,000. Properties at this level are typically found in more affordable regions such as the North East of England and parts of Lancashire. Buyers looking for city-level amenities at a higher budget can expect entry prices from around £75,000–£100,000. London entry points are typically £350,000.'],
+  ['What information do I need to provide when referring a client?', 'At minimum: the client\u2019s full name and contact details, preferred location(s) in the UK, approximate budget, purchase timeline, and whether the client is a cash buyer or will require financing. The more context you give us upfront, the faster we can qualify and engage the client.'],
+  ['Do I need to stay involved after I refer a client?', 'No. Once you\u2019ve made the introduction, Havlo manages the entire advisory relationship with your client. You\u2019re kept updated on progress, but you don\u2019t need to manage any part of the transaction yourself.'],
+  ['Will Havlo go around me and deal with my client directly without paying commission?', 'No. Once a client is registered as your referral, they remain attributed to you for the full lifecycle of that transaction. Our commission structure exists specifically to protect and reward partners for their introductions.'],
+  ['Is there a formal partner agreement?', 'Yes. All partners sign a simple referral agreement outlining the commission structure, payment terms, and responsibilities of both parties. This protects you, your client, and Havlo, and ensures full transparency.'],
+  ['What happens if the client doesn\u2019t proceed with a purchase?', 'Commission is only payable on successfully completed purchases. If a client doesn\u2019t proceed, no fee is generated on either side — but we\u2019ll always keep you informed on why a deal didn\u2019t move forward.'],
+  ['Can I refer clients who are buying for investment purposes, not just to live in?', 'Yes. We support both owner-occupier purchases and investment purchases, including buy-to-let.'],
+  ['Can I refer more than one client?', 'Yes — there\u2019s no limit. Many of our partners refer multiple clients over time as part of an ongoing relationship with Havlo.'],
+  ['How do I track the progress of a client I\u2019ve referred?', 'You\u2019ll receive regular status updates via your partner portal at each key milestone.'],
+  ['Is this compliant with UK property and financial regulations?', 'Yes. Our payment structuring and advisory process are designed to be fully compliant, and we work only with vetted, regulated solicitors and conveyancers.'],
+  ['How do I get started as a Havlo partner?', 'Simply fill out the partner application form or reach out to us with your details, and we\u2019ll send over our partner agreement and onboarding information. Once signed, you can start referring clients immediately.'],
 ];
 
 const SelectField = ({
@@ -129,22 +164,24 @@ export const BuyAbroadUkAgents: React.FC = () => {
     }
   }, []);
 
-  const [step, setStep] = useState<EligibilityStep>('eligibility');
-  const [propertyType, setPropertyType] = useState('');
-  const [budget, setBudget] = useState('');
-  const [timeline, setTimeline] = useState('');
+  const [step, setStep] = useState<ApplicationStep>('contact');
   const [fullName, setFullName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [companyWebsite, setCompanyWebsite] = useState('');
+  const [referralVolume, setReferralVolume] = useState('');
+  const [minimumPrice, setMinimumPrice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isConsultationOpen, setIsConsultationOpen] = useState(false);
 
-  const firstName = useMemo(() => fullName.trim().split(/\s+/)[0] || 'Buyer', [fullName]);
-  const lastName = useMemo(() => fullName.trim().split(/\s+/).slice(1).join(' ') || 'Lead', [fullName]);
+  const firstName = useMemo(() => fullName.trim().split(/\s+/)[0] || 'Partner', [fullName]);
+  const lastName = useMemo(() => fullName.trim().split(/\s+/).slice(1).join(' ') || 'Applicant', [fullName]);
 
   const openConsultation = () => {
-    setStep('eligibility');
+    setStep('contact');
     setError('');
     setIsConsultationOpen(true);
   };
@@ -154,15 +191,13 @@ export const BuyAbroadUkAgents: React.FC = () => {
   };
 
   const openWhatsApp = () => {
-    const text = encodeURIComponent(`Hi Havlo, I completed the UK property eligibility form. My name is ${fullName || 'a prospective buyer'}.`);
+    const text = encodeURIComponent(`Hi Havlo, I just submitted my Agent / Partner Application. My name is ${fullName || 'a prospective partner'}.`);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank', 'noopener,noreferrer');
   };
 
   const submitLead = async () => {
     setSubmitting(true);
     setError('');
-    const outcome = budget === 'Under £50,000' ? 'Not currently eligible' : 'Great fit';
-    const nextStep = budget === 'Under £50,000' ? 'not-fit' : 'fit';
 
     try {
       await api.submitContactForm({
@@ -173,34 +208,32 @@ export const BuyAbroadUkAgents: React.FC = () => {
         phone_number: whatsapp,
         country_of_residence: 'Nigeria',
         message: [
-          'Buy Abroad UK eligibility lead',
-          `Outcome: ${outcome}`,
-          `Looking to buy: ${propertyType}`,
-          `Approximate budget: ${budget}`,
-          `Timeline: ${timeline}`,
+          'Buy Abroad UK — Agent / Partner Application',
+          `Address: ${address}`,
+          `Real estate company / agency: ${companyName}`,
+          `Company website / social link: ${companyWebsite}`,
+          `Clients they can refer monthly: ${referralVolume}`,
+          `Minimum property price their clients can afford: ${minimumPrice}`,
           `WhatsApp: ${whatsapp}`,
           `Source: /buyabroad/uk/agents`,
         ].join('\n'),
       });
     } catch (err) {
-      console.warn('Buy Abroad lead logging failed', err);
+      console.warn('Buy Abroad partner application logging failed', err);
     } finally {
-      setStep(nextStep);
+      setStep('submitted');
       setSubmitting(false);
     }
   };
 
   const renderForm = () => {
-    if (step === 'fit' || step === 'not-fit') {
-      const isFit = step === 'fit';
+    if (step === 'submitted') {
       return (
         <div className="buk-result">
-          <div className="buk-result-emoji">{isFit ? '🎉' : '🙏'}</div>
-          <h3>{isFit ? "You're a great fit." : "We're not the right fit right now."}</h3>
+          <div className="buk-result-emoji">🎉</div>
+          <h3>Application received.</h3>
           <p>
-            {isFit
-              ? 'Your budget and timeline match exactly what we work with. Reach out now via WhatsApp or give us a call — your consultation is free.'
-              : "Our advisory service is tailored for buyers with a budget of £50,000 or more. At this stage, we wouldn't be able to add the value you deserve. We wish you all the best — and if your budget changes, we'd love to hear from you."}
+            Thank you for applying to become a Havlo agent / partner. Our team will review your details and reach out on WhatsApp or email within 48 hours with your partner agreement and onboarding information.
           </p>
           <button className="buk-whatsapp" type="button" onClick={openWhatsApp}>
             <MessageCircle size={18} /> Chat on WhatsApp
@@ -220,37 +253,26 @@ export const BuyAbroadUkAgents: React.FC = () => {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (step === 'eligibility') {
-            setStep('timeline');
-          } else if (step === 'timeline') {
-            setStep('details');
-          } else if (step === 'details') {
+          if (step === 'contact') {
+            setStep('business');
+          } else if (step === 'business') {
+            setStep('referral');
+          } else if (step === 'referral') {
             void submitLead();
           }
         }}
       >
         <div className="buk-card-head">
-          <h2>{step === 'timeline' ? 'When Are You Looking to Proceed?' : step === 'details' ? 'Almost There' : 'Check Your Eligibility'}</h2>
-          <p>{step === 'timeline' ? 'Be honest — this helps us give you the right advice' : step === 'details' ? "Enter your details and we'll be in touch on WhatsApp" : 'Answer 3 quick questions, takes 30 seconds'}</p>
+          <h2>Agent / Partner Application</h2>
+          <p>Answer few quick questions, takes 60 seconds</p>
         </div>
         <div className="buk-divider" />
 
-        {step === 'eligibility' && (
+        {step === 'contact' && (
           <>
-            <SelectField label="What are you looking to buy?" value={propertyType} onChange={setPropertyType} options={propertyOptions} />
-            <SelectField label="What is your approximate budget?" value={budget} onChange={setBudget} options={budgetOptions} />
-          </>
-        )}
-
-        {step === 'timeline' && (
-          <SelectField label="Select your timeline" value={timeline} onChange={setTimeline} options={timelineOptions} />
-        )}
-
-        {step === 'details' && (
-          <>
-            <TextField label="Your full name" value={fullName} onChange={setFullName} placeholder="Select" />
+            <TextField label="Full name" value={fullName} onChange={setFullName} placeholder="e.g Chidi Okafor" />
             <label className="buk-field">
-              <span>WhatsApp number</span>
+              <span>Mobile / WhatsApp number</span>
               <div className="buk-phone-wrap">
                 <span aria-hidden="true">🇳🇬</span>
                 <input
@@ -263,21 +285,39 @@ export const BuyAbroadUkAgents: React.FC = () => {
               </div>
             </label>
             <TextField label="Email address" value={email} onChange={setEmail} placeholder="e.g johndoe@email.com" type="email" />
+            <TextField label="Address" value={address} onChange={setAddress} placeholder="Your business address" />
           </>
+        )}
+
+        {step === 'business' && (
+          <>
+            <TextField label="Real estate company / agency name" value={companyName} onChange={setCompanyName} placeholder="e.g Okafor Realty Ltd" />
+            <TextField label="Company website or social media link" value={companyWebsite} onChange={setCompanyWebsite} placeholder="e.g instagram.com/yourbusiness" />
+            <SelectField label="How many clients can you refer monthly?" value={referralVolume} onChange={setReferralVolume} options={referralVolumeOptions} />
+          </>
+        )}
+
+        {step === 'referral' && (
+          <SelectField
+            label="What is the minimum property price your referred clients can afford?"
+            value={minimumPrice}
+            onChange={setMinimumPrice}
+            options={minimumPriceOptions}
+          />
         )}
 
         {error && <p className="buk-error">{error}</p>}
 
         <div className="buk-form-spacer" />
         <button className="buk-primary" type="submit" disabled={submitting}>
-          {submitting ? 'Submitting...' : step === 'eligibility' ? 'Get Free Consultation →' : 'Continue →'}
+          {submitting ? 'Submitting...' : step === 'referral' ? 'Apply →' : 'Continue →'}
         </button>
-        {step !== 'eligibility' && (
-          <button className="buk-back" type="button" onClick={() => setStep(step === 'details' ? 'timeline' : 'eligibility')}>
+        {step !== 'contact' && (
+          <button className="buk-back" type="button" onClick={() => setStep(step === 'referral' ? 'business' : 'contact')}>
             ← Back
           </button>
         )}
-        {step === 'eligibility' && <p className="buk-secure">🔒 Your details are confidential. No spam, ever.</p>}
+        {step === 'contact' && <p className="buk-secure">🔒 Your details are confidential. No spam, ever.</p>}
       </form>
     );
   };
@@ -289,7 +329,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>
-        <button className="buk-header-cta" type="button" onClick={openConsultation}>Get Free Consultation</button>
+        <button className="buk-header-cta" type="button" onClick={openConsultation}>Apply</button>
         <button className="buk-menu" type="button" aria-label="Open menu">☰</button>
       </header>
 
@@ -297,9 +337,9 @@ export const BuyAbroadUkAgents: React.FC = () => {
         <section className="buk-hero">
           <div className="buk-inner buk-hero-grid">
             <div className="buk-hero-copy">
-              <h1>Own UK Property<br />from <span>Anywhere in Nigeria</span></h1>
-              <p>Residential homes, commercial units, and investment properties, with a dedicated advisor guiding your search, negotiations, legal setup, and payment to completion.</p>
-              <button className="buk-hero-cta" type="button" onClick={openConsultation}>Get Free Consultation</button>
+              <h1>Help Your Clients Buy UK Property.<br />Earn More From <span>Every Deal</span>.</h1>
+              <p>Partner with Havlo from anywhere in Nigeria. Help your clients buy property in the United Kingdom, we'll handle the property sourcing, negotiations, legal process, and completion, while you earn attractive commissions on every successful client.</p>
+              <button className="buk-hero-cta" type="button" onClick={openConsultation}>Start Earning UK Property Commissions</button>
               <div className="buk-trust">
                 <strong>Excellent</strong>
                 <span className="buk-stars">★★★★★</span>
@@ -307,23 +347,23 @@ export const BuyAbroadUkAgents: React.FC = () => {
               </div>
             </div>
 
-            <aside className="buk-form-card buk-form-preview" aria-label="Eligibility form preview">
+            <aside className="buk-form-card buk-form-preview" aria-label="Agent / Partner Application form preview">
               <div className="buk-card-head">
-                <h2>Check Your Eligibility</h2>
-                <p>Answer 3 quick questions, takes 30 seconds</p>
+                <h2>Agent / Partner Application</h2>
+                <p>Answer few quick questions, takes 60 seconds</p>
               </div>
               <div className="buk-divider" />
               <div className="buk-preview-fields">
                 <div className="buk-preview-field">
-                  <span>What are you looking to buy?</span>
+                  <span>Full name</span>
                   <button type="button" onClick={openConsultation}>Select <ChevronDown size={16} /></button>
                 </div>
                 <div className="buk-preview-field">
-                  <span>What is your approximate budget?</span>
+                  <span>How many clients can you refer monthly?</span>
                   <button type="button" onClick={openConsultation}>Select <ChevronDown size={16} /></button>
                 </div>
               </div>
-              <button className="buk-primary" type="button" onClick={openConsultation}>Get Free Consultation →</button>
+              <button className="buk-primary" type="button" onClick={openConsultation}>Apply →</button>
               <p className="buk-secure">🔒 Your details are confidential. No spam, ever.</p>
             </aside>
           </div>
@@ -360,8 +400,8 @@ export const BuyAbroadUkAgents: React.FC = () => {
 
         <section className="buk-section">
           <div className="buk-inner">
-            <span className="buk-eyebrow">WHAT YOU CAN BUY</span>
-            <h2>Three paths into UK property — all managed for you</h2>
+            <span className="buk-eyebrow">WHAT YOUR CLIENTS CAN BUY</span>
+            <h2>Three paths into UK property — all managed for your clients</h2>
             <div className="buk-property-grid">
               {propertyCards.map((card) => (
                 <article key={card.title} className="buk-property-card">
@@ -382,13 +422,13 @@ export const BuyAbroadUkAgents: React.FC = () => {
         <section id="process" className="buk-process">
           <div className="buk-inner">
             <span className="buk-eyebrow">THE PROCESS</span>
-            <h2>Your advisor handles everything. You just decide.</h2>
+            <h2>You refer your clients, we handle everything.</h2>
             <div className="buk-process-grid">
               {[
-                ['1', 'Free Consultation', 'Tell us your goals, budget, and preferred location. We’ll recommend the right property strategy for you.'],
-                ['2', 'We Search & Shortlist', 'We match you with suitable properties and connect you directly to vetted UK estate agents.'],
-                ['3', 'Negotiate & Structure', 'We guide you on pricing, negotiations, and secure payment structuring to ensure a smooth, compliant transaction.'],
-                ['4', 'Legal Completion', 'We connect you with trusted UK legal experts and support you through every step until the deal is completed.'],
+                ['1', 'Refer Clients', 'Refer clients who want to buy residential, commercial or investment properties in the United Kingdom.'],
+                ['2', 'We Search & Shortlist', 'We match and shortlist suitable properties that suits their budget, goal and timeline.'],
+                ['3', 'Negotiation, structuring & legal completion', 'We guide them through pricing, negotiation, and secure payment structuring, and connect them with trusted solicitors and conveyancers — supporting you every step until completion.'],
+                ['4', 'You get paid', 'Once the purchase is completed, your commission is paid.'],
               ].map((stepItem, index) => (
                 <React.Fragment key={stepItem[0]}>
                   <div className="buk-process-step">
@@ -400,6 +440,44 @@ export const BuyAbroadUkAgents: React.FC = () => {
                 </React.Fragment>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="buk-section buk-fee-section">
+          <div className="buk-inner">
+            <span className="buk-eyebrow">PRICING</span>
+            <h2>Fee Structure for Your Clients</h2>
+            <p className="buk-section-lead">The following represents our standard advisory service fees for clients purchasing property in the UK through Havlo. These fees cover our full end-to-end property acquisition support, including sourcing, due diligence, negotiation, and transaction management.</p>
+            <ul className="buk-fee-list">
+              {feeTiers.map((tier) => (
+                <li key={tier}>{tier}</li>
+              ))}
+            </ul>
+            <p className="buk-fee-note">For properties valued above £500,000, the advisory fee will be discussed and agreed based on the client's requirements and investment profile.</p>
+          </div>
+        </section>
+
+        <section className="buk-section buk-commission-section">
+          <div className="buk-inner">
+            <span className="buk-eyebrow">EARNINGS</span>
+            <h2>Partner Referral Commission</h2>
+            <p className="buk-section-lead">For every successfully completed purchase introduced via our partner network, we pay <strong>25% of our advisory fee</strong> to the referring agent or partner. As our fee is typically paid by clients in stages throughout the transaction, we pass on 25% of each stage payment to you as it's received — ensuring you're rewarded progressively, in step with the deal. Clients, in turn, receive full end-to-end advisory support throughout their UK property purchase.</p>
+          </div>
+        </section>
+
+        <section className="buk-section buk-why-section">
+          <div className="buk-inner">
+            <span className="buk-eyebrow">WHY HAVLO</span>
+            <h2>Why Havlo Is the Right Fit for Your Clients</h2>
+            <p className="buk-section-lead">Through Havlo's independent property advisory service, we support clients in achieving a wide range of UK and international property investment goals, including:</p>
+            <ul className="buk-why-list">
+              {whyHavloForClients.map(([title, body]) => (
+                <li key={title}>
+                  <strong>{title}</strong>
+                  <span>{body}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
@@ -424,7 +502,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
         <section className="buk-section buk-faq">
           <div className="buk-inner">
             <span className="buk-eyebrow">COMMON QUESTIONS</span>
-            <h2>Everything Nigerian buyers ask us</h2>
+            <h2>Everything Agents / Partners ask us</h2>
             <div className="buk-faq-grid">
               {faqs.map(([question, answer]) => (
                 <article key={question}>
@@ -439,9 +517,9 @@ export const BuyAbroadUkAgents: React.FC = () => {
         <section className="buk-bottom-cta">
           <div className="buk-inner">
             <div className="buk-cta-card">
-              <h2>Your UK property move starts<br />with <span>one free call.</span></h2>
-              <p>No commitment. A dedicated advisor will map out exactly what’s possible for your budget and goals.</p>
-              <button type="button" onClick={openConsultation}>Get Free Consultation</button>
+              <h2>Your next commission starts<br />with <span>one application.</span></h2>
+              <p>No commitment. Tell us about your business and the clients you can refer — we'll take it from there.</p>
+              <button type="button" onClick={openConsultation}>Apply</button>
             </div>
           </div>
         </section>
@@ -540,6 +618,16 @@ export const BuyAbroadUkAgents: React.FC = () => {
         .buk-section-lead { color: #555; font-size: 15px; line-height: 1.5; margin: 0; max-width: 65vw; }
         .buk-market-body { font-size: 15px; line-height: 1.65; color: #1a1a1a; margin: 0; }
         .buk-market-body + .buk-market-body { margin-top: 32px; }
+        .buk-fee-section .buk-section-lead, .buk-commission-section .buk-section-lead, .buk-why-section .buk-section-lead { max-width: 100%; margin-bottom: 24px; }
+        .buk-fee-list { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+        .buk-fee-list li { position: relative; padding-left: 26px; font-size: 15px; line-height: 1.55; color: #1a1a1a; }
+        .buk-fee-list li::before { content: ''; position: absolute; left: 0; top: 8px; width: 10px; height: 10px; border-radius: 999px; background: #b100df; }
+        .buk-fee-note { font-size: 15px; line-height: 1.6; color: #444; margin: 0; }
+        .buk-commission-section .buk-section-lead { font-size: 17px; line-height: 1.7; }
+        .buk-why-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px 40px; }
+        .buk-why-list li { display: flex; flex-direction: column; gap: 6px; border-left: 3px solid #b100df; padding-left: 18px; }
+        .buk-why-list strong { font-family: Inter, sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; color: #111; }
+        .buk-why-list span { font-size: 14px; line-height: 1.55; color: #444; }
         .buk-stats { display: flex; flex-direction: column; }
         .buk-stat-item { border-left: 4px solid #8b00d4; padding: 2px 0 13px 22px; }
         .buk-stat-item:not(:last-child) { margin-bottom: 13px; }
@@ -636,7 +724,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
           .buk-market-grid { grid-template-columns: 1fr; gap: 24px; }
           .buk-market h2, .buk-section h2, .buk-process h2 { font-size: clamp(26px, 7vw, 36px); }
           .buk-section { padding: 48px 0; }
-          .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid { grid-template-columns: 1fr; }
+          .buk-property-grid, .buk-testimonial-grid, .buk-faq-grid, .buk-why-list { grid-template-columns: 1fr; }
           .buk-process-grid { grid-template-columns: 1fr; gap: 28px; }
           .buk-arrow { display: none; }
           .buk-process-step { max-width: 320px; margin: 0 auto; }
