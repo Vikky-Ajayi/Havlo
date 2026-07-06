@@ -1,3 +1,6 @@
 {
-  "packages": ["python", "node"]
+  "packages": {
+    "node": "22",
+    "python": "3.11"
+  }
 }
