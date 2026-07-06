@@ -204,70 +204,85 @@ export const BuyAbroadUkListings: React.FC = () => {
         /* ── Header ── */
         .bal-header {
           position: sticky; top: 0; z-index: 100;
-          height: 72px; background: #fff;
-          border-bottom: 1px solid #e8e9ec;
+          height: 80px; background: #fff;
+          border-bottom: 1px solid #eee;
           display: flex; align-items: center;
-          padding: 0 clamp(20px, 5vw, 60px);
-          gap: 16px;
+          padding: 0 max(60px, calc((100vw - 1240px) / 2));
         }
         .bal-logo {
-          display: flex; align-items: center; gap: 10px;
-          text-decoration: none; color: #111;
-          flex-shrink: 0;
+          display: inline-flex; flex-direction: column; align-items: center;
+          text-decoration: none; color: #111; line-height: 1; flex-shrink: 0;
         }
-        .bal-logo img { height: 26px; width: auto; }
-        .bal-logo-sep { width: 1px; height: 18px; background: #d0d0d0; }
-        .bal-logo span {
-          font-family: "Plus Jakarta Sans", Inter, sans-serif;
-          font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
-          color: #555; text-transform: uppercase;
-        }
+        .bal-logo img { width: 136px; height: auto; display: block; }
+        .bal-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
         .bal-header-spacer { flex: 1; }
         .bal-header-back {
           font-size: 13px; font-weight: 700; color: #111;
           text-decoration: none;
           border: 1.5px solid #e0e0e0;
-          border-radius: 8px; padding: 7px 16px;
-          transition: border-color .15s;
+          border-radius: 10px; padding: 9px 18px;
+          transition: border-color .15s; white-space: nowrap;
         }
         .bal-header-back:hover { border-color: #b100df; color: #b100df; }
         .bal-header-cta {
-          height: 38px; border: 0; border-radius: 8px;
-          padding: 0 20px;
-          background: #b100df; color: #fff;
-          font-weight: 700; font-size: 13px; cursor: pointer;
+          height: 48px; border: 0; border-radius: 12px;
+          padding: 0 22px; margin-left: 12px;
+          background: #050505; color: #fff;
+          font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap;
         }
+        .bal-header-cta:hover { background: #b100df; }
 
         /* ── Hero ── */
         .bal-hero {
-          background: linear-gradient(135deg, #6b00a8 0%, #b100df 60%, #d946ef 100%);
-          color: #fff;
-          padding: 56px clamp(20px, 5vw, 60px) 52px;
-          text-align: center;
+          background: linear-gradient(90deg, #fff 0%, #fff 45%, #ffd3f2 100%);
+          color: #1f1f1e;
+          padding: 80px max(60px, calc((100vw - 1240px) / 2)) 72px;
+        }
+        .bal-hero-inner {
+          max-width: 1240px; margin: 0 auto;
+          display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+          gap: 42px; align-items: center;
         }
         .bal-hero-eyebrow {
+          color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif;
           font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
-          text-transform: uppercase; opacity: .75; margin-bottom: 14px;
+          text-transform: uppercase; margin-bottom: 16px;
         }
         .bal-hero h1 {
           font-family: "Plus Jakarta Sans", Inter, sans-serif;
-          font-size: clamp(30px, 5vw, 52px); font-weight: 700;
-          letter-spacing: -0.03em; line-height: 1.1;
-          margin: 0 0 14px;
+          font-size: clamp(32px, 4vw, 52px); font-weight: 800;
+          letter-spacing: -0.03em; line-height: 1.12;
+          margin: 0 0 16px; color: #111;
         }
-        .bal-hero p {
-          font-size: 16px; opacity: .85; max-width: 540px;
-          margin: 0 auto 28px; line-height: 1.55;
+        .bal-hero h1 span { color: #b100df; }
+        .bal-hero-copy > p {
+          font-size: clamp(14px, 1.4vw, 16px); line-height: 1.55;
+          color: #444; margin: 0 0 28px; max-width: 440px;
         }
-        .bal-hero-badges {
-          display: flex; flex-wrap: wrap; gap: 10px;
-          justify-content: center;
+        .bal-hero-cta {
+          display: inline-block; height: 48px; line-height: 48px;
+          border: 0; border-radius: 12px;
+          background: #050505; color: #fff; padding: 0 28px;
+          font-weight: 900; font-size: 15px; cursor: pointer;
+          margin-bottom: 28px; text-decoration: none; transition: background .15s;
         }
-        .bal-hero-badge {
-          background: rgba(255,255,255,.15);
-          border: 1px solid rgba(255,255,255,.25);
-          border-radius: 999px; padding: 6px 16px;
-          font-size: 13px; font-weight: 600;
+        .bal-hero-cta:hover { background: #b100df; }
+        .bal-hero-trust { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+        .bal-hero-stars { color: #fff; background: #00b67a; letter-spacing: 2px; padding: 4px 6px; font-size: 16px; line-height: 1; }
+        .bal-hero-card {
+          background: #fff; border: 3px solid #050505;
+          border-radius: 16px; padding: 28px 24px;
+          box-shadow: 6px 6px 0 #000;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          min-height: 340px;
+        }
+        .bal-hero-svg { width: 100%; max-width: 360px; }
+        .bal-hero-card-chips {
+          display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 20px;
+        }
+        .bal-hero-card-chip {
+          background: #f3f4f6; border-radius: 999px; padding: 5px 14px;
+          font-size: 12px; font-weight: 700; color: #333; border: 1px solid #e8e8e8;
         }
 
         /* ── Filter bar ── */
@@ -488,12 +503,17 @@ export const BuyAbroadUkListings: React.FC = () => {
         /* ── Responsive ── */
         @media (max-width: 1024px) {
           .bal-grid { grid-template-columns: repeat(2, 1fr); }
+          .bal-hero-inner { grid-template-columns: 1fr; }
+          .bal-hero-card { display: none; }
+          .bal-hero { padding: 56px 40px 48px; }
         }
         @media (max-width: 640px) {
           .bal-grid { grid-template-columns: 1fr; }
           .bal-hero h1 { font-size: 28px; }
+          .bal-hero { padding: 48px 24px 40px; }
           .bal-filter-select { min-width: 130px; font-size: 13px; }
           .bal-header-cta { display: none; }
+          .bal-header { padding: 0 20px; }
           .bal-footer { flex-direction: column; text-align: center; }
           .bal-footer nav { justify-content: center; }
         }
@@ -503,7 +523,6 @@ export const BuyAbroadUkListings: React.FC = () => {
       <header className="bal-header">
         <a href="/buyabroad/uk" className="bal-logo" aria-label="Buy Abroad UK">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
-          <div className="bal-logo-sep" />
           <span>Buy Abroad</span>
         </a>
         <div className="bal-header-spacer" />
@@ -519,14 +538,76 @@ export const BuyAbroadUkListings: React.FC = () => {
 
       {/* Hero */}
       <section className="bal-hero">
-        <div className="bal-hero-eyebrow">Live UK Property Listings</div>
-        <h1>Browse UK Properties<br />in Pounds & Naira</h1>
-        <p>Real listings sourced from Rightmove — every price shown in both GBP and NGN so you always know exactly what you're buying.</p>
-        <div className="bal-hero-badges">
-          <span className="bal-hero-badge">🇬🇧 UK Properties</span>
-          <span className="bal-hero-badge">₦ NGN Prices Shown</span>
-          <span className="bal-hero-badge">💬 WhatsApp Support</span>
-          <span className="bal-hero-badge">No Viewing Trip Required</span>
+        <div className="bal-hero-inner">
+          <div className="bal-hero-copy">
+            <div className="bal-hero-eyebrow">Live UK Property Listings</div>
+            <h1>Browse UK Properties<br />in <span>Pounds & Naira</span></h1>
+            <p>Real Rightmove listings — every price shown in both GBP and NGN so Nigerian buyers always know exactly what they're buying.</p>
+            <a className="bal-hero-cta" href="#bal-listings">Browse Listings →</a>
+            <div className="bal-hero-trust">
+              <strong>Excellent</strong>
+              <span className="bal-hero-stars">★★★★★</span>
+              <b>Based on verified customer feedback</b>
+            </div>
+          </div>
+          <aside className="bal-hero-card" aria-label="UK property illustration">
+            <svg className="bal-hero-svg" viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Sky */}
+              <rect width="360" height="240" fill="#fdf4ff" rx="12"/>
+              {/* Clouds */}
+              <ellipse cx="60" cy="40" rx="30" ry="14" fill="#fff" opacity=".7"/>
+              <ellipse cx="85" cy="34" rx="22" ry="14" fill="#fff" opacity=".7"/>
+              <ellipse cx="290" cy="30" rx="26" ry="12" fill="#fff" opacity=".6"/>
+              <ellipse cx="312" cy="24" rx="18" ry="12" fill="#fff" opacity=".6"/>
+
+              {/* Left house */}
+              <rect x="28" y="140" width="88" height="84" fill="#f3e8ff" stroke="#111" strokeWidth="1.5"/>
+              <polygon points="16,140 72,95 128,140" fill="#b100df" stroke="#111" strokeWidth="1.5"/>
+              <rect x="46" y="162" width="24" height="22" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="82" y="162" width="24" height="22" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="54" y="194" width="20" height="30" rx="4" fill="#7c3aed"/>
+              <rect x="44" y="98" width="12" height="28" fill="#9333ea" stroke="#111" strokeWidth="1"/>
+
+              {/* Centre house (tallest) */}
+              <rect x="130" y="118" width="100" height="106" fill="#fff" stroke="#111" strokeWidth="1.5"/>
+              <polygon points="118,118 180,68 242,118" fill="#7c3aed" stroke="#111" strokeWidth="1.5"/>
+              <rect x="148" y="140" width="28" height="24" rx="2" fill="#ede9fe" stroke="#111" strokeWidth="1"/>
+              <line x1="162" y1="140" x2="162" y2="164" stroke="#111" strokeWidth="1"/>
+              <line x1="148" y1="152" x2="176" y2="152" stroke="#111" strokeWidth="1"/>
+              <rect x="184" y="140" width="28" height="24" rx="2" fill="#ede9fe" stroke="#111" strokeWidth="1"/>
+              <line x1="198" y1="140" x2="198" y2="164" stroke="#111" strokeWidth="1"/>
+              <line x1="184" y1="152" x2="212" y2="152" stroke="#111" strokeWidth="1"/>
+              <rect x="162" y="184" width="36" height="40" rx="6" fill="#111"/>
+              <circle cx="195" cy="205" r="3" fill="#fbbf24"/>
+              <rect x="156" y="72" width="16" height="36" fill="#6d28d9" stroke="#111" strokeWidth="1.5"/>
+
+              {/* Right house */}
+              <rect x="244" y="148" width="88" height="76" fill="#f3e8ff" stroke="#111" strokeWidth="1.5"/>
+              <polygon points="232,148 288,106 344,148" fill="#b100df" stroke="#111" strokeWidth="1.5"/>
+              <rect x="258" y="168" width="24" height="20" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="294" y="168" width="24" height="20" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="268" y="196" width="20" height="28" rx="4" fill="#7c3aed"/>
+              <rect x="282" y="110" width="12" height="26" fill="#9333ea" stroke="#111" strokeWidth="1"/>
+
+              {/* Ground */}
+              <rect x="0" y="224" width="360" height="16" fill="#d1fae5"/>
+              <rect x="0" y="220" width="360" height="6" fill="#a7f3d0"/>
+
+              {/* GBP price badge */}
+              <rect x="12" y="12" width="86" height="28" rx="14" fill="#111"/>
+              <text x="55" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">£ GBP Listed</text>
+
+              {/* NGN price badge */}
+              <rect x="262" y="12" width="86" height="28" rx="14" fill="#b100df"/>
+              <text x="305" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">₦ NGN Prices</text>
+            </svg>
+            <div className="bal-hero-card-chips">
+              <span className="bal-hero-card-chip">🇬🇧 UK Properties</span>
+              <span className="bal-hero-card-chip">₦ NGN Shown</span>
+              <span className="bal-hero-card-chip">💬 WhatsApp Support</span>
+              <span className="bal-hero-card-chip">No Viewing Trip</span>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -579,14 +660,8 @@ export const BuyAbroadUkListings: React.FC = () => {
       </div>
 
       {/* Main content */}
-      <main className="bal-main">
-        {/* Exchange rate notice */}
-        {data && data.ngn_rate > 0 && (
-          <div className="bal-rate-bar">
-            <span>💱</span>
-            <span>Live rate: <strong>£1 = ₦{Math.round(data.ngn_rate).toLocaleString()}</strong> &nbsp;·&nbsp; NGN prices are indicative and update hourly</span>
-          </div>
-        )}
+      <main className="bal-main" id="bal-listings">
+        {/* Rate bar removed per design update */}
 
         {/* Error state */}
         {error && (

@@ -24,6 +24,11 @@ interface Listing {
   scraped_at: string | null;
 }
 
+function upgradeImageUrl(url: string): string {
+  // Try Rightmove's larger 656x437 preset; Gallery falls back on error
+  return url.replace(/_max_476x317(\.\w+)$/, '_max_656x437$1');
+}
+
 function formatGbp(n: number) {
   return '£' + n.toLocaleString('en-GB');
 }
@@ -225,7 +230,18 @@ function MortgageCalc({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number
 // ── Image Gallery ──────────────────────────────────────────────────────────────
 function Gallery({ images, title }: { images: string[]; title: string }) {
   const [active, setActive] = useState(0);
-  const all = images.length > 0 ? images : [];
+  // Upgraded URLs for main display; originals kept for fallback
+  const upgraded = images.length > 0 ? images.map(upgradeImageUrl) : [];
+  const original = images;
+  const all = upgraded;
+
+  // Fallback: if upgraded URL 404s, swap back to original
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>, idx: number) => {
+    const el = e.currentTarget;
+    if (original[idx] && el.src !== original[idx]) {
+      el.src = original[idx];
+    }
+  };
 
   if (all.length === 0) {
     return (
@@ -238,7 +254,11 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
   return (
     <div className="bld-gallery">
       <div className="bld-gallery-main">
-        <img src={all[active]} alt={title} />
+        <img
+          src={all[active]}
+          alt={title}
+          onError={(e) => handleImgError(e, active)}
+        />
         {all.length > 1 && (
           <>
             <button
@@ -264,7 +284,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
               onClick={() => setActive(i)}
               aria-label={`Image ${i + 1}`}
             >
-              <img src={src} alt="" loading="lazy" />
+              <img src={src} alt="" loading="lazy" onError={(e) => handleImgError(e, i)} />
             </button>
           ))}
         </div>
@@ -360,7 +380,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
         /* Property info */
         .bld-info-section { margin-bottom: 32px; }
         .bld-info-section h2 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: #111; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
-        .bld-title { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: clamp(22px, 3vw, 30px); font-weight: 800; letter-spacing: -0.03em; color: #111; margin: 0 0 8px; }
+        .bld-title { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: clamp(20px, 2.5vw, 26px); font-weight: 500; letter-spacing: -0.01em; color: #111; margin: 0 0 8px; line-height: 1.4; }
         .bld-address { font-size: 15px; color: #555; margin: 0 0 20px; }
         .bld-type-badge { display: inline-block; background: #f0f0f0; color: #444; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 12px; border-radius: 999px; margin-bottom: 20px; }
         .bld-meta-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
@@ -421,7 +441,10 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
           max-width: 480px;
           max-height: 90dvh;
           overflow-y: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
+        .bld-modal-card::-webkit-scrollbar { display: none; }
         .bld-modal-close { position: absolute; top: 14px; right: 16px; background: none; border: 0; font-size: 18px; cursor: pointer; color: #888; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background .15s; }
         .bld-modal-close:hover { background: #f0f0f0; color: #111; }
         .bld-modal-head h2 { font-family: Inter, sans-serif; font-size: 22px; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; margin: 0; color: #111; }
