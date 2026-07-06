@@ -5,7 +5,7 @@ import type {
   CustomOfferStepAnswers,
 } from './customOffers';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
+export const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 export interface AgentListing {
   id: string;

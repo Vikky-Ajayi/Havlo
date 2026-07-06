@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
 
 const WHATSAPP_NUMBER = '2349039861006';
 
@@ -312,7 +312,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    fetch(`/api/v1/listings/${id}`)
+    fetch(`${API_BASE}/listings/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error('Not found');
         return r.json() as Promise<Listing>;

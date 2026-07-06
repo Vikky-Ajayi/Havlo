@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../lib/api';
 
 interface PublicConfig {
   calendly_link: string;
@@ -18,7 +19,7 @@ export function useConfig() {
       setConfig(cached);
       return;
     }
-    fetch('/api/v1/config')
+    fetch(`${API_BASE}/config`)
       .then((r) => r.json())
       .then((data: PublicConfig) => {
         cached = data;

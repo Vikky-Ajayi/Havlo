@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { API_BASE } from '../lib/api';
 
 const WHATSAPP_NUMBER = '2349039861006';
 
@@ -160,7 +161,7 @@ export const BuyAbroadUkListings: React.FC = () => {
       if (priceRange.max != null) params.set('max_price', String(priceRange.max));
       if (minBeds != null) params.set('min_beds', String(minBeds));
 
-      const resp = await fetch(`/api/v1/listings/?${params}`);
+      const resp = await fetch(`${API_BASE}/listings/?${params}`);
       if (!resp.ok) {
         const body = await resp.text().catch(() => '');
         console.error(`[listings] HTTP ${resp.status}:`, body);
@@ -188,7 +189,7 @@ export const BuyAbroadUkListings: React.FC = () => {
     if (scrapeStatus === 'scraping') return;
     setScrapeStatus('scraping');
     try {
-      await fetch('/api/v1/listings/scrape', { method: 'POST' });
+      await fetch(`${API_BASE}/listings/scrape`, { method: 'POST' });
       setTimeout(() => {
         setScrapeStatus('done');
         void fetchListings();
