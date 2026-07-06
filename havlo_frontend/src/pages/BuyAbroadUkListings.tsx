@@ -506,13 +506,14 @@ export const BuyAbroadUkListings: React.FC = () => {
         @media (max-width: 1024px) {
           .bal-grid { grid-template-columns: repeat(2, 1fr); }
           .bal-hero-inner { grid-template-columns: 1fr; }
-          .bal-hero-card { display: none !important; }
+          .bal-hero-card { display: flex; max-width: 480px; margin: 0 auto; }
           .bal-hero { padding: 56px 40px 48px; background: #fff; }
         }
         @media (max-width: 640px) {
           .bal-grid { grid-template-columns: 1fr; }
           .bal-hero h1 { font-size: 28px; }
           .bal-hero { padding: 48px 24px 40px; background: #fff; }
+          .bal-hero-card { max-width: 100%; }
           .bal-filter-select { min-width: 130px; font-size: 13px; }
           .bal-header-cta { display: none; }
           .bal-header { padding: 0 20px; }
