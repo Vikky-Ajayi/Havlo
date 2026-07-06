@@ -67,13 +67,11 @@ function formatNgn(amount: number): string {
 
 function PropertyCard({ listing }: { listing: Listing }) {
   const img = listing.images[0] || '';
-  const whatsappMsg = encodeURIComponent(
-    `Hi Havlo, I found a property on your listings page and would like to enquire.\n\nProperty: ${listing.title}\nAddress: ${listing.address}\nPrice: £${listing.price_gbp.toLocaleString()}\nLink: ${listing.url}`
-  );
+  const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}`;
 
   return (
     <article className="bal-card">
-      <div className="bal-card-img-wrap">
+      <a href={detailUrl} className="bal-card-img-wrap" tabIndex={-1} aria-hidden="true">
         {img ? (
           <img src={img} alt={listing.title} loading="lazy" />
         ) : (
@@ -82,7 +80,7 @@ function PropertyCard({ listing }: { listing: Listing }) {
           </div>
         )}
         <span className="bal-card-type">{listing.property_type || 'Property'}</span>
-      </div>
+      </a>
       <div className="bal-card-body">
         <div className="bal-card-prices">
           <span className="bal-card-gbp">{formatGbp(listing.price_gbp)}</span>
@@ -99,13 +97,8 @@ function PropertyCard({ listing }: { listing: Listing }) {
           <span>📍 {listing.city}</span>
         </div>
         <div className="bal-card-actions">
-          <a
-            className="bal-card-enquire"
-            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Enquire via WhatsApp
+          <a className="bal-card-enquire" href={detailUrl}>
+            Get a Free Consultation
           </a>
           <a
             className="bal-card-view"
