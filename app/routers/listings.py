@@ -74,6 +74,22 @@ async def list_listings(
     per_page: int = Query(12, ge=1, le=48),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
+    try:
+        return await _list_listings_inner(city, min_price, max_price, min_beds, page, per_page, db)
+    except Exception as exc:
+        logger.error("listings endpoint error: %s", exc, exc_info=True)
+        raise
+
+
+async def _list_listings_inner(
+    city: Optional[str],
+    min_price: Optional[int],
+    max_price: Optional[int],
+    min_beds: Optional[int],
+    page: int,
+    per_page: int,
+    db: AsyncSession,
+) -> dict[str, Any]:
     stmt = select(RightmoveListing).where(RightmoveListing.is_active.is_(True))
     if city:
         stmt = stmt.where(func.lower(RightmoveListing.city) == city.lower())

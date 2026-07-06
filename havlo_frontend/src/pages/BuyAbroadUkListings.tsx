@@ -161,10 +161,15 @@ export const BuyAbroadUkListings: React.FC = () => {
       if (minBeds != null) params.set('min_beds', String(minBeds));
 
       const resp = await fetch(`/api/v1/listings/?${params}`);
-      if (!resp.ok) throw new Error('Failed to load listings');
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => '');
+        console.error(`[listings] HTTP ${resp.status}:`, body);
+        throw new Error(`HTTP ${resp.status}`);
+      }
       const json: ListingsResponse = await resp.json();
       setData(json);
     } catch (err) {
+      console.error('[listings] fetch error:', err);
       setError('Could not load listings. Please try again in a moment.');
     } finally {
       setLoading(false);
