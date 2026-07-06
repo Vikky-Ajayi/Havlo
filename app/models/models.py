@@ -518,6 +518,28 @@ class CustomOfferSubmission(Base):
     )
 
 
+class RightmoveListing(Base):
+    __tablename__ = "rightmove_listings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rightmove_id: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    price_gbp: Mapped[int] = mapped_column(Integer, nullable=False)
+    address: Mapped[str] = mapped_column(String(500), nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    region: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    bedrooms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    property_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    images_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class ProductAccessToken(Base):
     __tablename__ = "product_access_tokens"
 

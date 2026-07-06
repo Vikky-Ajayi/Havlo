@@ -28,6 +28,7 @@ from app.routers import (
     bookings,
     buyer_network,
     elite_property,
+    listings,
     messaging,
     onboarding,
     property_matching,
@@ -413,16 +414,23 @@ async def startup() -> None:
         app.state.db_keepalive_task = asyncio.create_task(_db_keepalive())
         logger.info("DB keep-alive ping scheduled (every 4 min).")
 
+    # ── Rightmove scraper background loop ─────────────────────────────
+    if HAS_DATABASE:
+        from app.services.rightmove_scraper import start_scraper_loop
+        app.state.scraper_task = asyncio.create_task(start_scraper_loop())
+        logger.info("Rightmove scraper loop started.")
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
-    task = getattr(app.state, "db_keepalive_task", None)
-    if task is not None:
-        task.cancel()
-        try:
-            await task
-        except (asyncio.CancelledError, Exception):
-            pass
+    for attr in ("db_keepalive_task", "scraper_task"):
+        task = getattr(app.state, attr, None)
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
     await engine.dispose()
     logger.info("Database connections closed.")
 
@@ -673,6 +681,7 @@ app.include_router(product_access.router, prefix=API_PREFIX)
 from app.routers import custom_offers  # noqa: E402
 app.include_router(custom_offers.public_router, prefix=API_PREFIX)
 app.include_router(custom_offers.admin_router, prefix=API_PREFIX)
+app.include_router(listings.router)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 

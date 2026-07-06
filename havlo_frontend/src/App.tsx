@@ -10,6 +10,7 @@ const AboutUs = React.lazy(() => import('./pages/AboutUs').then(m => ({ default:
 const BuyAbroad = React.lazy(() => import('./pages/BuyAbroad').then(m => ({ default: m.BuyAbroad })));
 const BuyAbroadUk = React.lazy(() => import('./pages/BuyAbroadUk').then(m => ({ default: m.BuyAbroadUk })));
 const BuyAbroadUkAgents = React.lazy(() => import('./pages/BuyAbroadUkAgents').then(m => ({ default: m.BuyAbroadUkAgents })));
+const BuyAbroadUkListings = React.lazy(() => import('./pages/BuyAbroadUkListings').then(m => ({ default: m.BuyAbroadUkListings })));
 const RelaunchAssessment = React.lazy(() => import('./pages/RelaunchAssessment').then(m => ({ default: m.RelaunchAssessment })));
 const EliteProperty = React.lazy(() => import('./pages/EliteProperty').then(m => ({ default: m.EliteProperty })));
 const BuyHome = React.lazy(() => import('./pages/BuyHome').then(m => ({ default: m.BuyHome })));
@@ -261,6 +262,7 @@ export default function App() {
               <Route path="/buy-property-abroad" element={<BuyAbroad />} />
               <Route path="/buyabroad/uk" element={<BuyAbroadUk />} />
               <Route path="/buyabroad/uk/agents" element={<BuyAbroadUkAgents />} />
+              <Route path="/buyabroad/uk/listings" element={<BuyAbroadUkListings />} />
               <Route path="/custom-offers" element={<CustomOffers />} />
               <Route path="/custom-offers/access" element={<CustomOffersAccess />} />
               <Route path="/custom-offers/portal" element={<CustomOffersPortal />} />
