@@ -154,9 +154,28 @@ async def startup() -> None:
                     safe_url = f"{scheme}//***:***@{host_part}"
             logger.info("Attempting database connection to: %s", safe_url)
 
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+            # ── Step 1: create_all in its own isolated transaction ─────────────────
+            # With --workers 4 on Railway, all workers start simultaneously and
+            # call create_all at the same time. PostgreSQL raises a UniqueViolation
+            # on pg_type when two processes try to register the same relation/type.
+            # We catch that race here so workers 2-4 can continue normally — the
+            # table was already created by whichever worker won the race.
+            try:
+                async with engine.begin() as conn:
+                    await conn.run_sync(Base.metadata.create_all)
+            except Exception as _create_all_exc:
+                _msg = str(_create_all_exc).lower()
+                if any(k in _msg for k in ("already exists", "unique", "duplicate")):
+                    logger.warning(
+                        "create_all race condition (another worker won the race) — continuing: %s",
+                        _create_all_exc,
+                    )
+                else:
+                    raise
 
+            # ── Step 2: idempotent ALTER TABLE migrations in a fresh transaction ──
+            # This always runs regardless of which worker won the create_all race.
+            async with engine.begin() as conn:
                 from sqlalchemy import text
                 # Idempotent schema sync: add any columns missing on pre-existing tables.
                 # Safe to re-run; uses ADD COLUMN IF NOT EXISTS (Postgres >= 9.6).
