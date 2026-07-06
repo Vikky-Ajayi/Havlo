@@ -225,10 +225,12 @@ export const BuyAbroadUkListings: React.FC = () => {
         }
         .bal-header-back:hover { border-color: #b100df; color: #b100df; }
         .bal-header-cta {
+          display: inline-flex; align-items: center; justify-content: center;
           height: 48px; border: 0; border-radius: 12px;
           padding: 0 22px; margin-left: 12px;
           background: #050505; color: #fff;
           font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap;
+          text-decoration: none;
         }
         .bal-header-cta:hover { background: #b100df; }
 
@@ -504,13 +506,13 @@ export const BuyAbroadUkListings: React.FC = () => {
         @media (max-width: 1024px) {
           .bal-grid { grid-template-columns: repeat(2, 1fr); }
           .bal-hero-inner { grid-template-columns: 1fr; }
-          .bal-hero-card { display: none; }
-          .bal-hero { padding: 56px 40px 48px; }
+          .bal-hero-card { display: none !important; }
+          .bal-hero { padding: 56px 40px 48px; background: #fff; }
         }
         @media (max-width: 640px) {
           .bal-grid { grid-template-columns: 1fr; }
           .bal-hero h1 { font-size: 28px; }
-          .bal-hero { padding: 48px 24px 40px; }
+          .bal-hero { padding: 48px 24px 40px; background: #fff; }
           .bal-filter-select { min-width: 130px; font-size: 13px; }
           .bal-header-cta { display: none; }
           .bal-header { padding: 0 20px; }
