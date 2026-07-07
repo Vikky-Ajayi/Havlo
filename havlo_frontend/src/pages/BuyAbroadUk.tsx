@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, ChevronDown, MessageCircle, Phone, Users, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
+import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 
 type EligibilityStep = 'eligibility' | 'timeline' | 'details' | 'fit' | 'not-fit';
 
@@ -12,6 +14,26 @@ const CALL_LINK = '+2349039861006';
 const propertyOptions = ['Residential', 'Commercial', 'Investment', 'Not sure yet'];
 const budgetOptions = ['Under £50,000', '£50,000 - £200,000', '£200,000 - £500,000', '£500,000+'];
 const timelineOptions = ['Immediately', '1-3 months', '3-6 months', '6+ months', 'Just exploring'];
+
+const buyAbroadReviews = [
+  { title: 'Simplifies international purchase', content: 'Havlo took all the stress out of buying property overseas. The step-by-step guidance and detailed info gave me confidence to make my first international purchase.', author: 'Tomiwa, Lagos' },
+  { title: 'Great experience from start to finish', content: 'I found exactly what I wanted through Havlo. The platform is intuitive, and the advisory team answered all my questions quickly.', author: 'Carlos, Madrid' },
+  { title: 'Transparent and reliable', content: "Havlo is one of the few platforms I've used that actually shows all the necessary details. No hidden surprises. Very trustworthy.", author: 'Emily, Manchester' },
+  { title: 'Perfect for commercial property', content: 'I used Havlo to purchase a commercial space abroad. The whole process was smooth, and I could track everything online.', author: 'Al-Fahad, Dubai' },
+  { title: 'Hassle-free overseas property buying', content: "I've tried a few platforms before, but Havlo made buying my apartment abroad so straightforward. Clear listings, easy communication, and really helpful support. Highly recommend!", author: 'Daniel, London' },
+  { title: 'Easy and stress-free', content: 'The platform made what I thought would be complicated very simple. From property search to legal documentation, everything was clearly explained.', author: 'Mark, Toronto' },
+  { title: 'Perfect for first-time international buyers', content: "As someone new to buying abroad, I felt supported at every stage. Havlo's guidance is top notch.", author: 'Wei, Shanghai' },
+  { title: 'Smooth commercial property purchase', content: 'Everything was straightforward. The advisory team kept me informed and I was able to close my investment without any stress.', author: 'George, Monte Carlo' },
+  { title: 'Fantastic overseas property options', content: 'I used Havlo to diversify my property portfolio. Excellent support to buy abroad and a really supportive team.', author: 'Rajesh, Delhi' },
+  { title: 'Trustworthy and reliable', content: 'I felt completely safe using Havlo. The service is transparent, and the advisory team is always available to help.', author: 'Garcia, Milan' },
+  { title: 'Great platform for global buyers', content: 'Havlo made it easy to explore international markets. I now own a residential property abroad thanks to them.', author: 'Wilson, Glasgow' },
+  { title: 'Quick and hassle-free', content: 'From start to finish, Havlo made buying abroad simple. Highly recommend to anyone looking to invest internationally.', author: 'Al-Nasser, Doha' },
+  { title: 'Professional and efficient', content: 'Havlo provides all the necessary tools for making informed decisions. I felt like a pro investing overseas.', author: 'Viktor, Prague' },
+  { title: 'Ideal for investors', content: 'They gave me the confidence to invest abroad. Clear info, easy communication, and secure transactions.', author: 'Hassan, Kuala Lumpur' },
+  { title: 'Hassle-free commercial investment', content: 'Bought a commercial property abroad without any complications. The whole process was smooth thanks to Havlo.', author: 'Clark, New York' },
+  { title: 'Great for first-time buyers', content: 'I was nervous about buying property overseas, but Havlo made it very manageable. Excellent guidance at every step.', author: 'David, Tel Aviv' },
+  { title: 'Professional and reliable', content: 'Havlo is extremely professional. They guide you through legal and financial details and make sure nothing is overlooked.', author: 'Chloe, Lyon' },
+];
 
 const featureStrip = [
   { icon: <Building2 size={20} />, text: 'UK property advisory service' },
@@ -341,6 +363,22 @@ export const BuyAbroadUk: React.FC = () => {
               <p className="buk-secure">🔒 Your details are confidential. No spam, ever.</p>
             </aside>
           </div>
+        </section>
+
+        <section style={{ background: '#fff', padding: '0', margin: '0', width: '100%', overflow: 'hidden' }}>
+          <AutoScrollReviews
+            reviews={buyAbroadReviews}
+            bgColor="#F5F5F3"
+            header={
+              <>
+                <h2 style={{ fontFamily: 'inherit', fontSize: '36px', fontWeight: 500, lineHeight: 1, letterSpacing: '-0.8px', color: '#040504', margin: 0 }}>Rated</h2>
+                <TrustpilotStars className="h-[40px]" />
+                <p style={{ fontFamily: 'inherit', fontSize: '18px', fontWeight: 400, color: '#040504', margin: 0 }}>
+                  Based on <strong style={{ textDecoration: 'underline' }}>over 1,000 reviews</strong>
+                </p>
+              </>
+            }
+          />
         </section>
 
         <section className="buk-strip">
