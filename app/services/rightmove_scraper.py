@@ -103,6 +103,11 @@ def _extract_listing(prop: dict[str, Any], city: str) -> dict[str, Any] | None:
         address = prop.get("displayAddress", "")
         title = prop.get("summary", address)
         prop_type = prop.get("propertySubType") or prop.get("propertyTypeFullDescription", "Property")
+
+        # Skip land listings
+        if prop_type and "land" in str(prop_type).lower():
+            return None
+
         bedrooms = int(prop.get("bedrooms") or 0)
         bathrooms_raw = prop.get("bathrooms")
         bathrooms: int | None = int(bathrooms_raw) if bathrooms_raw is not None else None

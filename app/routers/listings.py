@@ -64,18 +64,27 @@ def _listing_to_dict(listing: RightmoveListing, ngn_rate: float) -> dict[str, An
     }
 
 
+_PROPERTY_TYPE_KEYWORDS: dict[str, list[str]] = {
+    "house":      ["house", "detached", "semi-detached", "terraced", "town house", "end of terrace"],
+    "flat":       ["flat", "apartment", "studio", "maisonette", "penthouse"],
+    "bungalow":   ["bungalow"],
+    "commercial": ["commercial", "office", "retail", "industrial", "warehouse"],
+}
+
+
 @router.get("/")
 async def list_listings(
     city: Optional[str] = Query(None, description="Filter by city name"),
     min_price: Optional[int] = Query(None, description="Min price in GBP"),
     max_price: Optional[int] = Query(None, description="Max price in GBP"),
     min_beds: Optional[int] = Query(None, description="Minimum bedrooms"),
+    property_type: Optional[str] = Query(None, description="Property type: house, flat, bungalow, commercial"),
     page: int = Query(1, ge=1),
     per_page: int = Query(12, ge=1, le=48),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return await _list_listings_inner(city, min_price, max_price, min_beds, page, per_page, db)
+        return await _list_listings_inner(city, min_price, max_price, min_beds, property_type, page, per_page, db)
     except Exception as exc:
         logger.error("listings endpoint error: %s", exc, exc_info=True)
         raise
@@ -86,10 +95,12 @@ async def _list_listings_inner(
     min_price: Optional[int],
     max_price: Optional[int],
     min_beds: Optional[int],
+    property_type: Optional[str],
     page: int,
     per_page: int,
     db: AsyncSession,
 ) -> dict[str, Any]:
+    from sqlalchemy import or_
     stmt = select(RightmoveListing).where(RightmoveListing.is_active.is_(True))
     if city:
         stmt = stmt.where(func.lower(RightmoveListing.city) == city.lower())
@@ -99,6 +110,11 @@ async def _list_listings_inner(
         stmt = stmt.where(RightmoveListing.price_gbp <= max_price)
     if min_beds is not None:
         stmt = stmt.where(RightmoveListing.bedrooms >= min_beds)
+    if property_type and property_type in _PROPERTY_TYPE_KEYWORDS:
+        keywords = _PROPERTY_TYPE_KEYWORDS[property_type]
+        stmt = stmt.where(
+            or_(*[func.lower(RightmoveListing.property_type).contains(kw) for kw in keywords])
+        )
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await db.execute(count_stmt)

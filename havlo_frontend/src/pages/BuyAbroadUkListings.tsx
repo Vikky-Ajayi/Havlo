@@ -11,11 +11,20 @@ const CITIES = [
 
 const PRICE_RANGES = [
   { label: 'Any price', min: undefined, max: undefined },
-  { label: 'Under £200,000', min: undefined, max: 200000 },
+  { label: 'Under £50,000', min: undefined, max: 50000 },
+  { label: '£50,000 – £200,000', min: 50000, max: 200000 },
   { label: '£200,000 – £350,000', min: 200000, max: 350000 },
   { label: '£350,000 – £500,000', min: 350000, max: 500000 },
   { label: '£500,000 – £1,000,000', min: 500000, max: 1000000 },
   { label: '£1,000,000+', min: 1000000, max: undefined },
+];
+
+const PROPERTY_TYPES = [
+  { label: 'Any type', value: '' },
+  { label: 'House', value: 'house' },
+  { label: 'Flat / Apartment', value: 'flat' },
+  { label: 'Bungalow', value: 'bungalow' },
+  { label: 'Commercial Property', value: 'commercial' },
 ];
 
 const BEDS_OPTIONS = [
@@ -139,6 +148,7 @@ export const BuyAbroadUkListings: React.FC = () => {
   const [city, setCity] = useState('');
   const [priceIdx, setPriceIdx] = useState(0);
   const [bedsIdx, setBedsIdx] = useState(0);
+  const [propertyType, setPropertyType] = useState('');
   const [page, setPage] = useState(1);
 
   const [data, setData] = useState<ListingsResponse | null>(null);
@@ -160,6 +170,7 @@ export const BuyAbroadUkListings: React.FC = () => {
       if (priceRange.min != null) params.set('min_price', String(priceRange.min));
       if (priceRange.max != null) params.set('max_price', String(priceRange.max));
       if (minBeds != null) params.set('min_beds', String(minBeds));
+      if (propertyType) params.set('property_type', propertyType);
 
       const resp = await fetch(`${API_BASE}/listings/?${params}`);
       if (!resp.ok) {
@@ -175,7 +186,7 @@ export const BuyAbroadUkListings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [city, priceRange.min, priceRange.max, minBeds, page]);
+  }, [city, priceRange.min, priceRange.max, minBeds, propertyType, page]);
 
   useEffect(() => {
     void fetchListings();
@@ -656,6 +667,17 @@ export const BuyAbroadUkListings: React.FC = () => {
           >
             {BEDS_OPTIONS.map((b, i) => (
               <option key={i} value={i}>{b.label}</option>
+            ))}
+          </select>
+
+          <select
+            className="bal-filter-select"
+            value={propertyType}
+            onChange={(e) => { setPropertyType(e.target.value); handleFilterChange(); }}
+            aria-label="Filter by property type"
+          >
+            {PROPERTY_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
 
