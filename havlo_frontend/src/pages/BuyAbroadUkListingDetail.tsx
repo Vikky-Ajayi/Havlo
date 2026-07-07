@@ -410,7 +410,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
         .bld-price-ngn-label { font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; letter-spacing: 0.06em; }
         .bld-price-ngn-value { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 20px; font-weight: 800; color: #15803d; }
         .bld-price-rate { font-size: 11px; color: #86efac; margin-top: 2px; }
-        .bld-interested-label { font-size: 13px; font-weight: 600; color: #555; margin: 0 0 10px; }
+        .bld-interested-label { font-size: 9px; font-weight: 600; color: #555; margin: 0 0 10px; }
         .bld-consult-btn { width: 100%; height: 52px; border: 0; border-radius: 12px; background: #b100df; color: #fff; font-size: 15px; font-weight: 800; cursor: pointer; letter-spacing: 0.01em; margin-bottom: 10px; transition: background .15s, transform .1s; }
         .bld-consult-btn:hover { background: #9000c0; transform: translateY(-1px); }
         .bld-view-rm { display: block; text-align: center; color: #555; font-size: 13px; font-weight: 600; text-decoration: none; padding: 10px; transition: color .15s; }
