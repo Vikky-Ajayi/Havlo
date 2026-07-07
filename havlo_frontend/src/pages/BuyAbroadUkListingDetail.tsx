@@ -363,7 +363,7 @@ function PaymentTabs({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number 
           className={`bld-tab${tab === 'upfront' ? ' bld-tab--active' : ''}`}
           onClick={() => setTab('upfront')}
         >
-          Upfront Payment
+          Cash Buyer
         </button>
         <button
           role="tab"
@@ -371,7 +371,7 @@ function PaymentTabs({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number 
           className={`bld-tab${tab === 'mortgage' ? ' bld-tab--active' : ''}`}
           onClick={() => setTab('mortgage')}
         >
-          Mortgage
+          Mortgage Buyer
         </button>
       </div>
       {tab === 'upfront'  && <UpfrontCosts priceGbp={priceGbp} />}
@@ -817,12 +817,26 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
           {/* Right sidebar */}
           <aside className="bld-sidebar">
             <div className="bld-price-card">
-              <div className="bld-price-gbp">{formatGbp(listing.price_gbp)}</div>
-              <div className="bld-price-ngn-wrap">
-                <div className="bld-price-ngn-label">Nigerian Naira equivalent</div>
-                <div className="bld-price-ngn-value">{formatNgn(listing.price_ngn)}</div>
-                <div className="bld-price-rate">at £1 = ₦{Math.round(listing.ngn_rate).toLocaleString()}</div>
-              </div>
+              {(() => {
+                const totalGbp = listing.price_gbp
+                  + calcStampDuty(listing.price_gbp)
+                  + 500 + 2500 + 800 + 600
+                  + calcLandRegistry(listing.price_gbp)
+                  + calcHavloFee(listing.price_gbp);
+                const totalNgn = Math.round(totalGbp * listing.ngn_rate);
+                return (
+                  <>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Total estimated cost</div>
+                    <div className="bld-price-gbp">{formatGbp(totalGbp)}</div>
+                    <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>Property {formatGbp(listing.price_gbp)} + associated fees</div>
+                    <div className="bld-price-ngn-wrap">
+                      <div className="bld-price-ngn-label">Nigerian Naira equivalent</div>
+                      <div className="bld-price-ngn-value">{formatNgn(totalNgn)}</div>
+                      <div className="bld-price-rate">at £1 = ₦{Math.round(listing.ngn_rate).toLocaleString()}</div>
+                    </div>
+                  </>
+                );
+              })()}
 
               <p className="bld-interested-label">Interested in purchasing this property?</p>
               <button className="bld-consult-btn" onClick={() => setConsultOpen(true)}>
