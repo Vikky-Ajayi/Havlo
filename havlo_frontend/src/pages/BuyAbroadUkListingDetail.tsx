@@ -341,10 +341,9 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
           display: flex; align-items: center;
           padding: 0 clamp(20px, 5vw, 60px); gap: 16px;
         }
-        .bld-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #111; flex-shrink: 0; }
-        .bld-logo img { height: 26px; width: auto; }
-        .bld-logo-sep { width: 1px; height: 18px; background: #d0d0d0; }
-        .bld-logo span { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; color: #555; text-transform: uppercase; }
+        .bld-logo { display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: #111; line-height: 1; flex-shrink: 0; }
+        .bld-logo img { width: 136px; height: auto; display: block; }
+        .bld-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
         .bld-header-spacer { flex: 1; }
         .bld-header-back { font-size: 13px; font-weight: 700; color: #111; text-decoration: none; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 7px 16px; transition: border-color .15s, color .15s; }
         .bld-header-back:hover { border-color: #b100df; color: #b100df; }
@@ -497,7 +496,6 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
       <header className="bld-header">
         <a href="/buyabroad/uk" className="bld-logo" aria-label="Buy Abroad UK">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
-          <div className="bld-logo-sep" />
           <span>Buy Abroad</span>
         </a>
         <div className="bld-header-spacer" />
