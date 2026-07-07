@@ -165,6 +165,225 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
   );
 }
 
+// ── Fee helpers ────────────────────────────────────────────────────────────────
+function calcStampDuty(p: number): number {
+  if (p <= 125_000) return Math.round(p * 0.02);
+  if (p <= 250_000) return Math.round(p * 0.04);
+  if (p <= 925_000) return Math.round(p * 0.07);
+  if (p <= 1_500_000) return Math.round(p * 0.12);
+  return Math.round(p * 0.14);
+}
+function calcLandRegistry(p: number): number {
+  if (p <= 80_000) return 20;
+  if (p <= 100_000) return 40;
+  if (p <= 200_000) return 100;
+  if (p <= 500_000) return 150;
+  if (p <= 1_000_000) return 295;
+  return 500;
+}
+function calcHavloFee(p: number): number {
+  if (p <= 100_000) return 5_000;
+  if (p <= 150_000) return 7_000;
+  if (p <= 300_000) return 10_000;
+  if (p <= 500_000) return 20_000;
+  return 20_000; // cap at £500k band for now
+}
+
+// ── Fees Info Modal ────────────────────────────────────────────────────────────
+interface FeesInfoModalProps {
+  priceGbp: number;
+  onClose: () => void;
+}
+function FeesInfoModal({ priceGbp, onClose }: FeesInfoModalProps) {
+  const sd = calcStampDuty(priceGbp);
+  const lr = calcLandRegistry(priceGbp);
+  const hf = calcHavloFee(priceGbp);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  return (
+    <div className="bld-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bld-modal-card" role="dialog" aria-modal="true" aria-label="Fee explanation">
+        <button className="bld-modal-close" onClick={onClose} aria-label="Close">✕</button>
+        <h2 style={{ fontFamily: '"Plus Jakarta Sans", Inter, sans-serif', fontSize: 20, fontWeight: 700, marginBottom: 4, letterSpacing: '-0.02em' }}>
+          Property Purchase Fees
+        </h2>
+        <p style={{ fontSize: 13, color: '#888', marginBottom: 18, lineHeight: 1.5 }}>
+          The fees below are estimates and should be used as a guide only. Actual costs may vary depending on
+          the property value, location, buyer circumstances, and service providers. Government-related charges
+          are subject to change.
+        </p>
+
+        <div className="bld-fees-info-list">
+          {[
+            {
+              num: '1', title: 'Stamp Duty Land Tax (SDLT)',
+              amount: formatGbp(sd),
+              timing: 'Shortly after completion (usually within 14 days)',
+              body: 'A government tax charged on the purchase of property in the UK. The amount depends on the property purchase price and buyer circumstances (e.g. non-UK resident surcharges, additional property).',
+            },
+            {
+              num: '2', title: 'Property Search Fees',
+              amount: '£500',
+              timing: 'During conveyancing, before exchange of contracts',
+              body: 'Checks carried out by the solicitor to identify issues affecting the property — planning restrictions, environmental risks, flooding, and local authority matters.',
+            },
+            {
+              num: '3', title: 'Solicitor / Conveyancing Fees',
+              amount: '£2,500',
+              timing: 'In stages during the process; balance due before completion',
+              body: 'Legal fees for managing the property transfer, reviewing contracts, conducting legal checks, handling funds, and registering ownership.',
+            },
+            {
+              num: '4', title: 'Land Registry Fee',
+              amount: formatGbp(lr),
+              timing: 'At or immediately after completion, through the solicitor',
+              body: 'A government charge for officially registering you as the new owner of the property.',
+            },
+            {
+              num: '5', title: 'Level 2 Home Survey',
+              amount: '£800',
+              timing: 'After offer accepted, before exchange of contracts',
+              body: 'An assessment of the property\'s condition highlighting potential defects or repairs. Paid to the independent surveyor.',
+            },
+            {
+              num: '6', title: 'Buildings Insurance',
+              amount: '£600 /yr',
+              timing: 'Before completion (ongoing annual cost)',
+              body: 'Protects the property against fire, flooding, and structural damage. Paid to the insurance provider.',
+            },
+            {
+              num: '7', title: 'Havlo Advisory Fee',
+              amount: formatGbp(hf),
+              timing: 'According to the agreed payment schedule with Havlo',
+              body: 'Covers professional guidance and support throughout your property acquisition journey. A private service fee paid directly to Havlo — separate from government taxes, legal costs, and third-party charges.',
+            },
+          ].map((item) => (
+            <div key={item.num} className="bld-fees-info-item">
+              <div className="bld-fees-info-header">
+                <span className="bld-fees-info-num">{item.num}</span>
+                <span className="bld-fees-info-title">{item.title}</span>
+                <span className="bld-fees-info-amount">{item.amount}</span>
+              </div>
+              <p className="bld-fees-info-timing">📅 {item.timing}</p>
+              <p className="bld-fees-info-body">{item.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 10, padding: '12px 14px', marginTop: 16, fontSize: 12, color: '#7a5200', lineHeight: 1.55 }}>
+          <strong>Important Disclaimer:</strong> Property purchase costs can vary significantly based on individual circumstances.
+          Buyers should confirm all final charges with their solicitor, surveyor, insurance provider, and relevant authorities
+          before proceeding. This information is intended as a planning guide and does not constitute legal, tax, or financial advice.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Upfront Costs Card ─────────────────────────────────────────────────────────
+function UpfrontCosts({ priceGbp }: { priceGbp: number }) {
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  const sd  = calcStampDuty(priceGbp);
+  const lr  = calcLandRegistry(priceGbp);
+  const hf  = calcHavloFee(priceGbp);
+  const SEARCH       = 500;
+  const SOLICITOR    = 2_500;
+  const SURVEY       = 800;
+  const INSURANCE    = 600;
+  const totalFees = sd + SEARCH + SOLICITOR + lr + SURVEY + INSURANCE + hf;
+  const totalCost = priceGbp + totalFees;
+
+  const rows = [
+    { label: 'Stamp Duty',              value: formatGbp(sd),       variable: true  },
+    { label: 'Property Search',         value: '£500',              variable: false },
+    { label: 'Solicitor/Conveyancing',  value: '£2,500',            variable: false },
+    { label: 'Land Registry',           value: formatGbp(lr),       variable: true  },
+    { label: 'Level 2 Survey',          value: '£800',              variable: false },
+    { label: 'Insurance',               value: '£600',              variable: false },
+    { label: 'Havlo Advisory fee',      value: formatGbp(hf),       variable: true  },
+  ];
+
+  return (
+    <>
+      <div className="bld-upfront">
+        {/* Top-right info icon */}
+        <button
+          className="bld-upfront-info-btn"
+          onClick={() => setInfoOpen(true)}
+          aria-label="Show fee explanations"
+          title="Explain these fees"
+        >
+          i
+        </button>
+
+        <h3 className="bld-upfront-title">Other Associated Costs</h3>
+
+        <div className="bld-upfront-rows">
+          {rows.map((r) => (
+            <div key={r.label} className="bld-upfront-row">
+              <span className="bld-upfront-label">{r.label}:</span>
+              <span className={`bld-upfront-val${r.variable ? ' bld-upfront-val--var' : ''}`}>{r.value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="bld-upfront-summary">
+          <div className="bld-upfront-summary-row">
+            <span>Property price:</span>
+            <span>{formatGbp(priceGbp)}</span>
+          </div>
+          <div className="bld-upfront-summary-row bld-upfront-summary-total">
+            <span>Total Estimated cost including other fees:</span>
+            <strong>{formatGbp(totalCost)}</strong>
+          </div>
+        </div>
+
+        <p className="bld-upfront-disc">
+          Figures are estimates. Variable fees are calculated from standard UK rates for this property price.
+          Confirm all charges with your solicitor before proceeding.
+        </p>
+      </div>
+
+      {infoOpen && <FeesInfoModal priceGbp={priceGbp} onClose={() => setInfoOpen(false)} />}
+    </>
+  );
+}
+
+// ── Payment Tabs wrapper ───────────────────────────────────────────────────────
+function PaymentTabs({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number }) {
+  const [tab, setTab] = useState<'upfront' | 'mortgage'>('upfront');
+  return (
+    <div className="bld-tabs-wrap">
+      <div className="bld-tabs-bar" role="tablist">
+        <button
+          role="tab"
+          aria-selected={tab === 'upfront'}
+          className={`bld-tab${tab === 'upfront' ? ' bld-tab--active' : ''}`}
+          onClick={() => setTab('upfront')}
+        >
+          Upfront Payment
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'mortgage'}
+          className={`bld-tab${tab === 'mortgage' ? ' bld-tab--active' : ''}`}
+          onClick={() => setTab('mortgage')}
+        >
+          Mortgage
+        </button>
+      </div>
+      {tab === 'upfront'  && <UpfrontCosts priceGbp={priceGbp} />}
+      {tab === 'mortgage' && <MortgageCalc priceGbp={priceGbp} ngnRate={ngnRate} />}
+    </div>
+  );
+}
+
 // ── Mortgage Calculator ────────────────────────────────────────────────────────
 function MortgageCalc({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number }) {
   const [deposit, setDeposit] = useState(25);
@@ -471,6 +690,44 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
         .bld-modal-wa-btn { display: inline-flex; align-items: center; gap: 10px; background: #25d366; color: #fff; border-radius: 12px; padding: 14px 28px; font-size: 15px; font-weight: 700; text-decoration: none; }
         .bld-modal-wa-btn:hover { opacity: .88; }
 
+        /* Payment Tabs */
+        .bld-tabs-wrap { margin-bottom: 32px; }
+        .bld-tabs-bar { display: flex; gap: 0; border: 1px solid #e6e6e6; border-radius: 12px 12px 0 0; overflow: hidden; }
+        .bld-tab { flex: 1; height: 46px; border: 0; background: #f7f7f7; color: #666; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s, color .15s; letter-spacing: 0.01em; }
+        .bld-tab:first-child { border-right: 1px solid #e6e6e6; }
+        .bld-tab--active { background: #fff; color: #b100df; border-bottom: 2px solid #b100df; }
+        .bld-tab:hover:not(.bld-tab--active) { background: #f0f0f0; color: #333; }
+        /* remove top border-radius from child card when inside tabs */
+        .bld-tabs-wrap .bld-calc { border-top: 0; border-radius: 0 0 16px 16px; margin-bottom: 0; }
+        .bld-tabs-wrap .bld-upfront { border-radius: 0 0 16px 16px; }
+
+        /* Upfront Costs Card */
+        .bld-upfront { position: relative; background: #fff; border: 1px solid #e6e6e6; border-top: 0; border-radius: 0 0 16px 16px; padding: 24px; }
+        .bld-upfront-info-btn { position: absolute; top: 16px; right: 16px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #b100df; background: #fff; color: #b100df; font-size: 13px; font-weight: 800; font-style: normal; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: background .15s, color .15s; font-family: Georgia, serif; }
+        .bld-upfront-info-btn:hover { background: #b100df; color: #fff; }
+        .bld-upfront-title { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: 17px; font-weight: 700; margin: 0 0 18px; color: #111; padding-right: 36px; }
+        .bld-upfront-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+        .bld-upfront-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #444; }
+        .bld-upfront-label { color: #555; }
+        .bld-upfront-val { font-weight: 700; color: #111; }
+        .bld-upfront-val--var { color: #7c3aed; }
+        .bld-upfront-summary { border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+        .bld-upfront-summary-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 14px; color: #555; gap: 8px; }
+        .bld-upfront-summary-row span:first-child { flex: 1; }
+        .bld-upfront-summary-total { font-size: 15px; font-weight: 700; color: #111; padding-top: 8px; border-top: 1px solid #eee; margin-top: 4px; }
+        .bld-upfront-summary-total strong { font-size: 18px; font-weight: 800; color: #111; white-space: nowrap; }
+        .bld-upfront-disc { font-size: 12px; color: #aaa; margin: 14px 0 0; line-height: 1.5; }
+
+        /* Fees Info Modal items */
+        .bld-fees-info-list { display: flex; flex-direction: column; gap: 16px; }
+        .bld-fees-info-item { border: 1px solid #f0f0f0; border-radius: 10px; padding: 12px 14px; background: #fafafa; }
+        .bld-fees-info-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+        .bld-fees-info-num { width: 22px; height: 22px; border-radius: 50%; background: #b100df; color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .bld-fees-info-title { flex: 1; font-size: 14px; font-weight: 700; color: #111; }
+        .bld-fees-info-amount { font-size: 14px; font-weight: 800; color: #7c3aed; white-space: nowrap; }
+        .bld-fees-info-timing { font-size: 11px; color: #888; margin: 0 0 4px; padding-left: 32px; }
+        .bld-fees-info-body { font-size: 13px; color: #555; margin: 0; line-height: 1.5; padding-left: 32px; }
+
         /* Footer */
         .bld-footer { padding: 24px clamp(20px, 5vw, 60px); border-top: 1px solid #e8e9ec; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
         .bld-footer p { font-size: 13px; color: #888; margin: 0; }
@@ -557,8 +814,8 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
               )}
             </div>
 
-            {/* Mortgage calculator */}
-            <MortgageCalc priceGbp={listing.price_gbp} ngnRate={listing.ngn_rate} />
+            {/* Payment tabs (Upfront / Mortgage) */}
+            <PaymentTabs priceGbp={listing.price_gbp} ngnRate={listing.ngn_rate} />
           </div>
 
           {/* Right sidebar */}
