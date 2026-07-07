@@ -365,6 +365,17 @@ export const BuyAbroadUk: React.FC = () => {
           </div>
         </section>
 
+        <section className="buk-strip">
+          <div className="buk-inner buk-strip-grid">
+            {featureStrip.map((item) => (
+              <div key={item.text} className="buk-strip-item">
+                {item.icon}
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section style={{ background: '#fff', padding: '0', margin: '0', width: '100%', overflow: 'hidden' }}>
           <AutoScrollReviews
             reviews={buyAbroadReviews}
@@ -379,17 +390,6 @@ export const BuyAbroadUk: React.FC = () => {
               </>
             }
           />
-        </section>
-
-        <section className="buk-strip">
-          <div className="buk-inner buk-strip-grid">
-            {featureStrip.map((item) => (
-              <div key={item.text} className="buk-strip-item">
-                {item.icon}
-                <span>{item.text}</span>
-              </div>
-            ))}
-          </div>
         </section>
 
         <section className="buk-market">
