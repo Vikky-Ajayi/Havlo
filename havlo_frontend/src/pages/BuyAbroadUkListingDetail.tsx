@@ -344,10 +344,6 @@ function UpfrontCosts({ priceGbp }: { priceGbp: number }) {
           </div>
         </div>
 
-        <p className="bld-upfront-disc">
-          Figures are estimates. Variable fees are calculated from standard UK rates for this property price.
-          Confirm all charges with your solicitor before proceeding.
-        </p>
       </div>
 
       {infoOpen && <FeesInfoModal priceGbp={priceGbp} onClose={() => setInfoOpen(false)} />}
