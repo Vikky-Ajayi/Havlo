@@ -339,7 +339,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
             <div className="buk-hero-copy">
               <h1>Help Your Clients Buy UK Property.<br />Earn More From <span>Every Deal</span>.</h1>
               <p>Partner with Havlo from anywhere in Nigeria. Help your clients buy property in the United Kingdom, we'll handle the property sourcing, negotiations, legal process, and completion, while you earn attractive commissions on every successful client.</p>
-              <a className="buk-hero-cta" href="/buyabroad/uk/listings">Start Earning UK Property Commissions</a>
+              <a className="buk-hero-cta" href="/buyabroad/uk/listings">Browse Properties for Sale</a>
               <div className="buk-trust">
                 <strong>Excellent</strong>
                 <span className="buk-stars">★★★★★</span>
