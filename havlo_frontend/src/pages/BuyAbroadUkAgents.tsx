@@ -339,7 +339,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
             <div className="buk-hero-copy">
               <h1>Help Your Clients Buy UK Property.<br />Earn More From <span>Every Deal</span>.</h1>
               <p>Partner with Havlo from anywhere in Nigeria. Help your clients buy property in the United Kingdom, we'll handle the property sourcing, negotiations, legal process, and completion, while you earn attractive commissions on every successful client.</p>
-              <button className="buk-hero-cta" type="button" onClick={openConsultation}>Start Earning UK Property Commissions</button>
+              <a className="buk-hero-cta" href="/buyabroad/uk/listings">Start Earning UK Property Commissions</a>
               <div className="buk-trust">
                 <strong>Excellent</strong>
                 <span className="buk-stars">★★★★★</span>
@@ -565,7 +565,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
         .buk-hero-copy h1 { font-family: "Plus Jakarta Sans", Inter, sans-serif; font-size: clamp(36px, 4vw, 52px); line-height: 1.15; letter-spacing: -0.03em; font-weight: 800; margin: 0 0 24px; }
         .buk-hero-copy h1 span { color: #b100df; }
         .buk-hero-copy p { font-size: clamp(14px, 1.4vw, 16px); line-height: 1.55; margin: 0 0 26px; }
-        .buk-hero-cta { height: 48px; border: 0; border-radius: 12px; background: #050505; color: #fff; padding: 0 26px; font-weight: 900; cursor: pointer; margin-bottom: 26px; }
+        .buk-hero-cta { display: inline-flex; align-items: center; justify-content: center; height: 48px; border: 0; border-radius: 12px; background: #050505; color: #fff; padding: 0 26px; font-weight: 900; cursor: pointer; margin-bottom: 26px; text-decoration: none; }
         .buk-trust { display: flex; align-items: center; gap: 12px; font-size: 14px; }
         .buk-stars { color: #fff; background: #00b67a; letter-spacing: 2px; padding: 4px 6px; font-size: 18px; line-height: 1; }
         .buk-form-card { background: #fff; border: 3px solid #050505; border-radius: 16px; padding: 32px; min-height: 560px; box-shadow: 6px 6px 0 #000; }
