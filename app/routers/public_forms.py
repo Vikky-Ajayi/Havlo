@@ -67,48 +67,79 @@ def _bg_log_contact(payload: dict) -> None:
     except Exception as exc:  # noqa: BLE001
         logger.error("Sheets log failed for Contact Form (source=%s): %s", source, exc)
     try:
+        msg = payload.get("message", "") or ""
+        # Parse the newline-separated message into a lookup dict
+        msg_data: dict[str, str] = {}
+        for line in msg.splitlines():
+            if ":" in line:
+                k, _, v = line.partition(":")
+                msg_data[k.strip()] = v.strip()
+
+        name = f"{payload.get('first_name', '')} {payload.get('last_name', '')}".strip()
+        email = payload.get("email", "") or "—"
+        phone = f"{payload.get('phone_country_code', '')}{payload.get('phone_number', '')}".strip() or "—"
+        country = payload.get("country_of_residence", "") or "—"
+
         if source == "buyabroad-uk":
             sheet_tab = "UK Buyer Enquiries"
             summary = "New UK property buyer enquiry submitted via the eligibility form."
             source_label = "buyabroad/uk — Eligibility Form"
             prop_url = ""
+            fields = {
+                "Name": name,
+                "Email": email,
+                "WhatsApp": msg_data.get("WhatsApp", phone),
+                "Country": country,
+                "Looking to buy": msg_data.get("Looking to buy", "—"),
+                "Budget": msg_data.get("Approximate budget", "—"),
+                "Timeline": msg_data.get("Timeline", "—"),
+                "Outcome": msg_data.get("Outcome", "—"),
+            }
         elif source == "buyabroad-uk-agents":
             sheet_tab = "UK Agent Partners"
             summary = "New agent/partner application submitted via /buyabroad/uk/agents."
             source_label = "buyabroad/uk/agents — Agent Application"
             prop_url = ""
+            fields = {
+                "Name": name,
+                "Email": email,
+                "Phone": phone,
+                "Country": country,
+                "Message": msg or "—",
+            }
         elif source == "buyabroad-uk-listings":
             sheet_tab = "UK Listing Consultations"
             summary = "New free consultation request submitted from a UK property listing."
             source_label = "buyabroad/uk/listings — Free Consultation"
-            # Extract the Havlo property URL from the message if present
-            msg = payload.get("message", "") or ""
-            prop_url = ""
-            for line in msg.splitlines():
-                if line.startswith("Havlo Property Page:"):
-                    prop_url = line.split("Havlo Property Page:", 1)[1].strip()
-                    break
-                if line.startswith("Source: /buyabroad/uk/listings/"):
-                    rightmove_id = line.split("/buyabroad/uk/listings/", 1)[1].strip()
-                    if rightmove_id:
-                        prop_url = f"https://heyhavlo.com/buyabroad/uk/listings/{rightmove_id}"
+            prop_url = msg_data.get("Havlo Property Page", "")
+            fields = {
+                "Name": name,
+                "Email": email,
+                "WhatsApp": msg_data.get("WhatsApp", phone),
+                "Property": msg_data.get("Interested in property", "—"),
+                "Address": msg_data.get("Address", "—"),
+                "Price": msg_data.get("Price", "—"),
+                "Bedrooms": msg_data.get("Bedrooms", "—"),
+                "Rightmove URL": msg_data.get("Rightmove URL", "—"),
+            }
         else:
             sheet_tab = "Contact Form"
             summary = "A new contact enquiry was just submitted on the website."
             source_label = ""
             prop_url = ""
+            fields = {
+                "Name": name,
+                "Email": email,
+                "Phone": phone,
+                "Country": country,
+                "Message": msg or "—",
+            }
         send_admin_notification_sync(
             sheet_tab=sheet_tab,
             summary=summary,
             source_label=source_label,
             property_url=prop_url,
-            fields={
-                "Name": f"{payload.get('first_name', '')} {payload.get('last_name', '')}".strip(),
-                "Email": payload.get("email", ""),
-                "Phone": f"{payload.get('phone_country_code', '')}{payload.get('phone_number', '')}".strip(),
-                "Country": payload.get("country_of_residence", "") or "—",
-                "Message": payload.get("message", "") or "—",
-            },
+            fields=fields,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("Admin notify failed for Contact Form (source=%s): %s", source, exc)
