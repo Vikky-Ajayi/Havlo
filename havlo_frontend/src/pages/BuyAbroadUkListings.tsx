@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
-import { api, API_BASE } from '../lib/api';
+import { API_BASE } from '../lib/api';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 
@@ -92,7 +92,7 @@ function formatNgn(amount: number): string {
   return '₦' + amount.toLocaleString('en-NG');
 }
 
-function PropertyCard({ listing, onConsult }: { listing: Listing; onConsult: (l: Listing) => void }) {
+function PropertyCard({ listing }: { listing: Listing }) {
   const img = listing.images[0] || '';
   const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}`;
 
@@ -124,9 +124,9 @@ function PropertyCard({ listing, onConsult }: { listing: Listing; onConsult: (l:
           <span>📍 {listing.city}</span>
         </div>
         <div className="bal-card-actions">
-          <button className="bal-card-enquire" type="button" onClick={() => onConsult(listing)}>
-            Get a Free Consultation
-          </button>
+          <a className="bal-card-enquire" href={detailUrl}>
+            View Property Details
+          </a>
           <a
             className="bal-card-view"
             href={listing.url}
@@ -172,58 +172,6 @@ export const BuyAbroadUkListings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [scrapeStatus, setScrapeStatus] = useState<'idle' | 'scraping' | 'done'>('idle');
-
-  const [consultListing, setConsultListing] = useState<Listing | null>(null);
-  const [consultName, setConsultName] = useState('');
-  const [consultWhatsApp, setConsultWhatsApp] = useState('');
-  const [consultEmail, setConsultEmail] = useState('');
-  const [consultSubmitting, setConsultSubmitting] = useState(false);
-  const [consultDone, setConsultDone] = useState(false);
-  const [consultError, setConsultError] = useState('');
-
-  const openConsult = (listing: Listing) => {
-    setConsultListing(listing);
-    setConsultName('');
-    setConsultWhatsApp('');
-    setConsultEmail('');
-    setConsultDone(false);
-    setConsultError('');
-  };
-
-  const closeConsult = () => setConsultListing(null);
-
-  const submitConsultation = async () => {
-    if (!consultListing) return;
-    setConsultSubmitting(true);
-    setConsultError('');
-    const nameParts = consultName.trim().split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '-';
-    try {
-      await api.submitContactForm({
-        first_name: firstName,
-        last_name: lastName,
-        email: consultEmail,
-        phone_country_code: '+234',
-        phone_number: consultWhatsApp,
-        country_of_residence: 'Nigeria',
-        source: 'buyabroad-uk-listings',
-        message: [
-          'UK Listing Free Consultation Request',
-          `Property: ${consultListing.address}`,
-          `Price: ${formatGbp(consultListing.price_gbp)}`,
-          `Property URL: ${consultListing.url}`,
-          `City: ${consultListing.city}`,
-          `WhatsApp: ${consultWhatsApp}`,
-        ].join('\n'),
-      });
-      setConsultDone(true);
-    } catch {
-      setConsultError('Something went wrong. Please try again.');
-    } finally {
-      setConsultSubmitting(false);
-    }
-  };
 
   const priceRange = PRICE_RANGES[priceIdx];
   const minBeds = BEDS_OPTIONS[bedsIdx].value;
@@ -607,83 +555,6 @@ export const BuyAbroadUkListings: React.FC = () => {
           .bal-footer nav { justify-content: center; }
         }
 
-        /* ── Consultation modal ── */
-        .bal-modal-overlay {
-          position: fixed; inset: 0; z-index: 1000;
-          background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
-          display: flex; align-items: center; justify-content: center;
-          padding: 20px;
-        }
-        .bal-modal {
-          background: #fff; border-radius: 20px;
-          width: 100%; max-width: 460px;
-          padding: 36px 32px 32px;
-          position: relative;
-          box-shadow: 0 24px 64px rgba(0,0,0,.18);
-        }
-        .bal-modal-close {
-          position: absolute; top: 16px; right: 16px;
-          background: none; border: none; cursor: pointer;
-          font-size: 20px; color: #888; line-height: 1;
-          padding: 4px 8px; border-radius: 6px;
-        }
-        .bal-modal-close:hover { background: #f3f4f6; color: #111; }
-        .bal-modal-eyebrow {
-          font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-          text-transform: uppercase; color: #b100df; margin-bottom: 6px;
-        }
-        .bal-modal h3 {
-          font-family: "Plus Jakarta Sans", Inter, sans-serif;
-          font-size: 22px; font-weight: 800; color: #111;
-          margin: 0 0 4px; line-height: 1.2;
-        }
-        .bal-modal-property {
-          font-size: 13px; color: #555; margin: 0 0 24px;
-          padding: 10px 14px; background: #f9f9f9;
-          border-radius: 10px; border: 1px solid #eee;
-          line-height: 1.4;
-        }
-        .bal-modal-property strong { color: #111; }
-        .bal-modal-label {
-          display: block; font-size: 12px; font-weight: 700;
-          color: #111; margin-bottom: 6px; letter-spacing: 0.02em;
-        }
-        .bal-modal-input {
-          width: 100%; box-sizing: border-box;
-          border: 1.5px solid #e0e0e0; border-radius: 10px;
-          padding: 11px 14px; font-size: 14px; color: #111;
-          margin-bottom: 14px; outline: none;
-          transition: border-color .15s;
-          font-family: inherit;
-        }
-        .bal-modal-input:focus { border-color: #b100df; }
-        .bal-modal-submit {
-          width: 100%; background: #111; color: #fff;
-          border: none; border-radius: 12px;
-          padding: 14px; font-size: 14px; font-weight: 700;
-          cursor: pointer; margin-top: 4px;
-          transition: background .15s; font-family: inherit;
-          letter-spacing: 0.02em;
-        }
-        .bal-modal-submit:hover:not(:disabled) { background: #b100df; }
-        .bal-modal-submit:disabled { opacity: .5; cursor: default; }
-        .bal-modal-error { color: #dc2626; font-size: 13px; margin-top: 10px; }
-        .bal-modal-success {
-          text-align: center; padding: 12px 0 4px;
-        }
-        .bal-modal-success-icon { font-size: 48px; margin-bottom: 12px; }
-        .bal-modal-success h4 {
-          font-family: "Plus Jakarta Sans", Inter, sans-serif;
-          font-size: 20px; font-weight: 800; margin: 0 0 8px; color: #111;
-        }
-        .bal-modal-success p { font-size: 14px; color: #555; margin: 0 0 24px; line-height: 1.5; }
-        .bal-modal-done-btn {
-          display: inline-block; background: #111; color: #fff;
-          border: none; border-radius: 12px; padding: 12px 32px;
-          font-size: 14px; font-weight: 700; cursor: pointer;
-          font-family: inherit;
-        }
-        .bal-modal-done-btn:hover { background: #b100df; }
       `}</style>
 
       {/* Header */}
@@ -910,7 +781,7 @@ export const BuyAbroadUkListings: React.FC = () => {
         {hasData && !loading && (
           <div className="bal-grid">
             {data.listings.map((listing) => (
-              <PropertyCard key={listing.id} listing={listing} onConsult={openConsult} />
+              <PropertyCard key={listing.id} listing={listing} />
             ))}
           </div>
         )}
@@ -966,78 +837,6 @@ export const BuyAbroadUkListings: React.FC = () => {
           Chat on WhatsApp
         </a>
       </section>
-
-      {/* Consultation modal */}
-      {consultListing && (
-        <div className="bal-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeConsult(); }}>
-          <div className="bal-modal" role="dialog" aria-modal="true">
-            <button className="bal-modal-close" type="button" onClick={closeConsult} aria-label="Close">✕</button>
-
-            {consultDone ? (
-              <div className="bal-modal-success">
-                <div className="bal-modal-success-icon">🎉</div>
-                <h4>Request received!</h4>
-                <p>One of our UK property advisors will reach out to you on WhatsApp within 24 hours.</p>
-                <button className="bal-modal-done-btn" type="button" onClick={closeConsult}>Close</button>
-              </div>
-            ) : (
-              <>
-                <div className="bal-modal-eyebrow">Free Consultation</div>
-                <h3>Speak to a UK Property Advisor</h3>
-                <div className="bal-modal-property">
-                  <strong>{consultListing.address}</strong><br />
-                  {formatGbp(consultListing.price_gbp)} &nbsp;·&nbsp; {consultListing.city}
-                </div>
-
-                <label className="bal-modal-label" htmlFor="consult-name">Full Name</label>
-                <input
-                  id="consult-name"
-                  className="bal-modal-input"
-                  type="text"
-                  placeholder="e.g. Amara Johnson"
-                  value={consultName}
-                  onChange={(e) => setConsultName(e.target.value)}
-                  autoComplete="name"
-                />
-
-                <label className="bal-modal-label" htmlFor="consult-whatsapp">WhatsApp Number</label>
-                <input
-                  id="consult-whatsapp"
-                  className="bal-modal-input"
-                  type="tel"
-                  placeholder="e.g. 08012345678"
-                  value={consultWhatsApp}
-                  onChange={(e) => setConsultWhatsApp(e.target.value)}
-                  inputMode="tel"
-                />
-
-                <label className="bal-modal-label" htmlFor="consult-email">Email Address</label>
-                <input
-                  id="consult-email"
-                  className="bal-modal-input"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={consultEmail}
-                  onChange={(e) => setConsultEmail(e.target.value)}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  inputMode="email"
-                />
-
-                <button
-                  className="bal-modal-submit"
-                  type="button"
-                  disabled={consultSubmitting || !consultName.trim() || !consultWhatsApp.trim() || !consultEmail.trim()}
-                  onClick={submitConsultation}
-                >
-                  {consultSubmitting ? 'Sending…' : 'Request Free Consultation →'}
-                </button>
-                {consultError && <p className="bal-modal-error">{consultError}</p>}
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <footer className="bal-footer">

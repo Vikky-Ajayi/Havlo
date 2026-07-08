@@ -64,6 +64,7 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
         phone_country_code: '+234',
         phone_number: whatsapp,
         country_of_residence: 'Nigeria',
+        source: 'buyabroad-uk-listings',
         message: [
           'Buy Abroad UK — Free Consultation Request',
           `Interested in property: ${listing.title}`,
