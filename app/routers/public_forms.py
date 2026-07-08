@@ -103,9 +103,13 @@ def _bg_log_contact(payload: dict) -> None:
             fields = {
                 "Name": name,
                 "Email": email,
-                "Phone": phone,
+                "WhatsApp": msg_data.get("WhatsApp", phone),
                 "Country": country,
-                "Message": msg or "—",
+                "Address": msg_data.get("Address", "—"),
+                "Company / Agency": msg_data.get("Real estate company / agency", "—"),
+                "Website / Social": msg_data.get("Company website / social link", "—"),
+                "Monthly referrals": msg_data.get("Clients they can refer monthly", "—"),
+                "Min. client budget": msg_data.get("Minimum property price their clients can afford", "—"),
             }
         elif source == "buyabroad-uk-listings":
             sheet_tab = "UK Listing Consultations"
