@@ -71,6 +71,7 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
           `Address: ${listing.address}`,
           `Price: £${listing.price_gbp.toLocaleString()} (${formatNgn(listing.price_ngn)} NGN)`,
           `Bedrooms: ${listing.bedrooms}`,
+          `Havlo Property Page: https://heyhavlo.com/buyabroad/uk/listings/${listing.rightmove_id}`,
           `Rightmove URL: ${listing.url}`,
           `WhatsApp: ${whatsapp}`,
           `Source: /buyabroad/uk/listings/${listing.rightmove_id}`,
@@ -84,8 +85,9 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
     }
   };
 
+  const propertyPageUrl = `https://heyhavlo.com/buyabroad/uk/listings/${listing.rightmove_id}`;
   const waMsg = encodeURIComponent(
-    `Hi Havlo, I requested a free consultation about ${listing.title} at ${listing.address} (£${listing.price_gbp.toLocaleString()}). My name is ${fullName || 'a buyer'}.`
+    `Hi Havlo, I requested a free consultation about ${listing.title} at ${listing.address} (£${listing.price_gbp.toLocaleString()}). My name is ${fullName || 'a buyer'}. Property link: ${propertyPageUrl}`
   );
 
   return (
@@ -112,6 +114,12 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
         ) : (
           <form onSubmit={submit}>
             <div className="bld-modal-head">
+              <div className="bld-modal-property-ref">
+                <span className="bld-modal-prop-badge">{listing.property_type || 'Property'}</span>
+                <strong className="bld-modal-prop-title">{listing.title}</strong>
+                <span className="bld-modal-prop-addr">📍 {listing.address}</span>
+                <span className="bld-modal-prop-price">£{listing.price_gbp.toLocaleString()} &nbsp;·&nbsp; {formatNgn(listing.price_ngn)}</span>
+              </div>
               <h2>Enter your details and we'll be in touch on WhatsApp</h2>
             </div>
             <div className="bld-modal-divider" />
@@ -663,6 +671,11 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
         .bld-modal-card::-webkit-scrollbar { display: none; }
         .bld-modal-close { position: absolute; top: 14px; right: 16px; background: none; border: 0; font-size: 18px; cursor: pointer; color: #888; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background .15s; }
         .bld-modal-close:hover { background: #f0f0f0; color: #111; }
+        .bld-modal-property-ref { display: flex; flex-direction: column; gap: 4px; background: #f7f7f9; border: 1px solid #e8e8ea; border-radius: 10px; padding: 12px 14px; margin-bottom: 18px; }
+        .bld-modal-prop-badge { display: inline-block; background: #111; color: #fff; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 10px; border-radius: 999px; width: fit-content; margin-bottom: 4px; }
+        .bld-modal-prop-title { font-size: 14px; font-weight: 700; color: #111; line-height: 1.3; }
+        .bld-modal-prop-addr { font-size: 12px; color: #666; }
+        .bld-modal-prop-price { font-size: 13px; font-weight: 700; color: #b100df; }
         .bld-modal-head h2 { font-family: Inter, sans-serif; font-size: 22px; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; margin: 0; color: #111; }
         .bld-modal-divider { height: 1px; background: #e0e0e0; margin: 20px 0 24px; }
         .bld-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }

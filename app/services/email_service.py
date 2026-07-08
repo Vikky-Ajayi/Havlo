@@ -1119,31 +1119,64 @@ def send_inbox_notification_sync(
 # response is never delayed.
 # ────────────────────────────────────────────────────────────────────────────
 
-def _admin_notice_html(sheet_tab: str, summary: str, fields: dict[str, str]) -> str:
+def _admin_notice_html(
+    sheet_tab: str,
+    summary: str,
+    fields: dict[str, str],
+    *,
+    source_label: str = "",
+    property_url: str = "",
+) -> str:
     brand = _email_brand()
-    rows = _email_value_table_html(fields)
+
+    # Build the fields table, stripping internal-only keys
+    display_fields = {k: v for k, v in fields.items() if k not in ("_property_url", "_source_label")}
+    rows = _email_value_table_html(display_fields)
+
+    source_badge = ""
+    if source_label:
+        safe_src = _html_lib.escape(source_label)
+        source_badge = (
+            f'<p style="margin:0 0 14px 0;">'
+            f'<span style="display:inline-block;background:#f3f0ff;color:#7c3aed;font-size:11px;'
+            f'font-weight:800;letter-spacing:0.06em;text-transform:uppercase;padding:4px 12px;'
+            f'border-radius:999px;border:1px solid #ddd6fe;">Source: {safe_src}</span>'
+            f'</p>'
+        )
+
+    property_btn = ""
+    if property_url:
+        safe_url = _html_lib.escape(property_url)
+        property_btn = (
+            f'<tr><td class="havlo-pad-x" style="padding:0 48px 18px 48px;">'
+            f'{_email_button_html(property_url, "View Property on Havlo →", accent="#b100df", text_color="#FFFFFF")}'
+            f'</td></tr>'
+        )
+
     body_html = f"""
     <tr>
       <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
         <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#8C133B;text-transform:uppercase;">Internal alert</p>
-        <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#556274;">New entry: {_html_lib.escape(sheet_tab)}</h1>
+        <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#111111;">New enquiry: {_html_lib.escape(sheet_tab)}</h1>
+        {source_badge}
         <p class="havlo-body-copy" style="margin:0 0 18px 0;">{_html_lib.escape(summary)}</p>
       </td>
     </tr>
     <tr>
       <td class="havlo-pad-x" style="padding:0 48px 14px 48px;">{rows}</td>
     </tr>
+    {property_btn}
     <tr>
       <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
-        <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">
+        <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;color:#aaa;">
           Sent automatically when a Havlo website form writes a row to your Google Sheet.
         </p>
       </td>
     </tr>
     """
     return _email_shell_html(
-        title=f"New entry: {sheet_tab}",
-        preheader=f"New Havlo form submission for {sheet_tab}.",
+        title=f"New enquiry: {sheet_tab}",
+        preheader=f"New form submission via {source_label or sheet_tab}.",
         body_html=body_html,
         brand=brand,
         show_hero=False,
@@ -1184,15 +1217,36 @@ def _admin_notice_html(sheet_tab: str, summary: str, fields: dict[str, str]) -> 
 </body></html>"""
 
 
-def _admin_notice_plain(sheet_tab: str, summary: str, fields: dict[str, str]) -> str:
-    body = f"New entry: {sheet_tab}\n{summary}\n\n"
+def _admin_notice_plain(
+    sheet_tab: str,
+    summary: str,
+    fields: dict[str, str],
+    *,
+    source_label: str = "",
+    property_url: str = "",
+) -> str:
+    body = f"New enquiry: {sheet_tab}\n"
+    if source_label:
+        body += f"Source: {source_label}\n"
+    body += f"{summary}\n\n"
     for k, v in fields.items():
+        if k.startswith("_"):
+            continue
         body += f"  {k}: {v}\n"
+    if property_url:
+        body += f"\nView property on Havlo:\n{property_url}\n"
     body += "\nSent automatically when a Havlo website form writes a row to your Google Sheet.\n"
     return body
 
 
-def send_admin_notification_sync(sheet_tab: str, summary: str, fields: dict[str, str]) -> bool:
+def send_admin_notification_sync(
+    sheet_tab: str,
+    summary: str,
+    fields: dict[str, str],
+    *,
+    source_label: str = "",
+    property_url: str = "",
+) -> bool:
     """Notify the configured admin address that a new row was added to a sheet."""
     s = get_settings()
     to_email = (s.ADMIN_NOTIFY_EMAIL or "").strip()
@@ -1201,14 +1255,24 @@ def send_admin_notification_sync(sheet_tab: str, summary: str, fields: dict[str,
         return False
     return _send_sync(
         to_email=to_email,
-        subject=f"[Havlo] New entry — {sheet_tab}",
-        html_body=_admin_notice_html(sheet_tab, summary, fields),
-        plain_body=_admin_notice_plain(sheet_tab, summary, fields),
+        subject=f"[Havlo] New enquiry — {source_label or sheet_tab}",
+        html_body=_admin_notice_html(sheet_tab, summary, fields, source_label=source_label, property_url=property_url),
+        plain_body=_admin_notice_plain(sheet_tab, summary, fields, source_label=source_label, property_url=property_url),
     )
 
 
-async def send_admin_notification(sheet_tab: str, summary: str, fields: dict[str, str]) -> bool:
-    return await asyncio.to_thread(send_admin_notification_sync, sheet_tab, summary, fields)
+async def send_admin_notification(
+    sheet_tab: str,
+    summary: str,
+    fields: dict[str, str],
+    *,
+    source_label: str = "",
+    property_url: str = "",
+) -> bool:
+    return await asyncio.to_thread(
+        send_admin_notification_sync, sheet_tab, summary, fields,
+        source_label=source_label, property_url=property_url,
+    )
 
 
 def send_custom_offer_buyer_confirmation_sync(

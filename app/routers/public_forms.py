@@ -69,19 +69,39 @@ def _bg_log_contact(payload: dict) -> None:
     try:
         if source == "buyabroad-uk":
             sheet_tab = "UK Buyer Enquiries"
-            summary = "New UK property buyer enquiry from /buyabroad/uk"
+            summary = "New UK property buyer enquiry submitted via the eligibility form."
+            source_label = "buyabroad/uk — Eligibility Form"
+            prop_url = ""
         elif source == "buyabroad-uk-agents":
             sheet_tab = "UK Agent Partners"
-            summary = "New agent/partner application from /buyabroad/uk/agents"
+            summary = "New agent/partner application submitted via /buyabroad/uk/agents."
+            source_label = "buyabroad/uk/agents — Agent Application"
+            prop_url = ""
         elif source == "buyabroad-uk-listings":
             sheet_tab = "UK Listing Consultations"
-            summary = "New free consultation request from a UK listing"
+            summary = "New free consultation request submitted from a UK property listing."
+            source_label = "buyabroad/uk/listings — Free Consultation"
+            # Extract the Havlo property URL from the message if present
+            msg = payload.get("message", "") or ""
+            prop_url = ""
+            for line in msg.splitlines():
+                if line.startswith("Havlo Property Page:"):
+                    prop_url = line.split("Havlo Property Page:", 1)[1].strip()
+                    break
+                if line.startswith("Source: /buyabroad/uk/listings/"):
+                    rightmove_id = line.split("/buyabroad/uk/listings/", 1)[1].strip()
+                    if rightmove_id:
+                        prop_url = f"https://heyhavlo.com/buyabroad/uk/listings/{rightmove_id}"
         else:
             sheet_tab = "Contact Form"
             summary = "A new contact enquiry was just submitted on the website."
+            source_label = ""
+            prop_url = ""
         send_admin_notification_sync(
             sheet_tab=sheet_tab,
             summary=summary,
+            source_label=source_label,
+            property_url=prop_url,
             fields={
                 "Name": f"{payload.get('first_name', '')} {payload.get('last_name', '')}".strip(),
                 "Email": payload.get("email", ""),

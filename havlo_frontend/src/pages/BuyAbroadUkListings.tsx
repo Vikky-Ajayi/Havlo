@@ -3,6 +3,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { API_BASE } from '../lib/api';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
+import { EligibilityModal } from '../components/modals/EligibilityModal';
 
 const ukListingsReviews = [
   { title: 'Simplifies international purchase', content: 'Havlo took all the stress out of buying property overseas. The step-by-step guidance and detailed info gave me confidence to make my first international purchase.', author: 'Tomiwa, Lagos' },
@@ -172,6 +173,7 @@ export const BuyAbroadUkListings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [scrapeStatus, setScrapeStatus] = useState<'idle' | 'scraping' | 'done'>('idle');
+  const [eligibilityOpen, setEligibilityOpen] = useState(false);
 
   const priceRange = PRICE_RANGES[priceIdx];
   const minBeds = BEDS_OPTIONS[bedsIdx].value;
@@ -565,13 +567,13 @@ export const BuyAbroadUkListings: React.FC = () => {
         </a>
         <div className="bal-header-spacer" />
         <a href="/buyabroad/uk" className="bal-header-back">← Back to Buy Abroad</a>
-        <a
+        <button
           className="bal-header-cta"
-          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi Havlo, I would like a free consultation about buying UK property.')}`}
-          target="_blank" rel="noopener noreferrer"
+          type="button"
+          onClick={() => setEligibilityOpen(true)}
         >
           Free Consultation
-        </a>
+        </button>
       </header>
 
       {/* Hero */}
@@ -837,6 +839,8 @@ export const BuyAbroadUkListings: React.FC = () => {
           Chat on WhatsApp
         </a>
       </section>
+
+      <EligibilityModal isOpen={eligibilityOpen} onClose={() => setEligibilityOpen(false)} />
 
       {/* Footer */}
       <footer className="bal-footer">
