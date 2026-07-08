@@ -34,6 +34,7 @@ class ContactFormPayload(BaseModel):
     phone_number: str = Field(default="", max_length=40)
     country_of_residence: str = Field(default="", max_length=120)
     message: str = Field(default="", max_length=4000)
+    source: Optional[str] = Field(default="", max_length=64)
 
 
 class NewsletterPayload(BaseModel):
@@ -53,14 +54,29 @@ class OkResponse(BaseModel):
 # ── Background task helpers ─────────────────────────────────────────────────
 
 def _bg_log_contact(payload: dict) -> None:
+    source = (payload.get("source") or "").strip()
     try:
-        google_sheets.record_contact_form(payload)
+        if source == "buyabroad-uk":
+            google_sheets.record_uk_buyer_enquiry(payload)
+        elif source == "buyabroad-uk-agents":
+            google_sheets.record_uk_agent_partner(payload)
+        else:
+            google_sheets.record_contact_form(payload)
     except Exception as exc:  # noqa: BLE001
-        logger.error("Sheets log failed for Contact Form: %s", exc)
+        logger.error("Sheets log failed for Contact Form (source=%s): %s", source, exc)
     try:
+        if source == "buyabroad-uk":
+            sheet_tab = "UK Buyer Enquiries"
+            summary = "New UK property buyer enquiry from /buyabroad/uk"
+        elif source == "buyabroad-uk-agents":
+            sheet_tab = "UK Agent Partners"
+            summary = "New agent/partner application from /buyabroad/uk/agents"
+        else:
+            sheet_tab = "Contact Form"
+            summary = "A new contact enquiry was just submitted on the website."
         send_admin_notification_sync(
-            sheet_tab="Contact Form",
-            summary="A new contact enquiry was just submitted on the website.",
+            sheet_tab=sheet_tab,
+            summary=summary,
             fields={
                 "Name": f"{payload.get('first_name', '')} {payload.get('last_name', '')}".strip(),
                 "Email": payload.get("email", ""),
@@ -70,7 +86,7 @@ def _bg_log_contact(payload: dict) -> None:
             },
         )
     except Exception as exc:  # noqa: BLE001
-        logger.error("Admin notify failed for Contact Form: %s", exc)
+        logger.error("Admin notify failed for Contact Form (source=%s): %s", source, exc)
 
 
 def _bg_log_newsletter(email: str, source: str) -> None:

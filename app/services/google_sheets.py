@@ -89,6 +89,17 @@ SHEET_TABS: dict[str, list[str]] = {
         "Buyer Phone", "Listing URL", "Platform", "Property Summary", "Plan ID",
         "Plan Name", "Payment Status", "Proposal Status", "Answers Summary",
     ],
+    "UK Buyer Enquiries": [
+        "Timestamp", "First Name", "Last Name", "Email", "Phone",
+        "Outcome", "Property Type", "Budget", "Timeline", "WhatsApp",
+    ],
+    "UK Agent Partners": [
+        "Timestamp", "First Name", "Last Name", "Email", "Phone",
+        "Address", "Company Name", "Company Website", "Referral Volume", "Minimum Property Price",
+    ],
+    "UK Listing Searches": [
+        "Timestamp", "City", "Min Price (GBP)", "Max Price (GBP)", "Min Beds", "Property Type", "Page",
+    ],
 }
 
 
@@ -448,6 +459,65 @@ def record_custom_offer(form_data: dict[str, Any]) -> bool:
         return True
     except Exception:
         return False
+
+
+def _parse_message_lines(message: str) -> dict[str, str]:
+    """Parse a newline-separated 'Key: Value' message string into a dict."""
+    result: dict[str, str] = {}
+    for line in message.splitlines():
+        if ": " in line:
+            key, _, value = line.partition(": ")
+            result[key.strip()] = value.strip()
+    return result
+
+
+def record_uk_buyer_enquiry(form_data: dict[str, Any]) -> None:
+    parsed = _parse_message_lines(form_data.get("message", ""))
+    phone = f"{form_data.get('phone_country_code', '')}{form_data.get('phone_number', '')}".strip()
+    row = [
+        datetime.utcnow().isoformat(),
+        form_data.get("first_name", ""),
+        form_data.get("last_name", ""),
+        form_data.get("email", ""),
+        phone,
+        parsed.get("Outcome", ""),
+        parsed.get("Looking to buy", ""),
+        parsed.get("Approximate budget", ""),
+        parsed.get("Timeline", ""),
+        parsed.get("WhatsApp", ""),
+    ]
+    _append_row("UK Buyer Enquiries", row)
+
+
+def record_uk_agent_partner(form_data: dict[str, Any]) -> None:
+    parsed = _parse_message_lines(form_data.get("message", ""))
+    phone = f"{form_data.get('phone_country_code', '')}{form_data.get('phone_number', '')}".strip()
+    row = [
+        datetime.utcnow().isoformat(),
+        form_data.get("first_name", ""),
+        form_data.get("last_name", ""),
+        form_data.get("email", ""),
+        phone,
+        parsed.get("Address", ""),
+        parsed.get("Real estate company / agency", ""),
+        parsed.get("Company website / social link", ""),
+        parsed.get("Clients they can refer monthly", ""),
+        parsed.get("Minimum property price their clients can afford", ""),
+    ]
+    _append_row("UK Agent Partners", row)
+
+
+def record_uk_listing_search(search_data: dict[str, Any]) -> None:
+    row = [
+        datetime.utcnow().isoformat(),
+        search_data.get("city", "") or "",
+        search_data.get("min_price", "") if search_data.get("min_price") is not None else "",
+        search_data.get("max_price", "") if search_data.get("max_price") is not None else "",
+        search_data.get("min_beds", "") if search_data.get("min_beds") is not None else "",
+        search_data.get("property_type", "") or "",
+        search_data.get("page", 1),
+    ]
+    _append_row("UK Listing Searches", row)
 
 
 def record_public_assessment(form_data: dict[str, Any]) -> None:

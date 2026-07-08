@@ -833,6 +833,7 @@ export const api = {
     phone_number: string;
     country_of_residence: string;
     message: string;
+    source?: string;
   }) => request<{ ok: boolean }>('/public/contact', { method: 'POST', body: payload }),
 
   joinNewsletter: (email: string, source: string = 'footer') =>

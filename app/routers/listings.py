@@ -5,12 +5,13 @@ import logging
 from typing import Any, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.models.models import RightmoveListing
+from app.services import google_sheets
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/listings", tags=["listings"])
@@ -72,8 +73,16 @@ _PROPERTY_TYPE_KEYWORDS: dict[str, list[str]] = {
 }
 
 
+def _bg_log_listing_search(search_data: dict) -> None:
+    try:
+        google_sheets.record_uk_listing_search(search_data)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Sheets log failed for UK Listing Searches: %s", exc)
+
+
 @router.get("/")
 async def list_listings(
+    background_tasks: BackgroundTasks,
     city: Optional[str] = Query(None, description="Filter by city name"),
     min_price: Optional[int] = Query(None, description="Min price in GBP"),
     max_price: Optional[int] = Query(None, description="Max price in GBP"),
@@ -83,6 +92,15 @@ async def list_listings(
     per_page: int = Query(12, ge=1, le=48),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
+    if any(v is not None for v in (city, min_price, max_price, min_beds, property_type)):
+        background_tasks.add_task(_bg_log_listing_search, {
+            "city": city,
+            "min_price": min_price,
+            "max_price": max_price,
+            "min_beds": min_beds,
+            "property_type": property_type,
+            "page": page,
+        })
     try:
         return await _list_listings_inner(city, min_price, max_price, min_beds, property_type, page, per_page, db)
     except Exception as exc:
