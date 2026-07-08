@@ -97,8 +97,9 @@ SHEET_TABS: dict[str, list[str]] = {
         "Timestamp", "First Name", "Last Name", "Email", "Phone",
         "Address", "Company Name", "Company Website", "Referral Volume", "Minimum Property Price",
     ],
-    "UK Listing Searches": [
-        "Timestamp", "City", "Min Price (GBP)", "Max Price (GBP)", "Min Beds", "Property Type", "Page",
+    "UK Listing Consultations": [
+        "Timestamp", "First Name", "Last Name", "Email", "Phone",
+        "Property Address", "Price (GBP)", "Property URL", "City",
     ],
 }
 
@@ -507,17 +508,21 @@ def record_uk_agent_partner(form_data: dict[str, Any]) -> None:
     _append_row("UK Agent Partners", row)
 
 
-def record_uk_listing_search(search_data: dict[str, Any]) -> None:
+def record_uk_listing_consultation(form_data: dict[str, Any]) -> None:
+    parsed = _parse_message_lines(form_data.get("message", ""))
+    phone = f"{form_data.get('phone_country_code', '')}{form_data.get('phone_number', '')}".strip()
     row = [
         datetime.utcnow().isoformat(),
-        search_data.get("city", "") or "",
-        search_data.get("min_price", "") if search_data.get("min_price") is not None else "",
-        search_data.get("max_price", "") if search_data.get("max_price") is not None else "",
-        search_data.get("min_beds", "") if search_data.get("min_beds") is not None else "",
-        search_data.get("property_type", "") or "",
-        search_data.get("page", 1),
+        form_data.get("first_name", ""),
+        form_data.get("last_name", ""),
+        form_data.get("email", ""),
+        phone,
+        parsed.get("Property", ""),
+        parsed.get("Price", ""),
+        parsed.get("Property URL", ""),
+        parsed.get("City", ""),
     ]
-    _append_row("UK Listing Searches", row)
+    _append_row("UK Listing Consultations", row)
 
 
 def record_public_assessment(form_data: dict[str, Any]) -> None:

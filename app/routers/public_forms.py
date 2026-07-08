@@ -60,6 +60,8 @@ def _bg_log_contact(payload: dict) -> None:
             google_sheets.record_uk_buyer_enquiry(payload)
         elif source == "buyabroad-uk-agents":
             google_sheets.record_uk_agent_partner(payload)
+        elif source == "buyabroad-uk-listings":
+            google_sheets.record_uk_listing_consultation(payload)
         else:
             google_sheets.record_contact_form(payload)
     except Exception as exc:  # noqa: BLE001
@@ -71,6 +73,9 @@ def _bg_log_contact(payload: dict) -> None:
         elif source == "buyabroad-uk-agents":
             sheet_tab = "UK Agent Partners"
             summary = "New agent/partner application from /buyabroad/uk/agents"
+        elif source == "buyabroad-uk-listings":
+            sheet_tab = "UK Listing Consultations"
+            summary = "New free consultation request from a UK listing"
         else:
             sheet_tab = "Contact Form"
             summary = "A new contact enquiry was just submitted on the website."
