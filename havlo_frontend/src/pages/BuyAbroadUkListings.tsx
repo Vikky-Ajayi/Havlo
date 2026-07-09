@@ -22,7 +22,7 @@ const ukListingsReviews = [
 
 const WHATSAPP_NUMBER = '2349039861006';
 
-const CITIES = [
+const FALLBACK_CITIES = [
   'London', 'Manchester', 'Birmingham', 'Leeds', 'Bristol',
   'Liverpool', 'Sheffield', 'Edinburgh', 'Glasgow', 'Nottingham',
 ];
@@ -168,6 +168,9 @@ export const BuyAbroadUkListings: React.FC = () => {
   const [bedsIdx, setBedsIdx] = useState(0);
   const [propertyType, setPropertyType] = useState('');
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [cities, setCities] = useState<string[]>(FALLBACK_CITIES);
 
   const [data, setData] = useState<ListingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,6 +180,31 @@ export const BuyAbroadUkListings: React.FC = () => {
 
   const priceRange = PRICE_RANGES[priceIdx];
   const minBeds = BEDS_OPTIONS[bedsIdx].value;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/listings/cities`);
+        if (!resp.ok) return;
+        const json: { cities: { name: string; count: number }[] } = await resp.json();
+        if (!cancelled && Array.isArray(json.cities) && json.cities.length > 0) {
+          setCities(json.cities.map((c) => c.name).filter(Boolean));
+        }
+      } catch {
+        // keep fallback list on failure
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -190,6 +218,7 @@ export const BuyAbroadUkListings: React.FC = () => {
       if (priceRange.max != null) params.set('max_price', String(priceRange.max));
       if (minBeds != null) params.set('min_beds', String(minBeds));
       if (propertyType) params.set('property_type', propertyType);
+      if (search) params.set('search', search);
 
       const resp = await fetch(`${API_BASE}/listings/?${params}`);
       if (!resp.ok) {
@@ -205,7 +234,7 @@ export const BuyAbroadUkListings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [city, priceRange.min, priceRange.max, minBeds, propertyType, page]);
+  }, [city, priceRange.min, priceRange.max, minBeds, propertyType, search, page]);
 
   useEffect(() => {
     void fetchListings();
@@ -350,6 +379,27 @@ export const BuyAbroadUkListings: React.FC = () => {
         .bal-filter-count {
           font-size: 13px; color: #888; font-weight: 500; flex-shrink: 0;
         }
+        .bal-search-inner {
+          max-width: 1240px; margin: 12px auto 0;
+          position: relative; display: flex; align-items: center;
+        }
+        .bal-search-icon {
+          position: absolute; left: 14px; color: #999; pointer-events: none;
+        }
+        .bal-search-input {
+          width: 100%; height: 46px; border: 1.5px solid #e0e0e0; border-radius: 10px;
+          padding: 0 40px; font-size: 14px; font-family: Inter, sans-serif;
+          background: #fff; color: #111; outline: none; box-sizing: border-box;
+        }
+        .bal-search-input:focus { border-color: #b100df; }
+        .bal-search-input::placeholder { color: #999; }
+        .bal-search-clear {
+          position: absolute; right: 10px; width: 26px; height: 26px;
+          border: none; background: #f2f2f2; border-radius: 50%;
+          color: #666; font-size: 18px; line-height: 1; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .bal-search-clear:hover { background: #e5e5e5; color: #111; }
 
         /* ── Main content ── */
         .bal-main {
@@ -680,7 +730,7 @@ export const BuyAbroadUkListings: React.FC = () => {
             aria-label="Filter by city"
           >
             <option value="">All cities</option>
-            {CITIES.map((c) => (
+            {cities.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
@@ -723,6 +773,31 @@ export const BuyAbroadUkListings: React.FC = () => {
             <span className="bal-filter-count">
               {data.total.toLocaleString()} {data.total === 1 ? 'property' : 'properties'}
             </span>
+          )}
+        </div>
+
+        <div className="bal-search-inner">
+          <svg className="bal-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            className="bal-search-input"
+            placeholder="Search by property title, address, or city…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Search properties"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              className="bal-search-clear"
+              onClick={() => setSearchInput('')}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
           )}
         </div>
       </div>

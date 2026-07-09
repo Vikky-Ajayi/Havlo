@@ -79,12 +79,13 @@ async def list_listings(
     max_price: Optional[int] = Query(None, description="Max price in GBP"),
     min_beds: Optional[int] = Query(None, description="Minimum bedrooms"),
     property_type: Optional[str] = Query(None, description="Property type: house, flat, bungalow, commercial"),
+    search: Optional[str] = Query(None, description="Free-text search across title, address, city"),
     page: int = Query(1, ge=1),
     per_page: int = Query(12, ge=1, le=48),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return await _list_listings_inner(city, min_price, max_price, min_beds, property_type, page, per_page, db)
+        return await _list_listings_inner(city, min_price, max_price, min_beds, property_type, search, page, per_page, db)
     except Exception as exc:
         logger.error("listings endpoint error: %s", exc, exc_info=True)
         raise
@@ -96,6 +97,7 @@ async def _list_listings_inner(
     max_price: Optional[int],
     min_beds: Optional[int],
     property_type: Optional[str],
+    search: Optional[str],
     page: int,
     per_page: int,
     db: AsyncSession,
@@ -114,6 +116,17 @@ async def _list_listings_inner(
         keywords = _PROPERTY_TYPE_KEYWORDS[property_type]
         stmt = stmt.where(
             or_(*[func.lower(RightmoveListing.property_type).contains(kw) for kw in keywords])
+        )
+    if search:
+        term = f"%{search.strip().lower()}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(RightmoveListing.title).like(term),
+                func.lower(RightmoveListing.address).like(term),
+                func.lower(RightmoveListing.city).like(term),
+                func.lower(RightmoveListing.region).like(term),
+                func.lower(RightmoveListing.description).like(term),
+            )
         )
 
     count_stmt = select(func.count()).select_from(stmt.subquery())
