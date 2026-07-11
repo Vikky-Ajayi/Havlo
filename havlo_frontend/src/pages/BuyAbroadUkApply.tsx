@@ -381,6 +381,7 @@ export function BuyAbroadUkApply() {
       <header className="bua-header">
         <a href="/buyabroad/uk" className="bua-logo">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
+          <span>Buy Abroad</span>
         </a>
         <div className="bua-header-spacer" />
         <a href="/buyabroad/uk" className="bua-header-back">← Back to Buy Abroad</a>
