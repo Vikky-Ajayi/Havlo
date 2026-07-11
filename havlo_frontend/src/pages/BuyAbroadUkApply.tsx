@@ -737,7 +737,8 @@ export function BuyAbroadUkApply() {
                   <a
                     href="https://flutterwave.com/pay/bobh9exkhnhs"
                     className="bua-pay-now-btn"
-                    onClick={e => e.preventDefault()}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     PAY NOW
                   </a>
