@@ -90,12 +90,12 @@ export function BuyAbroadUkApply() {
           display: flex; align-items: center;
           padding: 0 max(60px, calc((100vw - 1240px) / 2));
         }
-        .bua-logo {
+        .bal-logo {
           display: inline-flex; flex-direction: column; align-items: center;
           text-decoration: none; color: #111; line-height: 1; flex-shrink: 0;
         }
-        .bua-logo img { width: 136px; height: auto; display: block; }
-        .bua-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
+        .bal-logo img { width: 136px; height: auto; display: block; }
+        .bal-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
         .bua-header-spacer { flex: 1; }
         .bua-header-back {
           font-size: 13px; font-weight: 700; color: #111;
@@ -380,7 +380,7 @@ export function BuyAbroadUkApply() {
 
       {/* Header */}
       <header className="bua-header">
-        <a href="/buyabroad/uk" className="bua-logo">
+        <a href="/buyabroad/uk" className="bal-logo" aria-label="Buy Abroad UK">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>
