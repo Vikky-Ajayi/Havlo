@@ -735,7 +735,7 @@ export function BuyAbroadUkApply() {
                     Sprint Technologies, on behalf of Havlo Ltd.
                   </p>
                   <a
-                    href="#pay-now"
+                    href="https://flutterwave.com/pay/bobh9exkhnhs"
                     className="bua-pay-now-btn"
                     onClick={e => e.preventDefault()}
                   >
