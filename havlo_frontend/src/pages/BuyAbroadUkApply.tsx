@@ -520,11 +520,10 @@ export function BuyAbroadUkApply() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="bua-form-actions">
                   <button
                     type="button"
                     className="bua-btn-primary"
-                    style={{ flex: 'none', width: '100%', maxWidth: 320 }}
                     onClick={() => goToStage(2)}
                   >
                     Next →
