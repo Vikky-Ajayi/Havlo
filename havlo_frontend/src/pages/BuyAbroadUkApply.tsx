@@ -3,6 +3,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { API_BASE } from '../lib/api';
 
 type Step = 'form' | 'submitting' | 'success';
+type FormStage = 1 | 2;
 
 const PROPERTY_TYPES = ['House', 'Flat', 'Apartment', 'Commercial'];
 const BEDROOM_OPTIONS = ['Studio', '1–3', '3–5', '6+'];
@@ -15,6 +16,7 @@ export function BuyAbroadUkApply() {
   });
 
   const [step, setStep] = useState<Step>('form');
+  const [formStage, setFormStage] = useState<FormStage>(1);
   const [error, setError] = useState('');
 
   const [fullName, setFullName] = useState('');
@@ -27,6 +29,12 @@ export function BuyAbroadUkApply() {
   const [propertyType, setPropertyType] = useState('');
   const [bedrooms, setBedrooms] = useState('');
   const [budget, setBudget] = useState('');
+
+  const handleContinue = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormStage(2);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +83,7 @@ export function BuyAbroadUkApply() {
           text-decoration: none; color: #111; line-height: 1; flex-shrink: 0;
         }
         .bua-logo img { width: 136px; height: auto; display: block; }
-        .bua-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
+        .bua-logo span { margin-top: 0; font-size: 16px; font-weight: 400; color: #555; }
         .bua-header-spacer { flex: 1; }
         .bua-header-back {
           font-size: 13px; font-weight: 700; color: #111;
@@ -88,7 +96,7 @@ export function BuyAbroadUkApply() {
 
         /* ── Body ── */
         .bua-body {
-          max-width: 760px; margin: 0 auto;
+          max-width: 1100px; margin: 0 auto;
           padding: 48px clamp(20px, 5vw, 48px) 80px;
         }
 
@@ -157,6 +165,41 @@ export function BuyAbroadUkApply() {
           font-size: 12px; color: #888; line-height: 1.5;
         }
 
+        /* ── Form progress ── */
+        .bua-progress {
+          display: flex; align-items: center; gap: 0;
+          margin-bottom: 28px;
+        }
+        .bua-progress-step {
+          display: flex; align-items: center; gap: 10px; flex: 1;
+        }
+        .bua-progress-step:last-child { flex: 0; }
+        .bua-progress-dot {
+          width: 32px; height: 32px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 13px; font-weight: 800; flex-shrink: 0;
+          transition: background .2s, color .2s, border-color .2s;
+        }
+        .bua-progress-dot.active {
+          background: #0a0a0a; color: #fff; border: 2px solid #0a0a0a;
+        }
+        .bua-progress-dot.done {
+          background: #b100df; color: #fff; border: 2px solid #b100df;
+        }
+        .bua-progress-dot.pending {
+          background: #fff; color: #bbb; border: 2px solid #e0e0e0;
+        }
+        .bua-progress-label {
+          font-size: 13px; font-weight: 700; color: #111;
+          white-space: nowrap;
+        }
+        .bua-progress-label.pending { color: #bbb; font-weight: 500; }
+        .bua-progress-line {
+          flex: 1; height: 2px; background: #e0e0e0; margin: 0 12px;
+          transition: background .2s;
+        }
+        .bua-progress-line.done { background: #b100df; }
+
         /* ── Form ── */
         .bua-form-card {
           background: #fff; border: 1.5px solid #e8e9ec;
@@ -168,7 +211,6 @@ export function BuyAbroadUkApply() {
           margin: 0 0 20px; padding-bottom: 10px;
           border-bottom: 1.5px solid #f0e6ff;
         }
-        .bua-section-title + .bua-section-title { margin-top: 32px; }
         .bua-field { margin-bottom: 20px; }
         .bua-label {
           display: block; font-size: 13px; font-weight: 700;
@@ -207,14 +249,27 @@ export function BuyAbroadUkApply() {
           border-color: #b100df; background: #faf0ff; color: #b100df; font-weight: 700;
         }
         .bua-radio-label input { display: none; }
+
+        /* ── Form actions ── */
+        .bua-form-actions {
+          display: flex; gap: 12px; align-items: center; margin-top: 28px;
+        }
         .bua-submit {
-          width: 100%; height: 52px; border: none; border-radius: 12px;
+          flex: 1; height: 52px; border: none; border-radius: 12px;
           background: #050505; color: #fff;
           font-size: 15px; font-weight: 900; cursor: pointer;
-          margin-top: 28px; transition: background .15s;
+          transition: background .15s;
         }
         .bua-submit:hover:not(:disabled) { background: #b100df; }
         .bua-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .bua-back-btn {
+          height: 52px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+          background: #fff; color: #333;
+          font-size: 14px; font-weight: 700; cursor: pointer;
+          padding: 0 20px; transition: border-color .15s, color .15s;
+          white-space: nowrap;
+        }
+        .bua-back-btn:hover { border-color: #b100df; color: #b100df; }
         .bua-error {
           background: #fff1f1; border: 1.5px solid #fca5a5;
           border-radius: 10px; padding: 12px 16px;
@@ -239,13 +294,16 @@ export function BuyAbroadUkApply() {
         .bua-success p {
           font-size: 15px; color: #555; line-height: 1.6; max-width: 440px; margin: 0 auto;
         }
+
+        @media (max-width: 768px) {
+          .bua-header { padding: 0 20px; }
+        }
       `}</style>
 
       {/* Header */}
       <header className="bua-header">
         <a href="/buyabroad/uk" className="bua-logo">
-          <img src="/havlo-logo.svg" alt="Havlo" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          <span>Buy Abroad</span>
+          <img src="/Havlo Black Transparent.png" alt="Havlo" />
         </a>
         <div className="bua-header-spacer" />
         <a href="/buyabroad/uk" className="bua-header-back">← Back to Buy Abroad</a>
@@ -326,158 +384,196 @@ export function BuyAbroadUkApply() {
 
             {/* Form */}
             <div className="bua-form-card">
-              <form onSubmit={handleSubmit}>
-                <div className="bua-section-title">Personal Details</div>
-
-                <div className="bua-field">
-                  <label className="bua-label">Full Name <span>*</span></label>
-                  <input
-                    type="text"
-                    className="bua-input"
-                    placeholder="e.g. Chukwuemeka Adeyemi"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="bua-row">
-                  <div className="bua-field">
-                    <label className="bua-label">Date of Birth <span>*</span></label>
-                    <input
-                      type="date"
-                      className="bua-input"
-                      value={dob}
-                      onChange={e => setDob(e.target.value)}
-                      required
-                    />
+              {/* Progress indicator */}
+              <div className="bua-progress">
+                <div className="bua-progress-step">
+                  <div className={`bua-progress-dot ${formStage === 1 ? 'active' : 'done'}`}>
+                    {formStage === 1 ? '1' : '✓'}
                   </div>
+                  <span className={`bua-progress-label ${formStage === 1 ? '' : ''}`}>Your Details</span>
+                </div>
+                <div className={`bua-progress-line ${formStage === 2 ? 'done' : ''}`} />
+                <div className="bua-progress-step">
+                  <div className={`bua-progress-dot ${formStage === 2 ? 'active' : 'pending'}`}>2</div>
+                  <span className={`bua-progress-label ${formStage === 2 ? '' : 'pending'}`}>Your Requirements</span>
+                </div>
+              </div>
+
+              {/* Stage 1: Personal Details */}
+              {formStage === 1 && (
+                <form onSubmit={handleContinue}>
+                  <div className="bua-section-title">Personal Details</div>
+
                   <div className="bua-field">
-                    <label className="bua-label">Occupation <span>*</span></label>
+                    <label className="bua-label">Full Name <span>*</span></label>
                     <input
                       type="text"
                       className="bua-input"
-                      placeholder="e.g. Business Owner"
-                      value={occupation}
-                      onChange={e => setOccupation(e.target.value)}
+                      placeholder="e.g. Chukwuemeka Adeyemi"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
                       required
                     />
                   </div>
-                </div>
 
-                <div className="bua-row">
+                  <div className="bua-row">
+                    <div className="bua-field">
+                      <label className="bua-label">Date of Birth <span>*</span></label>
+                      <input
+                        type="date"
+                        className="bua-input"
+                        value={dob}
+                        onChange={e => setDob(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="bua-field">
+                      <label className="bua-label">Occupation <span>*</span></label>
+                      <input
+                        type="text"
+                        className="bua-input"
+                        placeholder="e.g. Business Owner"
+                        value={occupation}
+                        onChange={e => setOccupation(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bua-row">
+                    <div className="bua-field">
+                      <label className="bua-label">Email Address <span>*</span></label>
+                      <input
+                        type="email"
+                        className="bua-input"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="bua-field">
+                      <label className="bua-label">Mobile Number <span>*</span></label>
+                      <input
+                        type="tel"
+                        className="bua-input"
+                        placeholder="+234 800 000 0000"
+                        value={mobile}
+                        onChange={e => setMobile(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="bua-field">
-                    <label className="bua-label">Email Address <span>*</span></label>
+                    <label className="bua-label">Residential Address <span>*</span></label>
                     <input
-                      type="email"
+                      type="text"
                       className="bua-input"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      placeholder="Your current home address"
+                      value={address}
+                      onChange={e => setAddress(e.target.value)}
                       required
                     />
                   </div>
+
+                  <div className="bua-form-actions">
+                    <button type="submit" className="bua-submit">
+                      Continue →
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Stage 2: Buying Plans */}
+              {formStage === 2 && (
+                <form onSubmit={handleSubmit}>
+                  <div className="bua-section-title">Your Requirements</div>
+
                   <div className="bua-field">
-                    <label className="bua-label">Mobile Number <span>*</span></label>
+                    <label className="bua-label">
+                      Which area or city in the UK are you looking to purchase in? <span>*</span>
+                    </label>
                     <input
-                      type="tel"
+                      type="text"
                       className="bua-input"
-                      placeholder="+234 800 000 0000"
-                      value={mobile}
-                      onChange={e => setMobile(e.target.value)}
+                      placeholder="e.g. London, Liverpool, Manchester, Birmingham, Leeds"
+                      value={ukArea}
+                      onChange={e => setUkArea(e.target.value)}
                       required
                     />
                   </div>
-                </div>
 
-                <div className="bua-field">
-                  <label className="bua-label">Residential Address <span>*</span></label>
-                  <input
-                    type="text"
-                    className="bua-input"
-                    placeholder="Your current home address"
-                    value={address}
-                    onChange={e => setAddress(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="bua-section-title" style={{ marginTop: 32 }}>Buying Plans</div>
-
-                <div className="bua-field">
-                  <label className="bua-label">
-                    Which area or city in the UK are you looking to purchase in? <span>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="bua-input"
-                    placeholder="e.g. London, Liverpool, Manchester, Birmingham, Leeds"
-                    value={ukArea}
-                    onChange={e => setUkArea(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="bua-field">
-                  <label className="bua-label">What type of property are you interested in? <span>*</span></label>
-                  <div className="bua-radio-group">
-                    {PROPERTY_TYPES.map(t => (
-                      <label key={t} className="bua-radio-label">
-                        <input
-                          type="radio"
-                          name="property_type"
-                          value={t}
-                          checked={propertyType === t}
-                          onChange={() => setPropertyType(t)}
-                          required
-                        />
-                        {t}
-                      </label>
-                    ))}
+                  <div className="bua-field">
+                    <label className="bua-label">What type of property are you interested in? <span>*</span></label>
+                    <div className="bua-radio-group">
+                      {PROPERTY_TYPES.map(t => (
+                        <label key={t} className="bua-radio-label">
+                          <input
+                            type="radio"
+                            name="property_type"
+                            value={t}
+                            checked={propertyType === t}
+                            onChange={() => setPropertyType(t)}
+                            required
+                          />
+                          {t}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div className="bua-field">
-                  <label className="bua-label">How many bedrooms? <span>*</span></label>
-                  <div className="bua-radio-group">
-                    {BEDROOM_OPTIONS.map(b => (
-                      <label key={b} className="bua-radio-label">
-                        <input
-                          type="radio"
-                          name="bedrooms"
-                          value={b}
-                          checked={bedrooms === b}
-                          onChange={() => setBedrooms(b)}
-                          required
-                        />
-                        {b}
-                      </label>
-                    ))}
+                  <div className="bua-field">
+                    <label className="bua-label">How many bedrooms? <span>*</span></label>
+                    <div className="bua-radio-group">
+                      {BEDROOM_OPTIONS.map(b => (
+                        <label key={b} className="bua-radio-label">
+                          <input
+                            type="radio"
+                            name="bedrooms"
+                            value={b}
+                            checked={bedrooms === b}
+                            onChange={() => setBedrooms(b)}
+                            required
+                          />
+                          {b}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div className="bua-field">
-                  <label className="bua-label">What is your maximum purchase budget? <span>*</span></label>
-                  <input
-                    type="text"
-                    className="bua-input"
-                    placeholder="e.g. £500,000"
-                    value={budget}
-                    onChange={e => setBudget(e.target.value)}
-                    required
-                  />
-                </div>
+                  <div className="bua-field">
+                    <label className="bua-label">What is your maximum purchase budget? <span>*</span></label>
+                    <input
+                      type="text"
+                      className="bua-input"
+                      placeholder="e.g. £500,000"
+                      value={budget}
+                      onChange={e => setBudget(e.target.value)}
+                      required
+                    />
+                  </div>
 
-                {error && <div className="bua-error">{error}</div>}
+                  {error && <div className="bua-error">{error}</div>}
 
-                <button
-                  type="submit"
-                  className="bua-submit"
-                  disabled={step === 'submitting'}
-                >
-                  {step === 'submitting' ? 'Submitting…' : 'Submit Application'}
-                </button>
-              </form>
+                  <div className="bua-form-actions">
+                    <button
+                      type="button"
+                      className="bua-back-btn"
+                      onClick={() => setFormStage(1)}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="bua-submit"
+                      disabled={step === 'submitting'}
+                    >
+                      {step === 'submitting' ? 'Submitting…' : 'Submit Application'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </>
         )}
