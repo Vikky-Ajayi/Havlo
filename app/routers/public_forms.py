@@ -47,6 +47,19 @@ class OptOutPayload(BaseModel):
     notes: Optional[str] = Field(default="", max_length=500)
 
 
+class ClientApplicationPayload(BaseModel):
+    full_name: str = Field(min_length=1, max_length=160)
+    date_of_birth: str = Field(min_length=1, max_length=20)
+    email: EmailStr
+    mobile: str = Field(min_length=1, max_length=40)
+    address: str = Field(min_length=1, max_length=300)
+    occupation: str = Field(min_length=1, max_length=160)
+    uk_area: str = Field(min_length=1, max_length=200)
+    property_type: str = Field(min_length=1, max_length=60)
+    bedrooms: str = Field(min_length=1, max_length=40)
+    budget: str = Field(min_length=1, max_length=80)
+
+
 class OkResponse(BaseModel):
     ok: bool = True
 
@@ -149,6 +162,30 @@ def _bg_log_contact(payload: dict) -> None:
         logger.error("Admin notify failed for Contact Form (source=%s): %s", source, exc)
 
 
+def _bg_log_client_application(payload: dict) -> None:
+    try:
+        fields = {
+            "Full Name": payload.get("full_name", "—"),
+            "Date of Birth": payload.get("date_of_birth", "—"),
+            "Email": payload.get("email", "—"),
+            "Mobile": payload.get("mobile", "—"),
+            "Residential Address": payload.get("address", "—"),
+            "Occupation": payload.get("occupation", "—"),
+            "UK Area / City": payload.get("uk_area", "—"),
+            "Property Type": payload.get("property_type", "—"),
+            "Bedrooms": payload.get("bedrooms", "—"),
+            "Max Purchase Budget": payload.get("budget", "—"),
+        }
+        send_admin_notification_sync(
+            sheet_tab="UK Client Applications",
+            summary=f"New UK property purchase application from {payload.get('full_name', 'Unknown')}.",
+            source_label="buyabroad/uk/apply — Client Application Form",
+            fields=fields,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Admin notify failed for Client Application: %s", exc)
+
+
 def _bg_log_newsletter(email: str, source: str) -> None:
     try:
         google_sheets.record_newsletter(email, source)
@@ -205,4 +242,13 @@ async def marketing_opt_out(
     background_tasks: BackgroundTasks,
 ) -> OkResponse:
     background_tasks.add_task(_bg_log_opt_out, payload.email, payload.notes or "")
+    return OkResponse()
+
+
+@router.post("/apply", response_model=OkResponse)
+async def submit_client_application(
+    payload: ClientApplicationPayload,
+    background_tasks: BackgroundTasks,
+) -> OkResponse:
+    background_tasks.add_task(_bg_log_client_application, payload.model_dump())
     return OkResponse()
