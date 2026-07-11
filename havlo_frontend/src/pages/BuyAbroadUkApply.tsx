@@ -34,6 +34,13 @@ export function BuyAbroadUkApply() {
   const [bedrooms, setBedrooms] = useState('');
   const [budget, setBudget] = useState('');
 
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    if (raw === '') { setBudget(''); return; }
+    const formatted = '£' + Number(raw).toLocaleString('en-GB');
+    setBudget(formatted);
+  };
+
   const goToStage = (stage: FormStage) => {
     setFormStage(stage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -691,7 +698,8 @@ export function BuyAbroadUkApply() {
                       className="bua-input"
                       placeholder="e.g. £10,000,000"
                       value={budget}
-                      onChange={e => setBudget(e.target.value)}
+                      onChange={handleBudgetChange}
+                      inputMode="numeric"
                       required
                     />
                   </div>
