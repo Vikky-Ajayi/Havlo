@@ -91,10 +91,11 @@ export function BuyAbroadUkApply() {
           padding: 0 max(60px, calc((100vw - 1240px) / 2));
         }
         .bua-logo {
-          display: inline-flex; align-items: center;
+          display: inline-flex; flex-direction: column; align-items: center;
           text-decoration: none; color: #111; line-height: 1; flex-shrink: 0;
         }
         .bua-logo img { width: 136px; height: auto; display: block; }
+        .bua-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
         .bua-header-spacer { flex: 1; }
         .bua-header-back {
           font-size: 13px; font-weight: 700; color: #111;
