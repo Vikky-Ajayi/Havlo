@@ -113,29 +113,29 @@ export function BuyAbroadUkApply() {
 
         /* ── Progress bar ── */
         .bua-progress-bar {
-          display: flex; align-items: flex-start; gap: 0;
+          display: flex; align-items: flex-start;
           margin-bottom: 36px;
         }
-        .bua-progress-item {
+        /* Each step: dot centered above its label */
+        .bua-progress-step {
           display: flex; flex-direction: column; align-items: center;
-          flex: 1; position: relative;
+          flex-shrink: 0;
         }
-        .bua-progress-item:last-child { flex: 0 0 auto; }
-        .bua-progress-track {
-          display: flex; align-items: center; width: 100%;
+        /* Connecting line sits between steps, vertically centred with the dots */
+        .bua-progress-line-wrap {
+          flex: 1; display: flex; align-items: flex-start; padding-top: 17px;
         }
         .bua-progress-dot {
           width: 34px; height: 34px; border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
           font-size: 13px; font-weight: 800; flex-shrink: 0;
           transition: background .25s, color .25s, border-color .25s;
-          z-index: 1;
         }
         .bua-progress-dot.active  { background: #111; color: #fff; border: 2px solid #111; }
         .bua-progress-dot.done    { background: #b100df; color: #fff; border: 2px solid #b100df; }
         .bua-progress-dot.pending { background: #fff; color: #ccc; border: 2px solid #e0e0e0; }
         .bua-progress-line {
-          flex: 1; height: 2px; background: #e0e0e0;
+          width: 100%; height: 2px; background: #e0e0e0;
           transition: background .25s;
         }
         .bua-progress-line.done { background: #b100df; }
@@ -372,6 +372,7 @@ export function BuyAbroadUkApply() {
 
         @media (max-width: 768px) {
           .bua-header { padding: 0 20px; }
+          .bua-logo img { width: 82px; }
           .bua-progress-text { font-size: 9px; }
         }
       `}</style>
@@ -404,17 +405,17 @@ export function BuyAbroadUkApply() {
                 const status = formStage > stageNum ? 'done' : formStage === stageNum ? 'active' : 'pending';
                 return (
                   <React.Fragment key={label}>
-                    <div className="bua-progress-item">
-                      <div className="bua-progress-track">
-                        <div className={`bua-progress-dot ${status}`}>
-                          {status === 'done' ? '✓' : stageNum}
-                        </div>
-                        {i < STAGE_LABELS.length - 1 && (
-                          <div className={`bua-progress-line ${formStage > stageNum ? 'done' : ''}`} />
-                        )}
+                    <div className="bua-progress-step">
+                      <div className={`bua-progress-dot ${status}`}>
+                        {status === 'done' ? '✓' : stageNum}
                       </div>
                       <span className={`bua-progress-text ${status}`}>{label}</span>
                     </div>
+                    {i < STAGE_LABELS.length - 1 && (
+                      <div className="bua-progress-line-wrap">
+                        <div className={`bua-progress-line ${formStage > stageNum ? 'done' : ''}`} />
+                      </div>
+                    )}
                   </React.Fragment>
                 );
               })}
