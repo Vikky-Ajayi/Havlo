@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useFavorites } from '../hooks/useFavorites';
 import { API_BASE } from '../lib/api';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
@@ -93,7 +94,15 @@ function formatNgn(amount: number): string {
   return '₦' + amount.toLocaleString('en-NG');
 }
 
-function PropertyCard({ listing }: { listing: Listing }) {
+function PropertyCard({
+  listing,
+  isFav,
+  onToggleFav,
+}: {
+  listing: Listing;
+  isFav: boolean;
+  onToggleFav: (id: string) => void;
+}) {
   const img = listing.images[0] || '';
   const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}`;
 
@@ -108,6 +117,14 @@ function PropertyCard({ listing }: { listing: Listing }) {
           </div>
         )}
         <span className="bal-card-type">{listing.property_type || 'Property'}</span>
+        <button
+          className={`bal-fav-btn${isFav ? ' bal-fav-btn--active' : ''}`}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(listing.rightmove_id); }}
+          aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+          title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+        >
+          {isFav ? '♥' : '♡'}
+        </button>
       </a>
       <div className="bal-card-body">
         <div className="bal-card-prices">
@@ -178,6 +195,11 @@ export const BuyAbroadUkListings: React.FC = () => {
   const [scrapeStatus, setScrapeStatus] = useState<'idle' | 'scraping' | 'done'>('idle');
   const [eligibilityOpen, setEligibilityOpen] = useState(false);
 
+  const { toggle, isFavorite, count, favoriteIds, favorites } = useFavorites();
+  const [showFavs, setShowFavs] = useState(false);
+  const [favListings, setFavListings] = useState<Listing[]>([]);
+  const [favLoading, setFavLoading] = useState(false);
+
   const priceRange = PRICE_RANGES[priceIdx];
   const minBeds = BEDS_OPTIONS[bedsIdx].value;
 
@@ -205,6 +227,19 @@ export const BuyAbroadUkListings: React.FC = () => {
     }, 350);
     return () => clearTimeout(handle);
   }, [searchInput]);
+
+  // Fetch saved favourites whenever the favs tab is active or the set changes
+  useEffect(() => {
+    if (!showFavs) { setFavListings([]); return; }
+    if (favoriteIds.length === 0) { setFavListings([]); return; }
+    setFavLoading(true);
+    fetch(`${API_BASE}/listings/by-ids?ids=${favoriteIds.join(',')}`)
+      .then((r) => r.json())
+      .then((json) => setFavListings((json as { listings: Listing[] }).listings ?? []))
+      .catch(() => setFavListings([]))
+      .finally(() => setFavLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFavs, favorites]);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -588,6 +623,50 @@ export const BuyAbroadUkListings: React.FC = () => {
         .bal-footer a { font-size: 13px; font-weight: 700; color: #111; text-decoration: none; }
         .bal-footer a:hover { color: #b100df; }
 
+        /* ── View toggle tabs ── */
+        .bal-view-tabs {
+          display: flex; gap: 8px;
+          padding: 14px clamp(20px, 5vw, 60px) 0;
+          background: #fff;
+        }
+        .bal-view-tab {
+          height: 38px; padding: 0 18px;
+          border: 1.5px solid #e0e0e0; border-radius: 9px;
+          background: #fff; font-size: 13px; font-weight: 700;
+          color: #555; cursor: pointer; transition: all .15s;
+          display: inline-flex; align-items: center; gap: 6px;
+        }
+        .bal-view-tab:hover { border-color: #b100df; color: #b100df; }
+        .bal-view-tab--active { background: #b100df; border-color: #b100df; color: #fff; }
+        .bal-fav-count {
+          background: rgba(255,255,255,.28); border-radius: 999px;
+          padding: 1px 7px; font-size: 11px; font-weight: 800;
+        }
+        .bal-view-tab:not(.bal-view-tab--active) .bal-fav-count { background: #f0f0f0; color: #888; }
+
+        /* ── Heart button on cards ── */
+        .bal-fav-btn {
+          position: absolute; top: 10px; right: 10px; z-index: 2;
+          width: 34px; height: 34px; border-radius: 50%;
+          background: rgba(255,255,255,.92); border: 0;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; font-size: 20px; line-height: 1;
+          transition: background .15s, transform .12s;
+          box-shadow: 0 1px 5px rgba(0,0,0,.18);
+          color: #bbb;
+        }
+        .bal-fav-btn:hover { background: #fff; transform: scale(1.14); }
+        .bal-fav-btn--active { color: #b100df; }
+
+        /* ── Favourites empty state ── */
+        .bal-fav-empty { text-align: center; padding: 80px 20px; }
+        .bal-fav-empty-icon { font-size: 56px; margin-bottom: 16px; line-height: 1; }
+        .bal-fav-empty h3 {
+          font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: 22px; font-weight: 700; color: #111; margin: 0 0 10px;
+        }
+        .bal-fav-empty p { color: #666; font-size: 15px; max-width: 360px; margin: 0 auto; line-height: 1.55; }
+
         /* ── Responsive ── */
         @media (max-width: 1024px) {
           .bal-grid { grid-template-columns: repeat(2, 1fr); }
@@ -717,6 +796,22 @@ export const BuyAbroadUkListings: React.FC = () => {
           }
         />
       </section>
+
+      {/* View toggle: All / Favourites */}
+      <div className="bal-view-tabs">
+        <button
+          className={`bal-view-tab${!showFavs ? ' bal-view-tab--active' : ''}`}
+          onClick={() => setShowFavs(false)}
+        >
+          All Properties
+        </button>
+        <button
+          className={`bal-view-tab${showFavs ? ' bal-view-tab--active' : ''}`}
+          onClick={() => setShowFavs(true)}
+        >
+          ♥ Favourites{count > 0 && <span className="bal-fav-count">{count}</span>}
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="bal-filters">
@@ -855,16 +950,47 @@ export const BuyAbroadUkListings: React.FC = () => {
         )}
 
         {/* Listings grid */}
-        {hasData && !loading && (
+        {!showFavs && hasData && !loading && (
           <div className="bal-grid">
             {data.listings.map((listing) => (
-              <PropertyCard key={listing.id} listing={listing} />
+              <PropertyCard
+                key={listing.id}
+                listing={listing}
+                isFav={isFavorite(listing.rightmove_id)}
+                onToggleFav={toggle}
+              />
             ))}
           </div>
         )}
 
-        {/* Pagination */}
-        {data && data.pages > 1 && !loading && (
+        {/* Favourites grid */}
+        {showFavs && !favLoading && favListings.length > 0 && (
+          <div className="bal-grid">
+            {favListings.map((listing) => (
+              <PropertyCard
+                key={listing.id}
+                listing={listing}
+                isFav={isFavorite(listing.rightmove_id)}
+                onToggleFav={toggle}
+              />
+            ))}
+          </div>
+        )}
+        {showFavs && favLoading && (
+          <div className="bal-grid">
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+        {showFavs && !favLoading && favListings.length === 0 && (
+          <div className="bal-fav-empty">
+            <div className="bal-fav-empty-icon">♡</div>
+            <h3>No favourites saved yet</h3>
+            <p>Tap the ♡ heart on any property card to save it here. Your favourites are stored in your browser and will be waiting when you come back.</p>
+          </div>
+        )}
+
+        {/* Pagination — hidden on favourites tab */}
+        {!showFavs && data && data.pages > 1 && !loading && (
           <div className="bal-pagination">
             <button
               className="bal-page-btn"

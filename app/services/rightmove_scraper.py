@@ -25,16 +25,48 @@ logger = logging.getLogger(__name__)
 # ── Cities to scrape ──────────────────────────────────────────────────────────
 # Each tuple: (display_name, Rightmove locationIdentifier)
 CITIES: list[tuple[str, str]] = [
-    ("London",      "REGION%5E87"),
-    ("Manchester",  "REGION%5E904"),
-    ("Birmingham",  "REGION%5E2"),
-    ("Leeds",       "REGION%5E787"),
-    ("Bristol",     "REGION%5E219"),
-    ("Liverpool",   "REGION%5E800"),
-    ("Sheffield",   "REGION%5E1093"),
-    ("Edinburgh",   "REGION%5E475"),
-    ("Glasgow",     "REGION%5E550"),
-    ("Nottingham",  "REGION%5E963"),
+    # Original 10
+    ("London",          "REGION%5E87"),
+    ("Manchester",      "REGION%5E904"),
+    ("Birmingham",      "REGION%5E2"),
+    ("Leeds",           "REGION%5E787"),
+    ("Bristol",         "REGION%5E219"),
+    ("Liverpool",       "REGION%5E800"),
+    ("Sheffield",       "REGION%5E1093"),
+    ("Edinburgh",       "REGION%5E475"),
+    ("Glasgow",         "REGION%5E550"),
+    ("Nottingham",      "REGION%5E963"),
+    # Extended 30
+    ("Newcastle",       "REGION%5E945"),
+    ("Leicester",       "REGION%5E796"),
+    ("Southampton",     "REGION%5E1118"),
+    ("Oxford",          "REGION%5E977"),
+    ("Cambridge",       "REGION%5E244"),
+    ("Brighton",        "REGION%5E216"),
+    ("Coventry",        "REGION%5E360"),
+    ("Derby",           "REGION%5E414"),
+    ("Exeter",          "REGION%5E486"),
+    ("Plymouth",        "REGION%5E1017"),
+    ("Reading",         "REGION%5E1060"),
+    ("York",            "REGION%5E1345"),
+    ("Bath",            "REGION%5E102"),
+    ("Chester",         "REGION%5E302"),
+    ("Wolverhampton",   "REGION%5E1326"),
+    ("Bournemouth",     "REGION%5E197"),
+    ("Portsmouth",      "REGION%5E1025"),
+    ("Norwich",         "REGION%5E958"),
+    ("Stoke",           "REGION%5E1139"),
+    ("Hull",            "REGION%5E656"),
+    ("Swansea",         "REGION%5E1163"),
+    ("Aberdeen",        "REGION%5E1"),
+    ("Dundee",          "REGION%5E455"),
+    ("Milton Keynes",   "REGION%5E924"),
+    ("Swindon",         "REGION%5E1166"),
+    ("Luton",           "REGION%5E868"),
+    ("Peterborough",    "REGION%5E1007"),
+    ("Middlesbrough",   "REGION%5E916"),
+    ("Ipswich",         "REGION%5E673"),
+    ("Southend",        "REGION%5E1120"),
 ]
 
 SCRAPE_INTERVAL_HOURS = 6
@@ -150,9 +182,9 @@ def _extract_listing(prop: dict[str, Any], city: str) -> dict[str, Any] | None:
 
 
 async def _scrape_city(client: httpx.AsyncClient, city: str, location_id: str) -> int:
-    """Scrape one city (pages 0, 24, 48) and upsert into DB. Returns count saved."""
+    """Scrape one city (10 pages = 240 listings ceiling) and upsert into DB. Returns count saved."""
     saved = 0
-    for index in (0, 24, 48):
+    for index in (0, 24, 48, 72, 96, 120, 144, 168, 192, 216):
         url = (
             f"{_BASE}/property-for-sale/find.html"
             f"?searchType=SALE"

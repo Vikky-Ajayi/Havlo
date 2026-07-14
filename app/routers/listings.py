@@ -176,6 +176,24 @@ async def listings_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     }
 
 
+@router.get("/by-ids")
+async def get_listings_by_ids(
+    ids: str = Query(..., description="Comma-separated rightmove_ids"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Fetch multiple listings by their rightmove_id — used by the Favourites tab."""
+    from sqlalchemy import or_ as _or
+    id_list = [i.strip() for i in ids.split(",") if i.strip()][:200]  # cap at 200
+    if not id_list:
+        return {"listings": []}
+    result = await db.execute(
+        select(RightmoveListing).where(RightmoveListing.rightmove_id.in_(id_list))
+    )
+    listings = result.scalars().all()
+    ngn_rate = await _get_gbp_ngn_rate()
+    return {"listings": [_listing_to_dict(l, ngn_rate) for l in listings]}
+
+
 @router.get("/{rightmove_id}")
 async def get_listing(rightmove_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     result = await db.execute(

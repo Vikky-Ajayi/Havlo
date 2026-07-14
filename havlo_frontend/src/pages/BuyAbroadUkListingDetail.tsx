@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useFavorites } from '../hooks/useFavorites';
 import { api, API_BASE } from '../lib/api';
 
 const WHATSAPP_NUMBER = '2349039861006';
@@ -526,6 +527,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [consultOpen, setConsultOpen] = useState(false);
+  const { isFavorite, toggle } = useFavorites();
 
   usePageMeta({
     title: listing ? `${listing.title} | Havlo Buy Abroad` : 'Property Details | Havlo Buy Abroad',
@@ -738,6 +740,16 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
         .bld-fees-info-timing { font-size: 11px; color: #888; margin: 0 0 4px; padding-left: 32px; }
         .bld-fees-info-body { font-size: 13px; color: #555; margin: 0; line-height: 1.5; padding-left: 32px; }
 
+        /* Favourites button */
+        .bld-fav-btn {
+          width: 100%; height: 46px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+          background: #fff; color: #555; font-size: 14px; font-weight: 700;
+          cursor: pointer; margin-bottom: 10px; transition: all .15s;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .bld-fav-btn:hover { border-color: #b100df; color: #b100df; }
+        .bld-fav-btn--saved { border-color: #b100df; color: #b100df; background: #fdf4ff; }
+
         /* Footer */
         .bld-footer { padding: 24px clamp(20px, 5vw, 60px); border-top: 1px solid #e8e9ec; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
         .bld-footer p { font-size: 13px; color: #888; margin: 0; }
@@ -855,6 +867,12 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
               <p className="bld-interested-label">Interested in purchasing this property?</p>
               <button className="bld-consult-btn" onClick={() => setConsultOpen(true)}>
                 Get a Free Consultation
+              </button>
+              <button
+                className={`bld-fav-btn${listing && isFavorite(listing.rightmove_id) ? ' bld-fav-btn--saved' : ''}`}
+                onClick={() => listing && toggle(listing.rightmove_id)}
+              >
+                {listing && isFavorite(listing.rightmove_id) ? '♥ Saved to Favourites' : '♡ Add to Favourites'}
               </button>
               <a className="bld-view-rm" href={listing.url} target="_blank" rel="noopener noreferrer">
                 View on Rightmove ↗
