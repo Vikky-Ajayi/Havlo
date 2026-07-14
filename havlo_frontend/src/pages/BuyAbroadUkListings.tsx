@@ -964,6 +964,15 @@ export const BuyAbroadUkListings: React.FC = () => {
           </div>
         )}
 
+        {/* Back to listings — shown whenever favourites tab is active */}
+        {showFavs && (
+          <div style={{ padding: '14px clamp(20px, 5vw, 60px) 0' }}>
+            <button className="bal-fav-back-btn" onClick={() => setShowFavs(false)}>
+              ← Back to Listings
+            </button>
+          </div>
+        )}
+
         {/* Favourites grid */}
         {showFavs && !favLoading && favListings.length > 0 && (
           <div className="bal-grid">
@@ -987,9 +996,6 @@ export const BuyAbroadUkListings: React.FC = () => {
             <div className="bal-fav-empty-icon">♡</div>
             <h3>No favourites saved yet</h3>
             <p>Tap the ♡ heart on any property card to save it here. Your favourites are stored in your browser and will be waiting when you come back.</p>
-            <button className="bal-fav-back-btn" onClick={() => setShowFavs(false)}>
-              ← Back to Listings
-            </button>
           </div>
         )}
 
