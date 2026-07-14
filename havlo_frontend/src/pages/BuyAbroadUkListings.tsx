@@ -666,6 +666,13 @@ export const BuyAbroadUkListings: React.FC = () => {
           font-size: 22px; font-weight: 700; color: #111; margin: 0 0 10px;
         }
         .bal-fav-empty p { color: #666; font-size: 15px; max-width: 360px; margin: 0 auto; line-height: 1.55; }
+        .bal-fav-back-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          margin-top: 24px; height: 44px; padding: 0 24px;
+          background: #b100df; color: #fff; border: 0; border-radius: 10px;
+          font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s;
+        }
+        .bal-fav-back-btn:hover { background: #9400bc; }
 
         /* ── Responsive ── */
         @media (max-width: 1024px) {
@@ -980,6 +987,9 @@ export const BuyAbroadUkListings: React.FC = () => {
             <div className="bal-fav-empty-icon">♡</div>
             <h3>No favourites saved yet</h3>
             <p>Tap the ♡ heart on any property card to save it here. Your favourites are stored in your browser and will be waiting when you come back.</p>
+            <button className="bal-fav-back-btn" onClick={() => setShowFavs(false)}>
+              ← Back to Listings
+            </button>
           </div>
         )}
 
