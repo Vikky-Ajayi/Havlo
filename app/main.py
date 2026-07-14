@@ -522,8 +522,6 @@ def _check_diag_token(request: Request) -> bool:
 @app.get("/api/v1/diag/sheets", tags=["Health"])
 async def diag_sheets(request: Request) -> JSONResponse:
     """Check Google Sheets configuration and connectivity."""
-    if not _check_diag_token(request):
-        return JSONResponse({"error": "forbidden"}, status_code=403)
     return JSONResponse(google_sheets.diagnostics())
 
 
