@@ -423,11 +423,11 @@ async def startup() -> None:
     import asyncio
 
     loop = asyncio.get_event_loop()
-    try:
-        await loop.run_in_executor(None, google_sheets.ensure_tabs_exist)
+    await loop.run_in_executor(None, google_sheets.ensure_tabs_exist)
+    if google_sheets._tabs_verified:
         logger.info("Google Sheets tabs verified ✓")
-    except Exception as exc:
-        logger.error("Google Sheets setup failed (non-fatal): %s", exc)
+    else:
+        logger.warning("Google Sheets tab setup failed — check credentials (non-fatal).")
 
     # ── DB pool keep-alive ─────────────────────────────────────────────────
     # Run a tiny `SELECT 1` every ~4 minutes to keep at least one connection
