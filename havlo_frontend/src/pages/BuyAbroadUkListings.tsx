@@ -636,7 +636,7 @@ export const BuyAbroadUkListings: React.FC = () => {
           color: #555; cursor: pointer; transition: all .15s;
           display: inline-flex; align-items: center; gap: 6px;
         }
-        .bal-view-tab:hover { border-color: #b100df; color: #b100df; }
+        .bal-view-tab:hover { border-color: #b100df; color: #fff; background: #c520f5; }
         .bal-view-tab--active { background: #b100df; border-color: #b100df; color: #fff; }
         .bal-fav-count {
           background: rgba(255,255,255,.28); border-radius: 999px;
@@ -797,17 +797,11 @@ export const BuyAbroadUkListings: React.FC = () => {
         />
       </section>
 
-      {/* View toggle: All / Favourites */}
+      {/* View toggle: Favourites only */}
       <div className="bal-view-tabs">
         <button
-          className={`bal-view-tab${!showFavs ? ' bal-view-tab--active' : ''}`}
-          onClick={() => setShowFavs(false)}
-        >
-          All Properties
-        </button>
-        <button
           className={`bal-view-tab${showFavs ? ' bal-view-tab--active' : ''}`}
-          onClick={() => setShowFavs(true)}
+          onClick={() => setShowFavs((v) => !v)}
         >
           ♥ Favourites{count > 0 && <span className="bal-fav-count">{count}</span>}
         </button>
