@@ -810,7 +810,7 @@ export const BuyAbroadUkListings: React.FC = () => {
           className={`bal-view-tab${showFavs ? ' bal-view-tab--active' : ''}`}
           onClick={() => setShowFavs((v) => !v)}
         >
-          ♥ Favourites{count > 0 && <span className="bal-fav-count">{count}</span>}
+          {'♥\uFE0E'} Favourites{count > 0 && <span className="bal-fav-count">{count}</span>}
         </button>
       </div>
 
