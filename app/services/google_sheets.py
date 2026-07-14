@@ -185,7 +185,7 @@ def ensure_tabs_exist() -> None:
     except Exception as exc:
         # Non-fatal: a transient 429 should not crash startup. The next
         # request that needs sheets will simply log its own error.
-        logger.error("Failed to ensure Google Sheet tabs: %s", exc)
+        logger.error("Failed to ensure Google Sheet tabs: [%s] %r", type(exc).__name__, exc)
 
 
 def _append_row(tab_name: str, row: list[Any], raise_on_error: bool = False) -> None:
@@ -200,7 +200,7 @@ def _append_row(tab_name: str, row: list[Any], raise_on_error: bool = False) -> 
         ws.append_row(row, value_input_option="USER_ENTERED")
         logger.info("Appended row to Google Sheet tab: %s", tab_name)
     except Exception as exc:
-        logger.error("Failed to append row to %s: %s", tab_name, exc)
+        logger.error("Failed to append row to %s: [%s] %r", tab_name, type(exc).__name__, exc)
         if raise_on_error:
             raise
 
