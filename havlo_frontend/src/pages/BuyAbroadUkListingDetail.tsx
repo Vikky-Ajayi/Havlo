@@ -872,7 +872,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
                 className={`bld-fav-btn${listing && isFavorite(listing.rightmove_id) ? ' bld-fav-btn--saved' : ''}`}
                 onClick={() => listing && toggle(listing.rightmove_id)}
               >
-                {listing && isFavorite(listing.rightmove_id) ? '♥ Saved to Favourites' : '♡ Add to Favourites'}
+                {listing && isFavorite(listing.rightmove_id) ? '♥\uFE0E Saved to Favourites' : '♡\uFE0E Add to Favourites'}
               </button>
               <a className="bld-view-rm" href={listing.url} target="_blank" rel="noopener noreferrer">
                 View on Rightmove ↗
