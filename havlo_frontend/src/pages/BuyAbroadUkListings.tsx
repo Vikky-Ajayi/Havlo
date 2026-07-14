@@ -123,7 +123,7 @@ function PropertyCard({
           aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
           title={isFav ? 'Remove from favourites' : 'Add to favourites'}
         >
-          {isFav ? '♥' : '♡'}
+          {isFav ? '♥\uFE0E' : '♡\uFE0E'}
         </button>
       </a>
       <div className="bal-card-body">
