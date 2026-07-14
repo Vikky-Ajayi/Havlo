@@ -164,6 +164,10 @@ def _bg_log_contact(payload: dict) -> None:
 
 def _bg_log_client_application(payload: dict) -> None:
     try:
+        google_sheets.record_uk_client_application(payload)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Sheets log failed for Client Application: %s", exc)
+    try:
         fields = {
             "Full Name": payload.get("full_name", "—"),
             "Date of Birth": payload.get("date_of_birth", "—"),

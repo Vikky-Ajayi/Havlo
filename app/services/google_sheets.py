@@ -101,6 +101,10 @@ SHEET_TABS: dict[str, list[str]] = {
         "Timestamp", "First Name", "Last Name", "Email", "Phone",
         "Property Address", "Price (GBP)", "Property URL", "City",
     ],
+    "UK Client Applications": [
+        "Timestamp", "Full Name", "Date of Birth", "Email", "Mobile",
+        "Address", "Occupation", "UK Area", "Property Type", "Bedrooms", "Budget",
+    ],
 }
 
 
@@ -523,6 +527,23 @@ def record_uk_listing_consultation(form_data: dict[str, Any]) -> None:
         parsed.get("City", ""),
     ]
     _append_row("UK Listing Consultations", row)
+
+
+def record_uk_client_application(form_data: dict[str, Any]) -> None:
+    row = [
+        datetime.utcnow().isoformat(),
+        form_data.get("full_name", ""),
+        form_data.get("date_of_birth", ""),
+        form_data.get("email", ""),
+        form_data.get("mobile", ""),
+        form_data.get("address", ""),
+        form_data.get("occupation", ""),
+        form_data.get("uk_area", ""),
+        form_data.get("property_type", ""),
+        form_data.get("bedrooms", ""),
+        form_data.get("budget", ""),
+    ]
+    _append_row("UK Client Applications", row)
 
 
 def record_public_assessment(form_data: dict[str, Any]) -> None:
