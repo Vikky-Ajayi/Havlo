@@ -65,9 +65,11 @@ PRICE_BANDS: list[tuple[str, Optional[int], Optional[int]]] = [
     ("over2m",   2_000_001,       None),
 ]
 
-# ── Known locations (hardcoded — always reliable) ──────────────────────────────
+# ── Known locations (hardcoded — verified against live Rightmove) ───────────────
 # (display_name, URL-encoded Rightmove locationIdentifier)
+# All IDs below confirmed valid: GET /find.html?locationIdentifier=<id> → 200
 KNOWN_LOCATIONS: list[tuple[str, str]] = [
+    # ── Original 40 ─────────────────────────────────────────────────────────────
     ("London",          "REGION%5E87"),
     ("Manchester",      "REGION%5E904"),
     ("Birmingham",      "REGION%5E2"),
@@ -108,69 +110,86 @@ KNOWN_LOCATIONS: list[tuple[str, str]] = [
     ("Middlesbrough",   "REGION%5E916"),
     ("Ipswich",         "REGION%5E673"),
     ("Southend",        "REGION%5E1120"),
+    # ── North West England ───────────────────────────────────────────────────────
+    ("Blackpool",       "REGION%5E151"),
+    ("Preston",         "REGION%5E1038"),
+    ("Blackburn",       "REGION%5E147"),
+    ("Bolton",          "REGION%5E177"),
+    ("Wigan",           "REGION%5E1304"),
+    ("Warrington",      "REGION%5E1277"),
+    ("Burnley",         "REGION%5E227"),
+    ("Stockport",       "REGION%5E1131"),
+    ("Salford",         "REGION%5E1082"),
+    ("Rochdale",        "REGION%5E1065"),
+    ("Oldham",          "REGION%5E968"),
+    ("Bury",            "REGION%5E228"),
+    # ── Yorkshire & Humber ──────────────────────────────────────────────────────
+    ("Bradford",        "REGION%5E88"),
+    ("Huddersfield",    "REGION%5E666"),
+    ("Wakefield",       "REGION%5E1271"),
+    ("Doncaster",       "REGION%5E437"),
+    ("Barnsley",        "REGION%5E93"),
+    ("Rotherham",       "REGION%5E1070"),
+    ("Harrogate",       "REGION%5E613"),
+    ("Scarborough",     "REGION%5E1088"),
+    # ── North East England ───────────────────────────────────────────────────────
+    ("Sunderland",      "REGION%5E1141"),
+    ("Gateshead",       "REGION%5E529"),
+    ("Darlington",      "REGION%5E396"),
+    ("Hartlepool",      "REGION%5E617"),
+    ("Durham",          "REGION%5E459"),
+    ("Carlisle",        "REGION%5E268"),
+    # ── Midlands ────────────────────────────────────────────────────────────────
+    ("Northampton",     "REGION%5E952"),
+    ("Cheltenham",      "REGION%5E296"),
+    ("Gloucester",      "REGION%5E549"),
+    ("Worcester",       "REGION%5E1330"),
+    ("Walsall",         "REGION%5E1273"),
+    ("Telford",         "REGION%5E1181"),
+    ("Shrewsbury",      "REGION%5E1097"),
+    ("Hereford",        "REGION%5E633"),
+    ("Lincoln",         "REGION%5E804"),
+    ("Mansfield",       "REGION%5E885"),
+    ("Chesterfield",    "REGION%5E305"),
+    ("Grimsby",         "REGION%5E575"),
+    # ── South East England ───────────────────────────────────────────────────────
+    ("Guildford",       "REGION%5E578"),
+    ("Crawley",         "REGION%5E364"),
+    ("Canterbury",      "REGION%5E253"),
+    ("Maidstone",       "REGION%5E878"),
+    ("Colchester",      "REGION%5E333"),
+    ("Chelmsford",      "REGION%5E293"),
+    ("Basingstoke",     "REGION%5E100"),
+    ("Eastbourne",      "REGION%5E462"),
+    ("Hastings",        "REGION%5E619"),
+    ("Worthing",        "REGION%5E1336"),
+    ("Woking",          "REGION%5E1322"),
+    ("Aldershot",       "REGION%5E22"),
+    ("Slough",          "REGION%5E1104"),
+    ("Watford",         "REGION%5E1284"),
+    ("Stevenage",       "REGION%5E1128"),
+    # ── South West England ───────────────────────────────────────────────────────
+    ("Truro",           "REGION%5E1197"),
+    ("Torquay",         "REGION%5E1191"),
+    # ── Scotland ────────────────────────────────────────────────────────────────
+    ("Stirling",        "REGION%5E1125"),
+    ("Perth",           "REGION%5E1004"),
+    ("Inverness",       "REGION%5E695"),
+    ("Falkirk",         "REGION%5E496"),
+    ("Paisley",         "REGION%5E984"),
+    ("Livingston",      "REGION%5E815"),
+    ("Kirkcaldy",       "REGION%5E756"),
+    # ── Wales ───────────────────────────────────────────────────────────────────
+    ("Cardiff",         "REGION%5E269"),
+    ("Newport",         "REGION%5E944"),
+    ("Newport Gwent",   "REGION%5E943"),
+    ("Wrexham",         "REGION%5E1342"),
+    ("Llanelli",        "REGION%5E819"),
 ]
 
-# ── Additional UK places for dynamic discovery ─────────────────────────────────
-# These are resolved to their Rightmove locationIdentifiers at startup via
-# the search redirect, then cached.  Any place that resolves to an ID already
-# in KNOWN_LOCATIONS is silently de-duplicated.
-UK_PLACES_TO_DISCOVER: list[str] = [
-    # London boroughs
-    "Barking", "Barnet", "Bexley", "Brent", "Bromley",
-    "Camden", "Croydon", "Ealing", "Enfield", "Greenwich",
-    "Hackney", "Hammersmith", "Haringey", "Harrow", "Havering",
-    "Hillingdon", "Hounslow", "Islington", "Kensington",
-    "Kingston upon Thames", "Lambeth", "Lewisham", "Merton",
-    "Newham", "Redbridge", "Richmond", "Southwark", "Sutton",
-    "Tower Hamlets", "Waltham Forest", "Wandsworth", "Westminster",
-    # English cities & large towns
-    "Aylesbury", "Basildon", "Basingstoke", "Bedford", "Birkenhead",
-    "Blackburn", "Blackpool", "Bolton", "Bradford", "Burnley",
-    "Burton upon Trent", "Bury", "Canterbury", "Carlisle",
-    "Chelmsford", "Cheltenham", "Chesterfield", "Chichester",
-    "Colchester", "Crawley", "Crewe", "Darlington", "Doncaster",
-    "Eastbourne", "Eastleigh", "Gloucester", "Grimsby", "Guildford",
-    "Halifax", "Harrogate", "Hartlepool", "Hastings", "Hereford",
-    "High Wycombe", "Huddersfield", "Lancaster", "Lincoln",
-    "Loughborough", "Maidstone", "Mansfield", "Northampton", "Oldham",
-    "Poole", "Preston", "Rochdale", "Rotherham", "Rugby", "Salford",
-    "Shrewsbury", "Slough", "Solihull", "St Albans", "Stevenage",
-    "Stockport", "Stockton on Tees", "Sunderland", "Telford",
-    "Wakefield", "Walsall", "Warrington", "Warwick", "Watford",
-    "Wigan", "Winchester", "Woking", "Worcester", "Worthing",
-    "Aldershot", "Bracknell", "Chatham", "Farnborough", "Gateshead",
-    "Durham", "Penrith", "Kendal", "Barrow in Furness", "Morecambe",
-    "Southport", "Accrington", "Clitheroe", "Runcorn", "Widnes",
-    "Ellesmere Port", "Oswestry", "Stafford", "Tamworth", "Lichfield",
-    "Cannock", "Leamington Spa", "Stratford upon Avon", "Banbury",
-    "Bicester", "Newbury", "Andover", "Salisbury", "Trowbridge",
-    "Chippenham", "Cirencester", "Stroud", "Tewkesbury", "Bridgwater",
-    "Taunton", "Yeovil", "Weymouth", "Dorchester", "Christchurch",
-    "Sevenoaks", "Rochester", "Folkestone", "Dover", "Ashford",
-    "Horsham", "Farnham", "Fareham", "Gosport", "Kidderminster",
-    "Macclesfield", "Nuneaton", "Redditch", "Scunthorpe", "Torquay",
-    "Tunbridge Wells", "Weston super Mare", "Windsor",
-    "Birkenhead", "Wallasey", "St Helens", "Leigh", "Wigan",
-    "Dewsbury", "Keighley", "Halifax", "Wakefield", "Barnsley",
-    # Scottish cities / towns
-    "Inverness", "Perth", "Stirling", "Paisley", "Motherwell",
-    "Hamilton", "Ayr", "Kirkcaldy", "Dunfermline", "Livingston",
-    "Falkirk", "Dumfries", "Elgin", "Greenock",
-    # Welsh towns
-    "Cardiff", "Newport", "Barry", "Bridgend", "Merthyr Tydfil",
-    "Neath", "Rhondda", "Caerphilly", "Cwmbran", "Llanelli",
-    # Northern Ireland
-    "Belfast", "Londonderry", "Lisburn", "Newry",
-    # UK counties / regions (broader coverage, good fallback)
-    "Surrey", "Kent", "Essex", "Suffolk", "Norfolk",
-    "Hertfordshire", "Buckinghamshire", "Berkshire", "Hampshire",
-    "Dorset", "Devon", "Cornwall", "Somerset", "Wiltshire",
-    "Gloucestershire", "Oxfordshire", "Northamptonshire",
-    "Warwickshire", "Staffordshire", "Derbyshire",
-    "Leicestershire", "Lincolnshire", "Nottinghamshire",
-    "Lancashire", "Cumbria", "Cheshire", "Shropshire",
-    "Worcestershire", "Herefordshire",
-]
+# Dynamic discovery is disabled — Rightmove's searchLocation redirect now returns
+# page-not-found for server-side requests.  All locations are hardcoded above.
+UK_PLACES_TO_DISCOVER: list[str] = []
 
 # ── Rotating user-agents ───────────────────────────────────────────────────────
 _USER_AGENTS = [
@@ -341,59 +360,23 @@ async def _discover_location_id(
 
 
 async def _load_all_locations(
-    client: httpx.AsyncClient,
-    sem: asyncio.Semaphore,
+    client: httpx.AsyncClient,  # noqa: ARG001
+    sem: asyncio.Semaphore,     # noqa: ARG001
 ) -> list[tuple[str, str]]:
     """
-    Return (name, location_id) for the full set of locations, deduped by ID.
-    Starts with KNOWN_LOCATIONS, then appends newly discovered ones.
+    Return (name, location_id) for all locations, deduped by ID.
+    All locations are hardcoded in KNOWN_LOCATIONS — dynamic discovery
+    was disabled after Rightmove changed their searchLocation redirect API.
     """
     seen_ids: set[str] = set()
     result: list[tuple[str, str]] = []
-
     for name, loc_id in KNOWN_LOCATIONS:
         if loc_id not in seen_ids:
             seen_ids.add(loc_id)
             result.append((name, loc_id))
-
-    # Use cache if fresh
-    cached = _load_locations_cache()
-    if cached is not None:
-        added = 0
-        for name, loc_id in cached.items():
-            if loc_id and loc_id not in seen_ids:
-                seen_ids.add(loc_id)
-                result.append((name, loc_id))
-                added += 1
-        logger.info(
-            "Locations: %d known + %d from cache = %d total",
-            len(KNOWN_LOCATIONS), added, len(result),
-        )
-        return result
-
-    # Discover fresh — run all place lookups concurrently (semaphore limits HTTP)
     logger.info(
-        "Discovering %d additional UK locations via Rightmove redirect …",
-        len(UK_PLACES_TO_DISCOVER),
-    )
-    tasks = [
-        _discover_location_id(client, sem, place)
-        for place in UK_PLACES_TO_DISCOVER
-    ]
-    ids = await asyncio.gather(*tasks, return_exceptions=True)
-
-    newly_discovered: dict[str, str] = {}
-    for place, loc_id in zip(UK_PLACES_TO_DISCOVER, ids):
-        if isinstance(loc_id, str) and loc_id and loc_id not in seen_ids:
-            seen_ids.add(loc_id)
-            result.append((place, loc_id))
-            newly_discovered[place] = loc_id
-
-    _save_locations_cache(newly_discovered)
-    logger.info(
-        "Discovery complete: %d new locations found. Total: %d locations × %d bands = %d queries",
-        len(newly_discovered), len(result), len(PRICE_BANDS),
-        len(result) * len(PRICE_BANDS),
+        "Locations ready: %d × %d bands = %d queries",
+        len(result), len(PRICE_BANDS), len(result) * len(PRICE_BANDS),
     )
     return result
 
