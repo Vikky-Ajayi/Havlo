@@ -236,12 +236,9 @@ export const BuyAbroadUk: React.FC = () => {
           <h3>{isFit ? "You're a great fit." : "We're not the right fit right now."}</h3>
           <p>
             {isFit
-              ? 'Your budget and timeline match exactly what we work with. Reach out now via WhatsApp or give us a call — your consultation is free.'
+              ? 'Your budget and timeline align perfectly with the clients we work with. Call the number below to discuss your UK property purchase and requirements. Your consultation is completely free.'
               : "Our advisory service is tailored for buyers with a budget of £50,000 or more. At this stage, we wouldn't be able to add the value you deserve. We wish you all the best — and if your budget changes, we'd love to hear from you."}
           </p>
-          <button className="buk-whatsapp" type="button" onClick={openWhatsApp}>
-            <MessageCircle size={18} /> Chat on WhatsApp
-          </button>
           <a className="buk-call" href={`tel:${CALL_LINK}`}>
             <Phone size={18} /> Call {CALL_DISPLAY}
           </a>
