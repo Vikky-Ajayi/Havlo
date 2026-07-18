@@ -234,11 +234,11 @@ export const BuyAbroadUkAgents: React.FC = () => {
           <div className="buk-result-emoji">🎉</div>
           <h3>Application received.</h3>
           <p>
-            Thank you for applying to become a Havlo agent / partner. Our team will review your details and reach out on WhatsApp or email within 48 hours with your partner agreement and onboarding information.
+            Thank you for applying to become a Havlo Agent/Partner. Our team will review your details and contact you within 48 hours with your partner agreement and onboarding information. In the meantime, join our WhatsApp channel to receive the latest updates, partnership opportunities, and announcements. You can also speak directly with a member of our team for further guidance on the next steps.
           </p>
-          <button className="buk-whatsapp" type="button" onClick={openWhatsApp}>
-            <MessageCircle size={18} /> Chat on WhatsApp
-          </button>
+          <a className="buk-whatsapp" href="WHATSAPP_CHANNEL_URL" target="_blank" rel="noopener noreferrer">
+            <MessageCircle size={18} /> Join Havlo Partner Channel
+          </a>
           <a className="buk-call" href={`tel:${CALL_LINK}`}>
             <Phone size={18} /> Call {CALL_DISPLAY}
           </a>
