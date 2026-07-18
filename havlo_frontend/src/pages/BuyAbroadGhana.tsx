@@ -68,7 +68,7 @@ const propertyCards = [
 
 const testimonials = [
   {
-    quote: 'I was nervous about buying from Accra. I thought I'd have to be in London every week. We completed without me ever stepping on a plane. Incredible service.',
+    quote: "I was nervous about buying from Accra. I thought I'd have to be in London every week. We completed without me ever stepping on a plane. Incredible service.",
     author: 'Kwame A.',
     meta: 'Accra, bought 2-bed Manchester flat',
   },
@@ -78,7 +78,7 @@ const testimonials = [
     meta: 'Kumasi, HMO investment property',
   },
   {
-    quote: 'My daughter is studying in Leeds next year. We bought a flat she'll live in and that I'll rent out after she graduates. Best financial decision we've made.',
+    quote: "My daughter is studying in Leeds next year. We bought a flat she'll live in and that I'll rent out after she graduates. Best financial decision we've made.",
     author: 'Kofi B.',
     meta: 'Takoradi, Leeds student property',
   },
