@@ -54,6 +54,24 @@ const BEDS_OPTIONS = [
   { label: '4+ beds', value: 4 },
 ];
 
+interface LocalCurrency {
+  code: string;
+  symbol: string;
+  displayName: string;
+  useApiNgn: boolean;
+  backPath: string;
+  backCountryLabel: string;
+  rate: number; // 0 = not yet loaded
+}
+
+const CURRENCY_CONFIG: Record<string, Omit<LocalCurrency, 'rate'>> = {
+  nigeria:     { code: 'NGN', symbol: '₦',   displayName: 'Naira',          useApiNgn: true,  backPath: '/buyabroad/uk',          backCountryLabel: 'Nigeria' },
+  ghana:       { code: 'GHS', symbol: 'GH₵', displayName: 'Cedi',           useApiNgn: false, backPath: '/buyabroad/ghana',       backCountryLabel: 'Ghana' },
+  southafrica: { code: 'ZAR', symbol: 'R',   displayName: 'Rand',           useApiNgn: false, backPath: '/buyabroad/southafrica', backCountryLabel: 'South Africa' },
+  kenya:       { code: 'KES', symbol: 'KSh', displayName: 'Shilling',       useApiNgn: false, backPath: '/buyabroad/kenya',       backCountryLabel: 'Kenya' },
+  egypt:       { code: 'EGP', symbol: 'E£',  displayName: 'Egyptian Pound', useApiNgn: false, backPath: '/buyabroad/egypt',       backCountryLabel: 'Egypt' },
+};
+
 interface Listing {
   id: string;
   rightmove_id: string;
@@ -84,24 +102,23 @@ function formatGbp(amount: number): string {
   return '£' + amount.toLocaleString('en-GB');
 }
 
-function formatNgn(amount: number): string {
-  if (amount >= 1_000_000_000) {
-    return '₦' + (amount / 1_000_000_000).toFixed(2) + 'bn';
-  }
-  if (amount >= 1_000_000) {
-    return '₦' + (amount / 1_000_000).toFixed(1) + 'm';
-  }
-  return '₦' + amount.toLocaleString('en-NG');
+function formatLocal(amount: number, symbol: string): string {
+  if (amount >= 1_000_000_000) return symbol + (amount / 1_000_000_000).toFixed(2) + 'bn';
+  if (amount >= 1_000_000)     return symbol + (amount / 1_000_000).toFixed(1) + 'm';
+  if (amount >= 1_000)         return symbol + (amount / 1_000).toFixed(0) + 'k';
+  return symbol + amount.toLocaleString();
 }
 
 function PropertyCard({
   listing,
   isFav,
   onToggleFav,
+  localCurrency,
 }: {
   listing: Listing;
   isFav: boolean;
   onToggleFav: (id: string) => void;
+  localCurrency: LocalCurrency;
 }) {
   const img = listing.images[0] || '';
   const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}`;
@@ -129,7 +146,16 @@ function PropertyCard({
       <div className="bal-card-body">
         <div className="bal-card-prices">
           <span className="bal-card-gbp">{formatGbp(listing.price_gbp)}</span>
-          <span className="bal-card-ngn">{formatNgn(listing.price_ngn)} NGN</span>
+          {(() => {
+            const amt = localCurrency.useApiNgn
+              ? listing.price_ngn
+              : listing.price_gbp * localCurrency.rate;
+            return amt > 0 ? (
+              <span className="bal-card-ngn">
+                {formatLocal(amt, localCurrency.symbol)} {localCurrency.code}
+              </span>
+            ) : null;
+          })()}
         </div>
         <p className="bal-card-address">{listing.address}</p>
         <div className="bal-card-meta">
@@ -199,6 +225,33 @@ export const BuyAbroadUkListings: React.FC = () => {
   const [showFavs, setShowFavs] = useState(false);
   const [favListings, setFavListings] = useState<Listing[]>([]);
   const [favLoading, setFavLoading] = useState(false);
+
+  const country = new URLSearchParams(window.location.search).get('country') ?? 'nigeria';
+  const currencyBase = CURRENCY_CONFIG[country] ?? CURRENCY_CONFIG.nigeria;
+  const [localRate, setLocalRate] = useState(0);
+
+  // Nigeria: pull rate from API response
+  useEffect(() => {
+    if (currencyBase.useApiNgn && data?.ngn_rate) {
+      setLocalRate(data.ngn_rate);
+    }
+  }, [data, currencyBase.useApiNgn]);
+
+  // All other countries: fetch live GBP→local rate
+  useEffect(() => {
+    if (currencyBase.useApiNgn) return;
+    let cancelled = false;
+    fetch('https://open.er-api.com/v6/latest/GBP')
+      .then((r) => r.json())
+      .then((json) => {
+        const rate = json?.rates?.[currencyBase.code];
+        if (!cancelled && typeof rate === 'number') setLocalRate(rate);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currencyBase.code, currencyBase.useApiNgn]);
+
+  const localCurrency: LocalCurrency = { ...currencyBase, rate: localRate };
 
   const priceRange = PRICE_RANGES[priceIdx];
   const minBeds = BEDS_OPTIONS[bedsIdx].value;
@@ -697,12 +750,12 @@ export const BuyAbroadUkListings: React.FC = () => {
 
       {/* Header */}
       <header className="bal-header">
-        <a href="/buyabroad/uk" className="bal-logo" aria-label="Buy Abroad UK">
+        <a href={localCurrency.backPath} className="bal-logo" aria-label="Buy Abroad">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>
         <div className="bal-header-spacer" />
-        <a href="/buyabroad/uk" className="bal-header-back">← Back to Buy Abroad</a>
+        <a href={localCurrency.backPath} className="bal-header-back">← Back to Buy Abroad</a>
         <button
           className="bal-header-cta"
           type="button"
@@ -717,8 +770,8 @@ export const BuyAbroadUkListings: React.FC = () => {
         <div className="bal-hero-inner">
           <div className="bal-hero-copy">
             <div className="bal-hero-eyebrow">Live UK Property Listings</div>
-            <h1>Browse UK Properties<br />in <span>Pounds & Naira</span></h1>
-            <p>Real Rightmove listings — every price shown in both GBP and NGN so Nigerian buyers always know exactly what they're buying.</p>
+            <h1>Browse UK Properties<br />in <span>Pounds & {localCurrency.displayName}</span></h1>
+            <p>Real Rightmove listings — every price shown in both GBP and {localCurrency.code} so {localCurrency.backCountryLabel}n buyers always know exactly what they're paying.</p>
             <a className="bal-hero-cta" href="#bal-listings">Browse Listings →</a>
             <div className="bal-hero-trust">
               <strong>Excellent</strong>
@@ -773,13 +826,13 @@ export const BuyAbroadUkListings: React.FC = () => {
               <rect x="12" y="12" width="86" height="28" rx="14" fill="#111"/>
               <text x="55" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">£ GBP Listed</text>
 
-              {/* NGN price badge */}
-              <rect x="262" y="12" width="86" height="28" rx="14" fill="#b100df"/>
-              <text x="305" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">₦ NGN Prices</text>
+              {/* Local currency price badge */}
+              <rect x="248" y="12" width="100" height="28" rx="14" fill="#b100df"/>
+              <text x="298" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">{localCurrency.symbol} {localCurrency.code} Prices</text>
             </svg>
             <div className="bal-hero-card-chips">
               <span className="bal-hero-card-chip">🇬🇧 UK Properties</span>
-              <span className="bal-hero-card-chip">₦ NGN Shown</span>
+              <span className="bal-hero-card-chip">{localCurrency.symbol} {localCurrency.code} Shown</span>
               <span className="bal-hero-card-chip">💬 WhatsApp Support</span>
               <span className="bal-hero-card-chip">No Viewing Trip</span>
             </div>
@@ -959,6 +1012,7 @@ export const BuyAbroadUkListings: React.FC = () => {
                 listing={listing}
                 isFav={isFavorite(listing.rightmove_id)}
                 onToggleFav={toggle}
+                localCurrency={localCurrency}
               />
             ))}
           </div>
@@ -973,6 +1027,7 @@ export const BuyAbroadUkListings: React.FC = () => {
                 listing={listing}
                 isFav={isFavorite(listing.rightmove_id)}
                 onToggleFav={toggle}
+                localCurrency={localCurrency}
               />
             ))}
           </div>
@@ -1055,9 +1110,9 @@ export const BuyAbroadUkListings: React.FC = () => {
 
       {/* Footer */}
       <footer className="bal-footer">
-        <p>© {new Date().getFullYear()} Havlo. Property prices sourced from Rightmove. NGN prices are indicative only.</p>
+        <p>© {new Date().getFullYear()} Havlo. Property prices sourced from Rightmove. {localCurrency.code} prices are indicative only.</p>
         <nav>
-          <a href="/buyabroad/uk">Buy Abroad UK</a>
+          <a href={localCurrency.backPath}>Buy Abroad {localCurrency.backCountryLabel}</a>
           <a href="/privacy-policy">Privacy</a>
           <a href="/terms-of-use">Terms</a>
         </nav>

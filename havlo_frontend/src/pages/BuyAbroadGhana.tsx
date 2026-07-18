@@ -333,7 +333,7 @@ export const BuyAbroadGhana: React.FC = () => {
             <div className="buk-hero-copy">
               <h1>Own UK Property<br />from <span>Anywhere in Ghana</span></h1>
               <p>Residential homes, commercial units, and investment properties, with a dedicated advisor guiding your search, negotiations, legal setup, and payment to completion.</p>
-              <a className="buk-hero-cta" href="/buyabroad/uk/listings">Browse Properties for Sale</a>
+              <a className="buk-hero-cta" href="/buyabroad/uk/listings?country=ghana">Browse Properties for Sale</a>
               <div className="buk-trust">
                 <strong>Excellent</strong>
                 <span className="buk-stars">★★★★★</span>
