@@ -13,6 +13,10 @@ const BuyAbroadUkAgents = React.lazy(() => import('./pages/BuyAbroadUkAgents').t
 const BuyAbroadUkListings = React.lazy(() => import('./pages/BuyAbroadUkListings').then(m => ({ default: m.BuyAbroadUkListings })));
 const BuyAbroadUkListingDetail = React.lazy(() => import('./pages/BuyAbroadUkListingDetail').then(m => ({ default: m.BuyAbroadUkListingDetail })));
 const BuyAbroadUkApply = React.lazy(() => import('./pages/BuyAbroadUkApply').then(m => ({ default: m.BuyAbroadUkApply })));
+const BuyAbroadGhana = React.lazy(() => import('./pages/BuyAbroadGhana').then(m => ({ default: m.BuyAbroadGhana })));
+const BuyAbroadSouthAfrica = React.lazy(() => import('./pages/BuyAbroadSouthAfrica').then(m => ({ default: m.BuyAbroadSouthAfrica })));
+const BuyAbroadKenya = React.lazy(() => import('./pages/BuyAbroadKenya').then(m => ({ default: m.BuyAbroadKenya })));
+const BuyAbroadEgypt = React.lazy(() => import('./pages/BuyAbroadEgypt').then(m => ({ default: m.BuyAbroadEgypt })));
 const RelaunchAssessment = React.lazy(() => import('./pages/RelaunchAssessment').then(m => ({ default: m.RelaunchAssessment })));
 const EliteProperty = React.lazy(() => import('./pages/EliteProperty').then(m => ({ default: m.EliteProperty })));
 const BuyHome = React.lazy(() => import('./pages/BuyHome').then(m => ({ default: m.BuyHome })));
@@ -231,7 +235,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isAdmin = pathname.startsWith('/admin');
   const isStaleListings = pathname.startsWith('/stale-listings');
   const isCustomOffers = pathname.startsWith('/custom-offers');
-  const isBuyAbroadUk = pathname.startsWith('/buyabroad/uk');
+  const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
 
   if (isDashboard || isAdmin || isStaleListings || isCustomOffers || isBuyAbroadUk) {
     return <main className="flex-grow">{children}</main>;
@@ -267,6 +271,10 @@ export default function App() {
               <Route path="/buyabroad/uk/listings" element={<BuyAbroadUkListings />} />
               <Route path="/buyabroad/uk/listings/:id" element={<BuyAbroadUkListingDetail />} />
               <Route path="/buyabroad/uk/apply" element={<BuyAbroadUkApply />} />
+              <Route path="/buyabroad/ghana" element={<BuyAbroadGhana />} />
+              <Route path="/buyabroad/southafrica" element={<BuyAbroadSouthAfrica />} />
+              <Route path="/buyabroad/kenya" element={<BuyAbroadKenya />} />
+              <Route path="/buyabroad/egypt" element={<BuyAbroadEgypt />} />
               <Route path="/custom-offers" element={<CustomOffers />} />
               <Route path="/custom-offers/access" element={<CustomOffersAccess />} />
               <Route path="/custom-offers/portal" element={<CustomOffersPortal />} />
