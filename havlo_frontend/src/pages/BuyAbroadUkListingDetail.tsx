@@ -39,6 +39,31 @@ function formatNgn(n: number) {
   return '₦' + n.toLocaleString('en-NG');
 }
 
+function formatLocal(amount: number, symbol: string): string {
+  if (amount >= 1_000_000_000) return symbol + (amount / 1_000_000_000).toFixed(2) + 'bn';
+  if (amount >= 1_000_000)     return symbol + (amount / 1_000_000).toFixed(1) + 'm';
+  if (amount >= 1_000)         return symbol + (amount / 1_000).toFixed(0) + 'k';
+  return symbol + amount.toLocaleString();
+}
+
+interface LocalCurrency {
+  code: string;
+  symbol: string;
+  displayName: string;
+  useApiNgn: boolean;
+  backPath: string;
+  backCountryLabel: string;
+  rate: number;
+}
+
+const CURRENCY_CONFIG: Record<string, Omit<LocalCurrency, 'rate'>> = {
+  nigeria:     { code: 'NGN', symbol: '₦',   displayName: 'Naira',          useApiNgn: true,  backPath: '/buyabroad/uk',          backCountryLabel: 'Nigeria' },
+  ghana:       { code: 'GHS', symbol: 'GH₵', displayName: 'Cedi',           useApiNgn: false, backPath: '/buyabroad/ghana',       backCountryLabel: 'Ghana' },
+  southafrica: { code: 'ZAR', symbol: 'R',   displayName: 'Rand',           useApiNgn: false, backPath: '/buyabroad/southafrica', backCountryLabel: 'South Africa' },
+  kenya:       { code: 'KES', symbol: 'KSh', displayName: 'Shilling',       useApiNgn: false, backPath: '/buyabroad/kenya',       backCountryLabel: 'Kenya' },
+  egypt:       { code: 'EGP', symbol: 'E£',  displayName: 'Egyptian Pound', useApiNgn: false, backPath: '/buyabroad/egypt',       backCountryLabel: 'Egypt' },
+};
+
 // ── Consultation Modal ─────────────────────────────────────────────────────────
 interface ConsultModalProps {
   listing: Listing;
@@ -119,7 +144,7 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
                 <span className="bld-modal-prop-badge">{listing.property_type || 'Property'}</span>
                 <strong className="bld-modal-prop-title">{listing.title}</strong>
                 <span className="bld-modal-prop-addr">📍 {listing.address}</span>
-                <span className="bld-modal-prop-price">£{listing.price_gbp.toLocaleString()} &nbsp;·&nbsp; {formatNgn(listing.price_ngn)}</span>
+                <span className="bld-modal-prop-price">£{listing.price_gbp.toLocaleString()}</span>
               </div>
               <h2>Enter your details and we'll be in touch on WhatsApp</h2>
             </div>
@@ -362,7 +387,7 @@ function UpfrontCosts({ priceGbp }: { priceGbp: number }) {
 }
 
 // ── Payment Tabs wrapper ───────────────────────────────────────────────────────
-function PaymentTabs({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number }) {
+function PaymentTabs({ priceGbp, localCurrency }: { priceGbp: number; localCurrency: LocalCurrency }) {
   const [tab, setTab] = useState<'upfront' | 'mortgage'>('upfront');
   return (
     <div className="bld-tabs-wrap">
@@ -385,13 +410,13 @@ function PaymentTabs({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number 
         </button>
       </div>
       {tab === 'upfront'  && <UpfrontCosts priceGbp={priceGbp} />}
-      {tab === 'mortgage' && <MortgageCalc priceGbp={priceGbp} ngnRate={ngnRate} />}
+      {tab === 'mortgage' && <MortgageCalc priceGbp={priceGbp} localCurrency={localCurrency} />}
     </div>
   );
 }
 
 // ── Mortgage Calculator ────────────────────────────────────────────────────────
-function MortgageCalc({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number }) {
+function MortgageCalc({ priceGbp, localCurrency }: { priceGbp: number; localCurrency: LocalCurrency }) {
   const [deposit, setDeposit] = useState(25);
   const [term, setTerm] = useState(25);
   const RATE = 0.07; // 7% p.a. typical non-resident UK mortgage
@@ -434,17 +459,17 @@ function MortgageCalc({ priceGbp, ngnRate }: { priceGbp: number; ngnRate: number
         <div className="bld-calc-result-item">
           <span className="bld-calc-label">Monthly payment</span>
           <span className="bld-calc-gbp">{formatGbp(Math.round(monthlyGbp))}<span>/mo</span></span>
-          <span className="bld-calc-ngn">{formatNgn(Math.round(monthlyGbp * ngnRate))}/mo</span>
+          {localCurrency.rate > 0 && <span className="bld-calc-ngn">{formatLocal(Math.round(monthlyGbp * localCurrency.rate), localCurrency.symbol)}/mo</span>}
         </div>
         <div className="bld-calc-result-item">
           <span className="bld-calc-label">Loan amount</span>
           <span className="bld-calc-gbp">{formatGbp(Math.round(loanGbp))}</span>
-          <span className="bld-calc-ngn">{formatNgn(Math.round(loanGbp * ngnRate))}</span>
+          {localCurrency.rate > 0 && <span className="bld-calc-ngn">{formatLocal(Math.round(loanGbp * localCurrency.rate), localCurrency.symbol)}</span>}
         </div>
         <div className="bld-calc-result-item">
           <span className="bld-calc-label">Total interest</span>
           <span className="bld-calc-gbp">{formatGbp(Math.round(interestGbp))}</span>
-          <span className="bld-calc-ngn">{formatNgn(Math.round(interestGbp * ngnRate))}</span>
+          {localCurrency.rate > 0 && <span className="bld-calc-ngn">{formatLocal(Math.round(interestGbp * localCurrency.rate), localCurrency.symbol)}</span>}
         </div>
       </div>
       <p className="bld-calc-disc">Indicative only. Actual rates vary by lender. We connect you with specialist non-resident mortgage brokers.</p>
@@ -528,6 +553,33 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
   const [error, setError] = useState('');
   const [consultOpen, setConsultOpen] = useState(false);
   const { isFavorite, toggle } = useFavorites();
+
+  const country = new URLSearchParams(window.location.search).get('country') ?? 'nigeria';
+  const currencyBase = CURRENCY_CONFIG[country] ?? CURRENCY_CONFIG.nigeria;
+  const [localRate, setLocalRate] = useState(0);
+
+  // Nigeria: use the ngn_rate returned by the API
+  useEffect(() => {
+    if (currencyBase.useApiNgn && listing?.ngn_rate) {
+      setLocalRate(listing.ngn_rate);
+    }
+  }, [listing, currencyBase.useApiNgn]);
+
+  // All other countries: fetch live GBP→local rate
+  useEffect(() => {
+    if (currencyBase.useApiNgn) return;
+    let cancelled = false;
+    fetch('https://open.er-api.com/v6/latest/GBP')
+      .then((r) => r.json())
+      .then((json) => {
+        const rate = json?.rates?.[currencyBase.code];
+        if (!cancelled && typeof rate === 'number') setLocalRate(rate);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currencyBase.code, currencyBase.useApiNgn]);
+
+  const localCurrency: LocalCurrency = { ...currencyBase, rate: localRate };
 
   usePageMeta({
     title: listing ? `${listing.title} | Havlo Buy Abroad` : 'Property Details | Havlo Buy Abroad',
@@ -774,12 +826,12 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
 
       {/* Header */}
       <header className="bld-header">
-        <a href="/buyabroad/uk" className="bld-logo" aria-label="Buy Abroad UK">
+        <a href={localCurrency.backPath} className="bld-logo" aria-label="Buy Abroad">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>
         <div className="bld-header-spacer" />
-        <a href="/buyabroad/uk/listings" className="bld-header-back">← All listings</a>
+        <a href={`/buyabroad/uk/listings${country !== 'nigeria' ? `?country=${country}` : ''}`} className="bld-header-back">← All listings</a>
         <button className="bld-header-cta" onClick={() => setConsultOpen(true)}>
           Get Free Consultation
         </button>
@@ -787,9 +839,9 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
 
       {/* Breadcrumb */}
       <nav className="bld-breadcrumb" aria-label="Breadcrumb">
-        <a href="/buyabroad/uk">Buy Abroad UK</a>
+        <a href={localCurrency.backPath}>Buy Abroad {localCurrency.backCountryLabel}</a>
         <span>›</span>
-        <a href="/buyabroad/uk/listings">Listings</a>
+        <a href={`/buyabroad/uk/listings${country !== 'nigeria' ? `?country=${country}` : ''}`}>Listings</a>
         {listing && <><span>›</span><span style={{ color: '#111' }}>{listing.city}</span></>}
       </nav>
 
@@ -837,7 +889,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
             </div>
 
             {/* Payment tabs (Upfront / Mortgage) */}
-            <PaymentTabs priceGbp={listing.price_gbp} ngnRate={listing.ngn_rate} />
+            <PaymentTabs priceGbp={listing.price_gbp} localCurrency={localCurrency} />
           </div>
 
           {/* Right sidebar */}
@@ -855,11 +907,13 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Total estimated cost</div>
                     <div className="bld-price-gbp">{formatGbp(totalGbp)}</div>
                     <div style={{ fontSize: 12, color: '#aaa', marginBottom: 12 }}>Property {formatGbp(listing.price_gbp)} + associated fees</div>
-                    <div className="bld-price-ngn-wrap">
-                      <div className="bld-price-ngn-label">Nigerian Naira equivalent</div>
-                      <div className="bld-price-ngn-value">{formatNgn(totalNgn)}</div>
-                      <div className="bld-price-rate">at £1 = ₦{Math.round(listing.ngn_rate).toLocaleString()}</div>
-                    </div>
+                    {localRate > 0 && (
+                      <div className="bld-price-ngn-wrap">
+                        <div className="bld-price-ngn-label">{localCurrency.backCountryLabel} {localCurrency.displayName} equivalent</div>
+                        <div className="bld-price-ngn-value">{formatLocal(Math.round(totalGbp * localRate), localCurrency.symbol)}</div>
+                        <div className="bld-price-rate">at £1 = {localCurrency.symbol}{Math.round(localRate).toLocaleString()}</div>
+                      </div>
+                    )}
                   </>
                 );
               })()}
@@ -880,19 +934,21 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
               <p className="bld-sidebar-secure">🔒 Confidential. No spam, ever.</p>
             </div>
 
-            <div className="bld-rate-note">
-              <strong>💱 Live exchange rate</strong><br />
-              £1 = ₦{Math.round(listing.ngn_rate).toLocaleString()} · Updated hourly from open.er-api.com. NGN prices are indicative only and subject to FX movements.
-            </div>
+            {localRate > 0 && (
+              <div className="bld-rate-note">
+                <strong>💱 Live exchange rate</strong><br />
+                £1 = {localCurrency.symbol}{Math.round(localRate).toLocaleString()} · Updated hourly from open.er-api.com. {localCurrency.code} prices are indicative only and subject to FX movements.
+              </div>
+            )}
           </aside>
         </main>
       )}
 
       {/* Footer */}
       <footer className="bld-footer">
-        <p>© {new Date().getFullYear()} Havlo. Property data sourced from Rightmove. NGN prices indicative only.</p>
+        <p>© {new Date().getFullYear()} Havlo. Property data sourced from Rightmove. {localCurrency.code} prices indicative only.</p>
         <nav>
-          <a href="/buyabroad/uk/listings">All Listings</a>
+          <a href={`/buyabroad/uk/listings${country !== 'nigeria' ? `?country=${country}` : ''}`}>All Listings</a>
           <a href="/privacy-policy">Privacy</a>
           <a href="/terms-of-use">Terms</a>
         </nav>

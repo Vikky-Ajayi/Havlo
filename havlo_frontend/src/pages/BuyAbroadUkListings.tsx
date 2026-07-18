@@ -121,7 +121,10 @@ function PropertyCard({
   localCurrency: LocalCurrency;
 }) {
   const img = listing.images[0] || '';
-  const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}`;
+  const countryKey = localCurrency.backPath === '/buyabroad/uk'
+    ? ''
+    : `?country=${localCurrency.backPath.split('/').pop() ?? ''}`;
+  const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}${countryKey}`;
 
   return (
     <article className="bal-card">
