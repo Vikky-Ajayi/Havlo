@@ -435,7 +435,7 @@ export const BuyAbroadGhana: React.FC = () => {
             <h2>Your advisor handles everything. You just decide.</h2>
             <div className="buk-process-grid">
               {[
-                ['1', 'Free Consultation', 'Tell us your goals, budget, and preferred location. We'll recommend the right property strategy for you.'],
+                ['1', 'Free Consultation', "Tell us your goals, budget, and preferred location. We'll recommend the right property strategy for you."],
                 ['2', 'We Search & Shortlist', 'We match you with suitable properties and connect you directly to vetted UK estate agents.'],
                 ['3', 'Negotiate & Structure', 'We guide you on pricing, negotiations, and secure payment structuring to ensure a smooth, compliant transaction.'],
                 ['4', 'Legal Completion', 'We connect you with trusted UK legal experts and support you through every step until the deal is completed.'],
