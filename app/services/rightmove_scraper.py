@@ -42,7 +42,7 @@ from app.models.models import RightmoveListing
 logger = logging.getLogger(__name__)
 
 # ── Tunable constants ──────────────────────────────────────────────────────────
-NUM_WORKERS            = 2      # concurrent scraping workers — kept low to avoid exhausting Supabase's 15-connection session-mode pool limit
+NUM_WORKERS            = 4      # concurrent scraping workers — Supabase pool size raised to 40, so more headroom
 HTTP_CONCURRENCY       = 3      # max simultaneous outbound HTTP requests
 MAX_PAGES_PER_QUERY    = 42     # Rightmove's absolute ceiling
 PAGE_SIZE              = 24
