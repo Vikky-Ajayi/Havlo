@@ -242,6 +242,9 @@ export const BuyAbroadUk: React.FC = () => {
           <a className="buk-call" href={`tel:${CALL_LINK}`}>
             <Phone size={18} /> Call {CALL_DISPLAY}
           </a>
+          <a className="buk-book" href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call" target="_blank" rel="noopener noreferrer">
+            📅 Book a Call
+          </a>
           <button className="buk-learn" type="button" onClick={() => { closeConsultation(); document.getElementById('process')?.scrollIntoView({ behavior: 'smooth' }); }}>
             ⓘ Learn how the process works
           </button>
@@ -578,10 +581,11 @@ export const BuyAbroadUk: React.FC = () => {
         .buk-preview-field svg { width: 50px; height: 48px; padding: 15px; border-left: 3px solid #fff; color: #000; }
         .buk-form-preview .buk-primary { margin-top: auto; }
         .buk-form-spacer { height: 92px; }
-        .buk-primary, .buk-whatsapp, .buk-call { width: 100%; height: 48px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 900; text-decoration: none; cursor: pointer; }
+        .buk-primary, .buk-whatsapp, .buk-call, .buk-book { width: 100%; height: 48px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 900; text-decoration: none; cursor: pointer; }
         .buk-primary, .buk-call { background: #050505; color: #fff; }
         .buk-whatsapp { background: #09cf5a; color: #fff; margin-top: 26px; }
         .buk-call { margin-top: 14px; }
+        .buk-book { background: #1a56db; color: #fff; margin-top: 12px; font-size: 15px; }
         .buk-back { display: block; margin: 20px auto 0; border: 0; background: none; font-weight: 900; cursor: pointer; }
         .buk-secure { color: #777; text-align: center; margin: 16px 0 0; font-size: 14px; }
         .buk-error { color: #b00020; font-size: 13px; font-weight: 700; }
