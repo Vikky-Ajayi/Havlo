@@ -234,13 +234,13 @@ export const BuyAbroadUkAgents: React.FC = () => {
           <div className="buk-result-emoji">🎉</div>
           <h3>Application received.</h3>
           <p>
-            Thank you for applying to become a Havlo Agent/Partner. Our team will review your details and contact you within 48 hours with your partner agreement and onboarding information. In the meantime, join our WhatsApp channel to receive the latest updates, partnership opportunities, and announcements. You can also speak directly with a member of our team for further guidance on the next steps.
+            Thank you for applying to become a Havlo Agent/Partner. Our team will review your details and contact you within 48 hours with your partner agreement and onboarding information.
           </p>
-          <a className="buk-whatsapp" href="https://whatsapp.com/channel/0029VbD9tlMBlHplTtkA8c0A" target="_blank" rel="noopener noreferrer">
+          <p>
+            In the meantime, join our WhatsApp channel to receive the latest updates, partnership opportunities, and announcements. You can also speak directly with a member of our team for further guidance on the next steps.
+          </p>
+          <a className="buk-whatsapp" href="https://whatsapp.com/channel/0029Vb8tkfGKWEKrck3J6g2C" target="_blank" rel="noopener noreferrer">
             <MessageCircle size={18} /> Join Havlo Partner Channel
-          </a>
-          <a className="buk-call" href={`tel:${CALL_LINK}`}>
-            <Phone size={18} /> Call {CALL_DISPLAY}
           </a>
           <button className="buk-learn" type="button" onClick={() => { closeConsultation(); document.getElementById('process')?.scrollIntoView({ behavior: 'smooth' }); }}>
             ⓘ Learn how the process works
