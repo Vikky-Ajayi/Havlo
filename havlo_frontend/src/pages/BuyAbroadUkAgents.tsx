@@ -168,7 +168,6 @@ export const BuyAbroadUkAgents: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [referralVolume, setReferralVolume] = useState('');
@@ -210,7 +209,6 @@ export const BuyAbroadUkAgents: React.FC = () => {
         source: 'buyabroad-uk-agents',
         message: [
           'Buy Abroad UK — Agent / Partner Application',
-          `Address: ${address}`,
           `Real estate company / agency: ${companyName}`,
           `Company website / social link: ${companyWebsite}`,
           `Clients they can refer monthly: ${referralVolume}`,
@@ -286,7 +284,6 @@ export const BuyAbroadUkAgents: React.FC = () => {
               </div>
             </label>
             <TextField label="Email address" value={email} onChange={setEmail} placeholder="e.g johndoe@email.com" type="email" />
-            <TextField label="Address" value={address} onChange={setAddress} placeholder="Your business address" />
           </>
         )}
 
