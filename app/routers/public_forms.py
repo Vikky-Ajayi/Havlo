@@ -5,18 +5,22 @@ These endpoints are public (no auth) and are used by the marketing site for:
 - Footer newsletter signup
 - "Stop Property Marketing by Post" opt-out request
 
-Each submission writes a row to the Google Sheet and (best-effort) emails the
-admin address configured by ADMIN_NOTIFY_EMAIL. All side effects run in
-FastAPI BackgroundTasks so the user-facing HTTP response is never blocked.
+Each submission is persisted to the database first, then written to the Google
+Sheet and (best-effort) emails the admin. All side effects run in FastAPI
+BackgroundTasks so the user-facing HTTP response is never blocked.
 """
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.database import get_db
+from app.models.models import UKContactFormSubmission, UKClientApplication
 from app.services import google_sheets
 from app.services.email_service import send_admin_notification_sync
 
@@ -226,7 +230,27 @@ def _bg_log_opt_out(email: str, notes: str) -> None:
 async def submit_contact_form(
     payload: ContactFormPayload,
     background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ) -> OkResponse:
+    source = (payload.source or "").strip()
+    # Persist buyabroad/uk contact submissions to DB so they can be backfilled
+    if source in ("buyabroad-uk", "buyabroad-uk-agents", "buyabroad-uk-listings"):
+        try:
+            row = UKContactFormSubmission(
+                source=source,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+                email=payload.email,
+                phone_country_code=payload.phone_country_code or "",
+                phone_number=payload.phone_number or "",
+                country_of_residence=payload.country_of_residence or "",
+                message=payload.message or "",
+            )
+            db.add(row)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("DB persist failed for contact form (source=%s): %s", source, exc)
+            await db.rollback()
     background_tasks.add_task(_bg_log_contact, payload.model_dump())
     return OkResponse()
 
@@ -253,6 +277,26 @@ async def marketing_opt_out(
 async def submit_client_application(
     payload: ClientApplicationPayload,
     background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ) -> OkResponse:
+    # Persist to DB so the backfill script can recover any missed Sheets writes
+    try:
+        row = UKClientApplication(
+            full_name=payload.full_name,
+            date_of_birth=payload.date_of_birth,
+            email=payload.email,
+            mobile=payload.mobile,
+            address=payload.address,
+            occupation=payload.occupation,
+            uk_area=payload.uk_area,
+            property_type=payload.property_type,
+            bedrooms=payload.bedrooms,
+            budget=payload.budget,
+        )
+        db.add(row)
+        await db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("DB persist failed for client application: %s", exc)
+        await db.rollback()
     background_tasks.add_task(_bg_log_client_application, payload.model_dump())
     return OkResponse()

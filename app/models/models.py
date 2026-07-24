@@ -518,6 +518,67 @@ class CustomOfferSubmission(Base):
     )
 
 
+class UKContactFormSubmission(Base):
+    """Persists every public contact form submission for the buyabroad/uk pages.
+
+    source values:
+      'buyabroad-uk'          → /buyabroad/uk      → "Eligibility Check" tab
+      'buyabroad-uk-agents'   → /buyabroad/uk/agents → "Agent / Partner Application" tab
+      'buyabroad-uk-listings' → /buyabroad/uk/listings → "Free Consultation" tab
+    """
+    __tablename__ = "uk_contact_form_submissions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    first_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    phone_country_code: Mapped[str] = mapped_column(String(8), nullable=False, default="")
+    phone_number: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    country_of_residence: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    sheets_recorded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_uk_contact_source_created", "source", "created_at"),
+    )
+
+
+class UKClientApplication(Base):
+    """Persists every /buyabroad/uk/apply submission.
+
+    Maps to the "UK Property Purchase Application" Google Sheet tab.
+    """
+    __tablename__ = "uk_client_applications"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    full_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    date_of_birth: Mapped[str] = mapped_column(String(20), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    mobile: Mapped[str] = mapped_column(String(40), nullable=False)
+    address: Mapped[str] = mapped_column(String(300), nullable=False)
+    occupation: Mapped[str] = mapped_column(String(160), nullable=False)
+    uk_area: Mapped[str] = mapped_column(String(200), nullable=False)
+    property_type: Mapped[str] = mapped_column(String(60), nullable=False)
+    bedrooms: Mapped[str] = mapped_column(String(40), nullable=False)
+    budget: Mapped[str] = mapped_column(String(80), nullable=False)
+    sheets_recorded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class RightmoveListing(Base):
     __tablename__ = "rightmove_listings"
 
