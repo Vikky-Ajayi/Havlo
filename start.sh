@@ -2,7 +2,7 @@
 set -e
 
 # Start backend API in background
-uvicorn app.main:app --host localhost --port 8000 --reload &
+uvicorn app.main:app --host localhost --port 8000 &
 BACKEND_PID=$!
 
 # Start frontend dev server

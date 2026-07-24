@@ -34,7 +34,10 @@ from pathlib import Path
 from typing import Any, NamedTuple, Optional
 
 import httpx
+import gc
+
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing
@@ -42,8 +45,8 @@ from app.models.models import RightmoveListing
 logger = logging.getLogger(__name__)
 
 # ── Tunable constants ──────────────────────────────────────────────────────────
-NUM_WORKERS            = 4      # concurrent scraping workers — Supabase pool size raised to 40, so more headroom
-HTTP_CONCURRENCY       = 3      # max simultaneous outbound HTTP requests
+NUM_WORKERS            = 2      # concurrent scraping workers — keep low to avoid OOM in container
+HTTP_CONCURRENCY       = 2      # max simultaneous outbound HTTP requests
 MAX_PAGES_PER_QUERY    = 42     # Rightmove's absolute ceiling
 PAGE_SIZE              = 24
 SCRAPE_INTERVAL_HOURS  = 8      # wait between full cycles
@@ -532,26 +535,30 @@ async def _scrape_work_item(
             consecutive_empty = 0
             now = datetime.now(timezone.utc)
 
-            async with AsyncSessionLocal() as db:
-                for prop in props:
-                    extracted = _extract_listing(prop, item.city)
-                    if not extracted:
-                        continue
-                    result = await db.execute(
-                        select(RightmoveListing).where(
-                            RightmoveListing.rightmove_id == extracted["rightmove_id"]
-                        )
+            rows = []
+            for prop in props:
+                extracted = _extract_listing(prop, item.city)
+                if extracted:
+                    extracted["scraped_at"] = now
+                    extracted["is_active"] = True
+                    rows.append(extracted)
+
+            if rows:
+                async with AsyncSessionLocal() as db:
+                    stmt = pg_insert(RightmoveListing).values(rows)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=["rightmove_id"],
+                        set_={
+                            c.key: stmt.excluded[c.key]
+                            for c in RightmoveListing.__table__.columns
+                            if c.key not in ("id", "rightmove_id")
+                        },
                     )
-                    existing = result.scalar_one_or_none()
-                    if existing:
-                        for k, v in extracted.items():
-                            setattr(existing, k, v)
-                        existing.is_active = True
-                        existing.scraped_at = now
-                    else:
-                        db.add(RightmoveListing(**extracted, scraped_at=now))
-                        saved += 1
-                await db.commit()
+                    result = await db.execute(stmt)
+                    # rowcount reflects inserted rows on conflict=update dialects;
+                    # approximate new count as inserts only (no reliable way without SELECT)
+                    saved += result.rowcount
+                    await db.commit()
 
         except httpx.TimeoutException:
             logger.debug("Timeout on %s [%s] page %d", item.city, item.band_label, page_num)
