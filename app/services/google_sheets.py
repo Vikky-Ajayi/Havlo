@@ -89,19 +89,19 @@ SHEET_TABS: dict[str, list[str]] = {
         "Buyer Phone", "Listing URL", "Platform", "Property Summary", "Plan ID",
         "Plan Name", "Payment Status", "Proposal Status", "Answers Summary",
     ],
-    "UK Buyer Enquiries": [
+    "Eligibility Check": [
         "Timestamp", "First Name", "Last Name", "Email", "Phone",
         "Outcome", "Property Type", "Budget", "Timeline", "WhatsApp",
     ],
-    "UK Agent Partners": [
+    "Agent / Partner Application": [
         "Timestamp", "First Name", "Last Name", "Email", "Phone",
         "Address", "Company Name", "Company Website", "Referral Volume", "Minimum Property Price",
     ],
-    "UK Listing Consultations": [
+    "Free Consultation": [
         "Timestamp", "First Name", "Last Name", "Email", "Phone",
         "Property Address", "Price (GBP)", "Property URL", "City",
     ],
-    "UK Client Applications": [
+    "UK Property Purchase Application": [
         "Timestamp", "Full Name", "Date of Birth", "Email", "Mobile",
         "Address", "Occupation", "UK Area", "Property Type", "Bedrooms", "Budget",
     ],
@@ -491,7 +491,7 @@ def record_uk_buyer_enquiry(form_data: dict[str, Any]) -> None:
         parsed.get("Timeline", ""),
         parsed.get("WhatsApp", ""),
     ]
-    _append_row("UK Buyer Enquiries", row)
+    _append_row("Eligibility Check", row)
 
 
 def record_uk_agent_partner(form_data: dict[str, Any]) -> None:
@@ -509,7 +509,7 @@ def record_uk_agent_partner(form_data: dict[str, Any]) -> None:
         parsed.get("Clients they can refer monthly", ""),
         parsed.get("Minimum property price their clients can afford", ""),
     ]
-    _append_row("UK Agent Partners", row)
+    _append_row("Agent / Partner Application", row)
 
 
 def record_uk_listing_consultation(form_data: dict[str, Any]) -> None:
@@ -526,7 +526,7 @@ def record_uk_listing_consultation(form_data: dict[str, Any]) -> None:
         parsed.get("Property URL", ""),
         parsed.get("City", ""),
     ]
-    _append_row("UK Listing Consultations", row)
+    _append_row("Free Consultation", row)
 
 
 def record_uk_client_application(form_data: dict[str, Any]) -> None:
@@ -543,7 +543,7 @@ def record_uk_client_application(form_data: dict[str, Any]) -> None:
         form_data.get("bedrooms", ""),
         form_data.get("budget", ""),
     ]
-    _append_row("UK Client Applications", row)
+    _append_row("UK Property Purchase Application", row)
 
 
 def record_public_assessment(form_data: dict[str, Any]) -> None:

@@ -94,7 +94,7 @@ def _bg_log_contact(payload: dict) -> None:
         country = payload.get("country_of_residence", "") or "—"
 
         if source == "buyabroad-uk":
-            sheet_tab = "UK Buyer Enquiries"
+            sheet_tab = "Eligibility Check"
             summary = "New UK property buyer enquiry submitted via the eligibility form."
             source_label = "buyabroad/uk — Eligibility Form"
             prop_url = ""
@@ -109,7 +109,7 @@ def _bg_log_contact(payload: dict) -> None:
                 "Outcome": msg_data.get("Outcome", "—"),
             }
         elif source == "buyabroad-uk-agents":
-            sheet_tab = "UK Agent Partners"
+            sheet_tab = "Agent / Partner Application"
             summary = "New agent/partner application submitted via /buyabroad/uk/agents."
             source_label = "buyabroad/uk/agents — Agent Application"
             prop_url = ""
@@ -125,7 +125,7 @@ def _bg_log_contact(payload: dict) -> None:
                 "Min. client budget": msg_data.get("Minimum property price their clients can afford", "—"),
             }
         elif source == "buyabroad-uk-listings":
-            sheet_tab = "UK Listing Consultations"
+            sheet_tab = "Free Consultation"
             summary = "New free consultation request submitted from a UK property listing."
             source_label = "buyabroad/uk/listings — Free Consultation"
             prop_url = msg_data.get("Havlo Property Page", "")
@@ -181,7 +181,7 @@ def _bg_log_client_application(payload: dict) -> None:
             "Max Purchase Budget": payload.get("budget", "—"),
         }
         send_admin_notification_sync(
-            sheet_tab="UK Client Applications",
+            sheet_tab="UK Property Purchase Application",
             summary=f"New UK property purchase application from {payload.get('full_name', 'Unknown')}.",
             source_label="buyabroad/uk/apply — Client Application Form",
             fields=fields,
