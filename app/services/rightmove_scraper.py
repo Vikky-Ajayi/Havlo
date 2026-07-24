@@ -544,6 +544,13 @@ async def _scrape_work_item(
                     rows.append(extracted)
 
             if rows:
+                # Deduplicate by rightmove_id within this batch — asyncpg raises
+                # CardinalityViolationError if ON CONFLICT targets the same row twice.
+                seen_ids: dict[str, dict] = {}
+                for row in rows:
+                    seen_ids[row["rightmove_id"]] = row
+                rows = list(seen_ids.values())
+
                 async with AsyncSessionLocal() as db:
                     stmt = pg_insert(RightmoveListing).values(rows)
                     stmt = stmt.on_conflict_do_update(

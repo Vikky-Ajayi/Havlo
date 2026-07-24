@@ -15,6 +15,8 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # asyncpg requires each statement in its own op.execute() call —
+    # multiple commands in a single prepared statement raise PostgresSyntaxError.
     op.execute(
         """
         CREATE TABLE IF NOT EXISTS uk_contact_form_submissions (
@@ -29,14 +31,23 @@ def upgrade() -> None:
             message             TEXT,
             sheets_recorded_at  TIMESTAMPTZ,
             created_at          TIMESTAMPTZ  NOT NULL DEFAULT now()
-        );
-
+        )
+        """
+    )
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS ix_uk_contact_source_created
-            ON uk_contact_form_submissions (source, created_at);
-
+            ON uk_contact_form_submissions (source, created_at)
+        """
+    )
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS ix_uk_contact_email
-            ON uk_contact_form_submissions (email);
-
+            ON uk_contact_form_submissions (email)
+        """
+    )
+    op.execute(
+        """
         CREATE TABLE IF NOT EXISTS uk_client_applications (
             id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             full_name       VARCHAR(160) NOT NULL,
@@ -51,18 +62,17 @@ def upgrade() -> None:
             budget          VARCHAR(80)  NOT NULL,
             sheets_recorded_at TIMESTAMPTZ,
             created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
-        );
-
+        )
+        """
+    )
+    op.execute(
+        """
         CREATE INDEX IF NOT EXISTS ix_uk_client_applications_email
-            ON uk_client_applications (email);
+            ON uk_client_applications (email)
         """
     )
 
 
 def downgrade() -> None:
-    op.execute(
-        """
-        DROP TABLE IF EXISTS uk_contact_form_submissions;
-        DROP TABLE IF EXISTS uk_client_applications;
-        """
-    )
+    op.execute("DROP TABLE IF EXISTS uk_contact_form_submissions")
+    op.execute("DROP TABLE IF EXISTS uk_client_applications")
