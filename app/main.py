@@ -390,6 +390,10 @@ async def startup() -> None:
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_city ON rightmove_listings (city);"
                     ))
+                    await conn.execute(text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_intl_source_ext_id "
+                        "ON international_listings (source, external_id);"
+                    ))
                 else:
                     logger.info(
                         "Skipping Postgres-only schema sync on dialect=%s",
@@ -457,6 +461,16 @@ async def startup() -> None:
         from app.services.rightmove_scraper import start_scraper_loop
         app.state.scraper_task = asyncio.create_task(start_scraper_loop())
         logger.info("Rightmove scraper loop started.")
+
+    # ── International scrapers ──────────────────────────────────────────
+    if HAS_DATABASE:
+        from app.services.usa_scraper import start_usa_scraper_loop
+        from app.services.canada_scraper import start_canada_scraper_loop
+        from app.services.dubai_scraper import start_dubai_scraper_loop
+        app.state.usa_scraper_task = asyncio.create_task(start_usa_scraper_loop())
+        app.state.canada_scraper_task = asyncio.create_task(start_canada_scraper_loop())
+        app.state.dubai_scraper_task = asyncio.create_task(start_dubai_scraper_loop())
+        logger.info("International scraper loops started (USA, Canada, Dubai).")
 
 
 @app.on_event("shutdown")
@@ -718,6 +732,9 @@ from app.routers import custom_offers  # noqa: E402
 app.include_router(custom_offers.public_router, prefix=API_PREFIX)
 app.include_router(custom_offers.admin_router, prefix=API_PREFIX)
 app.include_router(listings.router)
+
+from app.routers import international_listings  # noqa: E402
+app.include_router(international_listings.router, prefix=API_PREFIX)
 
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 

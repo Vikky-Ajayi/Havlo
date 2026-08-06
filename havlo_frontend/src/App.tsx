@@ -80,6 +80,7 @@ import { BookSessionModal } from './components/modals/BookSessionModal';
 import { ConsultationModal } from './components/modals/ConsultationModal';
 import { ContactSuccessModal } from './components/modals/ContactSuccessModal';
 import { OptOutModal } from './components/modals/OptOutModal';
+import { SignInToSaveModal } from './components/modals/SignInToSaveModal';
 
 const PageLoader = () => (
   <div className="flex h-[60vh] items-center justify-center">
@@ -170,6 +171,7 @@ const ModalRenderer = () => {
     case 'consultation': return <ConsultationModal />;
     case 'contact-success': return <ContactSuccessModal />;
     case 'opt-out': return <OptOutModal />;
+    case 'sign-in-to-save': return <SignInToSaveModal />;
     default: return null;
   }
 };

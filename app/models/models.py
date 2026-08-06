@@ -601,6 +601,39 @@ class RightmoveListing(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class InternationalListing(Base):
+    """Stores property listings scraped from USA, Canada, and Dubai portals."""
+    __tablename__ = "international_listings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source: Mapped[str] = mapped_column(String(20), nullable=False)  # 'usa', 'canada', 'dubai'
+    external_id: Mapped[str] = mapped_column(String(500), nullable=False)
+    url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    price_local: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    currency_code: Mapped[str] = mapped_column(String(10), nullable=False, default='USD')
+    currency_symbol: Mapped[str] = mapped_column(String(10), nullable=False, default='$')
+    address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    region: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    country: Mapped[str] = mapped_column(String(100), nullable=False)
+    bedrooms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    bathrooms: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    property_type: Mapped[str] = mapped_column(String(100), nullable=False, default='')
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    images_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    scraped_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_intl_source", "source"),
+        Index("ix_intl_city", "city"),
+        Index("ix_intl_source_active", "source", "is_active"),
+        # UniqueConstraint on source+external_id handled in migration
+    )
+
+
 class ProductAccessToken(Base):
     __tablename__ = "product_access_tokens"
 
