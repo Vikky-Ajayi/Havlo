@@ -10,7 +10,6 @@ export type ModalType =
   | 'consultation'
   | 'contact-success'
   | 'opt-out'
-  | 'sign-in-to-save'
   | null;
 
 export interface ModalContextType {

@@ -1,693 +1,1125 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useFavorites } from '../hooks/useFavorites';
-import { useAuth } from '../context/AuthContext';
-import { useModal } from '../hooks/useModal';
 import { API_BASE } from '../lib/api';
-import './listings-redesign.css';
+import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
+import { TrustpilotStars } from '../components/ui/TrustpilotStars';
+import { EligibilityModal } from '../components/modals/EligibilityModal';
 
-/* ──────────────────────────────────────────────────
-   Types
-────────────────────────────────────────────────── */
-interface UKListing {
+const ukListingsReviews = [
+  { title: 'Simplifies international purchase', content: 'Havlo took all the stress out of buying property overseas. The step-by-step guidance and detailed info gave me confidence to make my first international purchase.', author: 'Tomiwa, Lagos' },
+  { title: 'Great experience from start to finish', content: 'I found exactly what I wanted through Havlo. The platform is intuitive, and the advisory team answered all my questions quickly.', author: 'Carlos, Madrid' },
+  { title: 'Transparent and reliable', content: "Havlo is one of the few platforms I've used that actually shows all the necessary details. No hidden surprises. Very trustworthy.", author: 'Emily, Manchester' },
+  { title: 'Hassle-free overseas property buying', content: "I've tried a few platforms before, but Havlo made buying my apartment abroad so straightforward. Clear listings, easy communication, and really helpful support. Highly recommend!", author: 'Daniel, London' },
+  { title: 'Easy and stress-free', content: 'The platform made what I thought would be complicated very simple. From property search to legal documentation, everything was clearly explained.', author: 'Mark, Toronto' },
+  { title: 'Perfect for first-time international buyers', content: "As someone new to buying abroad, I felt supported at every stage. Havlo's guidance is top notch.", author: 'Wei, Shanghai' },
+  { title: 'Fantastic overseas property options', content: 'I used Havlo to diversify my property portfolio. Excellent support to buy abroad and a really supportive team.', author: 'Rajesh, Delhi' },
+  { title: 'Trustworthy and reliable', content: 'I felt completely safe using Havlo. The service is transparent, and the advisory team is always available to help.', author: 'Garcia, Milan' },
+  { title: 'Great platform for global buyers', content: 'Havlo made it easy to explore international markets. I now own a residential property abroad thanks to them.', author: 'Wilson, Glasgow' },
+  { title: 'Quick and hassle-free', content: 'From start to finish, Havlo made buying abroad simple. Highly recommend to anyone looking to invest internationally.', author: 'Al-Nasser, Doha' },
+  { title: 'Professional and efficient', content: 'Havlo provides all the necessary tools for making informed decisions. I felt like a pro investing overseas.', author: 'Viktor, Prague' },
+  { title: 'Great for first-time buyers', content: 'I was nervous about buying property overseas, but Havlo made it very manageable. Excellent guidance at every step.', author: 'David, Tel Aviv' },
+];
+
+const WHATSAPP_NUMBER = '2349039861006';
+
+const FALLBACK_CITIES = [
+  'London', 'Manchester', 'Birmingham', 'Leeds', 'Bristol',
+  'Liverpool', 'Sheffield', 'Edinburgh', 'Glasgow', 'Nottingham',
+];
+
+const PRICE_RANGES = [
+  { label: 'Any price', min: undefined, max: undefined },
+  { label: 'Under £50,000', min: undefined, max: 50000 },
+  { label: '£50,000 – £200,000', min: 50000, max: 200000 },
+  { label: '£200,000 – £350,000', min: 200000, max: 350000 },
+  { label: '£350,000 – £500,000', min: 350000, max: 500000 },
+  { label: '£500,000 – £1,000,000', min: 500000, max: 1000000 },
+  { label: '£1,000,000+', min: 1000000, max: undefined },
+];
+
+const PROPERTY_TYPES = [
+  { label: 'Any type', value: '' },
+  { label: 'House', value: 'house' },
+  { label: 'Flat / Apartment', value: 'flat' },
+  { label: 'Bungalow', value: 'bungalow' },
+  { label: 'Commercial Property', value: 'commercial' },
+];
+
+const BEDS_OPTIONS = [
+  { label: 'Any beds', value: undefined },
+  { label: '1+ bed', value: 1 },
+  { label: '2+ beds', value: 2 },
+  { label: '3+ beds', value: 3 },
+  { label: '4+ beds', value: 4 },
+];
+
+interface LocalCurrency {
+  code: string;
+  symbol: string;
+  displayName: string;
+  useApiNgn: boolean;
+  backPath: string;
+  backCountryLabel: string;
+  rate: number; // 0 = not yet loaded
+}
+
+const CURRENCY_CONFIG: Record<string, Omit<LocalCurrency, 'rate'>> = {
+  nigeria:     { code: 'NGN', symbol: '₦',   displayName: 'Naira',          useApiNgn: true,  backPath: '/buyabroad/uk',          backCountryLabel: 'Nigeria' },
+  ghana:       { code: 'GHS', symbol: 'GH₵', displayName: 'Cedi',           useApiNgn: false, backPath: '/buyabroad/ghana',       backCountryLabel: 'Ghana' },
+  southafrica: { code: 'ZAR', symbol: 'R',   displayName: 'Rand',           useApiNgn: false, backPath: '/buyabroad/southafrica', backCountryLabel: 'South Africa' },
+  kenya:       { code: 'KES', symbol: 'KSh', displayName: 'Shilling',       useApiNgn: false, backPath: '/buyabroad/kenya',       backCountryLabel: 'Kenya' },
+  egypt:       { code: 'EGP', symbol: 'E£',  displayName: 'Egyptian Pound', useApiNgn: false, backPath: '/buyabroad/egypt',       backCountryLabel: 'Egypt' },
+};
+
+interface Listing {
   id: string;
   rightmove_id: string;
   url: string;
   title: string;
   price_gbp: number;
+  price_ngn: number;
+  ngn_rate: number;
   address: string;
   city: string;
   bedrooms: number;
   bathrooms: number | null;
   property_type: string;
+  description: string;
   images: string[];
 }
 
-interface IntlListing {
-  id: string;
-  source: string;
-  external_id: string;
-  url: string | null;
-  title: string | null;
-  price_local: number | null;
-  currency_code: string;
-  currency_symbol: string;
-  address: string | null;
-  city: string | null;
-  region: string | null;
-  country: string;
-  bedrooms: number;
-  bathrooms: number | null;
-  property_type: string;
-  images: string[];
+interface ListingsResponse {
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+  ngn_rate: number;
+  listings: Listing[];
 }
 
-interface CardListing {
-  key: string;
-  href: string;
-  image: string;
-  title: string;
-  beds: number;
-  baths: number | null;
-  city: string;
-  priceFormatted: string;
-  isExternal: boolean;
+function formatGbp(amount: number): string {
+  return '£' + amount.toLocaleString('en-GB');
 }
 
-type Country = 'uk' | 'usa' | 'canada' | 'dubai';
-
-/* ──────────────────────────────────────────────────
-   Formatters
-────────────────────────────────────────────────── */
-function fmtGbp(n: number): string {
-  return `£${n.toLocaleString('en-GB')}`;
-}
-function fmtIntl(n: number | null, sym: string, code: string): string {
-  if (!n) return '';
-  if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(1)}M ${code}`;
-  return `${sym}${Math.round(n).toLocaleString()} ${code}`;
-}
-function ukToCard(l: UKListing): CardListing {
-  return {
-    key: `uk-${l.rightmove_id}`,
-    href: `/buyabroad/uk/listings/${l.rightmove_id}`,
-    image: l.images[0] ?? '',
-    title: l.address || l.title || l.city,
-    beds: l.bedrooms,
-    baths: l.bathrooms,
-    city: l.city,
-    priceFormatted: `${fmtGbp(l.price_gbp)} total`,
-    isExternal: false,
-  };
-}
-function intlToCard(l: IntlListing): CardListing {
-  return {
-    key: `${l.source}-${l.external_id}`,
-    href: l.url ?? '#',
-    image: l.images[0] ?? '',
-    title: l.address || l.title || l.city || l.country,
-    beds: l.bedrooms,
-    baths: l.bathrooms,
-    city: l.city || l.region || l.country,
-    priceFormatted: l.price_local
-      ? `${fmtIntl(l.price_local, l.currency_symbol, l.currency_code)} total`
-      : '',
-    isExternal: true,
-  };
+function formatLocal(amount: number, symbol: string): string {
+  if (amount >= 1_000_000_000) return symbol + (amount / 1_000_000_000).toFixed(2) + 'bn';
+  if (amount >= 1_000_000)     return symbol + (amount / 1_000_000).toFixed(1) + 'm';
+  if (amount >= 1_000)         return symbol + (amount / 1_000).toFixed(0) + 'k';
+  return symbol + amount.toLocaleString();
 }
 
-/* ──────────────────────────────────────────────────
-   SVG Icons
-────────────────────────────────────────────────── */
-const BedIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 9.5V19h20V9.5"/><path d="M2 19V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12"/>
-    <path d="M2 13h20"/><path d="M6 13v-3h5v3"/><path d="M13 13v-3h5v3"/>
-  </svg>
-);
-const BathIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 12h16a1 1 0 0 1 1 1v3a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-3a1 1 0 0 1 1-1z"/>
-    <path d="M6 12V5a2 2 0 0 1 2-2h3v2.25"/>
-    <line x1="4" y1="21" x2="4" y2="22"/><line x1="20" y1="21" x2="20" y2="22"/>
-  </svg>
-);
-const PinIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-  </svg>
-);
-const HeartFilledIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="#A409D2">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-  </svg>
-);
-const HeartOutlineIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-  </svg>
-);
-const ChevronLeftIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-);
-const ChevronRightIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-);
-
-/* ──────────────────────────────────────────────────
-   PropertyCard
-────────────────────────────────────────────────── */
 function PropertyCard({
   listing,
   isFav,
   onToggleFav,
+  localCurrency,
 }: {
-  listing: CardListing;
+  listing: Listing;
   isFav: boolean;
-  onToggleFav: (key: string) => void;
+  onToggleFav: (id: string) => void;
+  localCurrency: LocalCurrency;
 }) {
-  const linkProps = listing.isExternal
-    ? { href: listing.href, target: '_blank', rel: 'noopener noreferrer' }
-    : { href: listing.href };
+  const img = listing.images[0] || '';
+  const countryKey = localCurrency.backPath === '/buyabroad/uk'
+    ? ''
+    : `?country=${localCurrency.backPath.split('/').pop() ?? ''}`;
+  const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}${countryKey}`;
 
   return (
-    <article className="lp-card">
-      <div className="lp-card-img-wrap">
-        <a {...linkProps} className="block w-full h-full" tabIndex={-1} aria-hidden="true">
-          {listing.image ? (
-            <img src={listing.image} alt={listing.title} loading="lazy" className="lp-card-img" />
-          ) : (
-            <div className="lp-card-no-img">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-            </div>
-          )}
-        </a>
-        <button
-          className={`lp-heart${isFav ? ' lp-heart--active' : ''}`}
-          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(listing.key); }}
-          aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
-        >
-          {isFav ? <HeartFilledIcon /> : <HeartOutlineIcon />}
-        </button>
-      </div>
-      <div className="lp-card-body">
-        <a {...linkProps}>
-          <h3 className="lp-card-title">{listing.title}</h3>
-          <div className="lp-card-meta">
-            {listing.beds > 0 && (
-              <span className="lp-meta-item"><BedIcon /> {listing.beds} bed{listing.beds !== 1 ? 's' : ''}</span>
-            )}
-            {listing.baths != null && listing.baths > 0 && (
-              <span className="lp-meta-item"><BathIcon /> {listing.baths} bath{listing.baths !== 1 ? 's' : ''}</span>
-            )}
-            {listing.city && (
-              <span className="lp-meta-item"><PinIcon /> {listing.city}</span>
-            )}
+    <article className="bal-card">
+      <a href={detailUrl} className="bal-card-img-wrap" tabIndex={-1} aria-hidden="true">
+        {img ? (
+          <img src={img} alt={listing.title} loading="lazy" />
+        ) : (
+          <div className="bal-card-no-img">
+            <span>No image</span>
           </div>
-          {listing.priceFormatted && (
-            <p className="lp-card-price">{listing.priceFormatted}</p>
+        )}
+        <span className="bal-card-type">{listing.property_type || 'Property'}</span>
+        <button
+          className={`bal-fav-btn${isFav ? ' bal-fav-btn--active' : ''}`}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(listing.rightmove_id); }}
+          aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+          title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+        >
+          {isFav ? '♥\uFE0E' : '♡\uFE0E'}
+        </button>
+      </a>
+      <div className="bal-card-body">
+        <div className="bal-card-prices">
+          <span className="bal-card-gbp">{formatGbp(listing.price_gbp)}</span>
+          {(() => {
+            const amt = localCurrency.useApiNgn
+              ? listing.price_ngn
+              : listing.price_gbp * localCurrency.rate;
+            return amt > 0 ? (
+              <span className="bal-card-ngn">
+                {formatLocal(amt, localCurrency.symbol)} {localCurrency.code}
+              </span>
+            ) : null;
+          })()}
+        </div>
+        <p className="bal-card-address">{listing.address}</p>
+        <div className="bal-card-meta">
+          {listing.bedrooms > 0 && (
+            <span>🛏 {listing.bedrooms} {listing.bedrooms === 1 ? 'bed' : 'beds'}</span>
           )}
-        </a>
+          {listing.bathrooms != null && listing.bathrooms > 0 && (
+            <span>🚿 {listing.bathrooms} {listing.bathrooms === 1 ? 'bath' : 'baths'}</span>
+          )}
+          <span>📍 {listing.city}</span>
+        </div>
+        <div className="bal-card-actions">
+          <a className="bal-card-enquire" href={detailUrl}>
+            View Property Details
+          </a>
+          <a
+            className="bal-card-view"
+            href={listing.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View on Rightmove ↗
+          </a>
+        </div>
       </div>
     </article>
   );
 }
 
-/* ──────────────────────────────────────────────────
-   SkeletonCard
-────────────────────────────────────────────────── */
 function SkeletonCard() {
   return (
-    <article className="lp-card">
-      <div className="lp-card-img-wrap"><div className="lp-skel-img" /></div>
-      <div className="lp-card-body">
-        <div className="lp-skel lp-skel-title" />
-        <div className="lp-skel lp-skel-meta" />
-        <div className="lp-skel lp-skel-price" />
+    <article className="bal-card bal-card-skeleton">
+      <div className="bal-card-img-wrap bal-skeleton-img" />
+      <div className="bal-card-body">
+        <div className="bal-skel bal-skel-price" />
+        <div className="bal-skel bal-skel-addr" />
+        <div className="bal-skel bal-skel-meta" />
+        <div className="bal-skel bal-skel-btn" />
       </div>
     </article>
   );
 }
 
-/* ──────────────────────────────────────────────────
-   CountrySection
-────────────────────────────────────────────────── */
-function CountrySection({
-  title,
-  listings,
-  loading,
-  onViewAll,
-  isFav,
-  onToggleFav,
-}: {
-  title: string;
-  listings: CardListing[];
-  loading: boolean;
-  onViewAll: () => void;
-  isFav: (key: string) => boolean;
-  onToggleFav: (key: string) => void;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (dir: 'left' | 'right') => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir === 'right' ? el.offsetWidth * 0.75 : -el.offsetWidth * 0.75, behavior: 'smooth' });
-  };
-
-  return (
-    <div className="lp-section">
-      <div className="lp-section-header">
-        <button className="lp-section-title" onClick={onViewAll}>
-          {title} <ArrowRightIcon />
-        </button>
-        <div className="lp-section-nav">
-          <button className="lp-nav-btn" onClick={() => scroll('left')} aria-label="Previous"><ChevronLeftIcon /></button>
-          <button className="lp-nav-btn" onClick={() => scroll('right')} aria-label="Next"><ChevronRightIcon /></button>
-        </div>
-      </div>
-
-      <div className="lp-scroll no-scrollbar" ref={scrollRef}>
-        {loading ? (
-          Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
-        ) : listings.length === 0 ? (
-          <div className="lp-empty-section">
-            <p>Properties coming soon.</p>
-            <a
-              href="https://wa.me/2349039861006"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="lp-empty-link"
-            >
-              Ask via WhatsApp →
-            </a>
-          </div>
-        ) : (
-          listings.map((l) => (
-            <PropertyCard key={l.key} listing={l} isFav={isFav(l.key)} onToggleFav={onToggleFav} />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────
-   AllHomesModal
-────────────────────────────────────────────────── */
-function AllHomesModal({
-  source,
-  title,
-  onClose,
-  isFav,
-  onToggleFav,
-}: {
-  source: Country;
-  title: string;
-  onClose: () => void;
-  isFav: (key: string) => boolean;
-  onToggleFav: (key: string) => void;
-}) {
-  const PER_PAGE = 10;
-  const [listings, setListings] = useState<CardListing[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const doFetch = async () => {
-      try {
-        if (source === 'uk') {
-          const r = await fetch(`${API_BASE}/listings/?per_page=${PER_PAGE}&page=${page}`);
-          const d = await r.json();
-          setListings((d.listings ?? []).map(ukToCard));
-          setTotalPages(d.pages ?? 1);
-        } else {
-          const r = await fetch(`${API_BASE}/intl-listings/?source=${source}&per_page=${PER_PAGE}&page=${page}`);
-          const d = await r.json();
-          setListings((d.listings ?? []).map(intlToCard));
-          setTotalPages(d.pages ?? 1);
-        }
-      } catch {/* ignore */} finally {
-        setLoading(false);
-      }
-    };
-    void doFetch();
-  }, [source, page]);
-
-  // Lock body scroll while open
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  const pageNumbers = (): (number | '...')[] => {
-    const arr: (number | '...')[] = [];
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) arr.push(i);
-    } else {
-      arr.push(1);
-      if (page > 3) arr.push('...');
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) arr.push(i);
-      if (page < totalPages - 2) arr.push('...');
-      arr.push(totalPages);
-    }
-    return arr;
-  };
-
-  return (
-    <div
-      className="lp-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`All Homes in ${title}`}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="lp-modal">
-        <div className="lp-modal-header">
-          <h2 className="lp-modal-title">All Homes in {title}</h2>
-          <button className="lp-modal-close" onClick={onClose} aria-label="Close">×</button>
-        </div>
-        <div className="lp-modal-body">
-          {loading ? (
-            <div className="lp-modal-grid">
-              {Array.from({ length: PER_PAGE }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : listings.length === 0 ? (
-            <div className="lp-modal-empty">
-              <p>No properties found yet — check back soon!</p>
-            </div>
-          ) : (
-            <div className="lp-modal-grid">
-              {listings.map((l) => (
-                <PropertyCard key={l.key} listing={l} isFav={isFav(l.key)} onToggleFav={onToggleFav} />
-              ))}
-            </div>
-          )}
-
-          {totalPages > 1 && !loading && (
-            <div className="lp-pagination">
-              <button
-                className="lp-page-btn"
-                onClick={() => { setPage((p) => Math.max(1, p - 1)); }}
-                disabled={page === 1}
-                aria-label="Previous page"
-              >
-                <ChevronLeftIcon />
-              </button>
-              {pageNumbers().map((p, i) =>
-                p === '...'
-                  ? <span key={`e${i}`} className="lp-page-ellipsis">...</span>
-                  : (
-                    <button
-                      key={p}
-                      className={`lp-page-btn${page === p ? ' lp-page-btn--active' : ''}`}
-                      onClick={() => setPage(p as number)}
-                    >
-                      {p}
-                    </button>
-                  )
-              )}
-              <button
-                className="lp-page-btn"
-                onClick={() => { setPage((p) => Math.min(totalPages, p + 1)); }}
-                disabled={page === totalPages}
-                aria-label="Next page"
-              >
-                <ChevronRightIcon />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────
-   Main Component
-────────────────────────────────────────────────── */
 export const BuyAbroadUkListings: React.FC = () => {
   usePageMeta({
-    title: 'Buy Property in UK, USA, Canada & Dubai | Havlo',
-    description: 'Browse live property listings in the UK, USA, Canada and Dubai. End-to-end advisory from Havlo.',
+    title: 'UK Property Listings | Havlo Buy Abroad',
+    description: 'Browse live UK property listings for Nigerian buyers. See GBP and NGN prices side-by-side. Enquire directly via WhatsApp.',
     canonical: 'https://www.heyhavlo.com/buyabroad/uk/listings',
   });
 
-  const { token } = useAuth();
-  const { openModal } = useModal();
-  const { toggle, isFavorite, count } = useFavorites();
-
+  const [city, setCity] = useState('');
+  const [priceIdx, setPriceIdx] = useState(0);
+  const [bedsIdx, setBedsIdx] = useState(0);
+  const [propertyType, setPropertyType] = useState('');
+  const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [allHomes, setAllHomes] = useState<{ source: Country; title: string } | null>(null);
+  const [cities, setCities] = useState<string[]>(FALLBACK_CITIES);
 
-  const [ukListings, setUkListings] = useState<CardListing[]>([]);
-  const [usaListings, setUsaListings] = useState<CardListing[]>([]);
-  const [canadaListings, setCanadaListings] = useState<CardListing[]>([]);
-  const [dubaiListings, setDubaiListings] = useState<CardListing[]>([]);
-  const [ukLoading, setUkLoading] = useState(true);
-  const [intlLoading, setIntlLoading] = useState(true);
+  const [data, setData] = useState<ListingsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [scrapeStatus, setScrapeStatus] = useState<'idle' | 'scraping' | 'done'>('idle');
+  const [eligibilityOpen, setEligibilityOpen] = useState(false);
 
-  // Debounce search
+  const { toggle, isFavorite, count, favoriteIds, favorites } = useFavorites();
+  const [showFavs, setShowFavs] = useState(false);
+  const [favListings, setFavListings] = useState<Listing[]>([]);
+  const [favLoading, setFavLoading] = useState(false);
+
+  const country = new URLSearchParams(window.location.search).get('country') ?? 'nigeria';
+  const currencyBase = CURRENCY_CONFIG[country] ?? CURRENCY_CONFIG.nigeria;
+  const [localRate, setLocalRate] = useState(0);
+
+  // Nigeria: pull rate from API response
   useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput.trim()), 400);
-    return () => clearTimeout(t);
+    if (currencyBase.useApiNgn && data?.ngn_rate) {
+      setLocalRate(data.ngn_rate);
+    }
+  }, [data, currencyBase.useApiNgn]);
+
+  // All other countries: fetch live GBP→local rate
+  useEffect(() => {
+    if (currencyBase.useApiNgn) return;
+    let cancelled = false;
+    fetch('https://open.er-api.com/v6/latest/GBP')
+      .then((r) => r.json())
+      .then((json) => {
+        const rate = json?.rates?.[currencyBase.code];
+        if (!cancelled && typeof rate === 'number') setLocalRate(rate);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currencyBase.code, currencyBase.useApiNgn]);
+
+  const localCurrency: LocalCurrency = { ...currencyBase, rate: localRate };
+
+  const priceRange = PRICE_RANGES[priceIdx];
+  const minBeds = BEDS_OPTIONS[bedsIdx].value;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/listings/cities`);
+        if (!resp.ok) return;
+        const json: { cities: { name: string; count: number }[] } = await resp.json();
+        if (!cancelled && Array.isArray(json.cities) && json.cities.length > 0) {
+          setCities(json.cities.map((c) => c.name).filter(Boolean));
+        }
+      } catch {
+        // keep fallback list on failure
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(handle);
   }, [searchInput]);
 
-  // Fetch UK
+  // Fetch saved favourites whenever the favs tab is active or the set changes
   useEffect(() => {
-    setUkLoading(true);
-    const p = new URLSearchParams({ per_page: '5', page: '1' });
-    if (search) p.set('search', search);
-    fetch(`${API_BASE}/listings/?${p}`)
+    if (!showFavs) { setFavListings([]); return; }
+    if (favoriteIds.length === 0) { setFavListings([]); return; }
+    setFavLoading(true);
+    fetch(`${API_BASE}/listings/by-ids?ids=${favoriteIds.join(',')}`)
       .then((r) => r.json())
-      .then((d) => setUkListings((d.listings ?? []).map(ukToCard)))
-      .catch(() => {})
-      .finally(() => setUkLoading(false));
-  }, [search]);
+      .then((json) => setFavListings((json as { listings: Listing[] }).listings ?? []))
+      .catch(() => setFavListings([]))
+      .finally(() => setFavLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFavs, favorites]);
 
-  // Fetch international (preview endpoint: all 3 sources in one call)
+  const fetchListings = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('per_page', '12');
+      if (city) params.set('city', city);
+      if (priceRange.min != null) params.set('min_price', String(priceRange.min));
+      if (priceRange.max != null) params.set('max_price', String(priceRange.max));
+      if (minBeds != null) params.set('min_beds', String(minBeds));
+      if (propertyType) params.set('property_type', propertyType);
+      if (search) params.set('search', search);
+
+      const resp = await fetch(`${API_BASE}/listings/?${params}`);
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => '');
+        console.error(`[listings] HTTP ${resp.status}:`, body);
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      const json: ListingsResponse = await resp.json();
+      setData(json);
+    } catch (err) {
+      console.error('[listings] fetch error:', err);
+      setError('Could not load listings. Please try again in a moment.');
+    } finally {
+      setLoading(false);
+    }
+  }, [city, priceRange.min, priceRange.max, minBeds, propertyType, search, page]);
+
   useEffect(() => {
-    setIntlLoading(true);
-    const p = new URLSearchParams({ per_page: '5' });
-    if (search) p.set('search', search);
-    fetch(`${API_BASE}/intl-listings/preview?${p}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setUsaListings((d.usa?.listings ?? []).map(intlToCard));
-        setCanadaListings((d.canada?.listings ?? []).map(intlToCard));
-        setDubaiListings((d.dubai?.listings ?? []).map(intlToCard));
-      })
-      .catch(() => {})
-      .finally(() => setIntlLoading(false));
-  }, [search]);
+    void fetchListings();
+  }, [fetchListings]);
 
-  const handleToggleFav = useCallback((key: string) => {
-    if (!token) { openModal('sign-in-to-save'); return; }
-    toggle(key);
-  }, [token, toggle, openModal]);
+  const handleFilterChange = () => {
+    setPage(1);
+  };
 
-  const SECTIONS: { source: Country; title: string; sectionTitle: string; listings: CardListing[]; loading: boolean }[] = [
-    { source: 'uk',     title: 'the UK',  sectionTitle: 'Properties For Sale in the UK',     listings: ukListings,     loading: ukLoading },
-    { source: 'usa',    title: 'America', sectionTitle: 'Properties For Sale in America',     listings: usaListings,    loading: intlLoading },
-    { source: 'canada', title: 'Canada',  sectionTitle: 'Properties For Sale in Canada',      listings: canadaListings, loading: intlLoading },
-    { source: 'dubai',  title: 'Dubai',   sectionTitle: 'Properties For Sale in Dubai',       listings: dubaiListings,  loading: intlLoading },
-  ];
+  const triggerScrape = async () => {
+    if (scrapeStatus === 'scraping') return;
+    setScrapeStatus('scraping');
+    try {
+      await fetch(`${API_BASE}/listings/scrape`, { method: 'POST' });
+      setTimeout(() => {
+        setScrapeStatus('done');
+        void fetchListings();
+      }, 5000);
+    } catch {
+      setScrapeStatus('idle');
+    }
+  };
+
+  const isEmpty = !loading && data && data.listings.length === 0;
+  const hasData = data && data.listings.length > 0;
 
   return (
-    <div className="lp-page">
-      {/* ── Header ───────────────────────────────────── */}
-      <header className="lp-header">
-        <div className="lp-header-inner">
-          {/* Logo */}
-          <a href="/buyabroad/uk" className="lp-logo">
-            <span className="lp-logo-text">HAVLO</span>
-            <span className="lp-logo-sub">Buy Abroad</span>
-          </a>
+    <div className="bal-page">
+      <style>{`
+        .bal-page { font-family: Inter, sans-serif; background: #fafafa; min-height: 100vh; }
 
-          {/* Desktop Nav */}
-          <nav className="lp-desktop-nav">
-            <a href="/buyabroad/uk/listings" className="lp-nav-link lp-nav-link--active">
-              <span className="lp-nav-icon">🏠</span> Homes
-            </a>
-            <a href="/buyabroad/uk#how-it-works" className="lp-nav-link">
-              <span className="lp-nav-icon">💡</span> How it Works
-            </a>
-            <a href="/buyabroad/uk#pricing" className="lp-nav-link">
-              <span className="lp-nav-icon">💰</span> Pricing
-            </a>
-            <a href="/buyabroad/uk" className="lp-consult-btn">Get Free Consultation</a>
-          </nav>
+        /* ── Header ── */
+        .bal-header {
+          position: sticky; top: 0; z-index: 100;
+          height: 80px; background: #fff;
+          border-bottom: 1px solid #eee;
+          display: flex; align-items: center;
+          padding: 0 max(60px, calc((100vw - 1240px) / 2));
+        }
+        .bal-logo {
+          display: inline-flex; flex-direction: column; align-items: center;
+          text-decoration: none; color: #111; line-height: 1; flex-shrink: 0;
+        }
+        .bal-logo img { width: 136px; height: auto; display: block; }
+        .bal-logo span { margin-top: 2px; font-size: 14px; font-weight: 400; color: #555; }
+        .bal-header-spacer { flex: 1; }
+        .bal-header-back {
+          font-size: 13px; font-weight: 700; color: #111;
+          text-decoration: none;
+          border: 1.5px solid #e0e0e0;
+          border-radius: 10px; padding: 9px 18px;
+          transition: border-color .15s; white-space: nowrap;
+        }
+        .bal-header-back:hover { border-color: #b100df; color: #b100df; }
+        .bal-header-cta {
+          display: inline-flex; align-items: center; justify-content: center;
+          height: 48px; border: 0; border-radius: 12px;
+          padding: 0 22px; margin-left: 12px;
+          background: #050505; color: #fff;
+          font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap;
+          text-decoration: none;
+        }
+        .bal-header-cta:hover { background: #b100df; }
 
-          {/* Right Icons */}
-          <div className="lp-header-icons">
-            <button
-              className="lp-icon-btn"
-              onClick={() => token ? undefined : openModal('sign-in-to-save')}
-              aria-label="Saved properties"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={count > 0 && token ? '#A409D2' : 'none'} stroke={count > 0 && token ? '#A409D2' : 'currentColor'} strokeWidth="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-              {count > 0 && <span className="lp-badge">{count > 9 ? '9+' : count}</span>}
-            </button>
+        /* ── Hero ── */
+        .bal-hero {
+          background: linear-gradient(90deg, #fff 0%, #fff 45%, #ffd3f2 100%);
+          color: #1f1f1e;
+          padding: 80px max(60px, calc((100vw - 1240px) / 2)) 72px;
+        }
+        .bal-hero-inner {
+          max-width: 1240px; margin: 0 auto;
+          display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+          gap: 42px; align-items: center;
+        }
+        .bal-hero-eyebrow {
+          color: #b100df; font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: 13px; font-weight: 700; letter-spacing: 0.12em;
+          text-transform: uppercase; margin-bottom: 16px;
+        }
+        .bal-hero h1 {
+          font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: clamp(32px, 4vw, 52px); font-weight: 800;
+          letter-spacing: -0.03em; line-height: 1.12;
+          margin: 0 0 16px; color: #111;
+        }
+        .bal-hero h1 span { color: #b100df; }
+        .bal-hero-copy > p {
+          font-size: clamp(14px, 1.4vw, 16px); line-height: 1.55;
+          color: #444; margin: 0 0 28px; max-width: 440px;
+        }
+        .bal-hero-cta {
+          display: inline-block; height: 48px; line-height: 48px;
+          border: 0; border-radius: 12px;
+          background: #050505; color: #fff; padding: 0 28px;
+          font-weight: 900; font-size: 15px; cursor: pointer;
+          margin-bottom: 28px; text-decoration: none; transition: background .15s;
+        }
+        .bal-hero-cta:hover { background: #b100df; }
+        .bal-hero-trust { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+        .bal-hero-stars { color: #fff; background: #00b67a; letter-spacing: 2px; padding: 4px 6px; font-size: 16px; line-height: 1; }
+        .bal-hero-card {
+          background: #fff; border: 3px solid #050505;
+          border-radius: 16px; padding: 28px 24px;
+          box-shadow: 6px 6px 0 #000;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          min-height: 340px;
+        }
+        .bal-hero-svg { width: 100%; max-width: 360px; }
+        .bal-hero-card-chips {
+          display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 20px;
+        }
+        .bal-hero-card-chip {
+          background: #f3f4f6; border-radius: 999px; padding: 5px 14px;
+          font-size: 12px; font-weight: 700; color: #333; border: 1px solid #e8e8e8;
+        }
 
-            <button
-              className="lp-icon-btn"
-              onClick={() => window.open('https://wa.me/2349039861006', '_blank')}
-              aria-label="WhatsApp enquiries"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-              </svg>
-            </button>
+        /* ── Filter bar ── */
+        .bal-filters {
+          background: #fff;
+          border-bottom: 1px solid #e8e9ec;
+          padding: 18px clamp(20px, 5vw, 60px);
+        }
+        .bal-filters-inner {
+          max-width: 1240px; margin: 0 auto;
+          display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+        }
+        .bal-filter-label { font-size: 13px; font-weight: 700; color: #555; flex-shrink: 0; }
+        .bal-filter-select {
+          height: 40px; border: 1.5px solid #e0e0e0; border-radius: 9px;
+          padding: 0 14px; font-size: 14px; font-family: Inter, sans-serif;
+          background: #fff; color: #111; cursor: pointer; outline: none;
+          min-width: 160px;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 10px center;
+          padding-right: 32px;
+        }
+        .bal-filter-select:focus { border-color: #b100df; }
+        .bal-filter-spacer { flex: 1; }
+        .bal-filter-count {
+          font-size: 13px; color: #888; font-weight: 500; flex-shrink: 0;
+        }
+        .bal-search-inner {
+          max-width: 1240px; margin: 12px auto 0;
+          position: relative; display: flex; align-items: center;
+        }
+        .bal-search-icon {
+          position: absolute; left: 14px; color: #999; pointer-events: none;
+        }
+        .bal-search-input {
+          width: 100%; height: 46px; border: 1.5px solid #e0e0e0; border-radius: 10px;
+          padding: 0 40px; font-size: 14px; font-family: Inter, sans-serif;
+          background: #fff; color: #111; outline: none; box-sizing: border-box;
+        }
+        .bal-search-input:focus { border-color: #b100df; }
+        .bal-search-input::placeholder { color: #999; }
+        .bal-search-clear {
+          position: absolute; right: 10px; width: 26px; height: 26px;
+          border: none; background: #f2f2f2; border-radius: 50%;
+          color: #666; font-size: 18px; line-height: 1; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .bal-search-clear:hover { background: #e5e5e5; color: #111; }
 
-            <button
-              className="lp-hamburger"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
+        /* ── Main content ── */
+        .bal-main {
+          max-width: 1240px; margin: 0 auto;
+          padding: 32px clamp(20px, 5vw, 60px) 64px;
+        }
 
-        {/* Mobile nav tabs */}
-        <div className="lp-mobile-nav">
-          <a href="/buyabroad/uk/listings" className="lp-mobile-nav-link lp-mobile-nav-link--active">
-            <span>🏠</span> Homes
-          </a>
-          <a href="/buyabroad/uk#how-it-works" className="lp-mobile-nav-link">
-            <span>💡</span> How it Works
-          </a>
-          <a href="/buyabroad/uk#pricing" className="lp-mobile-nav-link">
-            <span>💰</span> Pricing
-          </a>
-        </div>
+        /* ── Rate bar ── */
+        .bal-rate-bar {
+          background: #f0fdf4; border: 1px solid #bbf7d0;
+          border-radius: 10px; padding: 10px 18px;
+          font-size: 13px; color: #166534;
+          margin-bottom: 24px;
+          display: flex; align-items: center; gap: 8px;
+        }
+        .bal-rate-bar strong { font-weight: 700; }
 
-        {/* Mobile dropdown menu */}
-        {mobileMenuOpen && (
-          <div className="lp-mobile-menu">
-            <a href="/buyabroad/uk" className="lp-mobile-menu-link">Buy Property in UK</a>
-            <a href="/buyabroad/uk/agents" className="lp-mobile-menu-link">Become an Agent Partner</a>
-            <a href="/buyabroad/uk/apply" className="lp-mobile-menu-link">Apply to Buy</a>
-            <hr className="lp-mobile-menu-divider" />
-            {token ? (
-              <a href="/dashboard" className="lp-mobile-menu-link">My Dashboard</a>
-            ) : (
-              <>
-                <button
-                  className="lp-mobile-menu-link"
-                  onClick={() => { openModal('login'); setMobileMenuOpen(false); }}
-                >
-                  Sign In
-                </button>
-                <button
-                  className="lp-mobile-menu-link lp-mobile-menu-link--primary"
-                  onClick={() => { openModal('create-account'); setMobileMenuOpen(false); }}
-                >
-                  Create Account
-                </button>
-              </>
-            )}
-          </div>
-        )}
+        /* ── Grid ── */
+        .bal-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+
+        /* ── Card ── */
+        .bal-card {
+          background: #fff;
+          border: 1px solid #e6e6e6;
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,.05);
+          transition: box-shadow .2s, transform .2s;
+          display: flex; flex-direction: column;
+        }
+        .bal-card:hover {
+          box-shadow: 0 6px 24px rgba(0,0,0,.10);
+          transform: translateY(-2px);
+        }
+        .bal-card-img-wrap {
+          position: relative; height: 200px; overflow: hidden;
+          background: #f3f4f6; flex-shrink: 0;
+        }
+        .bal-card-img-wrap img {
+          width: 100%; height: 100%; object-fit: cover;
+          display: block; transition: transform .3s;
+        }
+        .bal-card:hover .bal-card-img-wrap img { transform: scale(1.04); }
+        .bal-card-no-img {
+          width: 100%; height: 100%;
+          display: flex; align-items: center; justify-content: center;
+          color: #bbb; font-size: 14px;
+        }
+        .bal-card-type {
+          position: absolute; top: 12px; left: 12px;
+          background: rgba(0,0,0,.65); color: #fff;
+          font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+          text-transform: uppercase;
+          padding: 4px 10px; border-radius: 999px;
+        }
+        .bal-card-body {
+          padding: 18px 20px 20px;
+          display: flex; flex-direction: column; flex: 1;
+        }
+        .bal-card-prices {
+          display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px;
+          flex-wrap: wrap;
+        }
+        .bal-card-gbp {
+          font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: 22px; font-weight: 800;
+          letter-spacing: -0.03em; color: #111;
+        }
+        .bal-card-ngn {
+          font-size: 13px; font-weight: 600; color: #16a34a;
+          background: #f0fdf4; border-radius: 6px;
+          padding: 3px 8px;
+        }
+        .bal-card-address {
+          font-size: 13px; color: #555; margin: 0 0 10px;
+          line-height: 1.4;
+        }
+        .bal-card-meta {
+          display: flex; flex-wrap: wrap; gap: 10px;
+          font-size: 12px; color: #666; margin-bottom: 14px;
+        }
+        .bal-card-meta span { white-space: nowrap; }
+        .bal-card-actions {
+          display: flex; flex-direction: column; gap: 8px; margin-top: auto;
+        }
+        .bal-card-enquire {
+          display: block; text-align: center;
+          background: #111; color: #fff;
+          border-radius: 10px; padding: 10px 16px;
+          font-size: 13px; font-weight: 700;
+          text-decoration: none; letter-spacing: 0.02em;
+          transition: background .15s;
+        }
+        .bal-card-enquire:hover { background: #b100df; }
+        .bal-card-view {
+          display: block; text-align: center;
+          color: #555; font-size: 12px; font-weight: 600;
+          text-decoration: none; padding: 4px;
+        }
+        .bal-card-view:hover { color: #b100df; }
+
+        /* ── Skeleton ── */
+        .bal-card-skeleton { pointer-events: none; }
+        .bal-skeleton-img { background: #eaeaea; animation: bal-pulse 1.4s infinite; }
+        .bal-skel {
+          background: #eaeaea; border-radius: 6px;
+          animation: bal-pulse 1.4s infinite; margin-bottom: 10px;
+        }
+        .bal-skel-price { height: 24px; width: 55%; }
+        .bal-skel-addr { height: 14px; width: 85%; }
+        .bal-skel-meta { height: 12px; width: 65%; }
+        .bal-skel-btn { height: 40px; width: 100%; border-radius: 10px; margin-top: 14px; }
+        @keyframes bal-pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+        /* ── Empty / error states ── */
+        .bal-empty {
+          text-align: center; padding: 80px 20px;
+        }
+        .bal-empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .bal-empty h3 {
+          font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: 24px; font-weight: 700; margin: 0 0 10px; color: #111;
+        }
+        .bal-empty p { color: #666; font-size: 15px; max-width: 400px; margin: 0 auto 24px; line-height: 1.5; }
+        .bal-empty-cta {
+          display: inline-block;
+          background: #b100df; color: #fff;
+          border-radius: 10px; padding: 12px 28px;
+          font-size: 14px; font-weight: 700;
+          text-decoration: none;
+          cursor: pointer; border: 0;
+        }
+        .bal-scrape-note {
+          font-size: 12px; color: #aaa; margin-top: 12px;
+        }
+
+        /* ── Pagination ── */
+        .bal-pagination {
+          display: flex; align-items: center; justify-content: center;
+          gap: 8px; margin-top: 48px;
+        }
+        .bal-page-btn {
+          height: 38px; min-width: 38px; padding: 0 14px;
+          border: 1.5px solid #e0e0e0; border-radius: 9px;
+          background: #fff; font-size: 14px; font-weight: 600;
+          cursor: pointer; color: #111; transition: all .15s;
+        }
+        .bal-page-btn:hover:not(:disabled) { border-color: #b100df; color: #b100df; }
+        .bal-page-btn.active { background: #b100df; border-color: #b100df; color: #fff; }
+        .bal-page-btn:disabled { opacity: .35; cursor: default; }
+
+        /* ── Whatsapp strip ── */
+        .bal-wa-strip {
+          background: #050807; color: #fff;
+          padding: 48px clamp(20px, 5vw, 60px);
+          text-align: center;
+        }
+        .bal-wa-strip h2 {
+          font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: clamp(24px, 4vw, 38px);
+          font-weight: 700; letter-spacing: -0.03em; margin: 0 0 14px;
+        }
+        .bal-wa-strip p { color: #ccc; font-size: 15px; margin: 0 0 28px; }
+        .bal-wa-btn {
+          display: inline-flex; align-items: center; gap: 10px;
+          background: #25d366; color: #fff;
+          border-radius: 10px; padding: 14px 32px;
+          font-size: 15px; font-weight: 700; text-decoration: none;
+          transition: opacity .15s;
+        }
+        .bal-wa-btn:hover { opacity: .88; }
+
+        /* ── Footer ── */
+        .bal-footer {
+          padding: 24px clamp(20px, 5vw, 60px);
+          border-top: 1px solid #e8e9ec;
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 24px; flex-wrap: wrap;
+        }
+        .bal-footer p { font-size: 13px; color: #888; margin: 0; }
+        .bal-footer nav { display: flex; gap: 24px; }
+        .bal-footer a { font-size: 13px; font-weight: 700; color: #111; text-decoration: none; }
+        .bal-footer a:hover { color: #b100df; }
+
+        /* ── View toggle tabs ── */
+        .bal-view-tabs {
+          display: flex; gap: 8px;
+          padding: 14px clamp(20px, 5vw, 60px) 0;
+          background: #fff;
+        }
+        .bal-view-tab {
+          height: 38px; padding: 0 18px;
+          border: 1.5px solid #e0e0e0; border-radius: 9px;
+          background: #fff; font-size: 13px; font-weight: 700;
+          color: #555; cursor: pointer; transition: all .15s;
+          display: inline-flex; align-items: center; gap: 6px;
+        }
+        .bal-view-tab:hover { border-color: #b100df; color: #fff; background: #c520f5; }
+        .bal-view-tab--active { background: #b100df; border-color: #b100df; color: #fff; }
+        .bal-fav-count {
+          background: rgba(255,255,255,.28); border-radius: 999px;
+          padding: 1px 7px; font-size: 11px; font-weight: 800;
+        }
+        .bal-view-tab:not(.bal-view-tab--active) .bal-fav-count { background: #f0f0f0; color: #888; }
+
+        /* ── Heart button on cards ── */
+        .bal-fav-btn {
+          position: absolute; top: 10px; right: 10px; z-index: 2;
+          width: 34px; height: 34px; border-radius: 50%;
+          background: rgba(255,255,255,.92); border: 0;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; font-size: 20px; line-height: 1;
+          transition: background .15s, transform .12s;
+          box-shadow: 0 1px 5px rgba(0,0,0,.18);
+          color: #bbb;
+        }
+        .bal-fav-btn:hover { background: #fff; transform: scale(1.14); }
+        .bal-fav-btn--active { color: #b100df; }
+
+        /* ── Favourites empty state ── */
+        .bal-fav-empty { text-align: center; padding: 80px 20px; }
+        .bal-fav-empty-icon { font-size: 56px; margin-bottom: 16px; line-height: 1; }
+        .bal-fav-empty h3 {
+          font-family: "Plus Jakarta Sans", Inter, sans-serif;
+          font-size: 22px; font-weight: 700; color: #111; margin: 0 0 10px;
+        }
+        .bal-fav-empty p { color: #666; font-size: 15px; max-width: 360px; margin: 0 auto; line-height: 1.55; }
+        .bal-fav-back-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          margin-top: 24px; height: 44px; padding: 0 24px;
+          background: #b100df; color: #fff; border: 0; border-radius: 10px;
+          font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s;
+        }
+        .bal-fav-back-btn:hover { background: #9400bc; }
+
+        /* ── Responsive ── */
+        @media (max-width: 1024px) {
+          .bal-grid { grid-template-columns: repeat(2, 1fr); }
+          .bal-hero-inner { grid-template-columns: 1fr; }
+          .bal-hero-card { display: flex; max-width: 480px; margin: 0 auto; }
+          .bal-hero { padding: 56px 40px 48px; background: #fff; }
+        }
+        @media (max-width: 640px) {
+          .bal-grid { grid-template-columns: 1fr; }
+          .bal-hero h1 { font-size: 28px; }
+          .bal-hero { padding: 48px 24px 40px; background: #fff; }
+          .bal-hero-card { max-width: 100%; }
+          .bal-filter-select { min-width: 130px; font-size: 13px; }
+          .bal-header-cta { display: none; }
+          .bal-header { padding: 0 20px; }
+          .bal-footer { flex-direction: column; text-align: center; }
+          .bal-footer nav { justify-content: center; }
+        }
+
+      `}</style>
+
+      {/* Header */}
+      <header className="bal-header">
+        <a href={localCurrency.backPath} className="bal-logo" aria-label="Buy Abroad">
+          <img src="/Havlo Black Transparent.png" alt="Havlo" />
+          <span>Buy Abroad</span>
+        </a>
+        <div className="bal-header-spacer" />
+        <a href={localCurrency.backPath} className="bal-header-back">← Back to Buy Abroad</a>
+        <button
+          className="bal-header-cta"
+          type="button"
+          onClick={() => setEligibilityOpen(true)}
+        >
+          Free Consultation
+        </button>
       </header>
 
-      {/* ── Hero ─────────────────────────────────────── */}
-      <section className="lp-hero">
-        <h1 className="lp-hero-title">BUY PROPERTY IN UK</h1>
-        <p className="lp-hero-sub">
-          We provide end-to-end advisory and guidance, from search to sale, wherever you're buying.
-        </p>
-        <div className="lp-search-bar">
-          <button className="lp-search-filter" aria-label="Filters">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+      {/* Hero */}
+      <section className="bal-hero">
+        <div className="bal-hero-inner">
+          <div className="bal-hero-copy">
+            <div className="bal-hero-eyebrow">Live UK Property Listings</div>
+            <h1>Browse UK Properties<br />in <span>Pounds & {localCurrency.displayName}</span></h1>
+            <p>Real Rightmove listings — every price shown in both GBP and {localCurrency.code} so {localCurrency.backCountryLabel}n buyers always know exactly what they're paying.</p>
+            <a className="bal-hero-cta" href="#bal-listings">Browse Listings →</a>
+            <div className="bal-hero-trust">
+              <strong>Excellent</strong>
+              <span className="bal-hero-stars">★★★★★</span>
+              <b>Based on verified customer feedback</b>
+            </div>
+          </div>
+          <aside className="bal-hero-card" aria-label="UK property illustration">
+            <svg className="bal-hero-svg" viewBox="0 0 360 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Sky */}
+              <rect width="360" height="240" fill="#fdf4ff" rx="12"/>
+              {/* Clouds */}
+              <ellipse cx="60" cy="40" rx="30" ry="14" fill="#fff" opacity=".7"/>
+              <ellipse cx="85" cy="34" rx="22" ry="14" fill="#fff" opacity=".7"/>
+              <ellipse cx="290" cy="30" rx="26" ry="12" fill="#fff" opacity=".6"/>
+              <ellipse cx="312" cy="24" rx="18" ry="12" fill="#fff" opacity=".6"/>
+
+              {/* Left house */}
+              <rect x="28" y="140" width="88" height="84" fill="#f3e8ff" stroke="#111" strokeWidth="1.5"/>
+              <polygon points="16,140 72,95 128,140" fill="#b100df" stroke="#111" strokeWidth="1.5"/>
+              <rect x="46" y="162" width="24" height="22" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="82" y="162" width="24" height="22" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="54" y="194" width="20" height="30" rx="4" fill="#7c3aed"/>
+              <rect x="44" y="98" width="12" height="28" fill="#9333ea" stroke="#111" strokeWidth="1"/>
+
+              {/* Centre house (tallest) */}
+              <rect x="130" y="118" width="100" height="106" fill="#fff" stroke="#111" strokeWidth="1.5"/>
+              <polygon points="118,118 180,68 242,118" fill="#7c3aed" stroke="#111" strokeWidth="1.5"/>
+              <rect x="148" y="140" width="28" height="24" rx="2" fill="#ede9fe" stroke="#111" strokeWidth="1"/>
+              <line x1="162" y1="140" x2="162" y2="164" stroke="#111" strokeWidth="1"/>
+              <line x1="148" y1="152" x2="176" y2="152" stroke="#111" strokeWidth="1"/>
+              <rect x="184" y="140" width="28" height="24" rx="2" fill="#ede9fe" stroke="#111" strokeWidth="1"/>
+              <line x1="198" y1="140" x2="198" y2="164" stroke="#111" strokeWidth="1"/>
+              <line x1="184" y1="152" x2="212" y2="152" stroke="#111" strokeWidth="1"/>
+              <rect x="162" y="184" width="36" height="40" rx="6" fill="#111"/>
+              <circle cx="195" cy="205" r="3" fill="#fbbf24"/>
+              <rect x="156" y="72" width="16" height="36" fill="#6d28d9" stroke="#111" strokeWidth="1.5"/>
+
+              {/* Right house */}
+              <rect x="244" y="148" width="88" height="76" fill="#f3e8ff" stroke="#111" strokeWidth="1.5"/>
+              <polygon points="232,148 288,106 344,148" fill="#b100df" stroke="#111" strokeWidth="1.5"/>
+              <rect x="258" y="168" width="24" height="20" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="294" y="168" width="24" height="20" rx="2" fill="#e9d5ff" stroke="#111" strokeWidth="1"/>
+              <rect x="268" y="196" width="20" height="28" rx="4" fill="#7c3aed"/>
+              <rect x="282" y="110" width="12" height="26" fill="#9333ea" stroke="#111" strokeWidth="1"/>
+
+              {/* Ground */}
+              <rect x="0" y="224" width="360" height="16" fill="#d1fae5"/>
+              <rect x="0" y="220" width="360" height="6" fill="#a7f3d0"/>
+
+              {/* GBP price badge */}
+              <rect x="12" y="12" width="86" height="28" rx="14" fill="#111"/>
+              <text x="55" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">£ GBP Listed</text>
+
+              {/* Local currency price badge */}
+              <rect x="248" y="12" width="100" height="28" rx="14" fill="#b100df"/>
+              <text x="298" y="30" fill="white" fontSize="11" fontWeight="700" textAnchor="middle" fontFamily="Inter, sans-serif">{localCurrency.symbol} {localCurrency.code} Prices</text>
             </svg>
-          </button>
+            <div className="bal-hero-card-chips">
+              <span className="bal-hero-card-chip">🇬🇧 UK Properties</span>
+              <span className="bal-hero-card-chip">{localCurrency.symbol} {localCurrency.code} Shown</span>
+              <span className="bal-hero-card-chip">💬 WhatsApp Support</span>
+              <span className="bal-hero-card-chip">No Viewing Trip</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      {/* Reviews */}
+      <section className="w-full bg-white px-4 sm:px-10 lg:px-[100px] py-0 my-0">
+        <AutoScrollReviews
+          reviews={ukListingsReviews}
+          bgColor="#F5F5F3"
+          header={
+            <>
+              <h2 className="font-body text-[36px] font-medium leading-none tracking-[-0.8px] text-[#040504]">Rated</h2>
+              <TrustpilotStars className="h-[40px]" />
+              <p className="font-body text-[18px] font-normal text-black">
+                Based on <span className="font-bold underline">over 1,000 reviews</span>
+              </p>
+            </>
+          }
+        />
+      </section>
+
+      {/* View toggle: Favourites only */}
+      <div className="bal-view-tabs">
+        <button
+          className={`bal-view-tab${showFavs ? ' bal-view-tab--active' : ''}`}
+          onClick={() => setShowFavs((v) => !v)}
+        >
+          {'♥\uFE0E'} Favourites{count > 0 && <span className="bal-fav-count">{count}</span>}
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="bal-filters">
+        <div className="bal-filters-inner">
+          <span className="bal-filter-label">Filter:</span>
+
+          <select
+            className="bal-filter-select"
+            value={city}
+            onChange={(e) => { setCity(e.target.value); handleFilterChange(); }}
+            aria-label="Filter by city"
+          >
+            <option value="">All cities</option>
+            {cities.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          <select
+            className="bal-filter-select"
+            value={priceIdx}
+            onChange={(e) => { setPriceIdx(Number(e.target.value)); handleFilterChange(); }}
+            aria-label="Filter by price"
+          >
+            {PRICE_RANGES.map((r, i) => (
+              <option key={i} value={i}>{r.label}</option>
+            ))}
+          </select>
+
+          <select
+            className="bal-filter-select"
+            value={bedsIdx}
+            onChange={(e) => { setBedsIdx(Number(e.target.value)); handleFilterChange(); }}
+            aria-label="Filter by bedrooms"
+          >
+            {BEDS_OPTIONS.map((b, i) => (
+              <option key={i} value={i}>{b.label}</option>
+            ))}
+          </select>
+
+          <select
+            className="bal-filter-select"
+            value={propertyType}
+            onChange={(e) => { setPropertyType(e.target.value); handleFilterChange(); }}
+            aria-label="Filter by property type"
+          >
+            {PROPERTY_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+
+          <div className="bal-filter-spacer" />
+          {data && !loading && (
+            <span className="bal-filter-count">
+              {data.total.toLocaleString()} {data.total === 1 ? 'property' : 'properties'}
+            </span>
+          )}
+        </div>
+
+        <div className="bal-search-inner">
+          <svg className="bal-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
           <input
             type="text"
-            placeholder="Search by Property title, address, city"
-            className="lp-search-input"
+            className="bal-search-input"
+            placeholder="Search by property title, address, or city…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             aria-label="Search properties"
           />
-          <button className="lp-search-btn" aria-label="Search">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </button>
+          {searchInput && (
+            <button
+              type="button"
+              className="bal-search-clear"
+              onClick={() => setSearchInput('')}
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
         </div>
-      </section>
+      </div>
 
-      {/* ── Country Sections ─────────────────────────── */}
-      <main className="lp-sections-wrapper">
-        {SECTIONS.map(({ source, title, sectionTitle, listings, loading }) => (
-          <CountrySection
-            key={source}
-            title={sectionTitle}
-            listings={listings}
-            loading={loading}
-            onViewAll={() => setAllHomes({ source, title })}
-            isFav={isFavorite}
-            onToggleFav={handleToggleFav}
-          />
-        ))}
-      </main>
+      {/* Main content */}
+      <main className="bal-main" id="bal-listings">
+        {/* Rate bar removed per design update */}
 
-      {/* ── CTA ──────────────────────────────────────── */}
-      <section className="lp-cta">
-        <div className="lp-cta-inner">
-          <div className="lp-cta-text">
-            <h2 className="lp-cta-title">
-              Can't find what you're<br />looking for?
-            </h2>
-            <p className="lp-cta-sub">
-              Our advisors source off-market and exclusive properties not listed on any portal.
-              Tell us what you want and we'll find it.
+        {/* Error state */}
+        {error && (
+          <div className="bal-empty">
+            <div className="bal-empty-icon">⚠️</div>
+            <h3>Something went wrong</h3>
+            <p>{error}</p>
+            <button className="bal-empty-cta" onClick={() => void fetchListings()}>Try again</button>
+          </div>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && !error && (
+          <div className="bal-grid">
+            {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {isEmpty && !error && (
+          <div className="bal-empty">
+            <div className="bal-empty-icon">🏠</div>
+            <h3>No listings yet</h3>
+            <p>
+              Our system is currently scraping Rightmove for fresh properties.
+              Check back in a few minutes, or reach out via WhatsApp and we'll
+              find you the right property manually.
+            </p>
+            <a
+              className="bal-empty-cta"
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi Havlo, I am looking for UK properties to buy. Can you help?')}`}
+              target="_blank" rel="noopener noreferrer"
+            >
+              Chat on WhatsApp
+            </a>
+            <p className="bal-scrape-note">
+              Listings refresh every 6 hours automatically.
+              {scrapeStatus === 'idle' && (
+                <> <button
+                  style={{ background: 'none', border: 'none', color: '#b100df', cursor: 'pointer', fontSize: 'inherit', fontWeight: 700, padding: 0 }}
+                  onClick={() => void triggerScrape()}
+                >Refresh now →</button></>
+              )}
+              {scrapeStatus === 'scraping' && <> Refreshing…</>}
+              {scrapeStatus === 'done' && <> Refresh complete.</>}
             </p>
           </div>
-          <a
-            href="https://wa.me/2349039861006?text=Hi%20Havlo%2C%20I%20am%20looking%20for%20a%20specific%20property%20and%20need%20help."
-            target="_blank"
-            rel="noopener noreferrer"
-            className="lp-cta-btn"
-          >
-            <span className="lp-cta-btn-icon">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l.95-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17z"/>
-              </svg>
-            </span>
-            Book a Call
-          </a>
-        </div>
+        )}
+
+        {/* Listings grid */}
+        {!showFavs && hasData && !loading && (
+          <div className="bal-grid">
+            {data.listings.map((listing) => (
+              <PropertyCard
+                key={listing.id}
+                listing={listing}
+                isFav={isFavorite(listing.rightmove_id)}
+                onToggleFav={toggle}
+                localCurrency={localCurrency}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Favourites grid */}
+        {showFavs && !favLoading && favListings.length > 0 && (
+          <div className="bal-grid">
+            {favListings.map((listing) => (
+              <PropertyCard
+                key={listing.id}
+                listing={listing}
+                isFav={isFavorite(listing.rightmove_id)}
+                onToggleFav={toggle}
+                localCurrency={localCurrency}
+              />
+            ))}
+          </div>
+        )}
+        {showFavs && favLoading && (
+          <div className="bal-grid">
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        )}
+        {showFavs && !favLoading && favListings.length === 0 && (
+          <div className="bal-fav-empty">
+            <div className="bal-fav-empty-icon">♡</div>
+            <h3>No favourites saved yet</h3>
+            <p>Tap the ♡ heart on any property card to save it here. Your favourites are stored in your browser and will be waiting when you come back.</p>
+          </div>
+        )}
+
+        {/* Back to listings — shown at bottom whenever favourites tab is active */}
+        {showFavs && (
+          <div style={{ textAlign: 'center', padding: '32px 20px' }}>
+            <button className="bal-fav-back-btn" onClick={() => setShowFavs(false)}>
+              ← Back to Listings
+            </button>
+          </div>
+        )}
+
+        {/* Pagination — hidden on favourites tab */}
+        {!showFavs && data && data.pages > 1 && !loading && (
+          <div className="bal-pagination">
+            <button
+              className="bal-page-btn"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              ←
+            </button>
+            {Array.from({ length: Math.min(7, data.pages) }, (_, i) => {
+              const p = page <= 4
+                ? i + 1
+                : page >= data.pages - 3
+                  ? data.pages - 6 + i
+                  : page - 3 + i;
+              if (p < 1 || p > data.pages) return null;
+              return (
+                <button
+                  key={p}
+                  className={`bal-page-btn${page === p ? ' active' : ''}`}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              );
+            })}
+            <button
+              className="bal-page-btn"
+              onClick={() => setPage((p) => Math.min(data.pages, p + 1))}
+              disabled={page === data.pages}
+            >
+              →
+            </button>
+          </div>
+        )}
+      </main>
+
+      {/* WhatsApp CTA strip */}
+      <section className="bal-wa-strip">
+        <h2>Can't find what you're looking for?</h2>
+        <p>Our advisors source off-market and exclusive properties not listed on any portal. Tell us what you want and we'll find it.</p>
+        <a
+          className="bal-wa-btn"
+          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hi Havlo, I am looking for UK property and would like your help finding something specific.')}`}
+          target="_blank" rel="noopener noreferrer"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Chat on WhatsApp
+        </a>
       </section>
 
-      {/* ── Footer ───────────────────────────────────── */}
-      <footer className="lp-footer">
-        <a href="/buyabroad/uk" className="lp-footer-logo">
-          <span className="lp-footer-logo-text">HAVLO</span>
-          <span className="lp-footer-logo-sub">Buy Abroad</span>
-        </a>
-        <p className="lp-footer-copy">© {new Date().getFullYear()} Havlo Buy Abroad. A Havlo service</p>
-      </footer>
+      <EligibilityModal isOpen={eligibilityOpen} onClose={() => setEligibilityOpen(false)} />
 
-      {/* ── All Homes Modal ───────────────────────────── */}
-      {allHomes && (
-        <AllHomesModal
-          source={allHomes.source}
-          title={allHomes.title}
-          onClose={() => setAllHomes(null)}
-          isFav={isFavorite}
-          onToggleFav={handleToggleFav}
-        />
-      )}
+      {/* Footer */}
+      <footer className="bal-footer">
+        <p>© {new Date().getFullYear()} Havlo. Property prices sourced from Rightmove. {localCurrency.code} prices are indicative only.</p>
+        <nav>
+          <a href={localCurrency.backPath}>Buy Abroad {localCurrency.backCountryLabel}</a>
+          <a href="/privacy-policy">Privacy</a>
+          <a href="/terms-of-use">Terms</a>
+        </nav>
+      </footer>
     </div>
   );
 };
