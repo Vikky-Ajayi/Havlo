@@ -479,6 +479,46 @@ class StaleListingAssessment(Base):
     )
 
 
+class StaleListingProspect(Base):
+    """Automatically discovered stale listing for the letter-to-unlock workflow."""
+
+    __tablename__ = "stale_listing_prospects"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    property_code: Mapped[str] = mapped_column(String(4), unique=True, nullable=False, index=True)
+    qr_token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    property_address: Mapped[str] = mapped_column(String(500), nullable=False)
+    rightmove_url: Mapped[str] = mapped_column(Text, nullable=False)
+    rightmove_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    asking_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    listing_duration_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    listed_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    property_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    listing_snapshot_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    report_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    preview_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    letter_pdf_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    processing_status: Mapped[str] = mapped_column(String(50), nullable=False, default="identified")
+    payment_status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+    sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    unlocked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_stale_listing_prospects_rightmove_url", "rightmove_url"),
+    )
+
+
 class CustomOfferSubmission(Base):
     __tablename__ = "custom_offer_submissions"
 

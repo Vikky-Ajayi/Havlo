@@ -27,6 +27,8 @@ supabase==2.10.0
 twilio==9.4.0
 uvicorn[standard]==0.32.1
 websockets==14.1
+qrcode[pil]==7.4.2
+reportlab==4.2.5
 aiofiles==24.1.0
 aiosqlite
 alembic==1.14.0

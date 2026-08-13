@@ -11,6 +11,7 @@ export type PaymentKind =
   | 'sell_faster'
   | 'buyer_network'
   | 'sale_audit'
+  | 'buy_abroad_consultation'
   | 'advanced_service';
 
 export interface PendingPayment {

@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clearPendingPayment, readPendingPayment } from '../lib/paymentReturn';
 
-type CheckoutKind = 'session' | 'sell_faster' | 'buyer_network' | 'sale_audit';
+type CheckoutKind = 'session' | 'sell_faster' | 'buyer_network' | 'sale_audit' | 'buy_abroad_consultation';
 
 function resolvePostPaymentRoute(kind: CheckoutKind): string {
   if (kind === 'session') return '/dashboard';
   if (kind === 'sell_faster') return '/dashboard/sell-faster';
   if (kind === 'buyer_network') return '/dashboard/buyer-network';
+  if (kind === 'buy_abroad_consultation') return '/buyabroad/uk/consultation';
   return '/dashboard/sale-audit';
 }
 

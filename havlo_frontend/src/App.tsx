@@ -6,12 +6,15 @@ import { useModal } from './hooks/useModal';
 
 // Pages — lazy loaded for code splitting
 const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const GeoHome = React.lazy(() => import('./pages/GeoHome').then(m => ({ default: m.GeoHome })));
 const AboutUs = React.lazy(() => import('./pages/AboutUs').then(m => ({ default: m.AboutUs })));
 const BuyAbroad = React.lazy(() => import('./pages/BuyAbroad').then(m => ({ default: m.BuyAbroad })));
 const BuyAbroadUk = React.lazy(() => import('./pages/BuyAbroadUk').then(m => ({ default: m.BuyAbroadUk })));
 const BuyAbroadUkAgents = React.lazy(() => import('./pages/BuyAbroadUkAgents').then(m => ({ default: m.BuyAbroadUkAgents })));
-const BuyAbroadUkListings = React.lazy(() => import('./pages/BuyAbroadUkListings').then(m => ({ default: m.BuyAbroadUkListings })));
-const BuyAbroadUkListingDetail = React.lazy(() => import('./pages/BuyAbroadUkListingDetail').then(m => ({ default: m.BuyAbroadUkListingDetail })));
+const BuyAbroadUkListingsRedesign = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkListingsRedesign })));
+const BuyAbroadUkListingDetailRedesign = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkListingDetailRedesign })));
+const BuyAbroadUkBasket = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkBasket })));
+const BuyAbroadUkConsultation = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkConsultation })));
 const BuyAbroadUkApply = React.lazy(() => import('./pages/BuyAbroadUkApply').then(m => ({ default: m.BuyAbroadUkApply })));
 const BuyAbroadGhana = React.lazy(() => import('./pages/BuyAbroadGhana').then(m => ({ default: m.BuyAbroadGhana })));
 const BuyAbroadSouthAfrica = React.lazy(() => import('./pages/BuyAbroadSouthAfrica').then(m => ({ default: m.BuyAbroadSouthAfrica })));
@@ -47,7 +50,12 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ defa
 const AdminPanel = React.lazy(() => import('./pages/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const CheckoutPage = React.lazy(() => import('./pages/Checkout').then(m => ({ default: m.CheckoutPage })));
 const StaleListingsLanding = React.lazy(() => import('./pages/StaleListingsLanding').then(m => ({ default: m.StaleListingsLanding })));
+const StaleListingsHome = React.lazy(() => import('./pages/StaleListingsHome').then(m => ({ default: m.StaleListingsHome })));
 const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents').then(m => ({ default: m.StaleListingsAgents })));
+const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListingsPartnerships').then(m => ({ default: m.StaleListingsPartnerships })));
+const StaleListingProspectPreview = React.lazy(() => import('./pages/StaleListingProspect').then(m => ({ default: m.StaleListingProspectPreview })));
+const StaleListingProspectComplete = React.lazy(() => import('./pages/StaleListingProspect').then(m => ({ default: m.StaleListingProspectComplete })));
+const StaleListingProspectReport = React.lazy(() => import('./pages/StaleListingProspect').then(m => ({ default: m.StaleListingProspectReport })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
 const StaleListingsReviewAccess = React.lazy(() => import('./pages/StaleListingsReviewAccess').then(m => ({ default: m.StaleListingsReviewAccess })));
 const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
@@ -262,14 +270,17 @@ export default function App() {
         <Layout>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<GeoHome />} />
+              <Route path="/home" element={<Home />} />
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/about" element={<Navigate to="/about-us" replace />} />
               <Route path="/buy-property-abroad" element={<BuyAbroad />} />
               <Route path="/buyabroad/uk" element={<BuyAbroadUk />} />
               <Route path="/buyabroad/uk/agents" element={<BuyAbroadUkAgents />} />
-              <Route path="/buyabroad/uk/listings" element={<BuyAbroadUkListings />} />
-              <Route path="/buyabroad/uk/listings/:id" element={<BuyAbroadUkListingDetail />} />
+              <Route path="/buyabroad/uk/listings" element={<BuyAbroadUkListingsRedesign />} />
+              <Route path="/buyabroad/uk/basket" element={<BuyAbroadUkBasket />} />
+              <Route path="/buyabroad/uk/consultation" element={<BuyAbroadUkConsultation />} />
+              <Route path="/buyabroad/uk/listings/:id" element={<BuyAbroadUkListingDetailRedesign />} />
               <Route path="/buyabroad/uk/apply" element={<BuyAbroadUkApply />} />
               <Route path="/buyabroad/ghana" element={<BuyAbroadGhana />} />
               <Route path="/buyabroad/southafrica" element={<BuyAbroadSouthAfrica />} />
@@ -315,8 +326,14 @@ export default function App() {
               <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-              <Route path="/stale-listings" element={<StaleListingsLanding />} />
+              <Route path="/stale-listings" element={<StaleListingsHome />} />
+              <Route path="/stale-listings/seller" element={<StaleListingsLanding />} />
               <Route path="/stale-listings/agents" element={<StaleListingsAgents />} />
+              <Route path="/stale-listings/partnerships" element={<StaleListingsPartnerships />} />
+              <Route path="/stale-listings/prospect/complete" element={<StaleListingProspectComplete />} />
+              <Route path="/stale-listings/prospect/report" element={<StaleListingProspectReport />} />
+              <Route path="/stale-listings/prospect/:token" element={<StaleListingProspectPreview />} />
+              <Route path="/stale-listings/prospect" element={<StaleListingProspectPreview />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
               <Route path="/stale-listings/review-access" element={<StaleListingsReviewAccess />} />
               <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />

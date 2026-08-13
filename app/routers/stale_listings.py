@@ -8,16 +8,23 @@ import string
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
-from app.models.models import StaleListingAssessment, User
+from app.models.models import StaleListingAssessment, StaleListingProspect, User
 from app.schemas.schemas import (
     AgencyPricingRequest,
+    StaleProspectAdminCreateRequest,
+    StaleProspectAdminCreateResponse,
+    StaleProspectCheckoutRequest,
+    StaleProspectCheckoutResponse,
+    StaleProspectLookupRequest,
+    StaleProspectPreviewResponse,
+    StaleProspectReportResponse,
     StaleListingAdminFinalizeRequest,
     StaleListingAdminItem,
     StaleListingListingSnapshot,
@@ -31,6 +38,20 @@ from app.schemas.schemas import (
 from app.services import email_service, google_sheets, sumup_service
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
+from app.services.stale_prospect_service import (
+    build_preview,
+    create_access_token,
+    extract_price,
+    generate_letter_pdf,
+    generate_prospect_report,
+    hash_access_token,
+    is_specific_address,
+    make_property_code,
+    normalize_property_code,
+    serialize_preview,
+    serialize_report,
+    snapshot_from_scrape,
+)
 from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
@@ -509,6 +530,245 @@ async def verify_stale_listing_payment(
         logger.error("SumUp verification failed for %s: %s", reference, exc)
 
     return {"payment_status": assessment.payment_status, "reference": reference}
+
+
+def _frontend_base_url() -> str:
+    return (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
+
+
+async def _get_prospect_by_access(
+    db: AsyncSession,
+    *,
+    token: str | None = None,
+    property_code: str | None = None,
+) -> StaleListingProspect:
+    stmt = None
+    if token and token.strip():
+        stmt = select(StaleListingProspect).where(
+            StaleListingProspect.qr_token_hash == hash_access_token(token.strip())
+        )
+    else:
+        code = normalize_property_code(property_code)
+        if len(code) == 4:
+            stmt = select(StaleListingProspect).where(StaleListingProspect.property_code == code)
+    if stmt is None:
+        raise HTTPException(status_code=404, detail="We could not find that property assessment.")
+    result = await db.execute(stmt)
+    prospect = result.scalar_one_or_none()
+    if not prospect:
+        raise HTTPException(status_code=404, detail="We could not find that property assessment.")
+    return prospect
+
+
+@public_router.post("/prospects/lookup", response_model=StaleProspectPreviewResponse)
+async def lookup_stale_prospect(
+    payload: StaleProspectLookupRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectPreviewResponse:
+    prospect = await _get_prospect_by_access(db, property_code=payload.property_code)
+    return StaleProspectPreviewResponse(**serialize_preview(prospect))
+
+
+@public_router.get("/prospects/preview", response_model=StaleProspectPreviewResponse)
+async def get_stale_prospect_preview(
+    token: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectPreviewResponse:
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    return StaleProspectPreviewResponse(**serialize_preview(prospect))
+
+
+@public_router.post("/prospects/checkout", response_model=StaleProspectCheckoutResponse)
+async def create_stale_prospect_checkout(
+    payload: StaleProspectCheckoutRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectCheckoutResponse:
+    prospect = await _get_prospect_by_access(
+        db,
+        token=payload.token,
+        property_code=payload.property_code,
+    )
+    package = SL_PACKAGES["listing_recovery_assessment"]
+    amount = float(package["amount"])
+    currency = str(package["currency"])
+    frontend = _frontend_base_url()
+    access_key = f"token={payload.token.strip()}" if payload.token else f"code={prospect.property_code}"
+    redirect_url = (payload.redirect_url or f"{frontend}/stale-listings/prospect/complete").rstrip("/")
+    sep = "&" if "?" in redirect_url else "?"
+    redirect_url = f"{redirect_url}{sep}{access_key}"
+
+    if prospect.payment_status == "completed":
+        return StaleProspectCheckoutResponse(
+            prospect_id=str(prospect.id),
+            property_code=prospect.property_code,
+            checkout_url=redirect_url,
+            checkout_id=prospect.sumup_checkout_id or "",
+            amount=amount,
+            currency=currency,
+        )
+
+    try:
+        checkout = await sumup_service.create_checkout(
+            amount=amount,
+            currency=currency,
+            description=f"StaleListings full report unlock - {prospect.property_code}",
+            reference=f"SLP-{prospect.property_code}-{uuid.uuid4().hex[:8].upper()}",
+            redirect_url=redirect_url,
+        )
+    except SumUpError as exc:
+        logger.error("SumUp checkout failed for stale prospect %s: %s", prospect.property_code, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to create a secure payment session right now. Please try again.",
+        ) from exc
+
+    checkout_url = checkout.get("checkout_url") or checkout.get("hosted_checkout_url") or ""
+    checkout_id = checkout.get("id") or ""
+    if not checkout_url or not checkout_id:
+        raise HTTPException(status_code=502, detail="Payment provider did not return a checkout link.")
+
+    prospect.sumup_checkout_id = checkout_id
+    prospect.sumup_checkout_url = checkout_url
+    prospect.payment_status = "pending"
+    await db.commit()
+    return StaleProspectCheckoutResponse(
+        prospect_id=str(prospect.id),
+        property_code=prospect.property_code,
+        checkout_url=checkout_url,
+        checkout_id=checkout_id,
+        amount=amount,
+        currency=currency,
+    )
+
+
+@public_router.get("/prospects/payment-status")
+async def get_stale_prospect_payment_status(
+    token: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    if prospect.payment_status == "completed":
+        return {"payment_status": "completed", "property_code": prospect.property_code}
+    if not prospect.sumup_checkout_id:
+        return {"payment_status": prospect.payment_status, "property_code": prospect.property_code}
+    try:
+        checkout_data = await sumup_service.get_checkout_status(prospect.sumup_checkout_id)
+        sumup_status = (checkout_data.get("status") or "").upper()
+        if sumup_status == "PAID":
+            prospect.payment_status = "completed"
+            prospect.unlocked_at = datetime.utcnow()
+            await db.commit()
+        elif sumup_status in {"FAILED", "EXPIRED"}:
+            prospect.payment_status = "failed"
+            await db.commit()
+    except SumUpError as exc:
+        logger.error("SumUp verification failed for stale prospect %s: %s", prospect.property_code, exc)
+    return {"payment_status": prospect.payment_status, "property_code": prospect.property_code}
+
+
+@public_router.get("/prospects/report", response_model=StaleProspectReportResponse)
+async def get_stale_prospect_report(
+    token: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectReportResponse:
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    if prospect.payment_status != "completed":
+        raise HTTPException(status_code=402, detail="This full report is locked until payment is complete.")
+    return StaleProspectReportResponse(**serialize_report(prospect))
+
+
+@admin_router.post("/admin/prospects/from-url", response_model=StaleProspectAdminCreateResponse)
+async def create_stale_prospect_from_url(
+    payload: StaleProspectAdminCreateRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectAdminCreateResponse:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+
+    existing = await db.execute(
+        select(StaleListingProspect).where(StaleListingProspect.rightmove_url == str(payload.rightmove_url))
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This Rightmove listing has already been prospected.")
+
+    try:
+        scraped = await scrape_single_listing(str(payload.rightmove_url))
+    except Exception as exc:
+        logger.warning("Prospect scrape failed for %s: %s", payload.rightmove_url, exc)
+        scraped = {}
+
+    snapshot = snapshot_from_scrape(scraped, str(payload.rightmove_url))
+    address = (payload.property_address or snapshot.get("address") or snapshot.get("title") or "").strip()
+    price = payload.asking_price if payload.asking_price is not None else extract_price(snapshot.get("price"))
+    if price is None or price < 300000:
+        raise HTTPException(status_code=400, detail="Prospect must be a residential sale listing above GBP 300,000.")
+    if int(payload.listing_duration_days or 0) < 180:
+        raise HTTPException(status_code=400, detail="Prospect must have been listed for at least 6 months.")
+    if not is_specific_address(address):
+        raise HTTPException(status_code=400, detail="Prospect address is not specific enough for a personalised letter.")
+
+    token = create_access_token()
+    property_code = await make_property_code(db)
+    report = await generate_prospect_report(
+        property_address=address,
+        listing_url=str(payload.rightmove_url),
+        listing_snapshot=snapshot,
+        listing_duration_days=payload.listing_duration_days,
+    )
+    preview = build_preview(report, snapshot, address)
+    prospect = StaleListingProspect(
+        property_code=property_code,
+        qr_token_hash=hash_access_token(token),
+        property_address=address,
+        rightmove_url=str(payload.rightmove_url),
+        rightmove_id=snapshot.get("rightmove_id") or None,
+        asking_price=float(price),
+        listing_duration_days=int(payload.listing_duration_days),
+        property_type=snapshot.get("property_type") or None,
+        bedrooms=int(snapshot["bedrooms"]) if str(snapshot.get("bedrooms") or "").isdigit() else None,
+        bathrooms=int(snapshot["bathrooms"]) if str(snapshot.get("bathrooms") or "").isdigit() else None,
+        listing_snapshot_json=json.dumps(snapshot, ensure_ascii=False),
+        report_json=json.dumps(report, ensure_ascii=False),
+        preview_json=json.dumps(preview, ensure_ascii=False),
+        processing_status="report_ready",
+        payment_status="pending",
+    )
+    db.add(prospect)
+    await db.flush()
+
+    preview_url = f"{_frontend_base_url()}/stale-listings/prospect/{token}"
+    letter_path = generate_letter_pdf(prospect, token, _frontend_base_url())
+    prospect.letter_pdf_path = letter_path
+    prospect.processing_status = "letter_ready"
+    await db.commit()
+    await db.refresh(prospect)
+
+    admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    email_sent = False
+    if admin_email:
+        background_tasks.add_task(
+            email_service.send_stale_prospect_letter_sync,
+            to_email=admin_email,
+            property_address=address,
+            property_code=property_code,
+            preview_url=preview_url,
+            letter_pdf_path=letter_path,
+        )
+        email_sent = True
+
+    return StaleProspectAdminCreateResponse(
+        prospect_id=str(prospect.id),
+        property_code=property_code,
+        preview_url=preview_url,
+        qr_url=preview_url,
+        letter_pdf_path=letter_path,
+        email_sent=email_sent,
+    )
 
 
 @admin_router.get("/admin", response_model=list[StaleListingAdminItem])

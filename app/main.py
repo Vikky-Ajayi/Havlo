@@ -13,7 +13,7 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -453,10 +453,13 @@ async def startup() -> None:
         logger.info("DB keep-alive ping scheduled (every 4 min).")
 
     # ── Rightmove scraper background loop ─────────────────────────────
-    if HAS_DATABASE:
+    scraper_disabled = os.getenv("DISABLE_RIGHTMOVE_SCRAPER", "").strip().lower() in {"1", "true", "yes", "on"}
+    if HAS_DATABASE and not scraper_disabled:
         from app.services.rightmove_scraper import start_scraper_loop
         app.state.scraper_task = asyncio.create_task(start_scraper_loop())
         logger.info("Rightmove scraper loop started.")
+    elif HAS_DATABASE:
+        logger.info("Rightmove scraper loop disabled by DISABLE_RIGHTMOVE_SCRAPER.")
 
 
 @app.on_event("shutdown")
@@ -608,6 +611,18 @@ async def public_config() -> JSONResponse:
     return JSONResponse({
         "calendly_link": settings.CALENDLY_LINK or "",
     })
+
+
+@app.get("/api/v1/geo/home-target", tags=["Config"])
+async def geo_home_target(
+    cf_ipcountry: str | None = Header(None, alias="CF-IPCountry"),
+    x_vercel_ip_country: str | None = Header(None, alias="X-Vercel-IP-Country"),
+    x_country_code: str | None = Header(None, alias="X-Country-Code"),
+) -> JSONResponse:
+    """Return the best public homepage experience from proxy country headers."""
+    country = (cf_ipcountry or x_vercel_ip_country or x_country_code or "").strip().upper()
+    target_path = "/stale-listings" if country in {"GB", "UK"} else "/buyabroad/uk"
+    return JSONResponse({"country": country or None, "target_path": target_path})
 
 
 @app.options("/{full_path:path}", include_in_schema=False)

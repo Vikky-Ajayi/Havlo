@@ -41,7 +41,13 @@ def _is_configured() -> bool:
     return bool(s.RESEND_API_KEY and s.EMAIL_FROM)
 
 
-def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> bool:
+def _send_sync(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    plain_body: str,
+    attachments: Optional[list[dict]] = None,
+) -> bool:
     """Synchronous send with bounded retries. Always returns a bool, never raises.
 
     Retries on transient errors (HTTP 429 rate-limit, HTTP 5xx, network/timeout).
@@ -77,6 +83,8 @@ def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> 
     }
     if s.EMAIL_REPLY_TO:
         params["reply_to"] = s.EMAIL_REPLY_TO
+    if attachments:
+        params["attachments"] = attachments
 
     last_error: Optional[str] = None
     for attempt in range(1, _RETRY_ATTEMPTS + 1):
@@ -1698,6 +1706,72 @@ async def send_stale_listing_report_ready(
     )
 
 
+def send_stale_prospect_letter_sync(
+    *,
+    to_email: str,
+    property_address: str,
+    property_code: str,
+    preview_url: str,
+    letter_pdf_path: str,
+) -> bool:
+    """Send a generated stale-listing prospect letter PDF to the admin inbox."""
+    attachments = None
+    try:
+        from app.services.stale_prospect_service import attachment_from_file
+
+        attachments = [attachment_from_file(letter_pdf_path)]
+    except Exception as exc:
+        logger.error("Unable to attach prospect letter PDF for %s: %s", property_code, exc)
+
+    brand = _email_brand()
+    fields = {
+        "Property": property_address,
+        "Property ID": property_code,
+        "Preview URL": preview_url,
+        "Letter PDF": letter_pdf_path,
+    }
+    html_body = _email_shell_html(
+        title="StaleListings prospect letter ready",
+        preheader="A prospect letter is ready for print and post.",
+        brand=brand,
+        show_hero=False,
+        body_html=f"""
+        <tr>
+          <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+            <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#8C133B;text-transform:uppercase;">Internal prospecting</p>
+            <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#556274;">Prospect letter ready</h1>
+            <p class="havlo-body-copy" style="margin:0 0 18px 0;">
+              A stale-listing prospect has been assessed and the personalised letter PDF is attached for manual print and postage.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 14px 48px;">{_email_value_table_html(fields)}</td>
+        </tr>
+        <tr>
+          <td class="havlo-pad-x" style="padding:0 48px 34px 48px;font-family:Arial,Helvetica,sans-serif;">
+            <div style="text-align:left;margin-bottom:18px;">{_email_button_html(preview_url, "Open homeowner preview")}</div>
+            <p class="havlo-body-copy" style="margin:0;font-size:13px;line-height:22px;">Property ID: {_html_lib.escape(property_code)}. The QR code in the attached PDF points to the same preview.</p>
+          </td>
+        </tr>
+        """,
+    )
+    plain_body = (
+        "StaleListings prospect letter ready.\n\n"
+        f"Property: {property_address}\n"
+        f"Property ID: {property_code}\n"
+        f"Preview URL: {preview_url}\n"
+        f"Letter PDF: {letter_pdf_path}\n"
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[StaleListings] Prospect letter ready - {property_code}",
+        html_body=html_body,
+        plain_body=plain_body,
+        attachments=attachments,
+    )
+
+
 def send_stale_listing_agent_notification_sync(
     first_name: str,
     last_name: str,
@@ -1809,6 +1883,7 @@ __all__ = [
     "send_inbox_notification_sync",
     "send_product_access_magic_link",
     "send_product_access_magic_link_sync",
+    "send_stale_prospect_letter_sync",
     "send_password_reset_otp",
     "send_password_reset_otp_sync",
     "send_test_email",

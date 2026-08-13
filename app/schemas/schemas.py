@@ -539,6 +539,64 @@ class StaleListingReportResponse(BaseModel):
     created_at: str
 
 
+class StaleProspectLookupRequest(BaseModel):
+    property_code: str = Field(..., min_length=4, max_length=12)
+
+
+class StaleProspectCheckoutRequest(BaseModel):
+    token: Optional[str] = Field(None, max_length=200)
+    property_code: Optional[str] = Field(None, min_length=4, max_length=12)
+    redirect_url: Optional[str] = Field(None, max_length=2000)
+
+
+class StaleProspectAdminCreateRequest(BaseModel):
+    rightmove_url: str = Field(..., min_length=8, max_length=2000)
+    property_address: Optional[str] = Field(None, max_length=500)
+    listing_duration_days: int = Field(180, ge=180)
+    asking_price: Optional[float] = Field(None, ge=300000)
+
+
+class StaleProspectPreviewResponse(BaseModel):
+    prospect_id: str
+    property_code: str
+    property_address: str
+    rightmove_url: str
+    asking_price: Optional[float] = None
+    listing_duration_days: Optional[int] = None
+    listing_snapshot: dict = Field(default_factory=dict)
+    preview: dict = Field(default_factory=dict)
+    payment_status: str
+    is_unlocked: bool
+
+
+class StaleProspectCheckoutResponse(BaseModel):
+    prospect_id: str
+    property_code: str
+    checkout_url: str
+    checkout_id: str
+    amount: float
+    currency: str
+
+
+class StaleProspectReportResponse(BaseModel):
+    prospect_id: str
+    property_code: str
+    property_address: str
+    rightmove_url: str
+    listing_snapshot: dict = Field(default_factory=dict)
+    report_data: dict = Field(default_factory=dict)
+    payment_status: str
+
+
+class StaleProspectAdminCreateResponse(BaseModel):
+    prospect_id: str
+    property_code: str
+    qr_url: str
+    preview_url: str
+    letter_pdf_path: Optional[str] = None
+    email_sent: bool = False
+
+
 class StaleListingAdminItem(BaseModel):
     assessment_id: str
     reference: str
