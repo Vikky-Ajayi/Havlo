@@ -15,7 +15,7 @@ export const GeoHome = () => {
       <div className="mx-auto grid min-h-[calc(100vh-8rem)] max-w-3xl place-items-center">
         <section className="w-full rounded-[32px] border border-black/10 bg-white p-8 shadow-[0_24px_80px_rgba(0,0,0,0.08)] sm:p-12">
           <p className="text-sm font-black uppercase tracking-[0.24em] text-[#a900d8]">Choose your Havlo experience</p>
-          <h1 className="mt-4 text-4xl font-light tracking-[-0.05em] text-black sm:text-6xl">
+          <h1 className="mt-4 font-body text-4xl font-light tracking-[-0.05em] text-black sm:text-6xl">
             Are you currently in the UK?
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-black/65">

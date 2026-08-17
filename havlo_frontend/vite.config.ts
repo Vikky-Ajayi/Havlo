@@ -17,7 +17,7 @@ export default defineConfig(({mode}) => {
     },
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
-      port: 5000,
+      port: Number(process.env.PORT) || 5000,
       host: '0.0.0.0',
       allowedHosts: true,
       proxy: {
