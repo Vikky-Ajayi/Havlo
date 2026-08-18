@@ -41,6 +41,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing
+from app.services.scraper_base import normalize_listing_text, run_once_with_advisory_lock
 
 logger = logging.getLogger(__name__)
 
@@ -430,6 +431,7 @@ def _extract_listing(prop: dict[str, Any], city: str) -> Optional[dict[str, Any]
 
         address = prop.get("displayAddress", "")
         title = prop.get("summary", address)
+        headline, subtitle = normalize_listing_text(str(title), str(address))
         prop_type = (
             prop.get("propertySubType")
             or prop.get("propertyTypeFullDescription", "Property")
@@ -462,15 +464,19 @@ def _extract_listing(prop: dict[str, Any], city: str) -> Optional[dict[str, Any]
         return {
             "rightmove_id":  rm_id,
             "url":           prop_url,
-            "title":         title[:500],
+            "title":         headline,
             "price_gbp":     price_gbp,
+            "price_native":  price_gbp,
+            "price_currency": "GBP",
             "address":       address[:500],
             "city":          city,
             "region":        "",
+            "country":       "uk",
+            "source":        "rightmove",
             "bedrooms":      bedrooms,
             "bathrooms":     bathrooms,
             "property_type": str(prop_type)[:100],
-            "description":   prop.get("summary", ""),
+            "description":   subtitle,
             "images_json":   json.dumps(images),
         }
     except Exception as exc:
@@ -709,7 +715,7 @@ async def start_scraper_loop() -> None:
     )
     while True:
         try:
-            await scrape_all()
+            await run_once_with_advisory_lock("Rightmove", scrape_all)
         except Exception as exc:
             logger.error("Scraper loop top-level error: %s", exc)
         logger.info(

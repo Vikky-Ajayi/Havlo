@@ -25,23 +25,32 @@ interface Listing {
   url: string;
   title: string;
   price_gbp: number;
+  price_native?: number;
+  price_currency?: string;
+  price_display?: string;
   price_ngn: number;
+  ngn_rate?: number;
   address: string;
   city: string;
   region?: string;
   country?: string;
+  source?: string;
+  source_label?: string;
   bedrooms: number;
   bathrooms: number | null;
   property_type: string;
   description: string;
   images: string[];
+  scraped_at?: string | null;
 }
 
 interface ListingsResponse {
   listings: Listing[];
   total?: number;
   page?: number;
+  per_page?: number;
   pages?: number;
+  country?: string;
 }
 
 const fallbackImages = ['/1.png', '/2.png', '/3.png', '/4.png', '/5.png'];
@@ -60,6 +69,20 @@ function emptyCountryListings(): Record<CountryKey, Listing[]> {
     acc[section.key] = [];
     return acc;
   }, {} as Record<CountryKey, Listing[]>);
+}
+
+function emptyCountryFlags(defaultValue = false): Record<CountryKey, boolean> {
+  return COUNTRY_SECTIONS.reduce((acc, section) => {
+    acc[section.key] = defaultValue;
+    return acc;
+  }, {} as Record<CountryKey, boolean>);
+}
+
+function emptyCountryMessages(): Record<CountryKey, string> {
+  return COUNTRY_SECTIONS.reduce((acc, section) => {
+    acc[section.key] = '';
+    return acc;
+  }, {} as Record<CountryKey, string>);
 }
 
 function filterListings(listings: Listing[], term: string) {
@@ -89,7 +112,112 @@ function writeIds(key: string, ids: string[]) {
 }
 
 function formatGbp(amount: number) {
-  return `£${amount.toLocaleString('en-GB')}`;
+  return `£${Math.max(0, Math.round(amount || 0)).toLocaleString('en-GB')}`;
+}
+
+function formatMoney(amount: number, currency = 'GBP') {
+  const code = (currency || 'GBP').toUpperCase();
+  const value = Math.max(0, Math.round(amount || 0));
+  const symbols: Record<string, string> = { GBP: '£', USD: '$', CAD: 'C$', AED: 'AED ' };
+  return `${symbols[code] || `${code} `}${value.toLocaleString('en-GB')}`;
+}
+
+function displayPrice(listing: Listing) {
+  const nativeAmount = listing.price_native || listing.price_gbp || 0;
+  const nativeCurrency = (listing.price_currency || 'GBP').toUpperCase();
+  if (nativeCurrency !== 'GBP' && nativeAmount > 0) {
+    return `${formatMoney(nativeAmount, nativeCurrency)} (${formatGbp(listing.price_gbp)})`;
+  }
+  return listing.price_display || formatGbp(listing.price_gbp || nativeAmount);
+}
+
+function cleanText(value?: string | null) {
+  return (value || '').replace(/\s+/g, ' ').trim();
+}
+
+function countryLabel(country?: string) {
+  const labels: Record<string, string> = {
+    uk: 'UK',
+    america: 'America',
+    canada: 'Canada',
+    dubai: 'Dubai',
+  };
+  return labels[(country || '').toLowerCase()] || country || 'International';
+}
+
+function sourceLabel(listing: Listing) {
+  return listing.source_label || {
+    rightmove: 'Rightmove',
+    realtor_com: 'Realtor.com',
+    realtor_ca: 'Realtor.ca',
+    bayut: 'Bayut',
+  }[(listing.source || '').toLowerCase()] || 'Source';
+}
+
+function detailUrl(listing: Listing) {
+  return `/buyabroad/uk/listings/${encodeURIComponent(listing.rightmove_id)}`;
+}
+
+function listingMetaParts(listing: Listing) {
+  const parts: React.ReactNode[] = [];
+  if (listing.bedrooms > 0) {
+    parts.push(<span key="beds"><Bed size={14} /> {listing.bedrooms} {listing.bedrooms === 1 ? 'bed' : 'beds'}</span>);
+  }
+  if ((listing.bathrooms || 0) > 0) {
+    parts.push(<span key="baths"><Bath size={14} /> {listing.bathrooms} {listing.bathrooms === 1 ? 'bath' : 'baths'}</span>);
+  }
+  const location = cleanText([listing.city, countryLabel(listing.country)].filter(Boolean).join(', '));
+  if (location) {
+    parts.push(<span key="location"><MapPin size={14} /> {location}</span>);
+  }
+  return parts;
+}
+
+function calcStampDuty(p: number): number {
+  if (p <= 125_000) return Math.round(p * 0.02);
+  if (p <= 250_000) return Math.round(p * 0.04);
+  if (p <= 925_000) return Math.round(p * 0.07);
+  if (p <= 1_500_000) return Math.round(p * 0.12);
+  return Math.round(p * 0.14);
+}
+
+function calcLandRegistry(p: number): number {
+  if (p <= 80_000) return 20;
+  if (p <= 100_000) return 40;
+  if (p <= 200_000) return 100;
+  if (p <= 500_000) return 150;
+  if (p <= 1_000_000) return 295;
+  return 500;
+}
+
+function calcHavloFee(p: number): number {
+  if (p <= 100_000) return 5_000;
+  if (p <= 150_000) return 7_000;
+  if (p <= 300_000) return 10_000;
+  if (p <= 500_000) return 20_000;
+  return 20_000;
+}
+
+function costRowsFor(listing: Listing) {
+  const p = listing.price_gbp || 0;
+  const country = (listing.country || 'uk').toLowerCase();
+  if (country === 'uk') {
+    return [
+      { label: 'Stamp Duty', amount: calcStampDuty(p), accent: true },
+      { label: 'Property Search', amount: 500 },
+      { label: 'Solicitor/Conveyancing', amount: 2500 },
+      { label: 'Land Registry', amount: calcLandRegistry(p), accent: true },
+      { label: 'Level 2 Survey', amount: 800 },
+      { label: 'Insurance', amount: 600 },
+      { label: 'Havlo Advisory fee', amount: calcHavloFee(p), accent: true },
+    ];
+  }
+  return [
+    { label: 'Legal due diligence', amount: Math.max(1500, Math.round(p * 0.008)) },
+    { label: 'Survey / inspection', amount: Math.max(650, Math.round(p * 0.0025)) },
+    { label: 'Transfer and admin costs', amount: Math.max(2500, Math.round(p * 0.035)), accent: true },
+    { label: 'Havlo Advisory fee', amount: calcHavloFee(p), accent: true },
+  ];
 }
 
 function imageFor(listing: Listing, index: number) {
@@ -168,17 +296,20 @@ function PropertyCard({
   saved: boolean;
   onSave: () => void;
 }) {
+  const title = cleanText(listing.title) || cleanText(listing.address) || 'Property for sale';
+  const meta = listingMetaParts(listing);
   return (
     <article className="baml-card">
-      <a href={`/buyabroad/uk/listings/${encodeURIComponent(listing.rightmove_id)}`} className="baml-card-img">
-        <img src={imageFor(listing, index)} alt={listing.title} />
+      <a href={detailUrl(listing)} className="baml-card-img">
+        <img src={imageFor(listing, index)} alt={title} loading="lazy" />
       </a>
       <button className={`baml-heart ${saved ? 'active' : ''}`} onClick={onSave} aria-label={saved ? 'Remove saved home' : 'Save home'}>
         <Heart size={28} fill="currentColor" strokeWidth={1.8} />
       </button>
-      <a className="baml-card-title" href={`/buyabroad/uk/listings/${encodeURIComponent(listing.rightmove_id)}`}>{listing.title || 'Llanbrynmair, SY19'}</a>
-      <p className="baml-meta"><Bed size={14} /> {listing.bedrooms || 4} beds <Bath size={14} /> {listing.bathrooms || 1} bath <MapPin size={14} /> {listing.city || listing.address || 'Llanelli'}</p>
-      <p className="baml-price">{formatGbp(listing.price_gbp || 410000)} total</p>
+      <span className="baml-source-badge">{sourceLabel(listing)}</span>
+      <a className="baml-card-title" href={detailUrl(listing)}>{title}</a>
+      {meta.length > 0 && <p className="baml-meta">{meta}</p>}
+      <p className="baml-price">{displayPrice(listing)}</p>
     </article>
   );
 }
@@ -190,6 +321,7 @@ function ListingSection({
   toggleFav,
   onOpenAll,
   loading,
+  error,
 }: {
   title: string;
   listings: Listing[];
@@ -197,6 +329,7 @@ function ListingSection({
   toggleFav: (id: string) => void;
   onOpenAll: () => void;
   loading?: boolean;
+  error?: string;
 }) {
   return (
     <section className="baml-row-section">
@@ -210,8 +343,9 @@ function ListingSection({
       </div>
       <div className="baml-row-grid">
         {loading && <p className="baml-empty">Loading live listings...</p>}
-        {!loading && !listings.length && <p className="baml-empty">No live listings available for this location yet.</p>}
-        {!loading && listings.slice(0, 5).map((listing, index) => (
+        {!loading && error && <p className="baml-empty">{error}</p>}
+        {!loading && !error && !listings.length && <p className="baml-empty">No live listings available for this location yet.</p>}
+        {!loading && !error && listings.slice(0, 5).map((listing, index) => (
           <PropertyCard
             key={`${title}-${listing.rightmove_id}-${index}`}
             listing={listing}
@@ -226,37 +360,80 @@ function ListingSection({
 }
 
 function AllHomesModal({
-  listings,
+  country,
   favs,
   toggleFav,
   onClose,
   title,
+  searchTerm,
 }: {
-  listings: Listing[];
+  country: CountryKey;
   favs: string[];
   toggleFav: (id: string) => void;
   onClose: () => void;
   title: string;
+  searchTerm: string;
 }) {
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<ListingsResponse>({ listings: [], page: 1, pages: 1, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setPage(1);
+  }, [country, searchTerm]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    const params = new URLSearchParams({ country, page: String(page), per_page: '40' });
+    const term = searchTerm.trim();
+    if (term) params.set('search', term);
+    fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((payload: ListingsResponse) => setData(payload))
+      .catch((err) => {
+        if (err?.name !== 'AbortError') setError('We could not load these homes right now.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [country, page, searchTerm]);
+
+  const pages = Math.max(1, data.pages || 1);
+  const pageButtons = Array.from(
+    new Set([1, page - 1, page, page + 1, pages].filter((item) => item >= 1 && item <= pages)),
+  );
+
   return (
     <div className="baml-overlay baml-homes-overlay">
       <div className="baml-all-homes">
         <button className="baml-close" onClick={onClose} aria-label="Close"><X size={22} /></button>
         <h2>{title}</h2>
-        <div className="baml-all-grid">
-          {!listings.length && <p className="baml-empty">No live listings available for this location yet.</p>}
-          {listings.slice(0, 20).map((listing, index) => (
-            <PropertyCard
-              key={`all-${listing.rightmove_id}-${index}`}
-              listing={listing}
-              index={index}
-              saved={favs.includes(listing.rightmove_id)}
-              onSave={() => toggleFav(listing.rightmove_id)}
-            />
-          ))}
-        </div>
-        <div className="baml-pagination">
-          <button><ChevronLeft size={20} /></button><button className="active">1</button><button>2</button><button>3</button><button>4</button><button>...</button><button>9</button><button><ChevronRight size={20} /></button>
+        <div className="baml-all-scroll">
+          <div className="baml-all-grid">
+            {loading && <p className="baml-empty">Loading live homes...</p>}
+            {error && <p className="baml-error">{error}</p>}
+            {!loading && !error && !data.listings.length && <p className="baml-empty">No live listings available for this location yet.</p>}
+            {!loading && !error && data.listings.map((listing, index) => (
+              <PropertyCard
+                key={`all-${listing.rightmove_id}-${index}`}
+                listing={listing}
+                index={index}
+                saved={favs.includes(listing.rightmove_id)}
+                onSave={() => toggleFav(listing.rightmove_id)}
+              />
+            ))}
+          </div>
+          <div className="baml-pagination">
+            <button disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><ChevronLeft size={20} /></button>
+            {pageButtons.map((item) => (
+              <button key={item} className={item === page ? 'active' : ''} onClick={() => setPage(item)}>{item}</button>
+            ))}
+            <button disabled={page >= pages} onClick={() => setPage((current) => Math.min(pages, current + 1))}><ChevronRight size={20} /></button>
+          </div>
         </div>
       </div>
     </div>
@@ -558,6 +735,12 @@ function MarketplaceStyles() {
       .baml-pay-modal{width:min(400px,calc(100vw - 18px));padding:24px 16px 16px}.baml-pay-modal h2,.baml-details-modal h2{margin-bottom:28px}.baml-pay-modal .baml-auth-copy{margin:0 0 46px}.baml-payment-options{display:grid;gap:14px}.baml-pay-option{height:80px;border:0;border-radius:12px;background:#f1f2f4;display:flex;align-items:center;gap:18px;padding:0 20px;text-align:left}.baml-pay-option.active{background:#fff;border:1.5px solid #b20adc}.baml-pay-option>span{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:#b20adc}.baml-pay-option strong{font-size:16px;display:flex;flex-direction:column;gap:5px}.baml-pay-option small{font-size:14px;color:#666;font-weight:500}.baml-details-modal{width:min(400px,calc(100vw - 18px));padding:24px 16px}.baml-details-modal .baml-auth-copy{margin:0 0 18px}.baml-details-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.baml-advisor-shell{position:relative;border-radius:36px;padding:12px;background:linear-gradient(135deg,#e8e8ff,#fff1ca);width:min(426px,calc(100vw - 18px))}.baml-advisor-card{background:#fff;border-radius:28px;padding:38px 28px 32px;text-align:center}.baml-payment-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;background:#fff0ff;color:#6f008d;font-weight:700}.baml-avatar-stack{display:flex;justify-content:center;margin:36px 0 14px}.baml-avatar-stack img,.baml-avatar-stack span{width:62px;height:62px;border-radius:50%;border:3px solid #fff;margin-left:-12px;object-fit:cover}.baml-avatar-stack img:first-child{margin-left:0}.baml-avatar-stack span{display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:800}.baml-trust{font-size:12px;color:#666}.baml-advisor-card h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:33px;line-height:1.12;margin:26px 0 12px;font-weight:900}.baml-advisor-card p{color:#666;line-height:1.45}.baml-book-consult{display:inline-flex;width:auto;align-items:center;justify-content:center;gap:16px;text-decoration:none;padding:0 22px;margin-top:28px}.baml-consult-page{padding:38px clamp(18px,6vw,80px) 40px;background:#fff;min-height:calc(100vh - 90px)}.baml-crumbs{display:flex;gap:14px;margin:5px 0 26px;color:#666}.baml-crumbs strong{color:#b20adc}.baml-consult-page h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:34px;margin:0 0 24px;font-weight:900}.baml-consult-intro{font-size:19px;line-height:1.45;color:#666;max-width:760px}.baml-video-card{border:1px solid #ddd;border-radius:26px;overflow:hidden;margin:44px 0 50px;box-shadow:0 12px 35px rgba(0,0,0,.06)}.baml-video-stage{height:min(520px,45vw);min-height:320px;background:#000;display:flex;align-items:center;justify-content:center;position:relative}.baml-video-pill{position:absolute;left:38px;top:28px;border:1px solid #333;border-radius:999px;color:#fff;padding:8px 15px}.baml-play{width:56px;height:56px;border-radius:50%;border:0;background:#fff;display:flex;align-items:center;justify-content:center}.baml-video-covers{padding:28px 35px 36px}.baml-video-covers h3{color:#666;margin:0 0 28px}.baml-video-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 80px}.baml-video-grid p{display:flex;align-items:center;gap:14px;color:#666;font-size:18px;margin:0}.baml-video-grid svg{color:#b20adc}.baml-question-card{border:1px solid #ddd;border-radius:22px;padding:30px 32px;margin:0 0 90px;display:flex;align-items:center;justify-content:space-between;gap:24px;box-shadow:0 10px 28px rgba(0,0,0,.05)}.baml-question-card h2{font-size:30px;margin:0 0 8px}.baml-question-card p{margin:0;color:#666;font-size:18px}.baml-question-actions{display:flex;gap:12px}.baml-question-actions a{height:48px;padding:0 26px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:900}.baml-question-actions .outline{border:1px solid #ddd;color:#111;background:#fff}.baml-question-actions .solid{background:#000;color:#fff}
       @media(max-width:900px){.baml-consult-page{padding:28px 16px}.baml-crumbs{display:none}.baml-consult-page h1{font-size:25px}.baml-consult-intro{font-size:18px}.baml-video-stage{height:206px;min-height:206px;border-radius:18px 18px 0 0}.baml-video-card{border-radius:18px;margin:28px 0 18px}.baml-video-pill{left:18px;top:14px}.baml-video-covers{padding:16px 18px}.baml-video-grid{grid-template-columns:1fr;gap:17px}.baml-video-grid p{font-size:16px}.baml-question-card{display:block;padding:28px 14px;margin-bottom:50px}.baml-question-card h2{font-size:21px}.baml-question-card p{font-size:16px;margin-bottom:20px}.baml-question-actions{flex-direction:column-reverse}.baml-question-actions a{width:100%}.baml-advisor-shell{position:fixed;left:0;right:0;bottom:0;width:100%;border-radius:36px 36px 0 0;padding:10px 10px 0}.baml-advisor-card{border-radius:30px 30px 0 0;padding:30px 14px 36px}.baml-advisor-card h2{font-size:29px}.baml-pay-modal,.baml-details-modal{width:calc(100vw - 18px);border-radius:20px}.baml-pay-modal .baml-auth-copy{margin-bottom:46px}.baml-pay-option{height:80px}.baml-details-grid{gap:16px}.baml-details-modal label{margin-bottom:18px}}
     `}</style>
+    <style>{`
+      .baml-source-badge{display:inline-flex;margin-top:10px;font-size:12px;font-weight:800;color:#555;background:#f2f3f5;border-radius:999px;padding:5px 9px}.baml-card-title{line-height:1.22;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px}.baml-meta{white-space:normal;flex-wrap:wrap;gap:7px 10px;line-height:1.35}.baml-meta span{display:inline-flex;align-items:center;gap:4px;min-width:0}.baml-price{font-weight:800;color:#222;line-height:1.35}.baml-detail-price{margin:9px 0 0;font-size:20px;font-weight:900;color:#333}.baml-detail-meta{display:flex;flex-wrap:wrap;gap:8px 16px;line-height:1.45}.baml-detail-meta>span{display:inline-flex;align-items:center;gap:5px}.baml-description{line-height:1.35}.baml-pagination button:disabled{opacity:.4;cursor:not-allowed}.baml-basket-info h3{line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+      .baml-homes-overlay{align-items:flex-end;padding:0;overflow:hidden}.baml-homes-overlay .baml-all-homes{height:calc(100dvh - 90px);min-height:0;max-height:calc(100dvh - 90px);display:flex;flex-direction:column;overflow:hidden}.baml-homes-overlay .baml-all-homes h2{flex:0 0 auto}.baml-all-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:8px;scrollbar-gutter:stable}.baml-all-scroll::-webkit-scrollbar{width:8px}.baml-all-scroll::-webkit-scrollbar-thumb{background:#d8d9de;border-radius:999px}.baml-all-scroll::-webkit-scrollbar-track{background:transparent}.baml-homes-overlay .baml-all-grid{min-height:0}.baml-homes-overlay .baml-pagination{flex:0 0 auto}
+      @media(max-width:900px){.baml-source-badge{font-size:11px;padding:4px 8px}.baml-card-title{min-height:36px}.baml-detail-meta{font-size:14px}.baml-basket-info .baml-meta{display:none}}
+      @media(max-width:900px){.baml-homes-overlay{padding-top:0}.baml-homes-overlay .baml-all-homes{height:calc(100dvh - 90px);max-height:calc(100dvh - 90px);min-height:0;overflow:hidden}.baml-homes-overlay .baml-all-homes h2{margin-bottom:28px}.baml-homes-overlay .baml-all-scroll{padding-bottom:6px}.baml-homes-overlay .baml-pagination{margin-top:36px}}
+    `}</style>
     </>
   );
 }
@@ -566,44 +749,65 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   usePageMeta({ title: 'Browse UK Properties in Pounds & Naira | Havlo', description: 'Browse homes across UK, America, Dubai and Canada with Havlo Buy Abroad.' });
   const auth = useAuth();
   const [listingsByCountry, setListingsByCountry] = useState<Record<CountryKey, Listing[]>>(() => emptyCountryListings());
-  const [loadingListings, setLoadingListings] = useState(true);
-  const [listingError, setListingError] = useState('');
+  const [loadingByCountry, setLoadingByCountry] = useState<Record<CountryKey, boolean>>(() => emptyCountryFlags(true));
+  const [listingErrors, setListingErrors] = useState<Record<CountryKey, string>>(() => emptyCountryMessages());
   const [searchTerm, setSearchTerm] = useState('');
   const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
   const [authView, setAuthView] = useState<AuthView | null>(null);
-  const [allOpen, setAllOpen] = useState<{ title: string; listings: Listing[] } | null>(null);
+  const [allOpen, setAllOpen] = useState<{ title: string; country: CountryKey } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    let cancelled = false;
-    setLoadingListings(true);
-    setListingError('');
-    Promise.all(
-      COUNTRY_SECTIONS.map(async (section) => {
-        const params = new URLSearchParams({ country: section.key, per_page: '20' });
-        const res = await fetch(listingsApiUrl(`/listings/?${params.toString()}`));
-        if (!res.ok) throw new Error(`Could not load ${section.key} listings`);
-        const data = await res.json() as ListingsResponse;
-        return [section.key, data.listings || []] as const;
-      })
-    )
-      .then((entries) => {
-        if (cancelled) return;
-        const next = emptyCountryListings();
-        entries.forEach(([country, listings]) => {
-          next[country] = listings;
-        });
-        setListingsByCountry(next);
-      })
-      .catch(() => {
-        if (!cancelled) setListingError('We could not load live listings right now.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingListings(false);
+    if (!allOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [allOpen]);
+
+  useEffect(() => {
+    const controllers: AbortController[] = [];
+    const term = searchTerm.trim();
+    setLoadingByCountry(emptyCountryFlags(true));
+    setListingErrors(emptyCountryMessages());
+
+    COUNTRY_SECTIONS.forEach((section) => {
+      const controller = new AbortController();
+      controllers.push(controller);
+      const params = new URLSearchParams({
+        country: section.key,
+        per_page: '20',
+        include_total: 'false',
       });
-    return () => { cancelled = true; };
-  }, []);
+      if (term) params.set('search', term);
+
+      fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
+        .then((res) => res.ok ? res.json() : Promise.reject())
+        .then((data: ListingsResponse) => {
+          if (controller.signal.aborted) return;
+          setListingsByCountry((current) => ({ ...current, [section.key]: data.listings || [] }));
+        })
+        .catch((err) => {
+          if (err?.name !== 'AbortError') {
+            setListingErrors((current) => ({
+              ...current,
+              [section.key]: `We could not load ${countryLabel(section.key)} listings right now.`,
+            }));
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setLoadingByCountry((current) => ({ ...current, [section.key]: false }));
+          }
+        });
+    });
+
+    return () => {
+      controllers.forEach((controller) => controller.abort());
+    };
+  }, [searchTerm]);
 
   const visibleListingsByCountry = useMemo(() => {
     const next = emptyCountryListings();
@@ -639,7 +843,6 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
         </div>
       </section>
       <main className="baml-market">
-        {listingError && <p className="baml-error">{listingError}</p>}
         {COUNTRY_SECTIONS.map((section) => (
           <ListingSection
             key={section.key}
@@ -647,14 +850,15 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
             listings={visibleListingsByCountry[section.key]}
             favs={favs}
             toggleFav={toggleFav}
-            loading={loadingListings}
-            onOpenAll={() => setAllOpen({ title: section.allTitle, listings: visibleListingsByCountry[section.key] })}
+            loading={loadingByCountry[section.key]}
+            error={listingErrors[section.key]}
+            onOpenAll={() => setAllOpen({ title: section.allTitle, country: section.key })}
           />
         ))}
       </main>
       <FooterCta />
       {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
-      {allOpen && <AllHomesModal title={allOpen.title} listings={allOpen.listings} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
+      {allOpen && <AllHomesModal title={allOpen.title} country={allOpen.country} searchTerm={searchTerm} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
     </div>
   );
 };
@@ -714,8 +918,11 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const images = active.images?.length ? active.images : fallbackImages;
   const saved = favs.includes(active.rightmove_id);
   const propertyPrice = active.price_gbp || 0;
-  const fees = Math.max(33100, Math.round(propertyPrice * 0.125));
+  const costRows = costRowsFor(active);
+  const fees = costRows.reduce((sum, row) => sum + row.amount, 0);
   const totalEstimated = propertyPrice + fees;
+  const detailMeta = listingMetaParts(active);
+  const viewSourceText = `View on ${sourceLabel(active)}`;
 
   const toggleFav = () => {
     if (!auth.token) {
@@ -741,7 +948,10 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
       <main className="baml-detail-main">
         <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
         <div className="baml-detail-top">
-          <h1>{active.title || 'Llanbrynmair, SY19'}</h1>
+          <div>
+            <h1>{cleanText(active.title) || cleanText(active.address) || 'Property for sale'}</h1>
+            <p className="baml-detail-price">{displayPrice(active)}</p>
+          </div>
           <button className="baml-save-button" onClick={toggleFav}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Saved' : 'Save'}</button>
         </div>
         <section className="baml-gallery">
@@ -752,19 +962,19 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
         </section>
         <section className="baml-detail-content">
           <div className="baml-detail-copy">
-            <h2>{active.property_type || 'Home'} in {active.city || active.region || 'this market'}</h2>
-            <p className="baml-detail-meta">Location <strong>{active.city || 'Country, City'}</strong> <span>•</span> Property Status <strong>For Sale</strong> <span>•</span> <strong>{active.bedrooms || 6} Bedrooms</strong></p>
-            <p className="baml-description">{active.description || 'A well-presented home with strong buyer appeal, attractive gardens, and generous parking in a peaceful setting.'}</p>
+            <h2>{active.property_type || 'Property'} in {cleanText([active.city, countryLabel(active.country)].filter(Boolean).join(', ')) || 'this market'}</h2>
+            <p className="baml-detail-meta">
+              <span>Source <strong>{sourceLabel(active)}</strong></span>
+              <span>Property Status <strong>For Sale</strong></span>
+              {detailMeta}
+            </p>
+            <p className="baml-description">{cleanText(active.description) || cleanText(active.address) || 'Contact Havlo for a full property review, local due diligence, and purchase guidance.'}</p>
             <div className="baml-cost-table">
               <div className="tabs"><div className="active">Cash Buyer</div><div>Mortgage Buyer</div></div>
               <h3>Other Associated Costs</h3>
-              <div className="baml-cost-row"><span>Stamp Duty:</span><strong className="purple">£18,550</strong></div>
-              <div className="baml-cost-row"><span>Property Search:</span><strong>£500</strong></div>
-              <div className="baml-cost-row"><span>Solicitor/Conveyancing:</span><strong>£2,500</strong></div>
-              <div className="baml-cost-row"><span>Land Registry:</span><strong className="purple">£150</strong></div>
-              <div className="baml-cost-row"><span>Level 2 Survey:</span><strong>£800</strong></div>
-              <div className="baml-cost-row"><span>Insurance:</span><strong>£600</strong></div>
-              <div className="baml-cost-row"><span>Havlo Advisory fee:</span><strong className="purple">£10,000</strong></div>
+              {costRows.map((row) => (
+                <div className="baml-cost-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatGbp(row.amount)}</strong></div>
+              ))}
               <div className="baml-cost-row"><span>Property price:</span><strong>{formatGbp(propertyPrice)}</strong></div>
               <div className="baml-cost-row baml-total"><span>Total Estimated cost including other fees:</span><strong>{formatGbp(totalEstimated)}</strong></div>
             </div>
@@ -777,9 +987,9 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
             <div className="baml-sidebar-actions">
               <button onClick={addToBasket}>Add to Basket <ShoppingBasket size={17} /></button>
               <a href="/buyabroad/uk#process">How it Works <ChevronRight size={17} /></a>
-              <a href={active.url || '#'} target="_blank" rel="noreferrer">View on Rightmove</a>
+              <a href={active.url || '#'} target="_blank" rel="noreferrer">{viewSourceText}</a>
             </div>
-            <p className="baml-info-note"><Info size={16} /> This property is covered by your one-time £500 consultation fee. Add as many as you like at no extra cost.</p>
+            <p className="baml-info-note"><Info size={16} /> This property is covered by your one-time $99.99 consultation deposit. Add as many as you like at no extra cost.</p>
           </aside>
         </section>
       </main>
@@ -815,7 +1025,7 @@ export const BuyAbroadUkBasket: React.FC = () => {
       setListings([]);
       return;
     }
-    fetch(listingsApiUrl(`/listings/by-ids?ids=${ids.join(',')}`))
+    fetch(listingsApiUrl(`/listings/by-ids?ids=${encodeURIComponent(ids.join(','))}`))
       .then((res) => res.ok ? res.json() : Promise.reject())
       .then((data: { listings: Listing[] }) => setListings(data.listings || []))
       .catch(() => {});
@@ -886,9 +1096,9 @@ export const BuyAbroadUkBasket: React.FC = () => {
               <article className="baml-basket-item" key={listing.rightmove_id}>
                 <img src={imageFor(listing, index)} alt={listing.title} />
                 <div className="baml-basket-info">
-                  <h3>{listing.title}</h3>
-                  <p className="baml-meta"><Bed size={14} /> {listing.bedrooms || 4} beds <Bath size={14} /> {listing.bathrooms || 1} bath <MapPin size={14} /> {listing.city || 'Llanelli'}</p>
-                  <p className="baml-price">{formatGbp(listing.price_gbp || 410000)} total</p>
+                  <h3>{cleanText(listing.title) || cleanText(listing.address) || 'Property for sale'}</h3>
+                  <p className="baml-meta">{listingMetaParts(listing)}</p>
+                  <p className="baml-price">{displayPrice(listing)}</p>
                 </div>
                 <button className="baml-trash" onClick={() => remove(listing.rightmove_id)} aria-label="Remove"><Trash2 /></button>
               </article>
@@ -937,7 +1147,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
   });
   const navigate = useNavigate();
   const [showAdvisor, setShowAdvisor] = useState(false);
-  const basketCount = readIds(MARKETPLACE_BASKET).length || 2;
+  const basketCount = readIds(MARKETPLACE_BASKET).length;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -965,7 +1175,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
         </nav>
         <h1>How Your Consultation Works</h1>
         <p className="baml-consult-intro">
-          Your basket has <strong>{basketCount} properties</strong> shortlisted. Before you pay the <strong>£500 consultation fee</strong>, watch this 2-minute explainer covering what happens next.
+          Your basket has <strong>{basketCount} properties</strong> shortlisted. Before you pay the <strong>$99.99 consultation deposit</strong>, watch this 2-minute explainer covering what happens next.
         </p>
         <section className="baml-video-card">
           <div className="baml-video-stage">

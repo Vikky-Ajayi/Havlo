@@ -146,7 +146,7 @@ export const StaleListingsPartnerships = () => (
       .slp-hero h1,.slp-work h2,.slp-white h2,.slp-shapes h2{font-family:'Right Grotesk','Arial Black','Inter',sans-serif;font-size:48px;line-height:1.02;letter-spacing:-.03em;font-weight:900;margin:16px 0}
       .slp-hero p,.slp-work p,.slp-shapes p{line-height:1.55;color:#222}
       .slp-hero p{margin:0 0 48px}
-      .slp-hero a,.slp-cta a{display:inline-block;text-decoration:none;color:#111;border:1px solid #ddd;border-radius:8px;padding:12px 18px;font-weight:800;margin-right:12px}
+      .slp-hero a,.slp-cta-actions a{display:inline-block;text-decoration:none;color:#111;border:1px solid #ddd;border-radius:8px;padding:12px 18px;font-weight:800;margin-right:12px}
       .slp-hero img{width:100%;border-radius:22px}
       .slp-trust{text-align:center;padding:34px 8%;overflow:hidden}
       .slp-trust p{font-size:11px;color:#777;font-weight:900;letter-spacing:.08em;margin:0 0 22px}
