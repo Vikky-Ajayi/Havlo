@@ -151,7 +151,7 @@ function sourceLabel(listing: Listing) {
     realtor_com: 'Realtor.com',
     realtor_ca: 'Realtor.ca',
     bayut: 'Bayut',
-  }[(listing.source || '').toLowerCase()] || 'Source';
+  }[(listing.source || '').toLowerCase()] || (listing.country ? 'Rightmove' : 'Source');
 }
 
 function detailUrl(listing: Listing) {
@@ -306,7 +306,6 @@ function PropertyCard({
       <button className={`baml-heart ${saved ? 'active' : ''}`} onClick={onSave} aria-label={saved ? 'Remove saved home' : 'Save home'}>
         <Heart size={28} fill="currentColor" strokeWidth={1.8} />
       </button>
-      <span className="baml-source-badge">{sourceLabel(listing)}</span>
       <a className="baml-card-title" href={detailUrl(listing)}>{title}</a>
       {meta.length > 0 && <p className="baml-meta">{meta}</p>}
       <p className="baml-price">{displayPrice(listing)}</p>

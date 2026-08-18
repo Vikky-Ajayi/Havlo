@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
 import re
 from datetime import datetime, timezone
@@ -18,6 +19,10 @@ from app.db.database import AsyncSessionLocal, engine
 from app.models.models import RightmoveListing
 
 logger = logging.getLogger(__name__)
+
+
+class SourceBlockedError(RuntimeError):
+    """Raised when a listing source blocks scraper traffic."""
 
 _BROWSER_UAS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -37,6 +42,39 @@ def browser_headers(referer: str | None = None) -> dict[str, str]:
     return headers
 
 
+def request_headers(extra: dict[str, str] | None = None, *, referer: str | None = None) -> dict[str, str]:
+    headers = browser_headers(referer)
+    if extra:
+        headers.update({key: value for key, value in extra.items() if value is not None})
+    return headers
+
+
+def scraper_http_client(source: str, **kwargs: Any) -> httpx.AsyncClient:
+    proxy = (
+        os.getenv(f"{source.upper()}_SCRAPER_PROXY_URL")
+        or os.getenv("MARKETPLACE_SCRAPER_PROXY_URL")
+        or ""
+    ).strip()
+    client_kwargs = {"follow_redirects": True, **kwargs}
+    if proxy:
+        client_kwargs["proxy"] = proxy
+    return httpx.AsyncClient(**client_kwargs)
+
+
+def parse_int(value: Any) -> int:
+    if isinstance(value, bool) or value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return max(0, int(value))
+    digits = re.sub(r"[^0-9.]", "", str(value))
+    if not digits:
+        return 0
+    try:
+        return max(0, int(float(digits)))
+    except ValueError:
+        return 0
+
+
 async def rate_limited_get(
     client: httpx.AsyncClient,
     sem: asyncio.Semaphore,
@@ -50,7 +88,7 @@ async def rate_limited_get(
         resp = await client.get(
             url,
             params=params,
-            headers=headers or browser_headers(),
+            headers=request_headers(headers),
             follow_redirects=True,
             timeout=30,
         )
@@ -71,7 +109,7 @@ async def rate_limited_post(
         resp = await client.post(
             url,
             data=data,
-            headers=headers or browser_headers(),
+            headers=request_headers(headers),
             follow_redirects=True,
             timeout=30,
         )
@@ -121,19 +159,33 @@ def normalize_listing_text(title: str, address: str) -> tuple[str, str]:
     return headline[:500], (clean_title or headline)[:500]
 
 
-def load_progress(progress_file: Path) -> set[str]:
+def load_progress(
+    progress_file: Path,
+    *,
+    namespace: str | None = None,
+    max_age_seconds: float | None = None,
+) -> set[str]:
     try:
         if progress_file.exists():
             data = json.loads(progress_file.read_text())
+            if namespace and data.get("namespace") != namespace:
+                return set()
+            if max_age_seconds is not None:
+                saved_at = data.get("saved_at")
+                if saved_at:
+                    saved_dt = datetime.fromisoformat(str(saved_at).replace("Z", "+00:00"))
+                    if datetime.now(timezone.utc).timestamp() - saved_dt.timestamp() > max_age_seconds:
+                        return set()
             return set(data.get("completed", []))
     except Exception:
         pass
     return set()
 
 
-def save_progress(progress_file: Path, completed: set[str]) -> None:
+def save_progress(progress_file: Path, completed: set[str], *, namespace: str | None = None) -> None:
     try:
         progress_file.write_text(json.dumps({
+            "namespace": namespace,
             "saved_at": datetime.now(timezone.utc).isoformat(),
             "completed": sorted(completed),
         }, indent=2))

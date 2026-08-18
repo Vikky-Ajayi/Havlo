@@ -323,6 +323,61 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS listing_snapshot_json TEXT;
                     """))
                     await conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS stale_listing_discovery_runs (
+                            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                            status VARCHAR(40) NOT NULL DEFAULT 'queued',
+                            dry_run BOOLEAN NOT NULL DEFAULT TRUE,
+                            location_names TEXT,
+                            min_price INTEGER NOT NULL DEFAULT 300001,
+                            min_days_on_market INTEGER NOT NULL DEFAULT 180,
+                            max_candidates INTEGER NOT NULL DEFAULT 25,
+                            max_pages_per_location INTEGER NOT NULL DEFAULT 2,
+                            candidates_seen INTEGER NOT NULL DEFAULT 0,
+                            eligible_count INTEGER NOT NULL DEFAULT 0,
+                            created_prospects_count INTEGER NOT NULL DEFAULT 0,
+                            skipped_count INTEGER NOT NULL DEFAULT 0,
+                            failed_count INTEGER NOT NULL DEFAULT 0,
+                            result_json TEXT,
+                            error_message TEXT,
+                            started_by_user_id UUID,
+                            started_at TIMESTAMPTZ,
+                            completed_at TIMESTAMPTZ,
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ DEFAULT NOW()
+                        );
+                    """))
+                    await conn.execute(text("""
+                        ALTER TABLE stale_listing_prospects
+                            ADD COLUMN IF NOT EXISTS discovery_run_id UUID,
+                            ADD COLUMN IF NOT EXISTS source_status VARCHAR(50),
+                            ADD COLUMN IF NOT EXISTS skipped_reason VARCHAR(255),
+                            ADD COLUMN IF NOT EXISTS last_error TEXT,
+                            ADD COLUMN IF NOT EXISTS discovered_at TIMESTAMPTZ,
+                            ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ,
+                            ADD COLUMN IF NOT EXISTS letter_sent_at TIMESTAMPTZ;
+                    """))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_stale_listing_discovery_runs_status "
+                        "ON stale_listing_discovery_runs (status);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_stale_listing_prospects_discovery_run_id "
+                        "ON stale_listing_prospects (discovery_run_id);"
+                    ))
+                    await conn.execute(text("""
+                        ALTER TABLE stale_listing_prospects
+                            ALTER COLUMN bedrooms TYPE INTEGER
+                            USING NULLIF(regexp_replace(bedrooms::text, '[^0-9]', '', 'g'), '')::integer,
+                            ALTER COLUMN bathrooms TYPE INTEGER
+                            USING NULLIF(regexp_replace(bathrooms::text, '[^0-9]', '', 'g'), '')::integer;
+                    """))
+                    await conn.execute(text("DROP INDEX IF EXISTS ix_stale_listing_prospects_property_code;"))
+                    await conn.execute(text("""
+                        CREATE UNIQUE INDEX IF NOT EXISTS ux_stale_listing_prospects_active_property_code
+                        ON stale_listing_prospects (property_code)
+                        WHERE COALESCE(source_status, 'active') <> 'archived';
+                    """))
+                    await conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS agent_advanced_service_payments (
                             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -507,9 +562,7 @@ async def startup() -> None:
     if HAS_DATABASE and _env_enabled("ENABLE_MARKETPLACE_SCRAPERS", True):
         scraper_specs = [
             ("Rightmove", "DISABLE_RIGHTMOVE_SCRAPER", "app.services.rightmove_scraper"),
-            ("Bayut", "DISABLE_BAYUT_SCRAPER", "app.services.bayut_scraper"),
-            ("Realtor.ca", "DISABLE_REALTOR_CA_SCRAPER", "app.services.realtor_ca_scraper"),
-            ("Realtor.com", "DISABLE_REALTOR_COM_SCRAPER", "app.services.realtor_com_scraper"),
+            ("Rightmove overseas", "DISABLE_RIGHTMOVE_OVERSEAS_SCRAPER", "app.services.rightmove_overseas_scraper"),
         ]
         app.state.scraper_tasks = []
         import importlib

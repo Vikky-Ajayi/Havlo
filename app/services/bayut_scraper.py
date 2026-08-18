@@ -15,10 +15,13 @@ from app.services.currency_rates import to_gbp
 from app.services.scraper_base import (
     load_progress,
     normalize_listing_text,
+    parse_int,
     parse_next_data,
     rate_limited_get,
     run_scraper_loop,
     save_progress,
+    scraper_http_client,
+    SourceBlockedError,
     upsert_listing_rows,
 )
 
@@ -30,6 +33,7 @@ MAX_PAGES = 40
 HITS_PER_PAGE = 25
 SCRAPE_INTERVAL_HOURS = 8
 PROGRESS_FILE = Path("/tmp/bayut_scraper_progress.json")
+PROGRESS_NAMESPACE = "bayut-v2"
 _BASE = "https://www.bayut.com"
 
 KNOWN_LOCATIONS: list[tuple[str, str]] = [
@@ -106,7 +110,7 @@ def _extract_hit(prop: dict[str, Any], city: str) -> Optional[dict[str, Any]]:
             raw_price = price_block.get("value") or price_block.get("amount") or price_block.get("raw")
         else:
             raw_price = price_block
-        price_native = int(float(raw_price or 0))
+        price_native = parse_int(raw_price)
         if price_native <= 0:
             return None
 
@@ -130,9 +134,9 @@ def _extract_hit(prop: dict[str, Any], city: str) -> Optional[dict[str, Any]]:
         if url.startswith("/"):
             url = f"{_BASE}{url}"
 
-        bedrooms = int(prop.get("rooms") or prop.get("bedrooms") or 0)
+        bedrooms = parse_int(prop.get("rooms") or prop.get("bedrooms"))
         bathrooms_raw = prop.get("baths") or prop.get("bathrooms")
-        bathrooms = int(bathrooms_raw) if bathrooms_raw is not None else None
+        bathrooms = parse_int(bathrooms_raw) or None
         prop_type = str(
             prop.get("category")
             or prop.get("propertyType")
@@ -214,6 +218,10 @@ async def _fetch_html_page(
     if page:
         url = f"{url}page-{page + 1}/"
     resp = await rate_limited_get(client, sem, url)
+    if "captchaChallenge" in str(resp.url):
+        raise SourceBlockedError("Bayut returned captcha challenge")
+    if resp.status_code in {401, 403, 429, 503}:
+        raise SourceBlockedError(f"Bayut blocked request with HTTP {resp.status_code}")
     if resp.status_code != 200:
         return []
     return parse_next_data(
@@ -273,7 +281,7 @@ async def _worker(
                 stats["new"] += saved
                 stats["done"] += 1
                 if stats["done"] % 10 == 0:
-                    save_progress(PROGRESS_FILE, completed)
+                    save_progress(PROGRESS_FILE, completed, namespace=PROGRESS_NAMESPACE)
         except Exception as exc:
             logger.error("Bayut worker %d error on %s: %s", worker_id, item.city, exc)
         finally:
@@ -281,8 +289,12 @@ async def _worker(
 
 
 async def scrape_all() -> dict[str, int]:
-    completed = load_progress(PROGRESS_FILE)
-    async with httpx.AsyncClient() as client:
+    completed = load_progress(
+        PROGRESS_FILE,
+        namespace=PROGRESS_NAMESPACE,
+        max_age_seconds=(SCRAPE_INTERVAL_HOURS * 3600) - 60,
+    )
+    async with scraper_http_client("BAYUT") as client:
         sem = asyncio.Semaphore(HTTP_CONCURRENCY)
         queue: asyncio.Queue[WorkItem] = asyncio.Queue()
         for city, loc_id in KNOWN_LOCATIONS:
@@ -307,9 +319,9 @@ async def scrape_all() -> dict[str, int]:
             worker.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
 
-    save_progress(PROGRESS_FILE, completed)
+    save_progress(PROGRESS_FILE, completed, namespace=PROGRESS_NAMESPACE)
     return stats
 
 
 async def start_scraper_loop() -> None:
-    await run_scraper_loop("Bayut", scrape_all, SCRAPE_INTERVAL_HOURS, initial_delay_seconds=120)
+    await run_scraper_loop("Bayut", scrape_all, SCRAPE_INTERVAL_HOURS, initial_delay_seconds=15)

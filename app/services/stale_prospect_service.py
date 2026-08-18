@@ -11,6 +11,7 @@ import secrets
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,7 +37,11 @@ async def make_property_code(db: AsyncSession) -> str:
     for _ in range(40):
         code = f"{random.randint(0, 9999):04d}"
         result = await db.execute(
-            select(StaleListingProspect.id).where(StaleListingProspect.property_code == code)
+            select(StaleListingProspect.id).where(
+                StaleListingProspect.property_code == code,
+                (StaleListingProspect.source_status.is_(None))
+                | (StaleListingProspect.source_status != "archived"),
+            )
         )
         if result.scalar_one_or_none() is None:
             return code
@@ -45,8 +50,60 @@ async def make_property_code(db: AsyncSession) -> str:
 
 def is_specific_address(address: str) -> bool:
     text = (address or "").strip()
-    vague_terms = ("area", "near", "close to", "within", "surrounding", "undisclosed")
-    return len(text) >= 12 and bool(re.search(r"\d", text)) and not any(term in text.lower() for term in vague_terms)
+    lower = text.lower()
+    vague_terms = (
+        "area",
+        "near",
+        "close to",
+        "within",
+        "surrounding",
+        "undisclosed",
+        "confidential",
+        "available upon request",
+        "contact agent",
+        "not specified",
+        "approximate",
+    )
+    street_terms = (
+        "road",
+        "street",
+        "avenue",
+        "lane",
+        "drive",
+        "close",
+        "court",
+        "way",
+        "gardens",
+        "garden",
+        "crescent",
+        "terrace",
+        "place",
+        "mews",
+        "grove",
+        "walk",
+        "rise",
+        "hill",
+        "square",
+        "row",
+        "view",
+        "park",
+        "yard",
+        "quay",
+    )
+    postcode = re.search(r"\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b", text, re.IGNORECASE)
+    has_unit_or_number = bool(
+        re.search(r"\b\d+[A-Z]?\b", text, re.IGNORECASE)
+        or re.search(r"\b(flat|apartment|apt|unit|suite|the)\s+[A-Z0-9]", text, re.IGNORECASE)
+    )
+    has_street = any(re.search(rf"\b{re.escape(term)}\b", lower) for term in street_terms)
+    has_town_part = "," in text and len([part for part in text.split(",") if part.strip()]) >= 2
+    return (
+        len(text) >= 16
+        and not any(term in lower for term in vague_terms)
+        and has_unit_or_number
+        and has_street
+        and (bool(postcode) or has_town_part)
+    )
 
 
 def extract_price(value: Any) -> float | None:
@@ -74,6 +131,8 @@ def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
         "property_type": scraped.get("property_type") or "",
         "platform": "Rightmove" if "rightmove" in url.lower() else "",
         "description": scraped.get("description") or "",
+        "listed_date": scraped.get("listed_date") or "",
+        "features": scraped.get("features") if isinstance(scraped.get("features"), list) else [],
     }
 
 
@@ -94,6 +153,94 @@ def snapshot_from_rightmove_listing(listing: RightmoveListing) -> dict[str, Any]
         "platform": "Rightmove",
         "description": listing.description or "",
     }
+
+
+def parse_listed_date(value: Any) -> datetime | None:
+    """Parse Rightmove date strings into an aware UTC datetime when reliable."""
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    text = re.sub(r"\s+", " ", str(value)).strip()
+    text = re.sub(r"^(added|reduced|listed|first listed)\s+(on\s+)?", "", text, flags=re.IGNORECASE)
+    text = text.replace(",", "")
+    candidates = [
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%d",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%d %b %Y",
+        "%d %B %Y",
+        "%b %d %Y",
+        "%B %d %Y",
+    ]
+    for fmt in candidates:
+        try:
+            parsed = datetime.strptime(text[:26] if "%z" in fmt else text, fmt)
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    match = re.search(r"(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})", text)
+    if match:
+        for fmt in ("%d %b %Y", "%d %B %Y"):
+            try:
+                return datetime.strptime(match.group(0), fmt).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+    return None
+
+
+async def create_prospect_from_listing_snapshot(
+    db: AsyncSession,
+    *,
+    rightmove_url: str,
+    property_address: str,
+    listing_snapshot: dict[str, Any],
+    asking_price: float,
+    listing_duration_days: int,
+    listed_date: datetime | None = None,
+    discovery_run_id: Any | None = None,
+) -> tuple[StaleListingProspect, str, str]:
+    """Create a fully processed prospect, report, preview and letter PDF."""
+    token = create_access_token()
+    property_code = await make_property_code(db)
+    report = await generate_prospect_report(
+        property_address=property_address,
+        rightmove_url=rightmove_url,
+        snapshot=listing_snapshot,
+        listing_duration_days=listing_duration_days,
+    )
+    preview = build_preview(report, listing_snapshot, property_address)
+    now = datetime.now(timezone.utc)
+    prospect = StaleListingProspect(
+        property_code=property_code,
+        qr_token_hash=hash_access_token(token),
+        property_address=property_address,
+        rightmove_url=rightmove_url,
+        rightmove_id=listing_snapshot.get("rightmove_id") or None,
+        asking_price=float(asking_price),
+        listing_duration_days=int(listing_duration_days),
+        listed_date=listed_date,
+        property_type=listing_snapshot.get("property_type") or None,
+        bedrooms=int(listing_snapshot["bedrooms"]) if str(listing_snapshot.get("bedrooms") or "").isdigit() else None,
+        bathrooms=int(listing_snapshot["bathrooms"]) if str(listing_snapshot.get("bathrooms") or "").isdigit() else None,
+        listing_snapshot_json=json.dumps(listing_snapshot, ensure_ascii=False),
+        report_json=json.dumps(report, ensure_ascii=False),
+        preview_json=json.dumps(preview, ensure_ascii=False),
+        discovery_run_id=discovery_run_id,
+        source_status="active",
+        discovered_at=now,
+        processed_at=now,
+        processing_status="report_ready",
+        payment_status="pending",
+    )
+    db.add(prospect)
+    await db.flush()
+    letter_path = generate_letter_pdf(prospect, token, get_settings().FRONTEND_URL or "https://www.heyhavlo.com")
+    prospect.letter_pdf_path = letter_path
+    prospect.processing_status = "letter_ready"
+    return prospect, token, letter_path
 
 
 def build_preview(report: dict[str, Any], snapshot: dict[str, Any], address: str) -> dict[str, Any]:
@@ -172,8 +319,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         import qrcode
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.units import mm
         from reportlab.lib.utils import ImageReader
+        from reportlab.platypus import Paragraph
         from reportlab.pdfgen import canvas
     except ImportError as exc:  # pragma: no cover - depends on deployment image
         raise RuntimeError("Install reportlab and qrcode to generate prospect letters.") from exc
@@ -193,51 +342,95 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     page = canvas.Canvas(str(pdf_path), pagesize=A4)
     width, height = A4
-    margin = 22 * mm
-    purple = colors.HexColor("#a900d6")
+    margin = 20 * mm
+    ink = colors.HexColor("#121212")
+    muted = colors.HexColor("#5b6470")
+    accent = colors.HexColor("#8C133B")
+    panel = colors.HexColor("#F6F7F9")
 
-    page.setFont("Helvetica-Bold", 22)
-    page.drawString(margin, height - 34 * mm, "StaleListings")
+    def para(text: str, x: float, y: float, w: float, style: ParagraphStyle) -> float:
+        p = Paragraph(text, style)
+        _, h = p.wrap(w, 120 * mm)
+        p.drawOn(page, x, y - h)
+        return y - h
+
+    body_style = ParagraphStyle("Body", fontName="Helvetica", fontSize=10.3, leading=15.2, textColor=ink)
+    small_style = ParagraphStyle("Small", fontName="Helvetica", fontSize=8.5, leading=12, textColor=muted)
+    headline_style = ParagraphStyle("Headline", fontName="Helvetica-Bold", fontSize=24, leading=29, textColor=ink)
+    subhead_style = ParagraphStyle("Subhead", fontName="Helvetica-Bold", fontSize=11.5, leading=15, textColor=ink)
+
+    page.setFillColor(ink)
+    page.setFont("Helvetica-Bold", 18)
+    page.drawString(margin, height - 24 * mm, "StaleListings")
     page.setFont("Helvetica", 8)
-    page.drawString(margin + 45 * mm, height - 34 * mm, "By HAVLO")
+    page.drawString(margin + 42 * mm, height - 23.6 * mm, "By HAVLO")
+    page.setFont("Helvetica-Bold", 8.5)
+    page.setFillColor(muted)
+    nav = "Relaunch  |  Reach Buyers  |  Sell Faster"
+    page.drawRightString(width - margin, height - 23.6 * mm, nav)
 
-    page.setFillColor(purple)
-    page.roundRect(margin, height - 58 * mm, 74 * mm, 10 * mm, 5 * mm, fill=1, stroke=0)
+    page.setStrokeColor(colors.HexColor("#E5E7EB"))
+    page.line(margin, height - 32 * mm, width - margin, height - 32 * mm)
+
+    y = height - 48 * mm
+    address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
+    page.setFont("Helvetica-Bold", 9.5)
+    page.setFillColor(ink)
+    for line in address_lines[:5]:
+        page.drawString(margin, y, line.upper()[:64])
+        y -= 5.2 * mm
+
+    y -= 10 * mm
+    y = para("6+ Months on the Market? There Is a Faster Way to Sell", margin, y, width - (2 * margin), headline_style)
+    y -= 8 * mm
+    days = prospect.listing_duration_days or 180
+    price = f"GBP {prospect.asking_price:,.0f}" if prospect.asking_price else "your current asking price"
+    intro = (
+        f"We have reviewed the online listing for <b>{prospect.property_address}</b>. "
+        f"It appears to have been marketed for around <b>{days} days</b> at <b>{price}</b>, "
+        "which usually means the issue is not demand alone. It is often presentation, positioning, "
+        "pricing signals, portal visibility, or the way the listing is being relaunched to buyers."
+    )
+    y = para(intro, margin, y, width - (2 * margin), body_style)
+    y -= 7 * mm
+    y = para("<b>Havlo StaleListings</b> has prepared an initial listing assessment for this property.", margin, y, width - (2 * margin), subhead_style)
+    y -= 4 * mm
+
+    bullet_x = margin + 4 * mm
+    for bullet in (
+        "The preview highlights the main issues that may be reducing buyer response.",
+        "The full report gives a more detailed recovery plan, including recommendations and next steps.",
+        "This does not interfere with your existing estate agent; it is designed to help you improve the listing strategy.",
+    ):
+        page.setFillColor(accent)
+        page.circle(margin + 1.5 * mm, y - 2.8 * mm, 1.2 * mm, stroke=0, fill=1)
+        y = para(bullet, bullet_x, y, width - (2 * margin) - 6 * mm, body_style)
+        y -= 2.5 * mm
+
+    y -= 4 * mm
+    box_h = 48 * mm
+    page.setFillColor(panel)
+    page.roundRect(margin, y - box_h, width - (2 * margin), box_h, 5 * mm, fill=1, stroke=0)
+    page.setFillColor(accent)
+    page.roundRect(margin + 8 * mm, y - 21 * mm, 49 * mm, 12 * mm, 4 * mm, fill=1, stroke=0)
     page.setFillColor(colors.white)
-    page.setFont("Helvetica-Bold", 11)
-    page.drawCentredString(margin + 37 * mm, height - 51.5 * mm, f"Property ID: {prospect.property_code}")
-
-    page.setFillColor(colors.black)
-    page.setFont("Helvetica-Bold", 20)
-    page.drawString(margin, height - 82 * mm, "We reviewed your property listing.")
-    page.setFont("Helvetica", 11)
-    text = page.beginText(margin, height - 96 * mm)
-    text.setLeading(17)
-    lines = [
-        f"Property: {prospect.property_address}",
-        "",
-        "Your home appears to have been on the market for a prolonged period, so Havlo has",
-        "prepared an initial listing assessment showing possible visibility, pricing,",
-        "presentation and marketing issues that may be slowing buyer interest.",
-        "",
-        "Scan the QR code or visit the page below to view your free preview. Use the",
-        "property ID above if you enter the website manually.",
-    ]
-    for line in lines:
-        text.textLine(line)
-    page.drawText(text)
-
-    page.drawImage(ImageReader(qr_buffer), margin, height - 170 * mm, 38 * mm, 38 * mm)
     page.setFont("Helvetica-Bold", 12)
-    page.drawString(margin + 48 * mm, height - 142 * mm, "Scan to view your assessment")
-    page.setFont("Helvetica", 9)
-    page.drawString(margin + 48 * mm, height - 150 * mm, preview_url[:90])
+    page.drawCentredString(margin + 32.5 * mm, y - 16.4 * mm, f"ID: {prospect.property_code}")
+    page.drawImage(ImageReader(qr_buffer), width - margin - 40 * mm, y - 43 * mm, 32 * mm, 32 * mm)
+    page.setFillColor(ink)
+    page.setFont("Helvetica-Bold", 13)
+    page.drawString(margin + 8 * mm, y - 29 * mm, "Scan the QR code to view your assessment preview")
+    page.setFont("Helvetica", 8)
+    page.setFillColor(muted)
+    page.drawString(margin + 8 * mm, y - 36 * mm, "Or visit heyhavlo.com/stale-listings and enter your 4-digit property ID.")
+    page.drawString(margin + 8 * mm, y - 41 * mm, preview_url[:96])
 
-    page.setStrokeColor(colors.HexColor("#eeeeee"))
-    page.line(margin, 36 * mm, width - margin, 36 * mm)
-    page.setFont("Helvetica", 9)
-    page.setFillColor(colors.HexColor("#555555"))
-    page.drawString(margin, 27 * mm, "Havlo Ltd. This letter is informational and does not replace estate-agent advice.")
+    page.setStrokeColor(colors.HexColor("#E5E7EB"))
+    page.line(margin, 34 * mm, width - margin, 34 * mm)
+    page.setFillColor(muted)
+    page.setFont("Helvetica", 8.5)
+    page.drawString(margin, 26 * mm, "Havlo Ltd. StaleListings is a listing intelligence and marketing review service.")
+    page.drawString(margin, 20 * mm, "This letter is informational and does not replace independent estate-agent, legal, or financial advice.")
     page.save()
     return os.path.abspath(pdf_path)
 

@@ -60,9 +60,9 @@ def _source_label(source: str, country: str) -> str:
         return labels.get(source, source.replace("_", " ").title())
     return {
         "uk": "Rightmove",
-        "america": "Realtor.com",
-        "canada": "Realtor.ca",
-        "dubai": "Bayut",
+        "america": "Rightmove",
+        "canada": "Rightmove",
+        "dubai": "Rightmove",
     }.get(country, "Source")
 
 
@@ -122,9 +122,9 @@ def _listing_to_dict(listing: RightmoveListing, ngn_rate: float) -> dict[str, An
     country = _listing_country(listing)
     source = _clean_text(getattr(listing, "source", "")) or {
         "uk": "rightmove",
-        "america": "realtor_com",
-        "canada": "realtor_ca",
-        "dubai": "bayut",
+        "america": "rightmove",
+        "canada": "rightmove",
+        "dubai": "rightmove",
     }.get(country, "")
     price_gbp = int(listing.price_gbp or 0)
     price_native = int(getattr(listing, "price_native", 0) or price_gbp)
@@ -264,9 +264,9 @@ def _item_to_model_values(item: dict[str, Any], country: str) -> dict[str, Any]:
     price = _parse_price_to_int(item.get("price_gbp") or item.get("price") or item.get("price_text"))
     source_by_country = {
         "uk": ("rightmove", "GBP"),
-        "america": ("realtor_com", "USD"),
-        "canada": ("realtor_ca", "CAD"),
-        "dubai": ("bayut", "AED"),
+        "america": ("rightmove", "USD"),
+        "canada": ("rightmove", "USD"),
+        "dubai": ("rightmove", "GBP"),
     }
     source, currency = source_by_country.get(country, ("import", "GBP"))
     price_native = _parse_price_to_int(item.get("price_native") or item.get("price") or price)

@@ -597,6 +597,36 @@ class StaleProspectAdminCreateResponse(BaseModel):
     email_sent: bool = False
 
 
+class StaleProspectDiscoveryRunRequest(BaseModel):
+    dry_run: bool = True
+    location_names: Optional[list[str]] = None
+    max_candidates: int = Field(25, ge=1, le=250)
+    max_pages_per_location: int = Field(2, ge=1, le=10)
+    min_price: int = Field(300001, ge=300000)
+    min_days_on_market: int = Field(180, ge=180)
+
+
+class StaleProspectDiscoveryRunResponse(BaseModel):
+    run_id: str
+    status: str
+    dry_run: bool
+    location_names: list[str] = Field(default_factory=list)
+    min_price: int
+    min_days_on_market: int
+    max_candidates: int
+    max_pages_per_location: int
+    candidates_seen: int = 0
+    eligible_count: int = 0
+    created_prospects_count: int = 0
+    skipped_count: int = 0
+    failed_count: int = 0
+    results: dict = Field(default_factory=dict)
+    error_message: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    created_at: Optional[str] = None
+
+
 class StaleListingAdminItem(BaseModel):
     assessment_id: str
     reference: str
