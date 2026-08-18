@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
+import type { StaleProspectDiscoveryRun } from '../lib/api';
 import { clearStaleReviewSession, readStaleReviewSession, writeStaleReviewPreview } from '../lib/staleReviewAccess';
 
 interface ComparableSale { address: string; beds: number; property_type: string; sold_asking: string; is_subject: boolean; }
@@ -363,6 +364,13 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
   const [reviewError, setReviewError] = useState('');
   const [reviewSurface, setReviewSurface] = useState<ReviewSurface>('edit');
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
+  const [discoveryRuns, setDiscoveryRuns] = useState<StaleProspectDiscoveryRun[]>([]);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveryStarting, setDiscoveryStarting] = useState(false);
+  const [discoveryDryRun, setDiscoveryDryRun] = useState(true);
+  const [discoveryLocations, setDiscoveryLocations] = useState('London, Manchester, Birmingham');
+  const [discoveryMaxCandidates, setDiscoveryMaxCandidates] = useState(25);
+  const [discoveryMaxPages, setDiscoveryMaxPages] = useState(2);
 
   useEffect(() => {
     let cancelled = false;
@@ -405,11 +413,31 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
     api.staleListingsAdminList(token)
       .then(data => { if (!cancelled) { setItems(data as AdminItem[]); setLoading(false); } })
       .catch(() => { if (!cancelled) setLoading(false); });
+    api.staleListingsDiscoveryRuns(token)
+      .then(data => { if (!cancelled) setDiscoveryRuns(data); })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
     };
   }, [token, reviewMode]);
+
+  useEffect(() => {
+    if (reviewMode || !token || !discoveryRuns.some(run => ['queued', 'running'].includes(run.status))) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const updates = await Promise.all(
+          discoveryRuns
+            .filter(run => ['queued', 'running'].includes(run.status))
+            .map(run => api.staleListingsDiscoveryRun(run.run_id, token))
+        );
+        setDiscoveryRuns(prev => prev.map(run => updates.find(update => update.run_id === run.run_id) || run));
+      } catch {
+        // Keep the existing run list visible if a polling request fails.
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [token, reviewMode, discoveryRuns]);
 
   useEffect(() => {
     if (reviewMode || !items.length) return;
@@ -632,6 +660,46 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
     navigate('/stale-listings', { replace: true });
   };
 
+  const loadDiscoveryRuns = async () => {
+    if (!token) return;
+    setDiscoveryLoading(true);
+    try {
+      setDiscoveryRuns(await api.staleListingsDiscoveryRuns(token));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not load discovery runs.');
+    } finally {
+      setDiscoveryLoading(false);
+    }
+  };
+
+  const handleStartDiscovery = async () => {
+    if (!token) return;
+    setDiscoveryStarting(true);
+    try {
+      const location_names = discoveryLocations
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
+      const run = await api.staleListingsStartDiscoveryRun({
+        dry_run: discoveryDryRun,
+        location_names,
+        max_candidates: discoveryMaxCandidates,
+        max_pages_per_location: discoveryMaxPages,
+        min_price: 300001,
+        min_days_on_market: 180,
+      }, token);
+      setDiscoveryRuns(prev => [run, ...prev.filter(item => item.run_id !== run.run_id)].slice(0, 10));
+      setSuccessMsg(discoveryDryRun ? 'Discovery dry run started.' : 'Discovery processing started.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not start discovery.');
+    } finally {
+      setDiscoveryStarting(false);
+    }
+  };
+
+  const runDate = (value?: string | null) => value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+
   return (
     <div style={{ background: '#F7F8F8', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
@@ -662,6 +730,74 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: shellPadding }}>
         {successMsg && (
           <div style={{ background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: 10, padding: '12px 18px', marginBottom: 16, color: '#065F46', fontWeight: 600, fontSize: 14 }}>{successMsg}</div>
+        )}
+
+        {!reviewMode && (
+          <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: isMobile ? 16 : 20, marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', marginBottom: 14 }}>
+              <div>
+                <h2 style={{ margin: 0, fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 18, color: '#111111' }}>Rightmove stale-listing discovery</h2>
+                <p style={{ margin: '6px 0 0', color: '#666666', fontSize: 13, lineHeight: 1.6 }}>
+                  Finds residential listings over GBP 300,000 that have been live for 6+ months, then filters to postal-quality addresses before generating letters.
+                </p>
+              </div>
+              <button onClick={loadDiscoveryRuns} disabled={discoveryLoading} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#FFFFFF', color: '#333333', fontWeight: 700, fontSize: 12, cursor: discoveryLoading ? 'not-allowed' : 'pointer' }}>
+                {discoveryLoading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.8fr 0.7fr 0.7fr auto', gap: 10, alignItems: 'end' }}>
+              <div>
+                <label style={labelStyle}>Locations</label>
+                <input value={discoveryLocations} onChange={e => setDiscoveryLocations(e.target.value)} placeholder="London, Manchester, Birmingham" style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Max candidates</label>
+                <input type="number" min={1} max={250} value={discoveryMaxCandidates} onChange={e => setDiscoveryMaxCandidates(Math.max(1, Math.min(250, Number(e.target.value) || 1)))} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Pages / location</label>
+                <input type="number" min={1} max={10} value={discoveryMaxPages} onChange={e => setDiscoveryMaxPages(Math.max(1, Math.min(10, Number(e.target.value) || 1)))} style={inputStyle} />
+              </div>
+              <button onClick={handleStartDiscovery} disabled={discoveryStarting} style={{ minHeight: 38, padding: '0 16px', borderRadius: 8, border: 'none', background: '#111111', color: '#FFFFFF', fontWeight: 800, fontSize: 13, cursor: discoveryStarting ? 'not-allowed' : 'pointer', opacity: discoveryStarting ? 0.7 : 1 }}>
+                {discoveryStarting ? 'Starting...' : 'Start run'}
+              </button>
+            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 12, color: '#444444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <input type="checkbox" checked={discoveryDryRun} onChange={e => setDiscoveryDryRun(e.target.checked)} />
+              Dry run only
+            </label>
+            {discoveryRuns.length > 0 && (
+              <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
+                {discoveryRuns.slice(0, 5).map(run => {
+                  const statusColor = run.status === 'completed' ? '#065F46' : run.status === 'failed' ? '#991B1B' : '#92400E';
+                  const statusBg = run.status === 'completed' ? '#D1FAE5' : run.status === 'failed' ? '#FEE2E2' : '#FEF3C7';
+                  const firstIssue = run.results.failed?.[0] || run.results.skipped?.[0];
+                  return (
+                    <div key={run.run_id} style={{ border: '1px solid #EEF0F3', borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 6, background: '#FAFAFA' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ background: statusBg, color: statusColor, borderRadius: 999, padding: '3px 9px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>{run.status}</span>
+                        <span style={{ color: '#555555', fontSize: 12, fontWeight: 700 }}>{run.dry_run ? 'Dry run' : 'Live letters'}</span>
+                        <span style={{ color: '#888888', fontSize: 12 }}>{runDate(run.created_at)}</span>
+                        <span style={{ color: '#888888', fontSize: 12, marginLeft: isMobile ? 0 : 'auto' }}>{run.run_id.slice(0, 8)}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', color: '#333333', fontSize: 12 }}>
+                        <b>{run.candidates_seen}</b> seen
+                        <b>{run.eligible_count}</b> eligible
+                        <b>{run.created_prospects_count}</b> created
+                        <b>{run.skipped_count}</b> skipped
+                        <b>{run.failed_count}</b> failed
+                      </div>
+                      {(run.error_message || firstIssue) && (
+                        <div style={{ color: '#777777', fontSize: 12, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                          {run.error_message || `Latest note: ${String(firstIssue.reason || 'candidate checked')}`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Filter tabs */}

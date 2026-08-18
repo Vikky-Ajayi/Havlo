@@ -487,7 +487,7 @@ class StaleListingProspect(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    property_code: Mapped[str] = mapped_column(String(4), unique=True, nullable=False, index=True)
+    property_code: Mapped[str] = mapped_column(String(4), nullable=False, index=True)
     qr_token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     property_address: Mapped[str] = mapped_column(String(500), nullable=False)
     rightmove_url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -502,6 +502,13 @@ class StaleListingProspect(Base):
     report_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     preview_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     letter_pdf_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    discovery_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    source_status: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    skipped_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    discovered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    letter_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     processing_status: Mapped[str] = mapped_column(String(50), nullable=False, default="identified")
     payment_status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -516,6 +523,39 @@ class StaleListingProspect(Base):
 
     __table_args__ = (
         Index("ix_stale_listing_prospects_rightmove_url", "rightmove_url"),
+    )
+
+
+class StaleListingDiscoveryRun(Base):
+    """Admin-triggered Rightmove discovery run for stale listing prospects."""
+
+    __tablename__ = "stale_listing_discovery_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
+    dry_run: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    location_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    min_price: Mapped[int] = mapped_column(Integer, nullable=False, default=300001)
+    min_days_on_market: Mapped[int] = mapped_column(Integer, nullable=False, default=180)
+    max_candidates: Mapped[int] = mapped_column(Integer, nullable=False, default=25)
+    max_pages_per_location: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    candidates_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    eligible_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_prospects_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    started_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 

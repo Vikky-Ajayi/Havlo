@@ -1,0 +1,468 @@
+"""Admin-triggered Rightmove discovery for stale listing prospect letters."""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import re
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
+
+import httpx
+from sqlalchemy import or_, select
+
+from app.config import get_settings
+from app.db.database import AsyncSessionLocal
+from app.models.models import StaleListingDiscoveryRun, StaleListingProspect
+from app.services import email_service
+from app.services.listing_scraper import scrape_single_listing
+from app.services.rightmove_scraper import KNOWN_LOCATIONS, PAGE_SIZE, _BASE, _headers, _parse_next_data
+from app.services.stale_prospect_service import (
+    create_prospect_from_listing_snapshot,
+    extract_price,
+    is_specific_address,
+    parse_listed_date,
+    snapshot_from_scrape,
+)
+
+logger = logging.getLogger(__name__)
+
+
+RESIDENTIAL_EXCLUDE = (
+    "commercial",
+    "business",
+    "office",
+    "retail",
+    "industrial",
+    "warehouse",
+    "land",
+    "plot",
+    "parking",
+    "garage",
+    "farm land",
+    "development",
+)
+
+
+@dataclass(slots=True)
+class DiscoveryParams:
+    dry_run: bool = True
+    location_names: list[str] | None = None
+    max_candidates: int = 25
+    max_pages_per_location: int = 2
+    min_price: int = 300001
+    min_days_on_market: int = 180
+
+
+@dataclass(slots=True)
+class Candidate:
+    rightmove_id: str
+    url: str
+    city: str
+    address: str
+    price: float | None
+    property_type: str
+    bedrooms: int | None
+    bathrooms: int | None
+    images: list[str]
+    summary: str
+    listed_date_raw: str
+
+
+def _clean(value: Any, max_len: int = 1000) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()[:max_len]
+
+
+def _first_deep_value(node: Any, keys: set[str]) -> Any:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in keys and value:
+                return value
+        for value in node.values():
+            found = _first_deep_value(value, keys)
+            if found:
+                return found
+    elif isinstance(node, list):
+        for item in node:
+            found = _first_deep_value(item, keys)
+            if found:
+                return found
+    return None
+
+
+def _candidate_from_property(prop: dict[str, Any], city: str) -> Candidate | None:
+    rm_id = _clean(prop.get("id"), 80)
+    if not rm_id:
+        return None
+    price_info = prop.get("price") if isinstance(prop.get("price"), dict) else {}
+    price = extract_price(price_info.get("amount") or price_info.get("displayPrices") or price_info.get("primaryPrice"))
+    address = _clean(prop.get("displayAddress"), 500)
+    prop_type = _clean(prop.get("propertySubType") or prop.get("propertyTypeFullDescription") or prop.get("propertyType"), 100)
+    prop_url = _clean(prop.get("propertyUrl") or f"/properties/{rm_id}", 1000)
+    if prop_url and not prop_url.startswith("http"):
+        prop_url = f"{_BASE}{prop_url}"
+
+    images: list[str] = []
+    img_data = prop.get("propertyImages")
+    if isinstance(img_data, dict):
+        for key in ("mainImageSrc", "mainImageUrl"):
+            src = _clean(img_data.get(key), 1000)
+            if src and src not in images:
+                images.append(src)
+        for img in img_data.get("images") or []:
+            if isinstance(img, dict):
+                src = _clean(img.get("srcUrl") or img.get("url") or img.get("src"), 1000)
+                if src and src not in images:
+                    images.append(src)
+
+    listed_raw = _first_deep_value(
+        prop,
+        {
+            "firstVisibleDate",
+            "dateFirstListed",
+            "listingDate",
+            "addedOrReduced",
+            "listingUpdate",
+            "listingUpdateReason",
+        },
+    )
+
+    bedrooms = prop.get("bedrooms")
+    bathrooms = prop.get("bathrooms")
+    return Candidate(
+        rightmove_id=rm_id,
+        url=prop_url,
+        city=city,
+        address=address,
+        price=price,
+        property_type=prop_type,
+        bedrooms=int(bedrooms) if str(bedrooms or "").isdigit() else None,
+        bathrooms=int(bathrooms) if str(bathrooms or "").isdigit() else None,
+        images=images[:12],
+        summary=_clean(prop.get("summary") or prop.get("description"), 1600),
+        listed_date_raw=_clean(listed_raw, 120),
+    )
+
+
+def _locations_for_request(names: list[str] | None) -> list[tuple[str, str]]:
+    if not names:
+        return KNOWN_LOCATIONS
+    wanted = {name.strip().lower() for name in names if name.strip()}
+    matched = [(name, loc_id) for name, loc_id in KNOWN_LOCATIONS if name.lower() in wanted]
+    return matched or KNOWN_LOCATIONS
+
+
+async def _fetch_search_page(
+    client: httpx.AsyncClient,
+    city: str,
+    location_id: str,
+    page: int,
+    min_price: int,
+) -> list[Candidate]:
+    index = page * PAGE_SIZE
+    url = (
+        f"{_BASE}/property-for-sale/find.html"
+        f"?searchType=SALE"
+        f"&locationIdentifier={location_id}"
+        f"&sortType=1"
+        f"&numberOfPropertiesPerPage={PAGE_SIZE}"
+        f"&index={index}"
+        f"&minPrice={min_price}"
+    )
+    response = await client.get(url, headers=_headers(), follow_redirects=True, timeout=25)
+    if response.status_code == 429:
+        raise RuntimeError("Rightmove returned HTTP 429 rate limit")
+    response.raise_for_status()
+    props = _parse_next_data(response.text)
+    return [candidate for prop in props if (candidate := _candidate_from_property(prop, city))]
+
+
+def _merge_snapshot(candidate: Candidate, scraped: dict[str, Any]) -> dict[str, Any]:
+    snapshot = snapshot_from_scrape(scraped, candidate.url)
+    images = snapshot.get("images") if isinstance(snapshot.get("images"), list) else []
+    if not images:
+        images = candidate.images
+    listed_date = snapshot.get("listed_date") or candidate.listed_date_raw
+    return {
+        **snapshot,
+        "rightmove_id": candidate.rightmove_id,
+        "title": snapshot.get("title") or candidate.address,
+        "address": snapshot.get("address") or candidate.address,
+        "price": snapshot.get("price") or (f"GBP {candidate.price:,.0f}" if candidate.price else ""),
+        "image": snapshot.get("image") or (images[0] if images else ""),
+        "images": images,
+        "bedrooms": snapshot.get("bedrooms") or candidate.bedrooms or "",
+        "bathrooms": snapshot.get("bathrooms") or candidate.bathrooms or "",
+        "property_type": snapshot.get("property_type") or candidate.property_type,
+        "description": snapshot.get("description") or candidate.summary,
+        "listed_date": listed_date,
+        "city": candidate.city,
+        "platform": "Rightmove",
+    }
+
+
+def _skip_reason(
+    *,
+    snapshot: dict[str, Any],
+    address: str,
+    price: float | None,
+    listed_date: datetime | None,
+    duration_days: int | None,
+    params: DiscoveryParams,
+) -> str | None:
+    if price is None or price < params.min_price:
+        return "below_minimum_price"
+    prop_type = str(snapshot.get("property_type") or "").lower()
+    if any(term in prop_type for term in RESIDENTIAL_EXCLUDE):
+        return "not_residential_sale"
+    if not listed_date or duration_days is None:
+        return "missing_reliable_listing_date"
+    if duration_days < params.min_days_on_market:
+        return "not_stale_enough"
+    if not is_specific_address(address):
+        return "address_not_postal_quality"
+    return None
+
+
+async def _existing_prospect(db, candidate: Candidate) -> StaleListingProspect | None:
+    result = await db.execute(
+        select(StaleListingProspect).where(
+            or_(
+                StaleListingProspect.rightmove_url == candidate.url,
+                StaleListingProspect.rightmove_id == candidate.rightmove_id,
+            )
+        )
+    )
+    return result.scalars().first()
+
+
+def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
+    try:
+        results = json.loads(run.result_json or "{}")
+    except Exception:
+        results = {}
+    locations = []
+    try:
+        parsed = json.loads(run.location_names or "[]")
+        if isinstance(parsed, list):
+            locations = [str(item) for item in parsed]
+    except Exception:
+        locations = []
+    return {
+        "run_id": str(run.id),
+        "status": run.status,
+        "dry_run": run.dry_run,
+        "location_names": locations,
+        "min_price": run.min_price,
+        "min_days_on_market": run.min_days_on_market,
+        "max_candidates": run.max_candidates,
+        "max_pages_per_location": run.max_pages_per_location,
+        "candidates_seen": run.candidates_seen,
+        "eligible_count": run.eligible_count,
+        "created_prospects_count": run.created_prospects_count,
+        "skipped_count": run.skipped_count,
+        "failed_count": run.failed_count,
+        "results": results,
+        "error_message": run.error_message,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+        "created_at": run.created_at.isoformat() if run.created_at else None,
+    }
+
+
+async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
+    """Run discovery in the background and persist progress after each candidate."""
+    try:
+        run_uuid = uuid.UUID(str(run_id))
+    except ValueError:
+        logger.warning("Invalid stale discovery run id %s", run_id)
+        return
+    results: dict[str, list[dict[str, Any]]] = {"eligible": [], "created": [], "skipped": [], "failed": []}
+    async with AsyncSessionLocal() as db:
+        run = await db.get(StaleListingDiscoveryRun, run_uuid)
+        if not run:
+            logger.warning("Discovery run %s disappeared before start", run_id)
+            return
+        run.status = "running"
+        run.started_at = datetime.now(timezone.utc)
+        run.result_json = json.dumps(results)
+        await db.commit()
+
+    processed = 0
+    locations = _locations_for_request(params.location_names)
+    try:
+        async with httpx.AsyncClient() as client:
+            for city, location_id in locations:
+                if processed >= params.max_candidates:
+                    break
+                for page in range(params.max_pages_per_location):
+                    if processed >= params.max_candidates:
+                        break
+                    try:
+                        candidates = await _fetch_search_page(client, city, location_id, page, params.min_price)
+                    except Exception as exc:
+                        results["failed"].append({"location": city, "page": page, "reason": str(exc)[:240]})
+                        async with AsyncSessionLocal() as db:
+                            run = await db.get(StaleListingDiscoveryRun, run_uuid)
+                            if run:
+                                run.failed_count += 1
+                                run.result_json = json.dumps(results, ensure_ascii=False)
+                                await db.commit()
+                        break
+
+                    if not candidates:
+                        break
+
+                    for candidate in candidates:
+                        if processed >= params.max_candidates:
+                            break
+                        processed += 1
+                        await asyncio.sleep(0.8)
+                        async with AsyncSessionLocal() as db:
+                            run = await db.get(StaleListingDiscoveryRun, run_uuid)
+                            if not run:
+                                return
+                            run.candidates_seen += 1
+                            existing = await _existing_prospect(db, candidate)
+                            if existing:
+                                run.skipped_count += 1
+                                results["skipped"].append({
+                                    "url": candidate.url,
+                                    "address": candidate.address,
+                                    "reason": "duplicate_prospect",
+                                    "property_code": existing.property_code,
+                                })
+                                run.result_json = json.dumps(results, ensure_ascii=False)
+                                await db.commit()
+                                continue
+                            await db.commit()
+
+                        try:
+                            scraped = await scrape_single_listing(candidate.url)
+                            snapshot = _merge_snapshot(candidate, scraped)
+                            address = _clean(snapshot.get("address") or snapshot.get("title"), 500)
+                            price = extract_price(snapshot.get("price")) or candidate.price
+                            listed_date = parse_listed_date(snapshot.get("listed_date") or candidate.listed_date_raw)
+                            duration_days = None
+                            if listed_date:
+                                duration_days = (datetime.now(timezone.utc) - listed_date.astimezone(timezone.utc)).days
+                            reason = _skip_reason(
+                                snapshot=snapshot,
+                                address=address,
+                                price=price,
+                                listed_date=listed_date,
+                                duration_days=duration_days,
+                                params=params,
+                            )
+                        except Exception as exc:
+                            reason = f"detail_scrape_failed: {str(exc)[:180]}"
+                            snapshot = {}
+                            address = candidate.address
+                            price = candidate.price
+                            listed_date = None
+                            duration_days = None
+
+                        async with AsyncSessionLocal() as db:
+                            run = await db.get(StaleListingDiscoveryRun, run_uuid)
+                            if not run:
+                                return
+                            if reason:
+                                run.skipped_count += 1
+                                results["skipped"].append({
+                                    "url": candidate.url,
+                                    "address": address or candidate.address,
+                                    "price": price,
+                                    "listed_date": listed_date.isoformat() if listed_date else None,
+                                    "duration_days": duration_days,
+                                    "reason": reason,
+                                })
+                                run.result_json = json.dumps(results, ensure_ascii=False)
+                                await db.commit()
+                                continue
+
+                            run.eligible_count += 1
+                            eligible_item = {
+                                "url": candidate.url,
+                                "address": address,
+                                "price": price,
+                                "listed_date": listed_date.isoformat() if listed_date else None,
+                                "duration_days": duration_days,
+                                "city": candidate.city,
+                            }
+                            results["eligible"].append(eligible_item)
+                            if params.dry_run:
+                                run.result_json = json.dumps(results, ensure_ascii=False)
+                                await db.commit()
+                                continue
+
+                            try:
+                                prospect, token, letter_path = await create_prospect_from_listing_snapshot(
+                                    db,
+                                    rightmove_url=candidate.url,
+                                    property_address=address,
+                                    listing_snapshot=snapshot,
+                                    asking_price=float(price or 0),
+                                    listing_duration_days=int(duration_days or params.min_days_on_market),
+                                    listed_date=listed_date,
+                                    discovery_run_id=run.id,
+                                )
+                                preview_url = f"{(get_settings().FRONTEND_URL or 'https://www.heyhavlo.com').rstrip('/')}/stale-listings/prospect/{token}"
+                                admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+                                email_sent = False
+                                if admin_email:
+                                    email_sent = await asyncio.to_thread(
+                                        email_service.send_stale_prospect_letter_sync,
+                                        to_email=admin_email,
+                                        property_address=address,
+                                        property_code=prospect.property_code,
+                                        preview_url=preview_url,
+                                        letter_pdf_path=letter_path,
+                                    )
+                                    if email_sent:
+                                        prospect.letter_sent_at = datetime.now(timezone.utc)
+                                prospect.processing_status = "email_sent" if email_sent else "letter_ready"
+                                run.created_prospects_count += 1
+                                results["created"].append({
+                                    **eligible_item,
+                                    "prospect_id": str(prospect.id),
+                                    "property_code": prospect.property_code,
+                                    "preview_url": preview_url,
+                                    "letter_pdf_path": letter_path,
+                                    "email_sent": email_sent,
+                                })
+                                run.result_json = json.dumps(results, ensure_ascii=False)
+                                await db.commit()
+                            except Exception as exc:
+                                await db.rollback()
+                                async with AsyncSessionLocal() as fail_db:
+                                    fail_run = await fail_db.get(StaleListingDiscoveryRun, run_uuid)
+                                    if fail_run:
+                                        fail_run.failed_count += 1
+                                        results["failed"].append({
+                                            "url": candidate.url,
+                                            "address": address,
+                                            "reason": str(exc)[:240],
+                                        })
+                                        fail_run.result_json = json.dumps(results, ensure_ascii=False)
+                                        await fail_db.commit()
+                                logger.exception("Failed to process stale prospect %s", candidate.url)
+
+        async with AsyncSessionLocal() as db:
+            run = await db.get(StaleListingDiscoveryRun, run_uuid)
+            if run:
+                run.status = "completed"
+                run.completed_at = datetime.now(timezone.utc)
+                run.result_json = json.dumps(results, ensure_ascii=False)
+                await db.commit()
+    except Exception as exc:
+        logger.exception("Discovery run %s failed", run_id)
+        async with AsyncSessionLocal() as db:
+            run = await db.get(StaleListingDiscoveryRun, run_uuid)
+            if run:
+                run.status = "failed"
+                run.error_message = str(exc)[:1000]
+                run.completed_at = datetime.now(timezone.utc)
+                run.result_json = json.dumps(results, ensure_ascii=False)
+                await db.commit()

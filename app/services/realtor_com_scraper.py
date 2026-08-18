@@ -15,6 +15,7 @@ from app.services.currency_rates import to_gbp
 from app.services.scraper_base import (
     load_progress,
     normalize_listing_text,
+    parse_int,
     parse_next_data,
     rate_limited_get,
     run_scraper_loop,
@@ -29,6 +30,7 @@ HTTP_CONCURRENCY = 2
 MAX_PAGES = 40
 SCRAPE_INTERVAL_HOURS = 8
 PROGRESS_FILE = Path("/tmp/realtor_com_scraper_progress.json")
+PROGRESS_NAMESPACE = "realtor-com-v2"
 _BASE = "https://www.realtor.com"
 
 KNOWN_LOCATIONS: list[tuple[str, str]] = [
@@ -92,9 +94,9 @@ def _extract_listing(prop: dict[str, Any], city: str) -> Optional[dict[str, Any]
 
         price_block = prop.get("list_price") or prop.get("price") or {}
         if isinstance(price_block, dict):
-            price_native = int(price_block.get("amount") or price_block.get("value") or 0)
+            price_native = parse_int(price_block.get("amount") or price_block.get("value"))
         else:
-            price_native = int(price_block or 0)
+            price_native = parse_int(price_block)
         if price_native <= 0:
             return None
 
@@ -118,9 +120,9 @@ def _extract_listing(prop: dict[str, Any], city: str) -> Optional[dict[str, Any]
         headline, subtitle = normalize_listing_text(title, address)
 
         description_block = prop.get("description") or {}
-        bedrooms = int(description_block.get("beds") or prop.get("beds") or 0)
+        bedrooms = parse_int(description_block.get("beds") or prop.get("beds"))
         bathrooms_raw = description_block.get("baths") or prop.get("baths")
-        bathrooms = int(float(bathrooms_raw)) if bathrooms_raw is not None else None
+        bathrooms = parse_int(bathrooms_raw) or None
         prop_type = str(description_block.get("type") or prop.get("prop_type") or "Home")
 
         images: list[str] = []
@@ -261,7 +263,7 @@ async def _worker(
                 stats["new"] += saved
                 stats["done"] += 1
                 if stats["done"] % 10 == 0:
-                    save_progress(PROGRESS_FILE, completed)
+                    save_progress(PROGRESS_FILE, completed, namespace=PROGRESS_NAMESPACE)
         except Exception as exc:
             logger.error("Realtor.com worker %d error on %s: %s", worker_id, item.city, exc)
         finally:
@@ -269,7 +271,11 @@ async def _worker(
 
 
 async def scrape_all() -> dict[str, int]:
-    completed = load_progress(PROGRESS_FILE)
+    completed = load_progress(
+        PROGRESS_FILE,
+        namespace=PROGRESS_NAMESPACE,
+        max_age_seconds=(SCRAPE_INTERVAL_HOURS * 3600) - 60,
+    )
     async with httpx.AsyncClient() as client:
         sem = asyncio.Semaphore(HTTP_CONCURRENCY)
         queue: asyncio.Queue[WorkItem] = asyncio.Queue()
@@ -295,9 +301,9 @@ async def scrape_all() -> dict[str, int]:
             worker.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
 
-    save_progress(PROGRESS_FILE, completed)
+    save_progress(PROGRESS_FILE, completed, namespace=PROGRESS_NAMESPACE)
     return stats
 
 
 async def start_scraper_loop() -> None:
-    await run_scraper_loop("Realtor.com", scrape_all, SCRAPE_INTERVAL_HOURS, initial_delay_seconds=360)
+    await run_scraper_loop("Realtor.com", scrape_all, SCRAPE_INTERVAL_HOURS, initial_delay_seconds=45)

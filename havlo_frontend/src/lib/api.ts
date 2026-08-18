@@ -27,6 +27,32 @@ export interface AgentListing {
   ai_report_generated_at: string | null;
 }
 
+export interface StaleProspectDiscoveryRun {
+  run_id: string;
+  status: string;
+  dry_run: boolean;
+  location_names: string[];
+  min_price: number;
+  min_days_on_market: number;
+  max_candidates: number;
+  max_pages_per_location: number;
+  candidates_seen: number;
+  eligible_count: number;
+  created_prospects_count: number;
+  skipped_count: number;
+  failed_count: number;
+  results: {
+    eligible?: Record<string, unknown>[];
+    created?: Record<string, unknown>[];
+    skipped?: Record<string, unknown>[];
+    failed?: Record<string, unknown>[];
+  };
+  error_message?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at?: string | null;
+}
+
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
 export function buildWsUrl(path: string): string {
   const base = API_BASE.startsWith('http')
@@ -1009,6 +1035,30 @@ export const api = {
       `/stale-listings/admin/${assessmentId}/mark-paid`,
       { method: 'POST', token }
     ),
+
+  staleListingsDiscoveryRuns: (token: string) =>
+    request<StaleProspectDiscoveryRun[]>('/stale-listings/admin/prospects/discovery-runs', { token }),
+
+  staleListingsDiscoveryRun: (runId: string, token: string) =>
+    request<StaleProspectDiscoveryRun>(`/stale-listings/admin/prospects/discovery-runs/${encodeURIComponent(runId)}`, { token }),
+
+  staleListingsStartDiscoveryRun: (
+    payload: {
+      dry_run: boolean;
+      location_names?: string[];
+      max_candidates: number;
+      max_pages_per_location: number;
+      min_price: number;
+      min_days_on_market: number;
+    },
+    token: string
+  ) =>
+    request<StaleProspectDiscoveryRun>('/stale-listings/admin/prospects/discovery-runs', {
+      method: 'POST',
+      body: payload,
+      token,
+      timeout: 30000,
+    }),
 
   customOffersScrape: (payload: { listing_url: string }) =>
     request<CustomOffersScrapeResponse>('/custom-offers/scrape', {

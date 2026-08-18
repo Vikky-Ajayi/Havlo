@@ -15,13 +15,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
-from app.models.models import StaleListingAssessment, StaleListingProspect, User
+from app.models.models import StaleListingAssessment, StaleListingDiscoveryRun, StaleListingProspect, User
 from app.schemas.schemas import (
     AgencyPricingRequest,
     StaleProspectAdminCreateRequest,
     StaleProspectAdminCreateResponse,
     StaleProspectCheckoutRequest,
     StaleProspectCheckoutResponse,
+    StaleProspectDiscoveryRunRequest,
+    StaleProspectDiscoveryRunResponse,
     StaleProspectLookupRequest,
     StaleProspectPreviewResponse,
     StaleProspectReportResponse,
@@ -39,19 +41,17 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services.stale_prospect_service import (
-    build_preview,
-    create_access_token,
+    create_prospect_from_listing_snapshot,
     extract_price,
-    generate_letter_pdf,
-    generate_prospect_report,
     hash_access_token,
     is_specific_address,
-    make_property_code,
     normalize_property_code,
+    parse_listed_date,
     serialize_preview,
     serialize_report,
     snapshot_from_scrape,
 )
+from app.services.stale_listing_discovery import DiscoveryParams, run_discovery, serialize_discovery_run
 from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
@@ -712,39 +712,17 @@ async def create_stale_prospect_from_url(
     if not is_specific_address(address):
         raise HTTPException(status_code=400, detail="Prospect address is not specific enough for a personalised letter.")
 
-    token = create_access_token()
-    property_code = await make_property_code(db)
-    report = await generate_prospect_report(
-        property_address=address,
-        listing_url=str(payload.rightmove_url),
-        listing_snapshot=snapshot,
-        listing_duration_days=payload.listing_duration_days,
-    )
-    preview = build_preview(report, snapshot, address)
-    prospect = StaleListingProspect(
-        property_code=property_code,
-        qr_token_hash=hash_access_token(token),
-        property_address=address,
+    listed_date = parse_listed_date(snapshot.get("listed_date"))
+    prospect, token, letter_path = await create_prospect_from_listing_snapshot(
+        db,
         rightmove_url=str(payload.rightmove_url),
-        rightmove_id=snapshot.get("rightmove_id") or None,
+        property_address=address,
+        listing_snapshot=snapshot,
         asking_price=float(price),
         listing_duration_days=int(payload.listing_duration_days),
-        property_type=snapshot.get("property_type") or None,
-        bedrooms=int(snapshot["bedrooms"]) if str(snapshot.get("bedrooms") or "").isdigit() else None,
-        bathrooms=int(snapshot["bathrooms"]) if str(snapshot.get("bathrooms") or "").isdigit() else None,
-        listing_snapshot_json=json.dumps(snapshot, ensure_ascii=False),
-        report_json=json.dumps(report, ensure_ascii=False),
-        preview_json=json.dumps(preview, ensure_ascii=False),
-        processing_status="report_ready",
-        payment_status="pending",
+        listed_date=listed_date,
     )
-    db.add(prospect)
-    await db.flush()
-
     preview_url = f"{_frontend_base_url()}/stale-listings/prospect/{token}"
-    letter_path = generate_letter_pdf(prospect, token, _frontend_base_url())
-    prospect.letter_pdf_path = letter_path
-    prospect.processing_status = "letter_ready"
     await db.commit()
     await db.refresh(prospect)
 
@@ -755,20 +733,108 @@ async def create_stale_prospect_from_url(
             email_service.send_stale_prospect_letter_sync,
             to_email=admin_email,
             property_address=address,
-            property_code=property_code,
+            property_code=prospect.property_code,
             preview_url=preview_url,
             letter_pdf_path=letter_path,
         )
         email_sent = True
+        prospect.processing_status = "email_queued"
+        await db.commit()
 
     return StaleProspectAdminCreateResponse(
         prospect_id=str(prospect.id),
-        property_code=property_code,
+        property_code=prospect.property_code,
         preview_url=preview_url,
         qr_url=preview_url,
         letter_pdf_path=letter_path,
         email_sent=email_sent,
     )
+
+
+@admin_router.post(
+    "/admin/prospects/discovery-runs",
+    response_model=StaleProspectDiscoveryRunResponse,
+)
+async def create_stale_prospect_discovery_run(
+    payload: StaleProspectDiscoveryRunRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectDiscoveryRunResponse:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+
+    locations = [item.strip() for item in (payload.location_names or []) if item.strip()]
+    run = StaleListingDiscoveryRun(
+        status="queued",
+        dry_run=payload.dry_run,
+        location_names=json.dumps(locations),
+        min_price=payload.min_price,
+        min_days_on_market=payload.min_days_on_market,
+        max_candidates=payload.max_candidates,
+        max_pages_per_location=payload.max_pages_per_location,
+        started_by_user_id=current_user.id,
+        result_json=json.dumps({"eligible": [], "created": [], "skipped": [], "failed": []}),
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+
+    background_tasks.add_task(
+        run_discovery,
+        str(run.id),
+        DiscoveryParams(
+            dry_run=payload.dry_run,
+            location_names=locations or None,
+            max_candidates=payload.max_candidates,
+            max_pages_per_location=payload.max_pages_per_location,
+            min_price=payload.min_price,
+            min_days_on_market=payload.min_days_on_market,
+        ),
+    )
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+
+
+@admin_router.get(
+    "/admin/prospects/discovery-runs",
+    response_model=list[StaleProspectDiscoveryRunResponse],
+)
+async def list_stale_prospect_discovery_runs(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[StaleProspectDiscoveryRunResponse]:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    result = await db.execute(
+        select(StaleListingDiscoveryRun)
+        .order_by(StaleListingDiscoveryRun.created_at.desc())
+        .limit(10)
+    )
+    return [
+        StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+        for run in result.scalars().all()
+    ]
+
+
+@admin_router.get(
+    "/admin/prospects/discovery-runs/{run_id}",
+    response_model=StaleProspectDiscoveryRunResponse,
+)
+async def get_stale_prospect_discovery_run(
+    run_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectDiscoveryRunResponse:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    try:
+        run_uuid = uuid.UUID(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Discovery run not found.") from exc
+    run = await db.get(StaleListingDiscoveryRun, run_uuid)
+    if not run:
+        raise HTTPException(status_code=404, detail="Discovery run not found.")
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
 
 
 @admin_router.get("/admin", response_model=list[StaleListingAdminItem])
