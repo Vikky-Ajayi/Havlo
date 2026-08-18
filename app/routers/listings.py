@@ -6,9 +6,9 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any, Optional
-from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -25,16 +25,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/listings", tags=["listings"])
 
 _NGN_FALLBACK = 2100
-_ngn_rate_cache: dict[str, Any] = {"rate": _NGN_FALLBACK, "fetched_at": 0}
+_ngn_rate_cache: dict[str, Any] = {"rate": _NGN_FALLBACK, "fetched_at": time.time()}
 
 
 async def _get_gbp_ngn_rate() -> float:
     """Return GBP→NGN exchange rate, cached for 1 hour."""
-    import time
     if time.time() - _ngn_rate_cache["fetched_at"] < 3600:
         return float(_ngn_rate_cache["rate"])
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
+        async with httpx.AsyncClient(timeout=2) as client:
             resp = await client.get("https://open.er-api.com/v6/latest/GBP")
             data = resp.json()
             rate = data["rates"]["NGN"]
@@ -42,7 +41,74 @@ async def _get_gbp_ngn_rate() -> float:
             return float(rate)
     except Exception as exc:
         logger.warning("NGN rate fetch failed (%s), using fallback %d", exc, _NGN_FALLBACK)
+        _ngn_rate_cache["fetched_at"] = time.time()
         return float(_ngn_rate_cache["rate"])
+
+
+def _clean_text(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _source_label(source: str, country: str) -> str:
+    labels = {
+        "rightmove": "Rightmove",
+        "realtor_com": "Realtor.com",
+        "realtor_ca": "Realtor.ca",
+        "bayut": "Bayut",
+    }
+    if source:
+        return labels.get(source, source.replace("_", " ").title())
+    return {
+        "uk": "Rightmove",
+        "america": "Realtor.com",
+        "canada": "Realtor.ca",
+        "dubai": "Bayut",
+    }.get(country, "Source")
+
+
+def _price_display(amount: int, currency: str) -> str:
+    currency = (currency or "GBP").upper()
+    symbols = {"GBP": "£", "USD": "$", "CAD": "C$", "AED": "AED "}
+    prefix = symbols.get(currency, f"{currency} ")
+    return f"{prefix}{max(0, int(amount or 0)):,}"
+
+
+_MARKETING_TITLE_PATTERNS = (
+    "appealing to",
+    "attention",
+    "beautifully",
+    "located within",
+    "immaculate",
+    "offers",
+    "presented",
+    "opportunity",
+    "viewing",
+    "buyers",
+    "investors",
+)
+
+
+def _display_title(raw_title: str, address: str) -> str:
+    title = _clean_text(raw_title)
+    clean_address = _clean_text(address)
+    if not title:
+        return clean_address or "Property for sale"
+    if clean_address:
+        looks_like_description = (
+            len(title) > 90
+            or title.count(" ") >= 12
+            or any(pattern in title.lower() for pattern in _MARKETING_TITLE_PATTERNS)
+        )
+        if looks_like_description:
+            return clean_address
+    return title
+
+
+def _listing_country(listing: RightmoveListing) -> str:
+    stored = _normalise_country(getattr(listing, "country", None))
+    if stored in _COUNTRY_ALIASES:
+        return stored
+    return _infer_country(listing)
 
 
 def _listing_to_dict(listing: RightmoveListing, ngn_rate: float) -> dict[str, Any]:
@@ -53,22 +119,41 @@ def _listing_to_dict(listing: RightmoveListing, ngn_rate: float) -> dict[str, An
             images = _json.loads(listing.images_json)
         except Exception:
             pass
+    country = _listing_country(listing)
+    source = _clean_text(getattr(listing, "source", "")) or {
+        "uk": "rightmove",
+        "america": "realtor_com",
+        "canada": "realtor_ca",
+        "dubai": "bayut",
+    }.get(country, "")
+    price_gbp = int(listing.price_gbp or 0)
+    price_native = int(getattr(listing, "price_native", 0) or price_gbp)
+    price_currency = _clean_text(getattr(listing, "price_currency", "")) or "GBP"
+    address = _clean_text(listing.address)
+    title = _display_title(listing.title, address)
+    address = address or title
+
     return {
         "id": str(listing.id),
         "rightmove_id": listing.rightmove_id,
         "url": listing.url,
-        "title": listing.title,
-        "price_gbp": listing.price_gbp,
-        "price_ngn": int(listing.price_gbp * ngn_rate),
+        "title": title,
+        "price_gbp": price_gbp,
+        "price_native": price_native,
+        "price_currency": price_currency,
+        "price_display": _price_display(price_native, price_currency),
+        "price_ngn": int(price_gbp * ngn_rate),
         "ngn_rate": ngn_rate,
-        "address": listing.address,
-        "city": listing.city,
-        "region": listing.region,
-        "country": _infer_country(listing),
+        "address": address,
+        "city": _clean_text(listing.city),
+        "region": _clean_text(listing.region),
+        "country": country,
+        "source": source,
+        "source_label": _source_label(source, country),
         "bedrooms": listing.bedrooms,
         "bathrooms": listing.bathrooms,
-        "property_type": listing.property_type,
-        "description": listing.description,
+        "property_type": _clean_text(listing.property_type) or "Property",
+        "description": _clean_text(listing.description),
         "images": images,
         "scraped_at": listing.scraped_at.isoformat() if listing.scraped_at else None,
     }
@@ -120,13 +205,15 @@ def _normalise_country(raw: Optional[str]) -> Optional[str]:
 
 
 def _infer_country(listing: RightmoveListing) -> str:
+    stored = _normalise_country(getattr(listing, "country", None))
+    if stored in _COUNTRY_ALIASES:
+        return stored
     haystack = " ".join(
         str(part or "")
         for part in [listing.region, listing.city, listing.address, listing.title, listing.url]
     ).lower()
-    host = urlparse(listing.url or "").netloc.lower()
     for country, aliases in _COUNTRY_ALIASES.items():
-        if any(alias in haystack or alias in host for alias in aliases):
+        if any(alias in haystack for alias in aliases):
             return country
     if (listing.city or "").strip().lower() in _KNOWN_UK_TERMS:
         return "uk"
@@ -170,23 +257,36 @@ def _item_images(item: dict[str, Any]) -> list[str]:
 
 
 def _item_to_model_values(item: dict[str, Any], country: str) -> dict[str, Any]:
-    title = str(item.get("title") or item.get("address") or "Imported property").strip()
+    title = _clean_text(item.get("title") or item.get("address") or "Imported property")
     url = str(item.get("url") or item.get("external_url") or "").strip()
-    city = str(item.get("city") or item.get("town") or item.get("location") or country.title()).strip()
-    address = str(item.get("address") or title).strip()
+    city = _clean_text(item.get("city") or item.get("town") or item.get("location") or country.title())
+    address = _clean_text(item.get("address") or title)
     price = _parse_price_to_int(item.get("price_gbp") or item.get("price") or item.get("price_text"))
+    source_by_country = {
+        "uk": ("rightmove", "GBP"),
+        "america": ("realtor_com", "USD"),
+        "canada": ("realtor_ca", "CAD"),
+        "dubai": ("bayut", "AED"),
+    }
+    source, currency = source_by_country.get(country, ("import", "GBP"))
+    price_native = _parse_price_to_int(item.get("price_native") or item.get("price") or price)
+    price_currency = _clean_text(item.get("price_currency") or currency).upper()[:3]
     return {
         "rightmove_id": _listing_identity(item),
         "url": url or f"https://www.heyhavlo.com/buyabroad/uk/listings",
         "title": title[:500],
         "price_gbp": price or 0,
+        "price_native": price_native or price or 0,
+        "price_currency": price_currency or "GBP",
         "address": address[:500],
         "city": city[:100],
         "region": country,
+        "country": country,
+        "source": str(item.get("source") or source)[:30],
         "bedrooms": int(_parse_price_to_int(item.get("bedrooms")) or 0),
         "bathrooms": int(_parse_price_to_int(item.get("bathrooms")) or 0) or None,
-        "property_type": str(item.get("property_type") or item.get("type") or "Home")[:100],
-        "description": str(item.get("description") or "") or None,
+        "property_type": _clean_text(item.get("property_type") or item.get("type") or "Home")[:100],
+        "description": _clean_text(item.get("description")) or None,
         "images_json": json.dumps(_item_images(item)),
         "is_active": True,
         "scraped_at": datetime.now(timezone.utc),
@@ -249,10 +349,23 @@ async def list_listings(
     search: Optional[str] = Query(None, description="Free-text search across title, address, city"),
     page: int = Query(1, ge=1),
     per_page: int = Query(12, ge=1, le=48),
+    include_total: bool = Query(True, description="Set false for fast preview rows when total/pages are not needed"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     try:
-        return await _list_listings_inner(country, city, min_price, max_price, min_beds, property_type, search, page, per_page, db)
+        return await _list_listings_inner(
+            country,
+            city,
+            min_price,
+            max_price,
+            min_beds,
+            property_type,
+            search,
+            page,
+            per_page,
+            include_total,
+            db,
+        )
     except Exception as exc:
         logger.error("listings endpoint error: %s", exc, exc_info=True)
         raise
@@ -268,28 +381,15 @@ async def _list_listings_inner(
     search: Optional[str],
     page: int,
     per_page: int,
+    include_total: bool,
     db: AsyncSession,
 ) -> dict[str, Any]:
     stmt = select(RightmoveListing).where(RightmoveListing.is_active.is_(True))
     expected_country = _normalise_country(country)
     if expected_country:
-        aliases = _COUNTRY_ALIASES.get(expected_country, {expected_country})
-        country_terms = {expected_country, *aliases}
-        country_clauses = []
-        for term_value in country_terms:
-            term = f"%{term_value.lower()}%"
-            country_clauses.extend(
-                [
-                    func.lower(RightmoveListing.region).like(term),
-                    func.lower(RightmoveListing.url).like(term),
-                    func.lower(RightmoveListing.city).like(term),
-                    func.lower(RightmoveListing.address).like(term),
-                    func.lower(RightmoveListing.title).like(term),
-                ]
-            )
-        if expected_country == "uk":
-            country_clauses.append(func.coalesce(RightmoveListing.region, "") == "")
-        stmt = stmt.where(or_(*country_clauses))
+        if expected_country not in _COUNTRY_ALIASES:
+            raise HTTPException(status_code=400, detail="Unsupported country. Use uk, america, dubai, or canada.")
+        stmt = stmt.where(RightmoveListing.country == expected_country)
     if city:
         stmt = stmt.where(func.lower(RightmoveListing.city) == city.lower())
     if min_price is not None:
@@ -316,9 +416,11 @@ async def _list_listings_inner(
         )
 
     stmt = stmt.order_by(RightmoveListing.scraped_at.desc())
-    count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
-    total_result = await db.execute(count_stmt)
-    total = int(total_result.scalar_one() or 0)
+    total: Optional[int] = None
+    if include_total:
+        count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
+        total_result = await db.execute(count_stmt)
+        total = int(total_result.scalar_one() or 0)
     result = await db.execute(stmt.offset((page - 1) * per_page).limit(per_page))
     listings = result.scalars().all()
 
@@ -328,7 +430,7 @@ async def _list_listings_inner(
         "total": total,
         "page": page,
         "per_page": per_page,
-        "pages": max(1, -(-total // per_page)),
+        "pages": max(1, -(-total // per_page)) if total is not None else None,
         "ngn_rate": ngn_rate,
         "country": expected_country,
         "listings": [_listing_to_dict(l, ngn_rate) for l in listings],
@@ -336,12 +438,22 @@ async def _list_listings_inner(
 
 
 @router.get("/cities")
-async def list_cities(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    result = await db.execute(
+async def list_cities(
+    country: Optional[str] = Query(None, description="Filter by country: uk, america, dubai, canada"),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    stmt = (
         select(RightmoveListing.city, func.count(RightmoveListing.id).label("count"))
         .where(RightmoveListing.is_active.is_(True))
-        .group_by(RightmoveListing.city)
-        .order_by(func.count(RightmoveListing.id).desc())
+    )
+    expected_country = _normalise_country(country)
+    if expected_country:
+        if expected_country not in _COUNTRY_ALIASES:
+            raise HTTPException(status_code=400, detail="Unsupported country. Use uk, america, dubai, or canada.")
+        stmt = stmt.where(RightmoveListing.country == expected_country)
+    stmt = stmt.group_by(RightmoveListing.city).order_by(func.count(RightmoveListing.id).desc())
+    result = await db.execute(
+        stmt
     )
     rows = result.all()
     return {"cities": [{"name": r[0], "count": r[1]} for r in rows]}
@@ -355,9 +467,15 @@ async def listings_stats(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     last_scraped = (await db.execute(
         select(func.max(RightmoveListing.scraped_at))
     )).scalar_one()
+    per_country_result = await db.execute(
+        select(RightmoveListing.country, func.count(RightmoveListing.id))
+        .where(RightmoveListing.is_active.is_(True))
+        .group_by(RightmoveListing.country)
+    )
     return {
         "total_listings": total,
         "last_scraped": last_scraped.isoformat() if last_scraped else None,
+        "countries": {country: count for country, count in per_country_result.all()},
     }
 
 
@@ -372,17 +490,25 @@ async def get_listings_by_ids(
     if not id_list:
         return {"listings": []}
     result = await db.execute(
-        select(RightmoveListing).where(RightmoveListing.rightmove_id.in_(id_list))
+        select(RightmoveListing).where(
+            RightmoveListing.rightmove_id.in_(id_list),
+            RightmoveListing.is_active.is_(True),
+        )
     )
     listings = result.scalars().all()
+    by_id = {listing.rightmove_id: listing for listing in listings}
+    ordered = [by_id[item_id] for item_id in id_list if item_id in by_id]
     ngn_rate = await _get_gbp_ngn_rate()
-    return {"listings": [_listing_to_dict(l, ngn_rate) for l in listings]}
+    return {"listings": [_listing_to_dict(l, ngn_rate) for l in ordered]}
 
 
 @router.get("/{rightmove_id}")
 async def get_listing(rightmove_id: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
     result = await db.execute(
-        select(RightmoveListing).where(RightmoveListing.rightmove_id == rightmove_id)
+        select(RightmoveListing).where(
+            RightmoveListing.rightmove_id == rightmove_id,
+            RightmoveListing.is_active.is_(True),
+        )
     )
     listing = result.scalar_one_or_none()
     if not listing:

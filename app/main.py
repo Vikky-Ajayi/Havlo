@@ -380,6 +380,10 @@ async def startup() -> None:
                     await conn.execute(text("""
                         ALTER TABLE rightmove_listings
                             ADD COLUMN IF NOT EXISTS region VARCHAR(100) NOT NULL DEFAULT '',
+                            ADD COLUMN IF NOT EXISTS country VARCHAR(20) NOT NULL DEFAULT 'uk',
+                            ADD COLUMN IF NOT EXISTS source VARCHAR(30) NOT NULL DEFAULT 'rightmove',
+                            ADD COLUMN IF NOT EXISTS price_native INTEGER NOT NULL DEFAULT 0,
+                            ADD COLUMN IF NOT EXISTS price_currency VARCHAR(3) NOT NULL DEFAULT 'GBP',
                             ADD COLUMN IF NOT EXISTS property_type VARCHAR(100) NOT NULL DEFAULT '',
                             ADD COLUMN IF NOT EXISTS description TEXT,
                             ADD COLUMN IF NOT EXISTS images_json TEXT,
@@ -387,8 +391,47 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS scraped_at TIMESTAMPTZ DEFAULT NOW(),
                             ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
                     """))
+                    await conn.execute(text("""
+                        UPDATE rightmove_listings
+                        SET
+                            country = CASE
+                                WHEN lower(coalesce(country, '')) IN ('america', 'usa', 'us') THEN 'america'
+                                WHEN lower(coalesce(country, '')) IN ('dubai', 'uae') THEN 'dubai'
+                                WHEN lower(coalesce(country, '')) = 'canada' THEN 'canada'
+                                WHEN lower(coalesce(region, '')) IN ('america', 'usa', 'us') THEN 'america'
+                                WHEN lower(coalesce(region, '')) IN ('dubai', 'uae') THEN 'dubai'
+                                WHEN lower(coalesce(region, '')) = 'canada' THEN 'canada'
+                                WHEN url ILIKE '%bayut%' OR url ILIKE '%propertyfinder%' THEN 'dubai'
+                                WHEN url ILIKE '%realtor.ca%' THEN 'canada'
+                                WHEN url ILIKE '%realtor.com%' OR url ILIKE '%zillow%' OR url ILIKE '%redfin%' THEN 'america'
+                                ELSE 'uk'
+                            END,
+                            source = CASE
+                                WHEN url ILIKE '%bayut%' THEN 'bayut'
+                                WHEN url ILIKE '%realtor.ca%' THEN 'realtor_ca'
+                                WHEN url ILIKE '%realtor.com%' THEN 'realtor_com'
+                                ELSE source
+                            END,
+                            price_native = CASE WHEN price_native = 0 THEN price_gbp ELSE price_native END,
+                            price_currency = CASE
+                                WHEN url ILIKE '%bayut%' OR url ILIKE '%propertyfinder%' THEN 'AED'
+                                WHEN url ILIKE '%realtor.ca%' THEN 'CAD'
+                                WHEN url ILIKE '%realtor.com%' OR url ILIKE '%zillow%' OR url ILIKE '%redfin%' THEN 'USD'
+                                ELSE price_currency
+                            END
+                        WHERE country = 'uk' OR price_native = 0;
+                    """))
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_city ON rightmove_listings (city);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_country ON rightmove_listings (country);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_country_city ON rightmove_listings (country, city);"
+                    ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_country_price ON rightmove_listings (country, price_gbp);"
                     ))
                 else:
                     logger.info(
@@ -452,14 +495,33 @@ async def startup() -> None:
         app.state.db_keepalive_task = asyncio.create_task(_db_keepalive())
         logger.info("DB keep-alive ping scheduled (every 4 min).")
 
-    # ── Rightmove scraper background loop ─────────────────────────────
-    scraper_disabled = os.getenv("DISABLE_RIGHTMOVE_SCRAPER", "").strip().lower() in {"1", "true", "yes", "on"}
-    if HAS_DATABASE and not scraper_disabled:
-        from app.services.rightmove_scraper import start_scraper_loop
-        app.state.scraper_task = asyncio.create_task(start_scraper_loop())
-        logger.info("Rightmove scraper loop started.")
+    # ── Marketplace scraper background loops ─────────────────────────
+    def _env_enabled(name: str, default: bool) -> bool:
+        raw = os.getenv(name, "").strip().lower()
+        if raw in {"1", "true", "yes", "on"}:
+            return True
+        if raw in {"0", "false", "no", "off"}:
+            return False
+        return default
+
+    if HAS_DATABASE and _env_enabled("ENABLE_MARKETPLACE_SCRAPERS", True):
+        scraper_specs = [
+            ("Rightmove", "DISABLE_RIGHTMOVE_SCRAPER", "app.services.rightmove_scraper"),
+            ("Bayut", "DISABLE_BAYUT_SCRAPER", "app.services.bayut_scraper"),
+            ("Realtor.ca", "DISABLE_REALTOR_CA_SCRAPER", "app.services.realtor_ca_scraper"),
+            ("Realtor.com", "DISABLE_REALTOR_COM_SCRAPER", "app.services.realtor_com_scraper"),
+        ]
+        app.state.scraper_tasks = []
+        import importlib
+        for scraper_name, disable_env, module_name in scraper_specs:
+            if _env_enabled(disable_env, False):
+                logger.info("%s scraper loop disabled by %s.", scraper_name, disable_env)
+                continue
+            module = importlib.import_module(module_name)
+            app.state.scraper_tasks.append(asyncio.create_task(module.start_scraper_loop()))
+            logger.info("%s scraper loop scheduled.", scraper_name)
     elif HAS_DATABASE:
-        logger.info("Rightmove scraper loop disabled by DISABLE_RIGHTMOVE_SCRAPER.")
+        logger.info("Marketplace scraper loops disabled by ENABLE_MARKETPLACE_SCRAPERS.")
 
 
 @app.on_event("shutdown")
@@ -472,6 +534,12 @@ async def shutdown() -> None:
                 await task
             except (asyncio.CancelledError, Exception):
                 pass
+    for task in getattr(app.state, "scraper_tasks", []):
+        task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
     await engine.dispose()
     logger.info("Database connections closed.")
 
