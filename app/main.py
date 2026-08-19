@@ -177,6 +177,14 @@ async def startup() -> None:
             # This always runs regardless of which worker won the create_all race.
             async with engine.begin() as conn:
                 from sqlalchemy import text
+                # Uvicorn/Railway can start multiple workers together.  The
+                # schema sync contains several ALTER TABLE statements, which
+                # require an ACCESS EXCLUSIVE lock.  Without serializing this
+                # block, workers wait on each other's DDL until PostgreSQL's
+                # statement timeout cancels the transaction.
+                if conn.dialect.name == "postgresql":
+                    await conn.execute(text("SELECT pg_advisory_xact_lock(7483912051)"))
+                    await conn.execute(text("SET LOCAL statement_timeout = '120s'"))
                 # Idempotent schema sync: add any columns missing on pre-existing tables.
                 # Safe to re-run; uses ADD COLUMN IF NOT EXISTS (Postgres >= 9.6).
                 # Skip on non-Postgres backends (e.g. SQLite for local dev/tests).
