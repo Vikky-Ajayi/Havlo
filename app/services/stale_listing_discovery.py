@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import uuid
 from dataclasses import dataclass
@@ -28,6 +29,20 @@ from app.services.stale_prospect_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
+    try:
+        return max(minimum, int(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float, *, minimum: float = 0.1) -> float:
+    try:
+        return max(minimum, float(os.getenv(name, str(default))))
+    except (TypeError, ValueError):
+        return default
 
 
 RESIDENTIAL_EXCLUDE = (
