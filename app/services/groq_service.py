@@ -8,9 +8,9 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Groq retired llama3-70b-8192. Keep the model in one shared constant because
-# all report generators use the same production model.
-GROQ_MODEL = "llama-3.3-70b-versatile"
+# Keep the model in one shared constant because all report generators use the
+# same production model.
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 
 def _get_client():
