@@ -104,6 +104,43 @@ def _display_title(raw_title: str, address: str) -> str:
     return title
 
 
+def _looks_like_broad_location(value: str, country: str, city: str, region: str) -> bool:
+    text = _clean_text(value).lower()
+    if not text:
+        return True
+    parts = [part.strip().lower() for part in re.split(r",|\|", text) if part.strip()]
+    broad_terms = {
+        "dubai",
+        "canada",
+        "america",
+        "usa",
+        "united states",
+        "british columbia",
+        "ontario",
+        "vancouver",
+    }
+    broad_terms.update(part.lower() for part in (country, city, region) if part)
+    return (
+        text in broad_terms
+        or (parts and all(part in broad_terms for part in parts))
+        or (len(parts) <= 3 and not re.search(r"\d|bed|villa|apartment|house|condo|townhouse|penthouse|detached", text))
+    )
+
+
+def _marketplace_title(listing: RightmoveListing, address: str, country: str) -> str:
+    raw_title = _display_title(listing.title, address)
+    city = _clean_text(listing.city)
+    region = _clean_text(listing.region)
+    property_type = _clean_text(listing.property_type) or "property"
+    bedrooms = int(listing.bedrooms or 0)
+    if raw_title and not _looks_like_broad_location(raw_title, country, city, region):
+        return raw_title
+    location = city or region or country.title()
+    if bedrooms > 0:
+        return f"{bedrooms} bedroom {property_type.lower()} in {location}"
+    return f"{property_type.title()} in {location}"
+
+
 def _listing_country(listing: RightmoveListing) -> str:
     stored = _normalise_country(getattr(listing, "country", None))
     if stored in _COUNTRY_ALIASES:
@@ -130,7 +167,7 @@ def _listing_to_dict(listing: RightmoveListing, ngn_rate: float) -> dict[str, An
     price_native = int(getattr(listing, "price_native", 0) or price_gbp)
     price_currency = _clean_text(getattr(listing, "price_currency", "")) or "GBP"
     address = _clean_text(listing.address)
-    title = _display_title(listing.title, address)
+    title = _marketplace_title(listing, address, country)
     address = address or title
 
     return {

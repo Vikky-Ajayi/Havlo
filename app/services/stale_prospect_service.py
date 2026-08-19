@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import asyncio
 import hashlib
 import json
 import os
@@ -17,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing, StaleListingProspect
 from app.services.groq_service import generate_stale_listing_report
 
@@ -241,6 +243,59 @@ async def create_prospect_from_listing_snapshot(
     prospect.letter_pdf_path = letter_path
     prospect.processing_status = "letter_ready"
     return prospect, token, letter_path
+
+
+async def send_prospect_letter_to_admin(
+    prospect_id: str,
+    token: str,
+    public_base_url: str,
+) -> bool:
+    """Send the generated prospect letter and persist the result."""
+    import uuid
+
+    from app.services import email_service
+
+    admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if not admin_email:
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+            if prospect:
+                prospect.processing_status = "email_skipped"
+                prospect.last_error = "ADMIN_NOTIFY_EMAIL is not configured."
+                await db.commit()
+        return False
+
+    preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect/{token}"
+    async with AsyncSessionLocal() as db:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+        if not prospect:
+            return False
+        prospect.processing_status = "email_sending"
+        await db.commit()
+        property_address = prospect.property_address
+        property_code = prospect.property_code
+        letter_pdf_path = prospect.letter_pdf_path or ""
+
+    sent = await asyncio.to_thread(
+        email_service.send_stale_prospect_letter_sync,
+        to_email=admin_email,
+        property_address=property_address,
+        property_code=property_code,
+        preview_url=preview_url,
+        letter_pdf_path=letter_pdf_path,
+    )
+    async with AsyncSessionLocal() as db:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+        if prospect:
+            if sent:
+                prospect.processing_status = "email_sent"
+                prospect.letter_sent_at = datetime.now(timezone.utc)
+                prospect.last_error = None
+            else:
+                prospect.processing_status = "email_failed"
+                prospect.last_error = "Email provider did not accept the prospect letter email. Check Resend settings and logs."
+            await db.commit()
+    return sent
 
 
 def build_preview(report: dict[str, Any], snapshot: dict[str, Any], address: str) -> dict[str, Any]:

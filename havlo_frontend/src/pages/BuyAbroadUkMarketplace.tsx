@@ -8,6 +8,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 
 const MARKETPLACE_FAVS = 'havlo_buyabroad_favs';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
+const LISTING_CACHE_PREFIX = 'havlo_buyabroad_listing_';
 const CONSULTATION_FEE = 99.99;
 const LISTINGS_API_BASE = API_BASE.replace(/\/$/, '');
 
@@ -113,6 +114,28 @@ function writeIds(key: string, ids: string[]) {
 
 function formatGbp(amount: number) {
   return `£${Math.max(0, Math.round(amount || 0)).toLocaleString('en-GB')}`;
+}
+
+function cacheListings(listings: Listing[]) {
+  try {
+    listings.forEach((listing) => {
+      if (listing.rightmove_id) {
+        sessionStorage.setItem(`${LISTING_CACHE_PREFIX}${listing.rightmove_id}`, JSON.stringify(listing));
+      }
+    });
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function readCachedListing(id?: string): Listing | null {
+  if (!id) return null;
+  try {
+    const raw = sessionStorage.getItem(`${LISTING_CACHE_PREFIX}${id}`);
+    return raw ? JSON.parse(raw) as Listing : null;
+  } catch {
+    return null;
+  }
 }
 
 function formatMoney(amount: number, currency = 'GBP') {
@@ -389,9 +412,12 @@ function AllHomesModal({
     const params = new URLSearchParams({ country, page: String(page), per_page: '40' });
     const term = searchTerm.trim();
     if (term) params.set('search', term);
-    fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
+      fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
       .then((res) => res.ok ? res.json() : Promise.reject())
-      .then((payload: ListingsResponse) => setData(payload))
+      .then((payload: ListingsResponse) => {
+        cacheListings(payload.listings || []);
+        setData(payload);
+      })
       .catch((err) => {
         if (err?.name !== 'AbortError') setError('We could not load these homes right now.');
       })
@@ -736,9 +762,9 @@ function MarketplaceStyles() {
     `}</style>
     <style>{`
       .baml-source-badge{display:inline-flex;margin-top:10px;font-size:12px;font-weight:800;color:#555;background:#f2f3f5;border-radius:999px;padding:5px 9px}.baml-card-title{line-height:1.22;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:39px}.baml-meta{white-space:normal;flex-wrap:wrap;gap:7px 10px;line-height:1.35}.baml-meta span{display:inline-flex;align-items:center;gap:4px;min-width:0}.baml-price{font-weight:800;color:#222;line-height:1.35}.baml-detail-price{margin:9px 0 0;font-size:20px;font-weight:900;color:#333}.baml-detail-meta{display:flex;flex-wrap:wrap;gap:8px 16px;line-height:1.45}.baml-detail-meta>span{display:inline-flex;align-items:center;gap:5px}.baml-description{line-height:1.35}.baml-pagination button:disabled{opacity:.4;cursor:not-allowed}.baml-basket-info h3{line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-      .baml-homes-overlay{align-items:flex-end;padding:0;overflow:hidden}.baml-homes-overlay .baml-all-homes{height:calc(100dvh - 90px);min-height:0;max-height:calc(100dvh - 90px);display:flex;flex-direction:column;overflow:hidden}.baml-homes-overlay .baml-all-homes h2{flex:0 0 auto}.baml-all-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:8px;scrollbar-gutter:stable}.baml-all-scroll::-webkit-scrollbar{width:8px}.baml-all-scroll::-webkit-scrollbar-thumb{background:#d8d9de;border-radius:999px}.baml-all-scroll::-webkit-scrollbar-track{background:transparent}.baml-homes-overlay .baml-all-grid{min-height:0}.baml-homes-overlay .baml-pagination{flex:0 0 auto}
+      .baml-homes-overlay{align-items:flex-end;justify-content:center;padding:0;overflow:hidden}.baml-homes-overlay .baml-all-homes{align-self:flex-end;margin-top:auto;margin-bottom:0;height:min(82dvh,calc(100dvh - 28px));min-height:0;max-height:calc(100dvh - 28px);display:flex;flex-direction:column;overflow:hidden;border-radius:34px 34px 0 0}.baml-homes-overlay .baml-all-homes h2{flex:0 0 auto}.baml-all-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-bottom:8px;scrollbar-gutter:stable}.baml-all-scroll::-webkit-scrollbar{width:8px}.baml-all-scroll::-webkit-scrollbar-thumb{background:#d8d9de;border-radius:999px}.baml-all-scroll::-webkit-scrollbar-track{background:transparent}.baml-homes-overlay .baml-all-grid{min-height:0}.baml-homes-overlay .baml-pagination{flex:0 0 auto}
       @media(max-width:900px){.baml-source-badge{font-size:11px;padding:4px 8px}.baml-card-title{min-height:36px}.baml-detail-meta{font-size:14px}.baml-basket-info .baml-meta{display:none}}
-      @media(max-width:900px){.baml-homes-overlay{padding-top:0}.baml-homes-overlay .baml-all-homes{height:calc(100dvh - 90px);max-height:calc(100dvh - 90px);min-height:0;overflow:hidden}.baml-homes-overlay .baml-all-homes h2{margin-bottom:28px}.baml-homes-overlay .baml-all-scroll{padding-bottom:6px}.baml-homes-overlay .baml-pagination{margin-top:36px}}
+      @media(max-width:900px){.baml-homes-overlay{padding-top:0}.baml-homes-overlay .baml-all-homes{height:min(86dvh,calc(100dvh - 18px));max-height:calc(100dvh - 18px);min-height:0;overflow:hidden}.baml-homes-overlay .baml-all-homes h2{margin-bottom:28px}.baml-homes-overlay .baml-all-scroll{padding-bottom:6px}.baml-homes-overlay .baml-pagination{margin-top:36px}}
     `}</style>
     </>
   );
@@ -751,6 +777,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   const [loadingByCountry, setLoadingByCountry] = useState<Record<CountryKey, boolean>>(() => emptyCountryFlags(true));
   const [listingErrors, setListingErrors] = useState<Record<CountryKey, string>>(() => emptyCountryMessages());
   const [searchTerm, setSearchTerm] = useState('');
+  const [queryTerm, setQueryTerm] = useState('');
   const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
   const [authView, setAuthView] = useState<AuthView | null>(null);
@@ -767,8 +794,13 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   }, [allOpen]);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setQueryTerm(searchTerm.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     const controllers: AbortController[] = [];
-    const term = searchTerm.trim();
+    const term = queryTerm;
     setLoadingByCountry(emptyCountryFlags(true));
     setListingErrors(emptyCountryMessages());
 
@@ -777,7 +809,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
       controllers.push(controller);
       const params = new URLSearchParams({
         country: section.key,
-        per_page: '20',
+        per_page: '5',
         include_total: 'false',
       });
       if (term) params.set('search', term);
@@ -786,6 +818,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
         .then((res) => res.ok ? res.json() : Promise.reject())
         .then((data: ListingsResponse) => {
           if (controller.signal.aborted) return;
+          cacheListings(data.listings || []);
           setListingsByCountry((current) => ({ ...current, [section.key]: data.listings || [] }));
         })
         .catch((err) => {
@@ -806,15 +839,15 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
     return () => {
       controllers.forEach((controller) => controller.abort());
     };
-  }, [searchTerm]);
+  }, [queryTerm]);
 
   const visibleListingsByCountry = useMemo(() => {
     const next = emptyCountryListings();
     COUNTRY_SECTIONS.forEach((section) => {
-      next[section.key] = filterListings(listingsByCountry[section.key], searchTerm);
+      next[section.key] = filterListings(listingsByCountry[section.key], queryTerm);
     });
     return next;
-  }, [listingsByCountry, searchTerm]);
+  }, [listingsByCountry, queryTerm]);
 
   const toggleFav = (id: string) => {
     if (!auth.token) {
@@ -857,7 +890,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
       </main>
       <FooterCta />
       {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
-      {allOpen && <AllHomesModal title={allOpen.title} country={allOpen.country} searchTerm={searchTerm} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
+      {allOpen && <AllHomesModal title={allOpen.title} country={allOpen.country} searchTerm={queryTerm} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
     </div>
   );
 };
@@ -880,13 +913,28 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
 
   useEffect(() => {
     if (!id) return;
-    setLoadingListing(true);
+    const cached = readCachedListing(id);
+    if (cached) {
+      setListing(cached);
+      setLoadingListing(false);
+    } else {
+      setLoadingListing(true);
+    }
     setNotFound(false);
-    fetch(listingsApiUrl(`/listings/${encodeURIComponent(id)}`))
+    const controller = new AbortController();
+    fetch(listingsApiUrl(`/listings/${encodeURIComponent(id)}`), { signal: controller.signal })
       .then((res) => res.ok ? res.json() : Promise.reject())
-      .then((data: Listing) => setListing(data))
-      .catch(() => setNotFound(true))
-      .finally(() => setLoadingListing(false));
+      .then((data: Listing) => {
+        setListing(data);
+        cacheListings([data]);
+      })
+      .catch((err) => {
+        if (err?.name !== 'AbortError' && !cached) setNotFound(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingListing(false);
+      });
+    return () => controller.abort();
   }, [id]);
 
   if (loadingListing) {
@@ -1024,9 +1072,14 @@ export const BuyAbroadUkBasket: React.FC = () => {
       setListings([]);
       return;
     }
+    const cached = ids.map(readCachedListing).filter(Boolean) as Listing[];
+    if (cached.length) setListings(cached);
     fetch(listingsApiUrl(`/listings/by-ids?ids=${encodeURIComponent(ids.join(','))}`))
       .then((res) => res.ok ? res.json() : Promise.reject())
-      .then((data: { listings: Listing[] }) => setListings(data.listings || []))
+      .then((data: { listings: Listing[] }) => {
+        cacheListings(data.listings || []);
+        setListings(data.listings || []);
+      })
       .catch(() => {});
   }, [ids]);
 
