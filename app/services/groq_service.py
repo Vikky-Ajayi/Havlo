@@ -213,6 +213,15 @@ async def generate_stale_listing_report(
     import asyncio as _aio
     import json
 
+    # Discovery uses a product-facing package name that is not one of the
+    # report-generation tiers. Normalize it before the shared prompt and
+    # fallback logic use package-specific maps.
+    package = {
+        "listing_recovery_assessment": "professional_review",
+    }.get(package, package)
+    if package not in {"quick_insight", "professional_review", "premium_strategy"}:
+        package = "professional_review"
+
     label_map = {
         "q1_viewings": "Number of viewings since listing",
         "q2_feedback": "Buyer feedback after viewings (may be multiple answers)",
@@ -564,7 +573,10 @@ QUICK INSIGHT format rules:
  - executive_summary: write a short human mini-brief that clearly states the main blocker, how buyers are reading the listing, and what to change first this week.
   Be direct, commercial, specific, and natural. Never use em dashes."""
 
-        max_tokens_val = 6200
+        # Groq's TPM limit includes both prompt and completion tokens. Keep
+        # the completion cap below the limit so the request is not rejected
+        # when the property snapshot and instructions are included.
+        max_tokens_val = 4800
         system_msg = "You are Mark Williams, a senior UK property sales consultant. Produce a Quick Insight report that still feels paid-for, commercially sharp, and highly specific to this homeowner's data. Write like a real person, not an AI system, and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     elif package == "premium_strategy":
@@ -623,7 +635,7 @@ PREMIUM STRATEGY format rules:
 - pricing_recommendation_detail: provide a premium-level pricing note that covers current position versus market, the psychological effect of the current number, what a reset unlocks on Rightmove, and what timeline to expect after the change.
 - executive_summary: write a consultant briefing for the homeowner covering why the property is stale, the biggest opportunity, the biggest risk, the recommended first action this week, and the likely outcome if the strategy is followed. It must sound human, commercially sharp, and contain no em dashes."""
 
-        max_tokens_val = 9200
+        max_tokens_val = 4800
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Write like a strong human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     else:
@@ -673,7 +685,7 @@ PROFESSIONAL REVIEW format rules:
 - pricing_recommendation_detail: give a fuller pricing note that references current position, likely buyer interpretation, portal search bands, and the expected effect on enquiry levels within 14 days.
 - executive_summary: write a concise but authoritative consultant summary that references viewings, feedback, marketing gaps, and the single most impactful next move. It must sound human and commercially aware, never robotic, and never use em dashes."""
 
-        max_tokens_val = 7800
+        max_tokens_val = 4800
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and strategic than Quick Insight while staying deeply specific to this homeowner's data. Write like a seasoned human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     schema_block = f"""
