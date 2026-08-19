@@ -182,7 +182,10 @@ async def _fetch_search_page(
         f"{_BASE}/property-for-sale/find.html"
         f"?searchType=SALE"
         f"&locationIdentifier={location_id}"
-        f"&sortType=1"
+        # Oldest first is essential here.  The normal Rightmove default is
+        # newest-first, which means a small page window never reaches the
+        # listings this job is intended to find.
+        f"&sortType=6"
         f"&numberOfPropertiesPerPage={PAGE_SIZE}"
         f"&index={index}"
         f"&minPrice={min_price}"
@@ -493,8 +496,8 @@ async def run_automatic_discovery_once() -> dict[str, Any]:
     """
     params = DiscoveryParams(
         dry_run=False,
-        max_candidates=_env_int("STALE_LISTINGS_MAX_CANDIDATES", 50),
-        max_pages_per_location=_env_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", 2),
+        max_candidates=_env_int("STALE_LISTINGS_MAX_CANDIDATES", 200),
+        max_pages_per_location=_env_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", 10),
         min_price=_env_int("STALE_LISTINGS_MIN_PRICE", 300001),
         min_days_on_market=_env_int("STALE_LISTINGS_MIN_DAYS", 180),
     )
@@ -540,7 +543,10 @@ async def run_automatic_discovery_once() -> dict[str, Any]:
 
 async def start_automatic_discovery_loop() -> None:
     """Run stale prospect discovery automatically on a recurring schedule."""
-    interval_hours = _env_float("STALE_LISTINGS_DISCOVERY_INTERVAL_HOURS", 24.0)
+    # A short cycle keeps the pipeline moving when a previous cycle has
+    # already exhausted its first batch.  The advisory lock still prevents
+    # multiple workers from running the same cycle concurrently.
+    interval_hours = _env_float("STALE_LISTINGS_DISCOVERY_INTERVAL_HOURS", 0.25)
     initial_delay_seconds = _env_float("STALE_LISTINGS_DISCOVERY_INITIAL_DELAY_SECONDS", 60.0)
     logger.info(
         "Automatic stale-listing discovery loop started "

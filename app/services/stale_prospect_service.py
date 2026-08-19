@@ -397,11 +397,11 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     page = canvas.Canvas(str(pdf_path), pagesize=A4)
     width, height = A4
-    margin = 20 * mm
+    margin = 18 * mm
     ink = colors.HexColor("#121212")
     muted = colors.HexColor("#5b6470")
-    accent = colors.HexColor("#8C133B")
-    panel = colors.HexColor("#F6F7F9")
+    accent = colors.HexColor("#A800D6")
+    pale = colors.HexColor("#F4F3F4")
 
     def para(text: str, x: float, y: float, w: float, style: ParagraphStyle) -> float:
         p = Paragraph(text, style)
@@ -409,83 +409,93 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         p.drawOn(page, x, y - h)
         return y - h
 
-    body_style = ParagraphStyle("Body", fontName="Helvetica", fontSize=10.3, leading=15.2, textColor=ink)
-    small_style = ParagraphStyle("Small", fontName="Helvetica", fontSize=8.5, leading=12, textColor=muted)
-    headline_style = ParagraphStyle("Headline", fontName="Helvetica-Bold", fontSize=24, leading=29, textColor=ink)
-    subhead_style = ParagraphStyle("Subhead", fontName="Helvetica-Bold", fontSize=11.5, leading=15, textColor=ink)
+    body_style = ParagraphStyle("Body", fontName="Helvetica", fontSize=9.2, leading=12.4, textColor=ink)
+    headline_style = ParagraphStyle("Headline", fontName="Helvetica-Bold", fontSize=17.5, leading=20, textColor=accent)
+    subhead_style = ParagraphStyle("Subhead", fontName="Helvetica-Bold", fontSize=9.5, leading=12, textColor=ink)
 
-    page.setFillColor(ink)
-    page.setFont("Helvetica-Bold", 18)
-    page.drawString(margin, height - 24 * mm, "StaleListings")
-    page.setFont("Helvetica", 8)
-    page.drawString(margin + 42 * mm, height - 23.6 * mm, "By HAVLO")
-    page.setFont("Helvetica-Bold", 8.5)
-    page.setFillColor(muted)
-    nav = "Relaunch  |  Reach Buyers  |  Sell Faster"
-    page.drawRightString(width - margin, height - 23.6 * mm, nav)
+    # The two supplied artwork files are the actual direct-mail background
+    # assets, not decorative approximations.  Keep them optional so older
+    # deployments can still create a letter if assets are not present.
+    pattern_path = Path("attached_assets/IMG_7099_1787157339060.png")
+    globe_path = Path("attached_assets/IMG_7100_1787157339060.png")
+    if pattern_path.is_file():
+        page.drawImage(str(pattern_path), 0, 0, width=width, height=height, mask="auto")
+    else:
+        page.setFillColor(colors.white)
+        page.rect(0, 0, width, height, fill=1, stroke=0)
+    if globe_path.is_file():
+        page.drawImage(str(globe_path), width - 92 * mm, height - 47 * mm, width=92 * mm, height=42 * mm, mask="auto")
 
-    page.setStrokeColor(colors.HexColor("#E5E7EB"))
-    page.line(margin, height - 32 * mm, width - margin, height - 32 * mm)
+    logo_path = Path("havlo_frontend/Havlo Black Transparent.png")
+    if logo_path.is_file():
+        page.drawImage(str(logo_path), margin, height - 26 * mm, width=35 * mm, height=8.2 * mm, mask="auto", preserveAspectRatio=True)
+    else:
+        page.setFillColor(ink)
+        page.setFont("Helvetica-Bold", 20)
+        page.drawString(margin, height - 23 * mm, "HAVLO")
+    page.setFillColor(colors.white)
+    for label, y_button in (("Relaunch", height - 15 * mm), ("Reach Buyers", height - 27 * mm), ("Sell Faster", height - 39 * mm)):
+        page.setFillColor(accent)
+        page.rect(width - 66 * mm, y_button - 4.5 * mm, 57 * mm, 9 * mm, fill=1, stroke=0)
+        page.setFillColor(colors.white)
+        page.setFont("Helvetica-Bold", 11)
+        page.drawRightString(width - 11 * mm, y_button - 1.8 * mm, label)
 
-    y = height - 48 * mm
+    # Address block, matching the reference's postal-letter position.
+    y = height - 50 * mm
     address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
-    page.setFont("Helvetica-Bold", 9.5)
+    page.setFont("Helvetica-Bold", 8.5)
     page.setFillColor(ink)
     for line in address_lines[:5]:
         page.drawString(margin, y, line.upper()[:64])
-        y -= 5.2 * mm
+        y -= 4.4 * mm
 
-    y -= 10 * mm
+    y -= 14 * mm
     y = para("6+ Months on the Market? There Is a Faster Way to Sell", margin, y, width - (2 * margin), headline_style)
-    y -= 8 * mm
+    y -= 3 * mm
     days = prospect.listing_duration_days or 180
     price = f"GBP {prospect.asking_price:,.0f}" if prospect.asking_price else "your current asking price"
     intro = (
         f"We have reviewed the online listing for <b>{prospect.property_address}</b>. "
         f"It appears to have been marketed for around <b>{days} days</b> at <b>{price}</b>, "
-        "which usually means the issue is not demand alone. It is often presentation, positioning, "
-        "pricing signals, portal visibility, or the way the listing is being relaunched to buyers."
+        "which usually means the issue is not demand alone. More often, it is presentation, positioning, "
+        "pricing signals, portal visibility, or the way the listing is being relaunched to buyers. "
+        "Once that initial surge of interest fades, enquiries slow — and the property starts to get overlooked."
     )
     y = para(intro, margin, y, width - (2 * margin), body_style)
-    y -= 7 * mm
-    y = para("<b>Havlo StaleListings</b> has prepared an initial listing assessment for this property.", margin, y, width - (2 * margin), subhead_style)
     y -= 4 * mm
-
-    bullet_x = margin + 4 * mm
-    for bullet in (
-        "The preview highlights the main issues that may be reducing buyer response.",
-        "The full report gives a more detailed recovery plan, including recommendations and next steps.",
-        "This does not interfere with your existing estate agent; it is designed to help you improve the listing strategy.",
-    ):
-        page.setFillColor(accent)
-        page.circle(margin + 1.5 * mm, y - 2.8 * mm, 1.2 * mm, stroke=0, fill=1)
-        y = para(bullet, bullet_x, y, width - (2 * margin) - 6 * mm, body_style)
-        y -= 2.5 * mm
-
-    y -= 4 * mm
-    box_h = 48 * mm
-    page.setFillColor(panel)
-    page.roundRect(margin, y - box_h, width - (2 * margin), box_h, 5 * mm, fill=1, stroke=0)
-    page.setFillColor(accent)
-    page.roundRect(margin + 8 * mm, y - 21 * mm, 49 * mm, 12 * mm, 4 * mm, fill=1, stroke=0)
-    page.setFillColor(colors.white)
-    page.setFont("Helvetica-Bold", 12)
-    page.drawCentredString(margin + 32.5 * mm, y - 16.4 * mm, f"ID: {prospect.property_code}")
-    page.drawImage(ImageReader(qr_buffer), width - margin - 40 * mm, y - 43 * mm, 32 * mm, 32 * mm)
+    y = para("We actively promote your property to qualified UK and international buyers — creating fresh, serious demand and generating enquiries from buyers ready to proceed, without disrupting your current sale process.", margin, y, width - (2 * margin), body_style)
+    y -= 2 * mm
+    y = para("• You keep full control<br/>• We don't interfere with your agent<br/>• All enquiries go directly to you or your agent<br/>All we need is a link to your current listing.", margin, y, width - (2 * margin), body_style)
+    y -= 2 * mm
+    y = para("This is a structured marketing programme designed to maximise your property's exposure:<br/>• A one-time setup fee<br/>• Ongoing monthly management<br/>• A dedicated advertising budget<br/>Most clients agree a sale within 4–12 weeks of launching.", margin, y, width - (2 * margin), body_style)
+    y -= 2 * mm
+    y = para("If you're not ready for a full relaunch, we also offer a <b>Property Sale Audit</b> — a clear breakdown of why your property hasn't sold and what's holding it back.", margin, y, width - (2 * margin), body_style)
+    y -= 2 * mm
+    y = para("To get started:<br/>• Visit: www.heyhavlo.com<br/>• Or scan the QR code<br/>• Or speak to our team for a no-obligation call", margin, y, width - (2 * margin), body_style)
+    y -= 2 * mm
+    page.drawImage(ImageReader(qr_buffer), width / 2 - 16 * mm, y - 32 * mm, 32 * mm, 32 * mm)
     page.setFillColor(ink)
-    page.setFont("Helvetica-Bold", 13)
-    page.drawString(margin + 8 * mm, y - 29 * mm, "Scan the QR code to view your assessment preview")
-    page.setFont("Helvetica", 8)
-    page.setFillColor(muted)
-    page.drawString(margin + 8 * mm, y - 36 * mm, "Or visit heyhavlo.com/stale-listings and enter your 4-digit property ID.")
-    page.drawString(margin + 8 * mm, y - 41 * mm, preview_url[:96])
+    page.setFont("Helvetica", 6.8)
+    page.drawCentredString(width / 2, y - 35 * mm, "Scan above for Stale Listings (Havlo's Sell Faster Programme)")
+    page.drawCentredString(width / 2, y - 39 * mm, "or visit www.heyhavlo.com/stale-listings")
+    page.setFillColor(ink)
+    page.setFont("Helvetica-Bold", 8.5)
+    page.drawString(margin, y - 52 * mm, "Kind regards,")
+    page.drawString(margin, y - 57 * mm, "Cathy Elwell")
+    page.setFont("Helvetica", 7.5)
+    page.drawString(margin, y - 61 * mm, "Property Marketing Director")
 
-    page.setStrokeColor(colors.HexColor("#E5E7EB"))
-    page.line(margin, 34 * mm, width - margin, 34 * mm)
+    page.setStrokeColor(colors.HexColor("#D7D7D7"))
+    page.line(margin, 25 * mm, width - margin, 25 * mm)
     page.setFillColor(muted)
-    page.setFont("Helvetica", 8.5)
-    page.drawString(margin, 26 * mm, "Havlo Ltd. StaleListings is a listing intelligence and marketing review service.")
-    page.drawString(margin, 20 * mm, "This letter is informational and does not replace independent estate-agent, legal, or financial advice.")
+    page.setFont("Helvetica", 7)
+    page.drawRightString(width - margin, 18 * mm, "www.heyhavlo.com")
+    page.drawCentredString(width / 2, 14 * mm, "2nd Floor, Berkeley Square, London, England, W1J 6BD")
+    page.drawCentredString(width / 2, 10 * mm, "Phone: 0333 339 0423, 0791 948 3480")
+    page.drawCentredString(width / 2, 6 * mm, "Email: hello@heyhavlo.com")
+    page.setFont("Helvetica", 5.3)
+    page.drawCentredString(width / 2, 2.5 * mm, "Havlo is a trading style of Sprint Technologies Ltd, registered in England and Wales (Company No. 14949095).")
     page.save()
     return os.path.abspath(pdf_path)
 
