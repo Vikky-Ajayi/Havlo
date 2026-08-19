@@ -580,6 +580,19 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Marketplace scraper loops disabled by ENABLE_MARKETPLACE_SCRAPERS.")
 
+    # ── Automatic stale-listing prospect discovery ───────────────────────
+    # This is separate from the marketplace listing scrapers: it finds
+    # qualifying 180+ day listings, generates reports/letters, and emails
+    # ADMIN_NOTIFY_EMAIL. A PostgreSQL advisory lock prevents duplicate work
+    # when more than one application worker is running.
+    if HAS_DATABASE and _env_enabled("ENABLE_STALE_LISTING_DISCOVERY", True):
+        from app.services.stale_listing_discovery import start_automatic_discovery_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_automatic_discovery_loop()))
+        logger.info("Automatic stale-listing discovery loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Automatic stale-listing discovery disabled by ENABLE_STALE_LISTING_DISCOVERY.")
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:

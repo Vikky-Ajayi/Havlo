@@ -20,6 +20,7 @@ from app.models.models import StaleListingDiscoveryRun, StaleListingProspect
 from app.services import email_service
 from app.services.listing_scraper import scrape_single_listing
 from app.services.rightmove_scraper import KNOWN_LOCATIONS, PAGE_SIZE, _BASE, _headers, _parse_next_data
+from app.services.scraper_base import run_once_with_advisory_lock
 from app.services.stale_prospect_service import (
     create_prospect_from_listing_snapshot,
     extract_price,
@@ -481,3 +482,82 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                 run.completed_at = datetime.now(timezone.utc)
                 run.result_json = json.dumps(results, ensure_ascii=False)
                 await db.commit()
+
+
+async def run_automatic_discovery_once() -> dict[str, Any]:
+    """Create and execute one non-dry-run discovery cycle.
+
+    This is intentionally separate from the admin endpoint so scheduled
+    discovery uses the exact same processing and duplicate checks without
+    requiring a logged-in admin or an HTTP request.
+    """
+    params = DiscoveryParams(
+        dry_run=False,
+        max_candidates=_env_int("STALE_LISTINGS_MAX_CANDIDATES", 50),
+        max_pages_per_location=_env_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", 2),
+        min_price=_env_int("STALE_LISTINGS_MIN_PRICE", 300001),
+        min_days_on_market=_env_int("STALE_LISTINGS_MIN_DAYS", 180),
+    )
+    async with AsyncSessionLocal() as db:
+        run = StaleListingDiscoveryRun(
+            status="queued",
+            dry_run=False,
+            location_names=json.dumps([]),
+            min_price=params.min_price,
+            min_days_on_market=params.min_days_on_market,
+            max_candidates=params.max_candidates,
+            max_pages_per_location=params.max_pages_per_location,
+            result_json=json.dumps({"eligible": [], "created": [], "skipped": [], "failed": []}),
+        )
+        db.add(run)
+        await db.commit()
+        await db.refresh(run)
+        run_id = str(run.id)
+
+    logger.info(
+        "Automatic stale-listing discovery starting "
+        "(max_candidates=%d, max_pages_per_location=%d, min_price=%d, min_days=%d).",
+        params.max_candidates,
+        params.max_pages_per_location,
+        params.min_price,
+        params.min_days_on_market,
+    )
+    await run_discovery(run_id, params)
+
+    async with AsyncSessionLocal() as db:
+        run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+        if not run:
+            return {"run_id": run_id, "status": "missing"}
+        return {
+            "run_id": run_id,
+            "status": run.status,
+            "created_prospects": run.created_prospects_count,
+            "eligible": run.eligible_count,
+            "skipped": run.skipped_count,
+            "failed": run.failed_count,
+        }
+
+
+async def start_automatic_discovery_loop() -> None:
+    """Run stale prospect discovery automatically on a recurring schedule."""
+    interval_hours = _env_float("STALE_LISTINGS_DISCOVERY_INTERVAL_HOURS", 24.0)
+    initial_delay_seconds = _env_float("STALE_LISTINGS_DISCOVERY_INITIAL_DELAY_SECONDS", 60.0)
+    logger.info(
+        "Automatic stale-listing discovery loop started "
+        "(initial delay %.0fs, interval %.1fh).",
+        initial_delay_seconds,
+        interval_hours,
+    )
+    await asyncio.sleep(initial_delay_seconds)
+    while True:
+        try:
+            result = await run_once_with_advisory_lock(
+                "stale-listing-discovery",
+                run_automatic_discovery_once,
+            )
+            logger.info("Automatic stale-listing discovery cycle finished: %s", result)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Automatic stale-listing discovery cycle failed.")
+        await asyncio.sleep(interval_hours * 3600)
