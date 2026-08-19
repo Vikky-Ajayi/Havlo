@@ -1,3 +1,4 @@
 - [PyJWT migration](pyjwt-migration.md) — python-jose is blocked by Replit security policy; replaced with PyJWT across all JWT files.
 - [frontend-blocked-dep](frontend-blocked-dep.md) — @google/genai pulls in protobufjs which is blocked; removed from package.json (unused in src/).
 - [Groq model lifecycle](groq-model-lifecycle.md) — keep the shared Groq model configurable/current because retired model IDs cause immediate 400 failures.
+- [Rightmove stale search ordering](rightmove-stale-search.md) — stale discovery must search oldest-first or pagination misses the intended inventory.
