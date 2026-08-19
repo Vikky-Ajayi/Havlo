@@ -576,7 +576,7 @@ QUICK INSIGHT format rules:
         # Groq's TPM limit includes both prompt and completion tokens. Keep
         # the completion cap below the limit so the request is not rejected
         # when the property snapshot and instructions are included.
-        max_tokens_val = 4800
+        max_tokens_val = 4000
         system_msg = "You are Mark Williams, a senior UK property sales consultant. Produce a Quick Insight report that still feels paid-for, commercially sharp, and highly specific to this homeowner's data. Write like a real person, not an AI system, and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     elif package == "premium_strategy":
@@ -635,7 +635,7 @@ PREMIUM STRATEGY format rules:
 - pricing_recommendation_detail: provide a premium-level pricing note that covers current position versus market, the psychological effect of the current number, what a reset unlocks on Rightmove, and what timeline to expect after the change.
 - executive_summary: write a consultant briefing for the homeowner covering why the property is stale, the biggest opportunity, the biggest risk, the recommended first action this week, and the likely outcome if the strategy is followed. It must sound human, commercially sharp, and contain no em dashes."""
 
-        max_tokens_val = 4800
+        max_tokens_val = 4000
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Write like a strong human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     else:
@@ -685,7 +685,7 @@ PROFESSIONAL REVIEW format rules:
 - pricing_recommendation_detail: give a fuller pricing note that references current position, likely buyer interpretation, portal search bands, and the expected effect on enquiry levels within 14 days.
 - executive_summary: write a concise but authoritative consultant summary that references viewings, feedback, marketing gaps, and the single most impactful next move. It must sound human and commercially aware, never robotic, and never use em dashes."""
 
-        max_tokens_val = 4800
+        max_tokens_val = 4000
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and strategic than Quick Insight while staying deeply specific to this homeowner's data. Write like a seasoned human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     schema_block = f"""
@@ -766,6 +766,111 @@ ABSOLUTE RULES — breaking any of these is a failure:
             response_format={"type": "json_object"},
         )
         return response.choices[0].message.content or ""
+
+    def _call_groq_expansion(report: dict[str, Any]) -> str:
+        """Generate a second, bounded pass that adds detail to the report.
+
+        The first request creates the reliable JSON structure. This pass only
+        returns additive copy, keeping each request below Groq's TPM limit
+        while allowing the final report to retain the original depth.
+        """
+        compact_report = {
+            "executive_summary": str(report.get("executive_summary") or "")[:700],
+            "pricing_recommendation_detail": str(
+                report.get("pricing_recommendation_detail") or ""
+            )[:700],
+            "key_findings": [
+                {
+                    "title": str(item.get("title") or "")[:120],
+                    "description": str(item.get("description") or "")[:450],
+                }
+                for item in (report.get("key_findings") or [])
+                if isinstance(item, dict)
+            ],
+            "action_plan": [
+                {
+                    "title": str(item.get("title") or "")[:120],
+                    "description": str(item.get("description") or "")[:450],
+                }
+                for item in (report.get("action_plan") or [])
+                if isinstance(item, dict)
+            ],
+        }
+        expansion_prompt = f"""
+You are expanding an existing UK property sales report for the {package} package.
+Return ONLY valid JSON with additive copy. Do not repeat the existing text.
+Make every addition specific to the property and questionnaire context below.
+Use clear UK property language, buyer behaviour, market positioning, and
+commercial consequences. Never use em dashes.
+
+Property context:
+{property_context[:2600]}
+
+Questionnaire:
+{questionnaire[:1800]}
+
+Existing report:
+{json.dumps(compact_report, ensure_ascii=False)}
+
+Return this exact shape:
+{{
+  "executive_summary_addendum": "one detailed paragraph",
+  "pricing_recommendation_detail_addendum": "one detailed paragraph",
+  "key_findings_addenda": ["one paragraph for each finding, in the same order"],
+  "action_plan_addenda": ["one paragraph for each action, in the same order"]
+}}
+"""
+        client = _get_client()
+        response = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a senior UK property sales consultant. "
+                        "Return only valid JSON and add useful detail without filler."
+                    ),
+                },
+                {"role": "user", "content": expansion_prompt},
+            ],
+            max_tokens=2800,
+            temperature=0.35,
+            response_format={"type": "json_object"},
+        )
+        return response.choices[0].message.content or ""
+
+    def _merge_expansion(report: dict[str, Any], expansion: dict[str, Any]) -> dict[str, Any]:
+        """Append the second-pass copy without changing the report schema."""
+        merged = deepcopy(report)
+
+        def append_copy(existing: Any, addition: Any) -> str:
+            left = _clean_copy(existing)
+            right = _ensure_sentence(addition)
+            if not right:
+                return left
+            return f"{left}\n\n{right}" if left else right
+
+        merged["executive_summary"] = append_copy(
+            merged.get("executive_summary"),
+            expansion.get("executive_summary_addendum"),
+        )
+        merged["pricing_recommendation_detail"] = append_copy(
+            merged.get("pricing_recommendation_detail"),
+            expansion.get("pricing_recommendation_detail_addendum"),
+        )
+        finding_addenda = expansion.get("key_findings_addenda") or []
+        for index, finding in enumerate(merged.get("key_findings") or []):
+            if index < len(finding_addenda) and isinstance(finding, dict):
+                finding["description"] = append_copy(
+                    finding.get("description"), finding_addenda[index]
+                )
+        action_addenda = expansion.get("action_plan_addenda") or []
+        for index, action in enumerate(merged.get("action_plan") or []):
+            if index < len(action_addenda) and isinstance(action, dict):
+                action["description"] = append_copy(
+                    action.get("description"), action_addenda[index]
+                )
+        return merged
 
     _DEFAULT_REPORT: dict = {
         "overall_score": 48,
@@ -918,6 +1023,19 @@ ABSOLUTE RULES — breaking any of these is a failure:
             item.setdefault("bullets", [])
         for finding in parsed.get("key_findings", []):
             finding.setdefault("icon", None)
+        # A second bounded request adds depth without sending one oversized
+        # request to Groq. If this optional pass fails, the valid first-pass
+        # report is still returned.
+        try:
+            expansion_raw = await _aio.to_thread(_call_groq_expansion, parsed)
+            parsed = _merge_expansion(parsed, _extract_json(expansion_raw))
+            logger.info("Stale listing report expanded successfully (package=%s)", package)
+        except Exception as expansion_exc:
+            logger.warning(
+                "Stale listing report expansion skipped (package=%s): %s",
+                package,
+                expansion_exc,
+            )
         logger.info("Stale listing report generated successfully (package=%s)", package)
         return _normalise_report_output(parsed)
     except Exception as exc:
