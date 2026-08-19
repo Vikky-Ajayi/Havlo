@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 import logging
 import random
 import string
@@ -49,6 +50,7 @@ from app.services.stale_prospect_service import (
     parse_listed_date,
     serialize_preview,
     serialize_report,
+    send_prospect_letter_to_admin,
     snapshot_from_scrape,
 )
 from app.services.stale_listing_discovery import DiscoveryParams, run_discovery, serialize_discovery_run
@@ -730,14 +732,11 @@ async def create_stale_prospect_from_url(
     email_sent = False
     if admin_email:
         background_tasks.add_task(
-            email_service.send_stale_prospect_letter_sync,
-            to_email=admin_email,
-            property_address=address,
-            property_code=prospect.property_code,
-            preview_url=preview_url,
-            letter_pdf_path=letter_path,
+            send_prospect_letter_to_admin,
+            str(prospect.id),
+            token,
+            _frontend_base_url(),
         )
-        email_sent = True
         prospect.processing_status = "email_queued"
         await db.commit()
 
@@ -835,6 +834,37 @@ async def get_stale_prospect_discovery_run(
     if not run:
         raise HTTPException(status_code=404, detail="Discovery run not found.")
     return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+
+
+@admin_router.get("/admin/prospects/email-diagnostics")
+async def stale_prospect_email_diagnostics(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    settings = get_settings()
+    diagnostics = email_service.diagnostics()
+    diagnostics["admin_notify_email_set"] = bool((settings.ADMIN_NOTIFY_EMAIL or "").strip())
+    diagnostics["admin_notify_email"] = settings.ADMIN_NOTIFY_EMAIL or None
+    return diagnostics
+
+
+@admin_router.post("/admin/prospects/email-test")
+async def send_stale_prospect_test_email(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    to_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if not to_email:
+        raise HTTPException(status_code=400, detail="ADMIN_NOTIFY_EMAIL is not configured.")
+    sent = await asyncio.to_thread(email_service.send_test_email, to_email)
+    if not sent:
+        raise HTTPException(
+            status_code=502,
+            detail="Email provider did not accept the test email. Check RESEND_API_KEY, EMAIL_FROM and verified sender/domain.",
+        )
+    return {"ok": True, "to_email": to_email}
 
 
 @admin_router.get("/admin", response_model=list[StaleListingAdminItem])

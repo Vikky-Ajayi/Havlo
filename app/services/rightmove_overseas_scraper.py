@@ -96,6 +96,41 @@ def _extract_city(address: str, fallback: str) -> str:
     return (parts[-2] if len(parts) >= 2 else parts[-1] if parts else fallback)[:100]
 
 
+def _is_broad_location(value: str, config: CountryConfig) -> bool:
+    text = re.sub(r"\s+", " ", str(value or "")).strip().lower()
+    if not text:
+        return True
+    parts = [part.strip().lower() for part in text.split(",") if part.strip()]
+    broad_terms = {
+        config.country.lower(),
+        config.city.lower(),
+        "usa",
+        "america",
+        "canada",
+        "dubai",
+        "united arab emirates",
+        "british columbia",
+        "ontario",
+        "vancouver",
+    }
+    return (
+        text in broad_terms
+        or (parts and all(part in broad_terms for part in parts))
+        or (len(parts) <= 3 and not re.search(r"\d|bed|villa|apartment|house|condo|townhouse|penthouse|detached", text))
+    )
+
+
+def _descriptive_title(raw_title: str, address: str, prop_type: str, bedrooms: int, city: str, config: CountryConfig) -> tuple[str, str]:
+    headline, subtitle = normalize_listing_text(raw_title, address)
+    if _is_broad_location(headline, config):
+        kind = re.sub(r"\s+", " ", str(prop_type or "property")).strip().lower()
+        location = city or config.city
+        headline = f"{bedrooms} bedroom {kind} in {location}" if bedrooms > 0 else f"{kind.title()} in {location}"
+    if not subtitle or subtitle.lower() == headline.lower():
+        subtitle = address if address and address.lower() != headline.lower() else raw_title
+    return headline[:500], subtitle[:500]
+
+
 async def _extract_listing(prop: dict[str, Any], config: CountryConfig) -> Optional[dict[str, Any]]:
     try:
         rm_id = str(prop.get("id") or "").strip()
@@ -112,9 +147,17 @@ async def _extract_listing(prop: dict[str, Any], config: CountryConfig) -> Optio
         if price_native <= 0:
             return None
 
+        prop_type = (
+            prop.get("propertySubType")
+            or prop.get("propertyTypeFullDescription")
+            or prop.get("propertyType")
+            or "Property"
+        )
+        bedrooms = parse_int(prop.get("bedrooms"))
         address = str(prop.get("displayAddress") or prop.get("heading") or config.city).strip()
-        raw_title = str(prop.get("heading") or prop.get("summary") or address).strip()
-        headline, subtitle = normalize_listing_text(raw_title, address)
+        city = _extract_city(address, config.city)
+        raw_title = str(prop.get("heading") or prop.get("summary") or prop_type or address).strip()
+        headline, subtitle = _descriptive_title(raw_title, address, str(prop_type), bedrooms, city, config)
 
         images = _extract_images(prop)
         if not images:
@@ -124,12 +167,6 @@ async def _extract_listing(prop: dict[str, Any], config: CountryConfig) -> Optio
         if not prop_url.startswith("http"):
             prop_url = f"{_BASE}{prop_url}"
 
-        prop_type = (
-            prop.get("propertySubType")
-            or prop.get("propertyTypeFullDescription")
-            or prop.get("propertyType")
-            or "Property"
-        )
         price_gbp = await to_gbp(price_native, currency)
 
         return {
@@ -140,11 +177,11 @@ async def _extract_listing(prop: dict[str, Any], config: CountryConfig) -> Optio
             "price_native": price_native,
             "price_currency": currency,
             "address": address[:500],
-            "city": _extract_city(address, config.city),
+            "city": city,
             "region": config.city,
             "country": config.country,
             "source": "rightmove",
-            "bedrooms": parse_int(prop.get("bedrooms")),
+            "bedrooms": bedrooms,
             "bathrooms": parse_int(prop.get("bathrooms")) or None,
             "property_type": str(prop_type)[:100],
             "description": subtitle,

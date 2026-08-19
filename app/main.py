@@ -488,6 +488,10 @@ async def startup() -> None:
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_country_price ON rightmove_listings (country, price_gbp);"
                     ))
+                    await conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_country_active_scraped "
+                        "ON rightmove_listings (country, is_active, scraped_at DESC);"
+                    ))
                 else:
                     logger.info(
                         "Skipping Postgres-only schema sync on dialect=%s",

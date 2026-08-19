@@ -371,6 +371,8 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
   const [discoveryLocations, setDiscoveryLocations] = useState('London, Manchester, Birmingham');
   const [discoveryMaxCandidates, setDiscoveryMaxCandidates] = useState(25);
   const [discoveryMaxPages, setDiscoveryMaxPages] = useState(2);
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [emailStatus, setEmailStatus] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -698,6 +700,25 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
     }
   };
 
+  const handleTestAdminEmail = async () => {
+    if (!token) return;
+    setEmailTesting(true);
+    setEmailStatus('');
+    try {
+      const diagnostics = await api.staleListingsEmailDiagnostics(token);
+      if (!diagnostics.configured || !diagnostics.admin_notify_email_set) {
+        setEmailStatus(`Email not ready: Resend key=${diagnostics.key_present ? 'set' : 'missing'}, from=${diagnostics.from_set ? diagnostics.from_email || 'set' : 'missing'}, admin=${diagnostics.admin_notify_email_set ? diagnostics.admin_notify_email || 'set' : 'missing'}.`);
+        return;
+      }
+      const result = await api.staleListingsSendTestEmail(token);
+      setEmailStatus(`Test email sent to ${result.to_email}.`);
+    } catch (e) {
+      setEmailStatus(e instanceof Error ? e.message : 'Email test failed.');
+    } finally {
+      setEmailTesting(false);
+    }
+  };
+
   const runDate = (value?: string | null) => value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
   return (
@@ -744,6 +765,9 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
               <button onClick={loadDiscoveryRuns} disabled={discoveryLoading} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#FFFFFF', color: '#333333', fontWeight: 700, fontSize: 12, cursor: discoveryLoading ? 'not-allowed' : 'pointer' }}>
                 {discoveryLoading ? 'Refreshing...' : 'Refresh'}
               </button>
+              <button onClick={handleTestAdminEmail} disabled={emailTesting} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #D8B4FE', background: '#FAF5FF', color: '#7C3AED', fontWeight: 700, fontSize: 12, cursor: emailTesting ? 'not-allowed' : 'pointer' }}>
+                {emailTesting ? 'Testing...' : 'Test admin email'}
+              </button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.8fr 0.7fr 0.7fr auto', gap: 10, alignItems: 'end' }}>
               <div>
@@ -766,6 +790,7 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
               <input type="checkbox" checked={discoveryDryRun} onChange={e => setDiscoveryDryRun(e.target.checked)} />
               Dry run only
             </label>
+            {emailStatus && <p style={{ margin: '10px 0 0', color: emailStatus.includes('sent') ? '#065F46' : '#991B1B', fontSize: 12, fontWeight: 700 }}>{emailStatus}</p>}
             {discoveryRuns.length > 0 && (
               <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
                 {discoveryRuns.slice(0, 5).map(run => {

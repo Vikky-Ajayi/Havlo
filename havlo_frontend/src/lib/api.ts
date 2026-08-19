@@ -1060,6 +1060,24 @@ export const api = {
       timeout: 30000,
     }),
 
+  staleListingsEmailDiagnostics: (token: string) =>
+    request<{
+      configured: boolean;
+      from_set: boolean;
+      key_present: boolean;
+      from_email?: string | null;
+      admin_notify_email_set: boolean;
+      admin_notify_email?: string | null;
+      provider: string;
+    }>('/stale-listings/admin/prospects/email-diagnostics', { token }),
+
+  staleListingsSendTestEmail: (token: string) =>
+    request<{ ok: boolean; to_email: string }>('/stale-listings/admin/prospects/email-test', {
+      method: 'POST',
+      token,
+      timeout: 30000,
+    }),
+
   customOffersScrape: (payload: { listing_url: string }) =>
     request<CustomOffersScrapeResponse>('/custom-offers/scrape', {
       method: 'POST',

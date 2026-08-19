@@ -84,10 +84,15 @@ def upgrade() -> None:
         "CREATE INDEX IF NOT EXISTS ix_stale_listing_prospects_discovery_url "
         "ON stale_listing_prospects (rightmove_url)"
     )
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_country_active_scraped "
+        "ON rightmove_listings (country, is_active, scraped_at DESC)"
+    )
 
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_stale_listing_prospects_discovery_url")
+    op.execute("DROP INDEX IF EXISTS ix_rightmove_listings_country_active_scraped")
     op.execute("DROP INDEX IF EXISTS ux_stale_listing_prospects_active_property_code")
     op.execute("DROP INDEX IF EXISTS ix_stale_listing_prospects_discovery_run_id")
     op.execute(
