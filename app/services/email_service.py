@@ -1715,13 +1715,29 @@ def send_stale_prospect_letter_sync(
     letter_pdf_path: str,
 ) -> bool:
     """Send a generated stale-listing prospect letter PDF to the admin inbox."""
-    attachments = None
     try:
         from app.services.stale_prospect_service import attachment_from_file
 
         attachments = [attachment_from_file(letter_pdf_path)]
     except Exception as exc:
-        logger.error("Unable to attach prospect letter PDF for %s: %s", property_code, exc)
+        logger.error(
+            "Refusing to send stale prospect email without its PDF "
+            "(property_code=%s, path=%r): %s",
+            property_code,
+            letter_pdf_path,
+            exc,
+            exc_info=True,
+        )
+        return False
+
+    attachment = attachments[0]
+    logger.info(
+        "Prepared stale prospect PDF attachment "
+        "(property_code=%s, filename=%s, base64_chars=%d)",
+        property_code,
+        attachment["filename"],
+        len(attachment["content"]),
+    )
 
     brand = _email_brand()
     fields = {

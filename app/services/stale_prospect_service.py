@@ -491,6 +491,24 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
 
 def attachment_from_file(path: str) -> dict[str, str]:
-    with open(path, "rb") as f:
+    """Build a Resend attachment from a generated PDF.
+
+    Resend accepts base64 content for outbound attachments. Keep this helper
+    strict: sending an email without the promised letter is worse than
+    reporting the email as failed and retrying it after the file issue is
+    fixed.
+    """
+    pdf_path = Path(path).expanduser()
+    if not path or not pdf_path.is_file():
+        raise FileNotFoundError(f"Prospect letter PDF does not exist: {path!r}")
+    file_size = pdf_path.stat().st_size
+    if file_size <= 0:
+        raise ValueError(f"Prospect letter PDF is empty: {pdf_path}")
+
+    with pdf_path.open("rb") as f:
         encoded = base64.b64encode(f.read()).decode("ascii")
-    return {"filename": Path(path).name, "content": encoded}
+    return {
+        "filename": pdf_path.name,
+        "content": encoded,
+        "content_type": "application/pdf",
+    }
