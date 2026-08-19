@@ -109,6 +109,29 @@ def _first_deep_value(node: Any, keys: set[str]) -> Any:
     return None
 
 
+def _listing_date_raw(prop: dict[str, Any]) -> str:
+    """Extract a usable Rightmove date from scalar or nested update fields."""
+    value = _first_deep_value(
+        prop,
+        {
+            "firstVisibleDate",
+            "dateFirstListed",
+            "listingDate",
+            "addedOrReduced",
+            "listingUpdateDate",
+        },
+    )
+    if isinstance(value, dict):
+        value = (
+            value.get("listingUpdateDate")
+            or value.get("firstVisibleDate")
+            or value.get("dateFirstListed")
+            or value.get("listingDate")
+            or value.get("date")
+        )
+    return _clean(value, 120)
+
+
 def _candidate_from_property(prop: dict[str, Any], city: str) -> Candidate | None:
     rm_id = _clean(prop.get("id"), 80)
     if not rm_id:
@@ -134,17 +157,7 @@ def _candidate_from_property(prop: dict[str, Any], city: str) -> Candidate | Non
                 if src and src not in images:
                     images.append(src)
 
-    listed_raw = _first_deep_value(
-        prop,
-        {
-            "firstVisibleDate",
-            "dateFirstListed",
-            "listingDate",
-            "addedOrReduced",
-            "listingUpdate",
-            "listingUpdateReason",
-        },
-    )
+    listed_raw = _listing_date_raw(prop)
 
     bedrooms = prop.get("bedrooms")
     bathrooms = prop.get("bathrooms")
@@ -196,7 +209,21 @@ async def _fetch_search_page(
         raise RuntimeError("Rightmove returned HTTP 429 rate limit")
     response.raise_for_status()
     props = _parse_next_data(response.text)
-    return [candidate for prop in props if (candidate := _candidate_from_property(prop, city))]
+    candidates = [
+        candidate
+        for prop in props
+        if (candidate := _candidate_from_property(prop, city))
+    ]
+    # Rightmove's sortType is not consistently honoured across locations.
+    # Sort the actual dates in the response before detail scraping so the
+    # dedicated stale job reaches qualifying inventory quickly.
+    candidates.sort(
+        key=lambda item: (
+            parse_listed_date(item.listed_date_raw) is None,
+            parse_listed_date(item.listed_date_raw) or datetime.max.replace(tzinfo=timezone.utc),
+        )
+    )
+    return candidates
 
 
 def _merge_snapshot(candidate: Candidate, scraped: dict[str, Any]) -> dict[str, Any]:
@@ -204,7 +231,19 @@ def _merge_snapshot(candidate: Candidate, scraped: dict[str, Any]) -> dict[str, 
     images = snapshot.get("images") if isinstance(snapshot.get("images"), list) else []
     if not images:
         images = candidate.images
-    listed_date = snapshot.get("listed_date") or candidate.listed_date_raw
+    # A detail page may expose the latest price reduction/update date while
+    # the search result exposes the original first-visible date.  For stale
+    # inventory the earliest reliable date is the meaningful market duration.
+    candidate_date = parse_listed_date(candidate.listed_date_raw)
+    detail_date = parse_listed_date(snapshot.get("listed_date"))
+    if candidate_date and detail_date:
+        listed_date = min(candidate_date, detail_date).isoformat()
+    elif candidate_date:
+        # Detail pages often say "Added today" or "Reduced today" rather than
+        # exposing a date. Never let that label erase the valid search date.
+        listed_date = candidate_date.isoformat()
+    else:
+        listed_date = snapshot.get("listed_date") or candidate.listed_date_raw
     return {
         **snapshot,
         "rightmove_id": candidate.rightmove_id,
@@ -311,7 +350,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
         await db.commit()
 
     processed = 0
-    created_this_run = 0
+    emails_sent_this_run = 0
     target_reached = False
     locations = _locations_for_request(params.location_names)
     try:
@@ -446,8 +485,9 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                                         prospect.letter_sent_at = datetime.now(timezone.utc)
                                 prospect.processing_status = "email_sent" if email_sent else "letter_ready"
                                 run.created_prospects_count += 1
-                                created_this_run += 1
-                                if params.target_emails and created_this_run >= params.target_emails:
+                                if email_sent:
+                                    emails_sent_this_run += 1
+                                if params.target_emails and emails_sent_this_run >= params.target_emails:
                                     target_reached = True
                                 results["created"].append({
                                     **eligible_item,
@@ -530,8 +570,9 @@ async def run_automatic_discovery_once(
         run_id = str(run.id)
 
     logger.info(
-        "Automatic stale-listing discovery starting "
-        "(max_candidates=%d, max_pages_per_location=%d, min_price=%d, min_days=%d).",
+        "Dedicated direct stale-listing scrape starting "
+        "(target_emails=%d, max_candidates=%d, max_pages_per_location=%d, min_price=%d, min_days=%d).",
+        params.target_emails,
         params.max_candidates,
         params.max_pages_per_location,
         params.min_price,
@@ -547,6 +588,11 @@ async def run_automatic_discovery_once(
             "run_id": run_id,
             "status": run.status,
             "created_prospects": run.created_prospects_count,
+            "emails_sent": sum(
+                1
+                for item in (json.loads(run.result_json or "{}").get("created", []) if run.result_json else [])
+                if item.get("email_sent") is True
+            ),
             "eligible": run.eligible_count,
             "skipped": run.skipped_count,
             "failed": run.failed_count,

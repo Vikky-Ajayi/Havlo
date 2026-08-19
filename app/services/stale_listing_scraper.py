@@ -48,7 +48,7 @@ async def start_stale_listing_scraper_loop() -> None:
                 "stale-listing-direct-scraper",
                 run_direct_stale_listing_cycle,
             )
-            created = int(result.get("created_prospects", 0) or 0)
+            created = int(result.get("emails_sent", 0) or 0)
             target = max(30, _positive_int("STALE_LISTINGS_TARGET_EMAILS", 30))
             if created < target:
                 logger.error(
