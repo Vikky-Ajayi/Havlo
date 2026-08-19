@@ -70,6 +70,7 @@ class DiscoveryParams:
     max_pages_per_location: int = 2
     min_price: int = 300001
     min_days_on_market: int = 180
+    target_emails: int = 0
 
 
 @dataclass(slots=True)
@@ -310,14 +311,16 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
         await db.commit()
 
     processed = 0
+    created_this_run = 0
+    target_reached = False
     locations = _locations_for_request(params.location_names)
     try:
         async with httpx.AsyncClient() as client:
             for city, location_id in locations:
-                if processed >= params.max_candidates:
+                if processed >= params.max_candidates or target_reached:
                     break
                 for page in range(params.max_pages_per_location):
-                    if processed >= params.max_candidates:
+                    if processed >= params.max_candidates or target_reached:
                         break
                     try:
                         candidates = await _fetch_search_page(client, city, location_id, page, params.min_price)
@@ -335,7 +338,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                         break
 
                     for candidate in candidates:
-                        if processed >= params.max_candidates:
+                        if processed >= params.max_candidates or target_reached:
                             break
                         processed += 1
                         await asyncio.sleep(0.8)
@@ -443,6 +446,9 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                                         prospect.letter_sent_at = datetime.now(timezone.utc)
                                 prospect.processing_status = "email_sent" if email_sent else "letter_ready"
                                 run.created_prospects_count += 1
+                                created_this_run += 1
+                                if params.target_emails and created_this_run >= params.target_emails:
+                                    target_reached = True
                                 results["created"].append({
                                     **eligible_item,
                                     "prospect_id": str(prospect.id),
@@ -487,7 +493,12 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                 await db.commit()
 
 
-async def run_automatic_discovery_once() -> dict[str, Any]:
+async def run_automatic_discovery_once(
+    *,
+    target_emails: int = 0,
+    max_candidates: int | None = None,
+    max_pages_per_location: int | None = None,
+) -> dict[str, Any]:
     """Create and execute one non-dry-run discovery cycle.
 
     This is intentionally separate from the admin endpoint so scheduled
@@ -496,10 +507,11 @@ async def run_automatic_discovery_once() -> dict[str, Any]:
     """
     params = DiscoveryParams(
         dry_run=False,
-        max_candidates=_env_int("STALE_LISTINGS_MAX_CANDIDATES", 200),
-        max_pages_per_location=_env_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", 10),
+        max_candidates=max_candidates or _env_int("STALE_LISTINGS_MAX_CANDIDATES", 200),
+        max_pages_per_location=max_pages_per_location or _env_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", 10),
         min_price=_env_int("STALE_LISTINGS_MIN_PRICE", 300001),
         min_days_on_market=_env_int("STALE_LISTINGS_MIN_DAYS", 180),
+        target_emails=max(0, target_emails),
     )
     async with AsyncSessionLocal() as db:
         run = StaleListingDiscoveryRun(
