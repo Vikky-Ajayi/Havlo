@@ -120,15 +120,52 @@ def _is_broad_location(value: str, config: CountryConfig) -> bool:
     )
 
 
-def _descriptive_title(raw_title: str, address: str, prop_type: str, bedrooms: int, city: str, config: CountryConfig) -> tuple[str, str]:
-    headline, subtitle = normalize_listing_text(raw_title, address)
-    if _is_broad_location(headline, config):
+def _clean_title_candidate(value: Any) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _is_marketing_copy(value: str) -> bool:
+    text = value.lower()
+    return len(value) > 160 or value.count(" ") > 24 or any(
+        phrase in text
+        for phrase in (" offers ", " opportunity ", " beautifully ", " presented ", " viewing ")
+    )
+
+
+def _descriptive_title(
+    title_candidates: list[str],
+    address: str,
+    prop_type: str,
+    bedrooms: int,
+    city: str,
+    config: CountryConfig,
+) -> tuple[str, str]:
+    """Choose a real overseas listing heading before creating a fallback.
+
+    Rightmove overseas results often expose displayAddress as a broad region
+    and put the useful listing name in heading/propertyName/developmentName.
+    The previous implementation normalized displayAddress first, then turned
+    that broad region into titles such as "3 bedroom apartment in Dubai".
+    """
+    clean_address = _clean_title_candidate(address)
+    candidates = [_clean_title_candidate(value) for value in title_candidates if _clean_title_candidate(value)]
+    headline = ""
+    for candidate in candidates:
+        if not _is_broad_location(candidate, config) and not _is_marketing_copy(candidate):
+            headline = candidate
+            break
+    if not headline and clean_address and not _is_broad_location(clean_address, config):
+        headline = clean_address
+
+    # Keep a source-provided value as the subtitle even when the headline has
+    # to fall back, so the listing detail still retains useful source copy.
+    source_copy = next((candidate for candidate in candidates if candidate), clean_address)
+    if not headline:
         kind = re.sub(r"\s+", " ", str(prop_type or "property")).strip().lower()
         location = city or config.city
         headline = f"{bedrooms} bedroom {kind} in {location}" if bedrooms > 0 else f"{kind.title()} in {location}"
-    if not subtitle or subtitle.lower() == headline.lower():
-        subtitle = address if address and address.lower() != headline.lower() else raw_title
-    return headline[:500], subtitle[:500]
+    subtitle = source_copy if source_copy.lower() != headline.lower() else clean_address
+    return headline[:500], (subtitle or headline)[:500]
 
 
 async def _extract_listing(prop: dict[str, Any], config: CountryConfig) -> Optional[dict[str, Any]]:
@@ -154,10 +191,23 @@ async def _extract_listing(prop: dict[str, Any], config: CountryConfig) -> Optio
             or "Property"
         )
         bedrooms = parse_int(prop.get("bedrooms"))
-        address = str(prop.get("displayAddress") or prop.get("heading") or config.city).strip()
+        address = str(prop.get("displayAddress") or prop.get("address") or prop.get("heading") or config.city).strip()
         city = _extract_city(address, config.city)
-        raw_title = str(prop.get("heading") or prop.get("summary") or prop_type or address).strip()
-        headline, subtitle = _descriptive_title(raw_title, address, str(prop_type), bedrooms, city, config)
+        title_candidates = [
+            prop.get("heading"),
+            prop.get("propertyName"),
+            prop.get("developmentName"),
+            prop.get("title"),
+            prop.get("summary"),
+        ]
+        headline, subtitle = _descriptive_title(
+            title_candidates,
+            address,
+            str(prop_type),
+            bedrooms,
+            city,
+            config,
+        )
 
         images = _extract_images(prop)
         if not images:

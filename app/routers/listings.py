@@ -86,6 +86,10 @@ _MARKETING_TITLE_PATTERNS = (
     "buyers",
     "investors",
 )
+_GENERATED_OVERSEAS_TITLE_RE = re.compile(
+    r"^\d+\s+bedroom\s+.+\s+in\s+.+$",
+    re.IGNORECASE,
+)
 
 
 def _display_title(raw_title: str, address: str) -> str:
@@ -133,6 +137,18 @@ def _marketplace_title(listing: RightmoveListing, address: str, country: str) ->
     region = _clean_text(listing.region)
     property_type = _clean_text(listing.property_type) or "property"
     bedrooms = int(listing.bedrooms or 0)
+    # Older overseas scraper runs stored a generated fallback as the title.
+    # Prefer a useful stored description/address when it contains the source
+    # heading, rather than exposing that fallback forever.
+    if country in {"america", "canada", "dubai"} and _GENERATED_OVERSEAS_TITLE_RE.match(raw_title):
+        for candidate in (listing.description, address):
+            candidate_title = _display_title(candidate or "", address)
+            if (
+                candidate_title
+                and not _GENERATED_OVERSEAS_TITLE_RE.match(candidate_title)
+                and not _looks_like_broad_location(candidate_title, country, city, region)
+            ):
+                return candidate_title
     if raw_title and not _looks_like_broad_location(raw_title, country, city, region):
         return raw_title
     location = city or region or country.title()
