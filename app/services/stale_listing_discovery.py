@@ -353,6 +353,13 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
     processed = 0
     emails_sent_this_run = 0
     target_reached = False
+    detail_concurrency = max(2, min(16, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 8)))
+    detail_sem = asyncio.Semaphore(detail_concurrency)
+
+    async def scrape_detail_bounded(candidate: Candidate) -> dict[str, Any]:
+        async with detail_sem:
+            return await scrape_single_listing(candidate.url)
+
     locations = _locations_for_request(params.location_names)
     try:
         async with httpx.AsyncClient() as client:
@@ -376,6 +383,36 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
 
                     if not candidates:
                         break
+
+                    # Fetch the page details concurrently while the
+                    # preliminary filters and persistence below run in order.
+                    # Rightmove detail requests are the slowest part of this
+                    # job; awaiting them one-by-one kept the advisory lock for
+                    # longer than the 15-minute cycle and caused every next
+                    # cycle to be skipped.
+                    detail_tasks: dict[str, asyncio.Task] = {}
+                    for candidate in candidates:
+                        candidate_date = parse_listed_date(candidate.listed_date_raw)
+                        candidate_duration = (
+                            (datetime.now(timezone.utc) - candidate_date.astimezone(timezone.utc)).days
+                            if candidate_date
+                            else None
+                        )
+                        likely_eligible = (
+                            candidate.price is None or candidate.price >= params.min_price
+                        ) and not any(
+                            term in str(candidate.property_type or "").lower()
+                            for term in RESIDENTIAL_EXCLUDE
+                        ) and (
+                            candidate_duration is None
+                            or candidate_duration >= params.min_days_on_market
+                        )
+                        # Do not spend a detail request on listings that the
+                        # search response already proves are too recent.
+                        if likely_eligible:
+                            detail_tasks[candidate.rightmove_id] = asyncio.create_task(
+                                scrape_detail_bounded(candidate)
+                            )
 
                     for candidate in candidates:
                         if processed >= params.max_candidates or target_reached:
@@ -449,7 +486,14 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                             await db.commit()
 
                         try:
-                            scraped = await scrape_single_listing(candidate.url)
+                            detail_task = detail_tasks.get(candidate.rightmove_id)
+                            if detail_task is None:
+                                # This path is only for a candidate whose
+                                # preliminary fields were incomplete.
+                                detail_task = asyncio.create_task(
+                                    scrape_detail_bounded(candidate)
+                                )
+                            scraped = await detail_task
                             snapshot = _merge_snapshot(candidate, scraped)
                             address = _clean(snapshot.get("address") or snapshot.get("title"), 500)
                             price = extract_price(snapshot.get("price")) or candidate.price

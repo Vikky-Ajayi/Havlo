@@ -25,13 +25,12 @@ def _positive_int(name: str, default: int) -> int:
 
 async def run_direct_stale_listing_cycle() -> dict:
     target = max(30, _positive_int("STALE_LISTINGS_TARGET_EMAILS", 30))
-    # Keep one delivery cycle bounded.  Crawling hundreds of pages before
-    # processing any qualifying listing lets the advisory lock stay occupied
-    # for hours and prevents the 15-minute delivery target from being met.
-    # Six candidates per target is enough headroom for normal stale-listing
-    # hit rates while keeping the search phase short.
-    batch_candidates = max(180, target * 6)
-    batch_pages = max(8, (batch_candidates + 23) // 24)
+    # Rightmove does not consistently honour its oldest-first sort flag. A
+    # small page window therefore contains almost entirely new listings and
+    # cannot reach the 180-day inventory. Search a broad, bounded window while
+    # the discovery service handles detail requests concurrently.
+    batch_candidates = max(1200, target * 40)
+    batch_pages = max(25, (batch_candidates + 23) // 24)
     return await run_automatic_discovery_once(
         target_emails=target,
         max_candidates=batch_candidates,
