@@ -25,12 +25,77 @@ from app.services.scraper_base import run_once_with_advisory_lock
 from app.services.stale_prospect_service import (
     create_prospect_from_listing_snapshot,
     extract_price,
+    generate_letter_pdf,
+    hash_access_token,
     is_specific_address,
     parse_listed_date,
     snapshot_from_scrape,
+    create_access_token,
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def retry_pending_stale_prospect_emails(*, target: int) -> dict[str, int]:
+    """Retry durable prospect letters that were created but not delivered.
+
+    Discovery must never lose a qualifying listing because Resend or the
+    process was temporarily unavailable. A fresh token/PDF is generated for
+    each retry so the emailed preview URL remains valid without storing raw
+    access tokens in the database.
+    """
+    sent = 0
+    attempted = 0
+    admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if not admin_email:
+        logger.error("Stale-letter retry paused: ADMIN_NOTIFY_EMAIL is not configured.")
+        return {"attempted": 0, "sent": 0}
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(StaleListingProspect)
+            .where(
+                StaleListingProspect.processing_status.in_(
+                    ("letter_ready", "email_failed", "email_skipped")
+                )
+            )
+            .order_by(StaleListingProspect.created_at.asc())
+            .limit(max(0, target))
+        )
+        prospects = list(result.scalars().all())
+
+    for candidate in prospects:
+        attempted += 1
+        token = create_access_token()
+        pdf_path = generate_letter_pdf(
+            candidate,
+            token,
+            get_settings().FRONTEND_URL or "https://www.heyhavlo.com",
+        )
+        preview_url = (
+            f"{(get_settings().FRONTEND_URL or 'https://www.heyhavlo.com').rstrip('/')}"
+            f"/stale-listings/prospect/{token}"
+        )
+        email_sent = await asyncio.to_thread(
+            email_service.send_stale_prospect_letter_sync,
+            to_email=admin_email,
+            property_address=candidate.property_address,
+            property_code=candidate.property_code,
+            preview_url=preview_url,
+            letter_pdf_path=pdf_path,
+        )
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, candidate.id)
+            if prospect:
+                prospect.qr_token_hash = hash_access_token(token)
+                prospect.letter_pdf_path = pdf_path
+                prospect.processing_status = "email_sent" if email_sent else "email_failed"
+                prospect.letter_sent_at = datetime.now(timezone.utc) if email_sent else None
+                prospect.last_error = None if email_sent else "Email provider did not accept the retry."
+                await db.commit()
+        if email_sent:
+            sent += 1
+    return {"attempted": attempted, "sent": sent}
 
 
 def _env_int(name: str, default: int, *, minimum: int = 1) -> int:

@@ -11,7 +11,10 @@ import logging
 import os
 
 from app.services.scraper_base import run_once_with_advisory_lock
-from app.services.stale_listing_discovery import run_automatic_discovery_once
+from app.services.stale_listing_discovery import (
+    retry_pending_stale_prospect_emails,
+    run_automatic_discovery_once,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +28,23 @@ def _positive_int(name: str, default: int) -> int:
 
 async def run_direct_stale_listing_cycle() -> dict:
     target = max(30, _positive_int("STALE_LISTINGS_TARGET_EMAILS", 30))
+    retry_result = await retry_pending_stale_prospect_emails(target=target)
+    remaining_target = max(0, target - retry_result["sent"])
     # Rightmove does not consistently honour its oldest-first sort flag. A
     # small page window therefore contains almost entirely new listings and
     # cannot reach the 180-day inventory. Search a broad, bounded window while
     # the discovery service handles detail requests concurrently.
     batch_candidates = max(1200, target * 40)
     batch_pages = max(25, (batch_candidates + 23) // 24)
-    return await run_automatic_discovery_once(
-        target_emails=target,
+    result = await run_automatic_discovery_once(
+        target_emails=remaining_target,
         max_candidates=batch_candidates,
         max_pages_per_location=batch_pages,
     )
+    result["emails_sent"] = retry_result["sent"] + int(result.get("emails_sent", 0) or 0)
+    result["retry_attempted"] = retry_result["attempted"]
+    result["retry_sent"] = retry_result["sent"]
+    return result
 
 
 async def start_stale_listing_scraper_loop() -> None:
