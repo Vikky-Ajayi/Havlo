@@ -381,7 +381,11 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                         if processed >= params.max_candidates or target_reached:
                             break
                         processed += 1
-                        await asyncio.sleep(0.8)
+                        # Search pages are already fetched sequentially and
+                        # Rightmove requests use a separate client timeout;
+                        # this small pause only multiplied the time before the
+                        # first prospect email was delivered.
+                        await asyncio.sleep(0.2)
                         async with AsyncSessionLocal() as db:
                             run = await db.get(StaleListingDiscoveryRun, run_uuid)
                             if not run:
@@ -395,6 +399,49 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                                     "address": candidate.address,
                                     "reason": "duplicate_prospect",
                                     "property_code": existing.property_code,
+                                })
+                                run.result_json = json.dumps(results, ensure_ascii=False)
+                                await db.commit()
+                                continue
+                            # The search result already contains enough
+                            # information to discard most non-qualifying
+                            # listings.  Do this before the expensive detail
+                            # request; otherwise a large batch spends its
+                            # entire delivery window opening recent or
+                            # under-price properties.
+                            candidate_listed_date = parse_listed_date(candidate.listed_date_raw)
+                            candidate_duration_days = (
+                                (datetime.now(timezone.utc) - candidate_listed_date.astimezone(timezone.utc)).days
+                                if candidate_listed_date
+                                else None
+                            )
+                            preliminary_reason = None
+                            if candidate.price is None or candidate.price < params.min_price:
+                                preliminary_reason = "below_minimum_price"
+                            elif any(
+                                term in str(candidate.property_type or "").lower()
+                                for term in RESIDENTIAL_EXCLUDE
+                            ):
+                                preliminary_reason = "not_residential_sale"
+                            elif (
+                                candidate_listed_date is not None
+                                and candidate_duration_days is not None
+                                and candidate_duration_days < params.min_days_on_market
+                            ):
+                                preliminary_reason = "not_stale_enough"
+                            if preliminary_reason:
+                                run.skipped_count += 1
+                                results["skipped"].append({
+                                    "url": candidate.url,
+                                    "address": candidate.address,
+                                    "price": candidate.price,
+                                    "listed_date": (
+                                        candidate_listed_date.isoformat()
+                                        if candidate_listed_date
+                                        else None
+                                    ),
+                                    "duration_days": candidate_duration_days,
+                                    "reason": preliminary_reason,
                                 })
                                 run.result_json = json.dumps(results, ensure_ascii=False)
                                 await db.commit()
@@ -489,6 +536,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                                     listing_duration_days=int(duration_days or params.min_days_on_market),
                                     listed_date=listed_date,
                                     discovery_run_id=run.id,
+                                    expand_report=False,
                                 )
                                 preview_url = f"{(get_settings().FRONTEND_URL or 'https://www.heyhavlo.com').rstrip('/')}/stale-listings/prospect/{token}"
                                 admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()

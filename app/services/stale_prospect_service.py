@@ -203,6 +203,7 @@ async def create_prospect_from_listing_snapshot(
     listing_duration_days: int,
     listed_date: datetime | None = None,
     discovery_run_id: Any | None = None,
+    expand_report: bool = True,
 ) -> tuple[StaleListingProspect, str, str]:
     """Create a fully processed prospect, report, preview and letter PDF."""
     token = create_access_token()
@@ -212,6 +213,7 @@ async def create_prospect_from_listing_snapshot(
         rightmove_url=rightmove_url,
         snapshot=listing_snapshot,
         listing_duration_days=listing_duration_days,
+        expand_report=expand_report,
     )
     preview = build_preview(report, listing_snapshot, property_address)
     now = datetime.now(timezone.utc)
@@ -353,6 +355,7 @@ async def generate_prospect_report(
     rightmove_url: str,
     snapshot: dict[str, Any],
     listing_duration_days: int | None,
+    expand_report: bool = True,
 ) -> dict[str, Any]:
     questions_data = {
         "lead_source": "automated_letter_prospecting",
@@ -365,6 +368,7 @@ async def generate_prospect_report(
         property_address=property_address,
         listing_url=rightmove_url,
         listing_snapshot=snapshot,
+        expand_report=expand_report,
     )
 
 

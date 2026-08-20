@@ -204,6 +204,7 @@ async def generate_stale_listing_report(
     property_address: str = "",
     listing_url: str = "",
     listing_snapshot: dict | None = None,
+    expand_report: bool = True,
 ) -> dict:
     """
     Generate a structured stale listing analysis report using Groq LLM.
@@ -1023,19 +1024,20 @@ Return this exact shape:
             item.setdefault("bullets", [])
         for finding in parsed.get("key_findings", []):
             finding.setdefault("icon", None)
-        # A second bounded request adds depth without sending one oversized
-        # request to Groq. If this optional pass fails, the valid first-pass
-        # report is still returned.
-        try:
-            expansion_raw = await _aio.to_thread(_call_groq_expansion, parsed)
-            parsed = _merge_expansion(parsed, _extract_json(expansion_raw))
-            logger.info("Stale listing report expanded successfully (package=%s)", package)
-        except Exception as expansion_exc:
-            logger.warning(
-                "Stale listing report expansion skipped (package=%s): %s",
-                package,
-                expansion_exc,
-            )
+        # The expansion is useful for interactive reports but doubles Groq
+        # traffic. Automated prospect delivery only needs the valid first
+        # pass so one rate-limited expansion cannot stall the email queue.
+        if expand_report:
+            try:
+                expansion_raw = await _aio.to_thread(_call_groq_expansion, parsed)
+                parsed = _merge_expansion(parsed, _extract_json(expansion_raw))
+                logger.info("Stale listing report expanded successfully (package=%s)", package)
+            except Exception as expansion_exc:
+                logger.warning(
+                    "Stale listing report expansion skipped (package=%s): %s",
+                    package,
+                    expansion_exc,
+                )
         logger.info("Stale listing report generated successfully (package=%s)", package)
         return _normalise_report_output(parsed)
     except Exception as exc:

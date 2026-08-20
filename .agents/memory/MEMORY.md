@@ -3,3 +3,4 @@
 - [Groq model lifecycle](groq-model-lifecycle.md) — keep the shared Groq model configurable/current because retired model IDs cause immediate 400 failures.
 - [Overseas listing titles](overseas-listing-titles.md) — preserve source headings before broad-location fallbacks; displayAddress is often only a regional label.
 - [Rightmove stale search ordering](rightmove-stale-search.md) — stale discovery must search oldest-first or pagination misses the intended inventory.
+- [Stale email throughput](stale-email-throughput.md) — automated delivery must use bounded discovery batches and avoid optional second-pass Groq calls.
