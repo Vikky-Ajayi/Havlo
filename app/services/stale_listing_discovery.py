@@ -18,6 +18,7 @@ from app.config import get_settings
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingDiscoveryRun, StaleListingProspect
 from app.services import email_service
+from app.services import google_sheets
 from app.services.listing_scraper import scrape_single_listing
 from app.services.rightmove_scraper import KNOWN_LOCATIONS, PAGE_SIZE, _BASE, _headers, _parse_next_data
 from app.services.scraper_base import run_once_with_advisory_lock
@@ -457,6 +458,26 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                                 run.result_json = json.dumps(results, ensure_ascii=False)
                                 await db.commit()
                                 continue
+
+                            # Keep a separate address register for every
+                            # qualifying 180-day-plus listing, even before
+                            # report/email processing completes.
+                            await asyncio.to_thread(
+                                google_sheets.record_stale_listing_address,
+                                {
+                                    "rightmove_id": candidate.rightmove_id,
+                                    "property_address": address,
+                                    "city": candidate.city,
+                                    "asking_price": price,
+                                    "listed_date": listed_date,
+                                    "listing_duration_days": duration_days,
+                                    "property_type": snapshot.get("property_type") or candidate.property_type,
+                                    "bedrooms": snapshot.get("bedrooms") or candidate.bedrooms or "",
+                                    "bathrooms": snapshot.get("bathrooms") or candidate.bathrooms or "",
+                                    "listing_url": candidate.url,
+                                    "discovery_run_id": str(run.id),
+                                },
+                            )
 
                             try:
                                 prospect, token, letter_path = await create_prospect_from_listing_snapshot(

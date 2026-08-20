@@ -84,6 +84,12 @@ SHEET_TABS: dict[str, list[str]] = {
         "Property Address", "Listing URL", "Payment Status", "Report Status",
         "Promo Applied",
     ],
+    "Stale Listing Addresses": [
+        "Captured At", "Rightmove ID", "Property Code", "Property Address",
+        "City", "Asking Price", "Listed Date", "Days On Market",
+        "Property Type", "Bedrooms", "Bathrooms", "Listing URL",
+        "Discovery Run ID", "Source Status",
+    ],
     "Custom Offers": [
         "Timestamp", "Submission ID", "Reference", "Buyer Name", "Buyer Email",
         "Buyer Phone", "Listing URL", "Platform", "Property Summary", "Plan ID",
@@ -203,6 +209,67 @@ def _append_row(tab_name: str, row: list[Any], raise_on_error: bool = False) -> 
         logger.error("Failed to append row to %s: [%s] %r", tab_name, type(exc).__name__, exc)
         if raise_on_error:
             raise
+
+
+def record_stale_listing_address(listing_data: dict[str, Any]) -> None:
+    """Record one qualifying stale listing address without duplicating it.
+
+    Rightmove ID is the preferred stable key; the listing URL is used when a
+    legacy row has no ID. This is intentionally best-effort so a Sheets outage
+    never stops stale-listing discovery or letter generation.
+    """
+    if not is_configured():
+        logger.debug("Google Sheets not configured — skipping stale listing address.")
+        return
+    try:
+        sheet = _get_spreadsheet()
+        ws = sheet.worksheet("Stale Listing Addresses")
+        values = ws.get_all_values()
+        headers = values[0] if values else SHEET_TABS["Stale Listing Addresses"]
+        try:
+            id_index = headers.index("Rightmove ID")
+            url_index = headers.index("Listing URL")
+        except ValueError:
+            logger.error("Stale Listing Addresses tab has unexpected headers; skipping row.")
+            return
+
+        rightmove_id = str(listing_data.get("rightmove_id") or "").strip()
+        listing_url = str(listing_data.get("listing_url") or listing_data.get("url") or "").strip()
+        for existing in values[1:]:
+            existing_id = existing[id_index].strip() if id_index < len(existing) else ""
+            existing_url = existing[url_index].strip() if url_index < len(existing) else ""
+            if (rightmove_id and existing_id == rightmove_id) or (
+                listing_url and existing_url == listing_url
+            ):
+                return
+
+        listed_date = listing_data.get("listed_date")
+        if hasattr(listed_date, "isoformat"):
+            listed_date = listed_date.isoformat()
+        row = [
+            datetime.utcnow().isoformat(),
+            rightmove_id,
+            listing_data.get("property_code", ""),
+            listing_data.get("property_address") or listing_data.get("address", ""),
+            listing_data.get("city", ""),
+            listing_data.get("asking_price", ""),
+            listed_date or "",
+            listing_data.get("listing_duration_days") or listing_data.get("days_on_market", ""),
+            listing_data.get("property_type", ""),
+            listing_data.get("bedrooms", ""),
+            listing_data.get("bathrooms", ""),
+            listing_url,
+            listing_data.get("discovery_run_id", ""),
+            listing_data.get("source_status", "stale_180_days_plus"),
+        ]
+        ws.append_row(row, value_input_option="USER_ENTERED")
+        logger.info("Recorded stale listing address in Google Sheets: %s", listing_url or rightmove_id)
+    except Exception as exc:
+        logger.error(
+            "Failed to record stale listing address: [%s] %r",
+            type(exc).__name__,
+            exc,
+        )
 
 
 def append_test_row(tab_name: str = "Registrations") -> None:
