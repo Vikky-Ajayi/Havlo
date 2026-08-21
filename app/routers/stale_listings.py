@@ -43,6 +43,7 @@ from app.services.listing_scraper import detect_listing_platform, scrape_single_
 from app.services.product_access import decode_stale_review_session
 from app.services.stale_prospect_service import (
     create_prospect_from_listing_snapshot,
+    ensure_expanded_report,
     extract_price,
     hash_access_token,
     is_specific_address,
@@ -623,6 +624,7 @@ async def create_stale_prospect_checkout(
             checkout_id=prospect.sumup_checkout_id or "",
             amount=amount,
             currency=currency,
+            unlocked=True,
         )
 
     if _stale_prospect_promo_valid(payload.promo_code):
@@ -637,6 +639,7 @@ async def create_stale_prospect_checkout(
             checkout_id="",
             amount=0.0,
             currency=currency,
+            unlocked=True,
         )
 
     try:
@@ -708,6 +711,8 @@ async def get_stale_prospect_report(
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
     if prospect.payment_status != "completed":
         raise HTTPException(status_code=402, detail="This full report is locked until payment is complete.")
+    await ensure_expanded_report(prospect)
+    await db.commit()
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 

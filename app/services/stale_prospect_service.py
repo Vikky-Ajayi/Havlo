@@ -344,6 +344,8 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "property_code": prospect.property_code,
         "property_address": prospect.property_address,
         "rightmove_url": prospect.rightmove_url,
+        "asking_price": prospect.asking_price,
+        "listing_duration_days": prospect.listing_duration_days,
         "listing_snapshot": _safe_json(prospect.listing_snapshot_json),
         "report_data": _safe_json(prospect.report_json),
         "payment_status": prospect.payment_status,
@@ -370,6 +372,32 @@ async def generate_prospect_report(
         listing_snapshot=snapshot,
         expand_report=expand_report,
     )
+
+
+async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, Any]:
+    """Regenerate the report in full detail the first time it's actually unlocked.
+
+    Discovery creates every prospect with `expand_report=False` (line above)
+    to keep bulk scanning fast and cheap — that shallow report is only ever
+    meant to back the free preview. Without this, the "full" report a
+    homeowner unlocks was identical to the preview. This mutates
+    `prospect.report_json` in place; the caller is responsible for
+    committing the session.
+    """
+    report = _safe_json(prospect.report_json)
+    if report.get("_expanded"):
+        return report
+    snapshot = _safe_json(prospect.listing_snapshot_json)
+    expanded = await generate_prospect_report(
+        property_address=prospect.property_address,
+        rightmove_url=prospect.rightmove_url,
+        snapshot=snapshot,
+        listing_duration_days=prospect.listing_duration_days,
+        expand_report=True,
+    )
+    expanded["_expanded"] = True
+    prospect.report_json = json.dumps(expanded, ensure_ascii=False)
+    return expanded
 
 
 def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:
