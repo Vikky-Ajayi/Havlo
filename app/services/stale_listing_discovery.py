@@ -623,6 +623,16 @@ async def _finalize_candidate(
                     "letter_pdf_path": letter_path,
                     "email_sent": email_sent,
                 }
+
+            # The earlier record_stale_listing_address call ran before this
+            # prospect (and its property code) existed, so that row's Property
+            # Code column was left blank. Fill it in now that the code exists.
+            await asyncio.to_thread(
+                google_sheets.update_stale_listing_property_code,
+                rightmove_id=candidate.rightmove_id,
+                listing_url=candidate.url,
+                property_code=prospect.property_code,
+            )
             async with state.lock:
                 state.created_count += 1
                 if email_sent:

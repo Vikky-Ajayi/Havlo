@@ -272,6 +272,59 @@ def record_stale_listing_address(listing_data: dict[str, Any]) -> None:
         )
 
 
+def update_stale_listing_property_code(
+    *, rightmove_id: str = "", listing_url: str = "", property_code: str
+) -> None:
+    """Backfill the Property Code column once a prospect has been created.
+
+    `record_stale_listing_address` is deliberately called before the report/
+    PDF/email pipeline runs, so a qualifying address is never lost to a
+    downstream failure — at that point no property code exists yet, which is
+    why live-discovered rows previously showed a blank Property Code column.
+    This finds the row written by that earlier call (matched the same way,
+    by Rightmove ID or Listing URL) and fills in the code once it's known.
+    """
+    if not is_configured() or not property_code:
+        return
+    rightmove_id = str(rightmove_id or "").strip()
+    listing_url = str(listing_url or "").strip()
+    if not rightmove_id and not listing_url:
+        return
+    try:
+        sheet = _get_spreadsheet()
+        ws = sheet.worksheet("Stale Listing Addresses")
+        values = ws.get_all_values()
+        if not values:
+            return
+        headers = values[0]
+        try:
+            id_index = headers.index("Rightmove ID")
+            url_index = headers.index("Listing URL")
+            code_index = headers.index("Property Code")
+        except ValueError:
+            logger.error("Stale Listing Addresses tab has unexpected headers; skipping code backfill.")
+            return
+        for row_num, existing in enumerate(values[1:], start=2):
+            existing_id = existing[id_index].strip() if id_index < len(existing) else ""
+            existing_url = existing[url_index].strip() if url_index < len(existing) else ""
+            if (rightmove_id and existing_id == rightmove_id) or (
+                listing_url and existing_url == listing_url
+            ):
+                ws.update_cell(row_num, code_index + 1, property_code)
+                logger.info("Backfilled property code %s in Stale Listing Addresses.", property_code)
+                return
+        logger.debug(
+            "No Stale Listing Addresses row found to backfill property code for %s",
+            rightmove_id or listing_url,
+        )
+    except Exception as exc:
+        logger.error(
+            "Failed to backfill stale listing property code: [%s] %r",
+            type(exc).__name__,
+            exc,
+        )
+
+
 def append_test_row(tab_name: str = "Registrations") -> None:
     """Strict append used by the diag endpoint — re-raises on any failure."""
     _append_row(tab_name, [
