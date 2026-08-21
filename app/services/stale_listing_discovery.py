@@ -351,16 +351,52 @@ def _skip_reason(
     return None
 
 
-async def _existing_prospect(db, candidate: Candidate) -> StaleListingProspect | None:
+async def _bulk_existing_prospects(db, candidates: list[Candidate]) -> dict[str, str]:
+    """Look up every candidate on a search page in a single query.
+
+    The previous version issued one SELECT per listing (up to 24 per search
+    page, run one at a time). At UK-wide scan volumes that N+1 query pattern
+    was the single biggest source of latency in the discovery loop — it is
+    why a dedicated job with a 15-minute delivery target could only ever
+    advance one search page roughly every 90-100 seconds. Batching the
+    lookup removes 23 of every 24 round trips.
+    """
+    ids = [c.rightmove_id for c in candidates if c.rightmove_id]
+    urls = [c.url for c in candidates if c.url]
+    if not ids and not urls:
+        return {}
+    conditions = []
+    if ids:
+        conditions.append(StaleListingProspect.rightmove_id.in_(ids))
+    if urls:
+        conditions.append(StaleListingProspect.rightmove_url.in_(urls))
     result = await db.execute(
-        select(StaleListingProspect).where(
-            or_(
-                StaleListingProspect.rightmove_url == candidate.url,
-                StaleListingProspect.rightmove_id == candidate.rightmove_id,
-            )
-        )
+        select(
+            StaleListingProspect.rightmove_id,
+            StaleListingProspect.rightmove_url,
+            StaleListingProspect.property_code,
+        ).where(or_(*conditions))
     )
-    return result.scalars().first()
+    matches: dict[str, str] = {}
+    for rightmove_id, rightmove_url, property_code in result.all():
+        if rightmove_id:
+            matches[rightmove_id] = property_code
+        if rightmove_url:
+            matches[rightmove_url] = property_code
+    return matches
+
+
+def _candidate_duplicate_code(candidate: Candidate, existing: dict[str, str]) -> str | None:
+    if candidate.rightmove_id and candidate.rightmove_id in existing:
+        return existing[candidate.rightmove_id]
+    if candidate.url in existing:
+        return existing[candidate.url]
+    return None
+
+
+async def _scrape_detail_bounded(sem: asyncio.Semaphore, candidate: Candidate) -> dict[str, Any]:
+    async with sem:
+        return await scrape_single_listing(candidate.url)
 
 
 def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
@@ -397,8 +433,348 @@ def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
     }
 
 
+@dataclass(slots=True)
+class _DiscoveryState:
+    """Mutable counters/results shared by every location task in one run.
+
+    All mutation goes through `lock` so concurrent locations never race on
+    the same `StaleListingDiscoveryRun` row (the old code re-loaded that row
+    fresh per candidate and could lose concurrent increments). The lock only
+    ever guards cheap in-memory bookkeeping — the slow parts (HTTP fetches,
+    the LLM report call, PDF rendering, email send) all run outside it.
+    """
+
+    run_uuid: uuid.UUID
+    params: DiscoveryParams
+    results: dict[str, list[dict[str, Any]]]
+    lock: asyncio.Lock
+    detail_sem: asyncio.Semaphore
+    finalize_sem: asyncio.Semaphore
+    processed: int = 0
+    candidates_seen: int = 0
+    eligible_count: int = 0
+    created_count: int = 0
+    skipped_count: int = 0
+    failed_count: int = 0
+    emails_sent: int = 0
+    target_reached: bool = False
+    dirty: bool = False
+
+
+async def _flush_run_progress(state: _DiscoveryState) -> None:
+    """Persist accumulated counters/results. Caller must hold state.lock."""
+    if not state.dirty:
+        return
+    async with AsyncSessionLocal() as db:
+        run = await db.get(StaleListingDiscoveryRun, state.run_uuid)
+        if run:
+            run.candidates_seen = state.candidates_seen
+            run.eligible_count = state.eligible_count
+            run.created_prospects_count = state.created_count
+            run.skipped_count = state.skipped_count
+            run.failed_count = state.failed_count
+            run.result_json = json.dumps(state.results, ensure_ascii=False)
+            await db.commit()
+    state.dirty = False
+
+
+async def _should_stop(state: _DiscoveryState) -> bool:
+    async with state.lock:
+        return state.processed >= state.params.max_candidates or state.target_reached
+
+
+async def _record_skip(state: _DiscoveryState, candidate: Candidate, *, reason: str, **extra: Any) -> None:
+    async with state.lock:
+        state.skipped_count += 1
+        state.results["skipped"].append({
+            "url": candidate.url,
+            "address": candidate.address,
+            "reason": reason,
+            **extra,
+        })
+        state.dirty = True
+
+
+async def _finalize_candidate(
+    state: _DiscoveryState,
+    candidate: Candidate,
+    detail_task: asyncio.Task | None,
+) -> None:
+    """Run the expensive per-candidate tail: detail fetch → eligibility →
+    report/PDF/email. Bounded by `finalize_sem` so several qualifying
+    candidates across different locations can be processed at once instead
+    of strictly one at a time.
+    """
+    async with state.finalize_sem:
+        try:
+            if detail_task is None:
+                # Only reachable for a candidate whose preliminary fields
+                # were incomplete and so was never pre-fetched above.
+                scraped = await _scrape_detail_bounded(state.detail_sem, candidate)
+            else:
+                scraped = await detail_task
+            snapshot = _merge_snapshot(candidate, scraped)
+            address = _clean(snapshot.get("address") or snapshot.get("title"), 500)
+            price = extract_price(snapshot.get("price")) or candidate.price
+            listed_date = parse_listed_date(snapshot.get("listed_date") or candidate.listed_date_raw)
+            duration_days = None
+            if listed_date:
+                duration_days = (datetime.now(timezone.utc) - listed_date.astimezone(timezone.utc)).days
+            reason = _skip_reason(
+                snapshot=snapshot,
+                address=address,
+                price=price,
+                listed_date=listed_date,
+                duration_days=duration_days,
+                params=state.params,
+            )
+        except Exception as exc:
+            reason = f"detail_scrape_failed: {str(exc)[:180]}"
+            snapshot = {}
+            address = candidate.address
+            price = candidate.price
+            listed_date = None
+            duration_days = None
+
+        if reason:
+            async with state.lock:
+                state.skipped_count += 1
+                state.results["skipped"].append({
+                    "url": candidate.url,
+                    "address": address or candidate.address,
+                    "price": price,
+                    "listed_date": listed_date.isoformat() if listed_date else None,
+                    "duration_days": duration_days,
+                    "reason": reason,
+                })
+                state.dirty = True
+            return
+
+        async with state.lock:
+            state.eligible_count += 1
+            eligible_item = {
+                "url": candidate.url,
+                "address": address,
+                "price": price,
+                "listed_date": listed_date.isoformat() if listed_date else None,
+                "duration_days": duration_days,
+                "city": candidate.city,
+            }
+            state.results["eligible"].append(eligible_item)
+            if state.params.dry_run:
+                state.dirty = True
+                await _flush_run_progress(state)
+                return
+
+        # Keep a separate address register for every qualifying 180-day-plus
+        # listing, even before report/email processing completes. This and
+        # everything below runs without the lock held.
+        await asyncio.to_thread(
+            google_sheets.record_stale_listing_address,
+            {
+                "rightmove_id": candidate.rightmove_id,
+                "property_address": address,
+                "city": candidate.city,
+                "asking_price": price,
+                "listed_date": listed_date,
+                "listing_duration_days": duration_days,
+                "property_type": snapshot.get("property_type") or candidate.property_type,
+                "bedrooms": snapshot.get("bedrooms") or candidate.bedrooms or "",
+                "bathrooms": snapshot.get("bathrooms") or candidate.bathrooms or "",
+                "listing_url": candidate.url,
+                "discovery_run_id": str(state.run_uuid),
+            },
+        )
+
+        try:
+            async with AsyncSessionLocal() as db:
+                prospect, token, letter_path = await create_prospect_from_listing_snapshot(
+                    db,
+                    rightmove_url=candidate.url,
+                    property_address=address,
+                    listing_snapshot=snapshot,
+                    asking_price=float(price or 0),
+                    listing_duration_days=int(duration_days or state.params.min_days_on_market),
+                    listed_date=listed_date,
+                    discovery_run_id=state.run_uuid,
+                    expand_report=False,
+                )
+                preview_url = f"{(get_settings().FRONTEND_URL or 'https://www.heyhavlo.com').rstrip('/')}/stale-listings/prospect/{token}"
+                admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+                email_sent = False
+                if admin_email:
+                    email_sent = await asyncio.to_thread(
+                        email_service.send_stale_prospect_letter_sync,
+                        to_email=admin_email,
+                        property_address=address,
+                        property_code=prospect.property_code,
+                        preview_url=preview_url,
+                        letter_pdf_path=letter_path,
+                    )
+                    if email_sent:
+                        prospect.letter_sent_at = datetime.now(timezone.utc)
+                prospect.processing_status = "email_sent" if email_sent else "letter_ready"
+                await db.commit()
+                created_entry = {
+                    **eligible_item,
+                    "prospect_id": str(prospect.id),
+                    "property_code": prospect.property_code,
+                    "preview_url": preview_url,
+                    "letter_pdf_path": letter_path,
+                    "email_sent": email_sent,
+                }
+            async with state.lock:
+                state.created_count += 1
+                if email_sent:
+                    state.emails_sent += 1
+                if state.params.target_emails and state.emails_sent >= state.params.target_emails:
+                    state.target_reached = True
+                state.results["created"].append(created_entry)
+                state.dirty = True
+                await _flush_run_progress(state)
+        except Exception as exc:
+            logger.exception("Failed to process stale prospect %s", candidate.url)
+            async with state.lock:
+                state.failed_count += 1
+                state.results["failed"].append({
+                    "url": candidate.url,
+                    "address": address,
+                    "reason": str(exc)[:240],
+                })
+                state.dirty = True
+
+
+async def _run_location(
+    state: _DiscoveryState,
+    client: httpx.AsyncClient,
+    city: str,
+    location_id: str,
+    location_sem: asyncio.Semaphore,
+) -> None:
+    async with location_sem:
+        for page in range(state.params.max_pages_per_location):
+            if await _should_stop(state):
+                return
+            try:
+                candidates = await _fetch_search_page(client, city, location_id, page, state.params.min_price)
+            except Exception as exc:
+                async with state.lock:
+                    state.failed_count += 1
+                    state.results["failed"].append({"location": city, "page": page, "reason": str(exc)[:240]})
+                    state.dirty = True
+                    await _flush_run_progress(state)
+                return
+
+            if not candidates:
+                return
+
+            # One bulk lookup replaces the old one-query-per-candidate check.
+            async with AsyncSessionLocal() as db:
+                existing_map = await _bulk_existing_prospects(db, candidates)
+
+            # Pre-fetch detail pages concurrently for anything the search
+            # response doesn't already prove is too recent/cheap/duplicate.
+            # Rightmove detail requests are the slowest single step here;
+            # awaiting them one-by-one is what starved every 15-minute cycle
+            # of real throughput.
+            detail_tasks: dict[str, asyncio.Task] = {}
+            for candidate in candidates:
+                if _candidate_duplicate_code(candidate, existing_map) is not None:
+                    continue
+                candidate_date = parse_listed_date(candidate.listed_date_raw)
+                candidate_duration = (
+                    (datetime.now(timezone.utc) - candidate_date.astimezone(timezone.utc)).days
+                    if candidate_date
+                    else None
+                )
+                likely_eligible = (
+                    candidate.price is None or candidate.price >= state.params.min_price
+                ) and not any(
+                    term in str(candidate.property_type or "").lower()
+                    for term in RESIDENTIAL_EXCLUDE
+                ) and (
+                    candidate_duration is None
+                    or candidate_duration >= state.params.min_days_on_market
+                )
+                if likely_eligible:
+                    detail_tasks[candidate.rightmove_id] = asyncio.create_task(
+                        _scrape_detail_bounded(state.detail_sem, candidate)
+                    )
+
+            finalize_tasks: list[asyncio.Task] = []
+            for candidate in candidates:
+                async with state.lock:
+                    if state.processed >= state.params.max_candidates or state.target_reached:
+                        break
+                    state.processed += 1
+                    state.candidates_seen += 1
+                    state.dirty = True
+
+                duplicate_code = _candidate_duplicate_code(candidate, existing_map)
+                if duplicate_code is not None:
+                    await _record_skip(state, candidate, reason="duplicate_prospect", property_code=duplicate_code)
+                    continue
+
+                # The search result already contains enough information to
+                # discard most non-qualifying listings before the expensive
+                # detail request; otherwise a large batch spends its entire
+                # delivery window opening recent or under-price properties.
+                candidate_listed_date = parse_listed_date(candidate.listed_date_raw)
+                candidate_duration_days = (
+                    (datetime.now(timezone.utc) - candidate_listed_date.astimezone(timezone.utc)).days
+                    if candidate_listed_date
+                    else None
+                )
+                preliminary_reason = None
+                if candidate.price is None or candidate.price < state.params.min_price:
+                    preliminary_reason = "below_minimum_price"
+                elif any(
+                    term in str(candidate.property_type or "").lower()
+                    for term in RESIDENTIAL_EXCLUDE
+                ):
+                    preliminary_reason = "not_residential_sale"
+                elif (
+                    candidate_listed_date is not None
+                    and candidate_duration_days is not None
+                    and candidate_duration_days < state.params.min_days_on_market
+                ):
+                    preliminary_reason = "not_stale_enough"
+                if preliminary_reason:
+                    await _record_skip(
+                        state,
+                        candidate,
+                        reason=preliminary_reason,
+                        price=candidate.price,
+                        listed_date=candidate_listed_date.isoformat() if candidate_listed_date else None,
+                        duration_days=candidate_duration_days,
+                    )
+                    continue
+
+                finalize_tasks.append(
+                    asyncio.create_task(
+                        _finalize_candidate(state, candidate, detail_tasks.get(candidate.rightmove_id))
+                    )
+                )
+
+            if finalize_tasks:
+                await asyncio.gather(*finalize_tasks)
+
+            async with state.lock:
+                await _flush_run_progress(state)
+
+            if await _should_stop(state):
+                return
+
+
 async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
-    """Run discovery in the background and persist progress after each candidate."""
+    """Run discovery in the background, scanning several locations concurrently.
+
+    Locations run in parallel (bounded by `STALE_LISTINGS_LOCATION_CONCURRENCY`)
+    instead of one fully-paginated city before the next starts. Combined with
+    batched duplicate lookups and concurrent report/PDF/email finalization,
+    this is what actually lets a 15-minute cycle reach dozens of qualifying
+    listings instead of one or two.
+    """
     try:
         run_uuid = uuid.UUID(str(run_id))
     except ValueError:
@@ -415,289 +791,35 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
         run.result_json = json.dumps(results)
         await db.commit()
 
-    processed = 0
-    emails_sent_this_run = 0
-    target_reached = False
-    detail_concurrency = max(2, min(16, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 8)))
-    detail_sem = asyncio.Semaphore(detail_concurrency)
-
-    async def scrape_detail_bounded(candidate: Candidate) -> dict[str, Any]:
-        async with detail_sem:
-            return await scrape_single_listing(candidate.url)
-
+    state = _DiscoveryState(
+        run_uuid=run_uuid,
+        params=params,
+        results=results,
+        lock=asyncio.Lock(),
+        detail_sem=asyncio.Semaphore(max(2, min(32, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 10)))),
+        finalize_sem=asyncio.Semaphore(max(1, min(12, _env_int("STALE_LISTINGS_FINALIZE_CONCURRENCY", 4)))),
+    )
+    location_concurrency = max(1, min(20, _env_int("STALE_LISTINGS_LOCATION_CONCURRENCY", 6)))
+    location_sem = asyncio.Semaphore(location_concurrency)
     locations = _locations_for_request(params.location_names)
+
     try:
         async with httpx.AsyncClient() as client:
-            for city, location_id in locations:
-                if processed >= params.max_candidates or target_reached:
-                    break
-                for page in range(params.max_pages_per_location):
-                    if processed >= params.max_candidates or target_reached:
-                        break
-                    try:
-                        candidates = await _fetch_search_page(client, city, location_id, page, params.min_price)
-                    except Exception as exc:
-                        results["failed"].append({"location": city, "page": page, "reason": str(exc)[:240]})
-                        async with AsyncSessionLocal() as db:
-                            run = await db.get(StaleListingDiscoveryRun, run_uuid)
-                            if run:
-                                run.failed_count += 1
-                                run.result_json = json.dumps(results, ensure_ascii=False)
-                                await db.commit()
-                        break
+            await asyncio.gather(*(
+                _run_location(state, client, city, location_id, location_sem)
+                for city, location_id in locations
+            ))
 
-                    if not candidates:
-                        break
-
-                    # Fetch the page details concurrently while the
-                    # preliminary filters and persistence below run in order.
-                    # Rightmove detail requests are the slowest part of this
-                    # job; awaiting them one-by-one kept the advisory lock for
-                    # longer than the 15-minute cycle and caused every next
-                    # cycle to be skipped.
-                    detail_tasks: dict[str, asyncio.Task] = {}
-                    for candidate in candidates:
-                        candidate_date = parse_listed_date(candidate.listed_date_raw)
-                        candidate_duration = (
-                            (datetime.now(timezone.utc) - candidate_date.astimezone(timezone.utc)).days
-                            if candidate_date
-                            else None
-                        )
-                        likely_eligible = (
-                            candidate.price is None or candidate.price >= params.min_price
-                        ) and not any(
-                            term in str(candidate.property_type or "").lower()
-                            for term in RESIDENTIAL_EXCLUDE
-                        ) and (
-                            candidate_duration is None
-                            or candidate_duration >= params.min_days_on_market
-                        )
-                        # Do not spend a detail request on listings that the
-                        # search response already proves are too recent.
-                        if likely_eligible:
-                            detail_tasks[candidate.rightmove_id] = asyncio.create_task(
-                                scrape_detail_bounded(candidate)
-                            )
-
-                    for candidate in candidates:
-                        if processed >= params.max_candidates or target_reached:
-                            break
-                        processed += 1
-                        # Search pages are already fetched sequentially and
-                        # Rightmove requests use a separate client timeout;
-                        # this small pause only multiplied the time before the
-                        # first prospect email was delivered.
-                        await asyncio.sleep(0.2)
-                        async with AsyncSessionLocal() as db:
-                            run = await db.get(StaleListingDiscoveryRun, run_uuid)
-                            if not run:
-                                return
-                            run.candidates_seen += 1
-                            existing = await _existing_prospect(db, candidate)
-                            if existing:
-                                run.skipped_count += 1
-                                results["skipped"].append({
-                                    "url": candidate.url,
-                                    "address": candidate.address,
-                                    "reason": "duplicate_prospect",
-                                    "property_code": existing.property_code,
-                                })
-                                run.result_json = json.dumps(results, ensure_ascii=False)
-                                await db.commit()
-                                continue
-                            # The search result already contains enough
-                            # information to discard most non-qualifying
-                            # listings.  Do this before the expensive detail
-                            # request; otherwise a large batch spends its
-                            # entire delivery window opening recent or
-                            # under-price properties.
-                            candidate_listed_date = parse_listed_date(candidate.listed_date_raw)
-                            candidate_duration_days = (
-                                (datetime.now(timezone.utc) - candidate_listed_date.astimezone(timezone.utc)).days
-                                if candidate_listed_date
-                                else None
-                            )
-                            preliminary_reason = None
-                            if candidate.price is None or candidate.price < params.min_price:
-                                preliminary_reason = "below_minimum_price"
-                            elif any(
-                                term in str(candidate.property_type or "").lower()
-                                for term in RESIDENTIAL_EXCLUDE
-                            ):
-                                preliminary_reason = "not_residential_sale"
-                            elif (
-                                candidate_listed_date is not None
-                                and candidate_duration_days is not None
-                                and candidate_duration_days < params.min_days_on_market
-                            ):
-                                preliminary_reason = "not_stale_enough"
-                            if preliminary_reason:
-                                run.skipped_count += 1
-                                results["skipped"].append({
-                                    "url": candidate.url,
-                                    "address": candidate.address,
-                                    "price": candidate.price,
-                                    "listed_date": (
-                                        candidate_listed_date.isoformat()
-                                        if candidate_listed_date
-                                        else None
-                                    ),
-                                    "duration_days": candidate_duration_days,
-                                    "reason": preliminary_reason,
-                                })
-                                run.result_json = json.dumps(results, ensure_ascii=False)
-                                await db.commit()
-                                continue
-                            await db.commit()
-
-                        try:
-                            detail_task = detail_tasks.get(candidate.rightmove_id)
-                            if detail_task is None:
-                                # This path is only for a candidate whose
-                                # preliminary fields were incomplete.
-                                detail_task = asyncio.create_task(
-                                    scrape_detail_bounded(candidate)
-                                )
-                            scraped = await detail_task
-                            snapshot = _merge_snapshot(candidate, scraped)
-                            address = _clean(snapshot.get("address") or snapshot.get("title"), 500)
-                            price = extract_price(snapshot.get("price")) or candidate.price
-                            listed_date = parse_listed_date(snapshot.get("listed_date") or candidate.listed_date_raw)
-                            duration_days = None
-                            if listed_date:
-                                duration_days = (datetime.now(timezone.utc) - listed_date.astimezone(timezone.utc)).days
-                            reason = _skip_reason(
-                                snapshot=snapshot,
-                                address=address,
-                                price=price,
-                                listed_date=listed_date,
-                                duration_days=duration_days,
-                                params=params,
-                            )
-                        except Exception as exc:
-                            reason = f"detail_scrape_failed: {str(exc)[:180]}"
-                            snapshot = {}
-                            address = candidate.address
-                            price = candidate.price
-                            listed_date = None
-                            duration_days = None
-
-                        async with AsyncSessionLocal() as db:
-                            run = await db.get(StaleListingDiscoveryRun, run_uuid)
-                            if not run:
-                                return
-                            if reason:
-                                run.skipped_count += 1
-                                results["skipped"].append({
-                                    "url": candidate.url,
-                                    "address": address or candidate.address,
-                                    "price": price,
-                                    "listed_date": listed_date.isoformat() if listed_date else None,
-                                    "duration_days": duration_days,
-                                    "reason": reason,
-                                })
-                                run.result_json = json.dumps(results, ensure_ascii=False)
-                                await db.commit()
-                                continue
-
-                            run.eligible_count += 1
-                            eligible_item = {
-                                "url": candidate.url,
-                                "address": address,
-                                "price": price,
-                                "listed_date": listed_date.isoformat() if listed_date else None,
-                                "duration_days": duration_days,
-                                "city": candidate.city,
-                            }
-                            results["eligible"].append(eligible_item)
-                            if params.dry_run:
-                                run.result_json = json.dumps(results, ensure_ascii=False)
-                                await db.commit()
-                                continue
-
-                            # Keep a separate address register for every
-                            # qualifying 180-day-plus listing, even before
-                            # report/email processing completes.
-                            await asyncio.to_thread(
-                                google_sheets.record_stale_listing_address,
-                                {
-                                    "rightmove_id": candidate.rightmove_id,
-                                    "property_address": address,
-                                    "city": candidate.city,
-                                    "asking_price": price,
-                                    "listed_date": listed_date,
-                                    "listing_duration_days": duration_days,
-                                    "property_type": snapshot.get("property_type") or candidate.property_type,
-                                    "bedrooms": snapshot.get("bedrooms") or candidate.bedrooms or "",
-                                    "bathrooms": snapshot.get("bathrooms") or candidate.bathrooms or "",
-                                    "listing_url": candidate.url,
-                                    "discovery_run_id": str(run.id),
-                                },
-                            )
-
-                            try:
-                                prospect, token, letter_path = await create_prospect_from_listing_snapshot(
-                                    db,
-                                    rightmove_url=candidate.url,
-                                    property_address=address,
-                                    listing_snapshot=snapshot,
-                                    asking_price=float(price or 0),
-                                    listing_duration_days=int(duration_days or params.min_days_on_market),
-                                    listed_date=listed_date,
-                                    discovery_run_id=run.id,
-                                    expand_report=False,
-                                )
-                                preview_url = f"{(get_settings().FRONTEND_URL or 'https://www.heyhavlo.com').rstrip('/')}/stale-listings/prospect/{token}"
-                                admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
-                                email_sent = False
-                                if admin_email:
-                                    email_sent = await asyncio.to_thread(
-                                        email_service.send_stale_prospect_letter_sync,
-                                        to_email=admin_email,
-                                        property_address=address,
-                                        property_code=prospect.property_code,
-                                        preview_url=preview_url,
-                                        letter_pdf_path=letter_path,
-                                    )
-                                    if email_sent:
-                                        prospect.letter_sent_at = datetime.now(timezone.utc)
-                                prospect.processing_status = "email_sent" if email_sent else "letter_ready"
-                                run.created_prospects_count += 1
-                                if email_sent:
-                                    emails_sent_this_run += 1
-                                if params.target_emails and emails_sent_this_run >= params.target_emails:
-                                    target_reached = True
-                                results["created"].append({
-                                    **eligible_item,
-                                    "prospect_id": str(prospect.id),
-                                    "property_code": prospect.property_code,
-                                    "preview_url": preview_url,
-                                    "letter_pdf_path": letter_path,
-                                    "email_sent": email_sent,
-                                })
-                                run.result_json = json.dumps(results, ensure_ascii=False)
-                                await db.commit()
-                            except Exception as exc:
-                                await db.rollback()
-                                async with AsyncSessionLocal() as fail_db:
-                                    fail_run = await fail_db.get(StaleListingDiscoveryRun, run_uuid)
-                                    if fail_run:
-                                        fail_run.failed_count += 1
-                                        results["failed"].append({
-                                            "url": candidate.url,
-                                            "address": address,
-                                            "reason": str(exc)[:240],
-                                        })
-                                        fail_run.result_json = json.dumps(results, ensure_ascii=False)
-                                        await fail_db.commit()
-                                logger.exception("Failed to process stale prospect %s", candidate.url)
+        async with state.lock:
+            state.dirty = True
+            await _flush_run_progress(state)
 
         async with AsyncSessionLocal() as db:
             run = await db.get(StaleListingDiscoveryRun, run_uuid)
             if run:
                 run.status = "completed"
                 run.completed_at = datetime.now(timezone.utc)
-                run.result_json = json.dumps(results, ensure_ascii=False)
+                run.result_json = json.dumps(state.results, ensure_ascii=False)
                 await db.commit()
     except Exception as exc:
         logger.exception("Discovery run %s failed", run_id)
@@ -707,7 +829,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                 run.status = "failed"
                 run.error_message = str(exc)[:1000]
                 run.completed_at = datetime.now(timezone.utc)
-                run.result_json = json.dumps(results, ensure_ascii=False)
+                run.result_json = json.dumps(state.results, ensure_ascii=False)
                 await db.commit()
 
 
