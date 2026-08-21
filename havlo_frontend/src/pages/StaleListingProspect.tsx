@@ -275,7 +275,11 @@ export const StaleListingProspectReport = () => {
             </section>
 
             <section className="slx-report-hero">
-              {snapshot.image && <img src={snapshot.image} alt={data.property_address} />}
+              {snapshot.image && (
+                <div className="slx-report-hero-image">
+                  <img src={snapshot.image} alt={data.property_address} />
+                </div>
+              )}
               <div className="slx-report-hero-copy">
                 <span>Property ID {data.property_code} · Full report unlocked</span>
                 <h1>{data.property_address}</h1>
@@ -428,7 +432,8 @@ const ProspectStyles = () => (
     .slx-download:hover{background:#000}
 
     .slx-report-hero{display:flex;gap:32px;background:#fff;border:1px solid #e5e5e5;border-radius:28px;padding:32px;align-items:stretch}
-    .slx-report-hero img{width:340px;flex:0 0 340px;height:100%;min-height:220px;object-fit:cover;border-radius:20px;background:#eee}
+    .slx-report-hero-image{flex:0 0 340px;width:340px;align-self:stretch;min-height:260px;border-radius:20px;overflow:hidden;background:#eee}
+    .slx-report-hero-image img{display:block;width:100%;height:100%;object-fit:cover}
     .slx-report-hero-copy{display:flex;flex-direction:column;justify-content:center;min-width:0}
     .slx-report-hero-copy span{display:inline-block;background:#fbebff;color:#9c00c6;border-radius:999px;padding:8px 12px;font-weight:900;font-size:13px;width:fit-content}
     .slx-report-hero-copy h1{font-size:38px;line-height:1.05;letter-spacing:-.04em;margin:16px 0 8px}
@@ -496,7 +501,7 @@ const ProspectStyles = () => (
       .slx-unlock h2,.slx-unlock h1{font-size:28px}
       .slx-report-toolbar{flex-direction:column;gap:12px;align-items:stretch;text-align:center}
       .slx-report-hero{flex-direction:column;padding:20px}
-      .slx-report-hero img{width:100%;flex:none;height:200px}
+      .slx-report-hero-image{width:100%;flex:none;height:200px;min-height:0}
       .slx-report-hero-copy h1{font-size:28px}
       .slx-scorebar{grid-template-columns:90px 1fr 34px}
     }

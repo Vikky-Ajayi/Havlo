@@ -5,10 +5,12 @@ import base64
 import asyncio
 import hashlib
 import json
+import logging
 import os
 import random
 import re
 import secrets
+import uuid
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -21,6 +23,8 @@ from app.config import get_settings
 from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing, StaleListingProspect
 from app.services.groq_service import generate_stale_listing_report
+
+logger = logging.getLogger(__name__)
 
 
 def create_access_token() -> str:
@@ -398,6 +402,36 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
     expanded["_expanded"] = True
     prospect.report_json = json.dumps(expanded, ensure_ascii=False)
     return expanded
+
+
+def is_report_expanded(prospect: StaleListingProspect) -> bool:
+    return bool(_safe_json(prospect.report_json).get("_expanded"))
+
+
+async def expand_report_in_background(prospect_id: str) -> None:
+    """Fire-and-forget report expansion — this is the fix for the full report
+    page taking too long to load.
+
+    `ensure_expanded_report` above makes a real (now premium-tier, two-pass)
+    LLM call. Running that inline inside the `/prospects/report` GET request
+    meant the homeowner's browser sat waiting on a multi-second Groq round
+    trip before the page could render anything. Scheduled as a background
+    task the moment a prospect is unlocked (promo code, confirmed payment),
+    it runs while the browser is still redirecting/polling, so by the time
+    the report page actually loads the expansion has usually already
+    finished — and the report GET endpoint itself never blocks on it.
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+            if not prospect or prospect.payment_status != "completed":
+                return
+            if is_report_expanded(prospect):
+                return
+            await ensure_expanded_report(prospect)
+            await db.commit()
+    except Exception:
+        logger.exception("Background report expansion failed for prospect %s", prospect_id)
 
 
 def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:

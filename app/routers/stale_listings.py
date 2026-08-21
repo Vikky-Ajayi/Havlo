@@ -43,9 +43,10 @@ from app.services.listing_scraper import detect_listing_platform, scrape_single_
 from app.services.product_access import decode_stale_review_session
 from app.services.stale_prospect_service import (
     create_prospect_from_listing_snapshot,
-    ensure_expanded_report,
+    expand_report_in_background,
     extract_price,
     hash_access_token,
+    is_report_expanded,
     is_specific_address,
     normalize_property_code,
     parse_listed_date,
@@ -600,6 +601,7 @@ async def get_stale_prospect_preview(
 @public_router.post("/prospects/checkout", response_model=StaleProspectCheckoutResponse)
 async def create_stale_prospect_checkout(
     payload: StaleProspectCheckoutRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectCheckoutResponse:
     prospect = await _get_prospect_by_access(
@@ -617,6 +619,12 @@ async def create_stale_prospect_checkout(
     redirect_url = f"{redirect_url}{sep}{access_key}"
 
     if prospect.payment_status == "completed":
+        # Covers a stale "Unlock" button click after the prospect was already
+        # unlocked elsewhere (another tab, a retried request). Give the
+        # expansion another chance in case an earlier attempt failed silently
+        # — ensure_expanded_report/is_report_expanded make this a no-op if
+        # it's already done.
+        background_tasks.add_task(expand_report_in_background, str(prospect.id))
         return StaleProspectCheckoutResponse(
             prospect_id=str(prospect.id),
             property_code=prospect.property_code,
@@ -632,6 +640,10 @@ async def create_stale_prospect_checkout(
         prospect.unlocked_at = datetime.utcnow()
         await db.commit()
         logger.info("Stale prospect %s unlocked via promo code (no payment taken).", prospect.property_code)
+        # Kick off the full-detail report generation now, in the background,
+        # so it has a head start before the browser reaches the report page
+        # instead of that page blocking on the LLM call itself.
+        background_tasks.add_task(expand_report_in_background, str(prospect.id))
         return StaleProspectCheckoutResponse(
             prospect_id=str(prospect.id),
             property_code=prospect.property_code,
@@ -678,6 +690,7 @@ async def create_stale_prospect_checkout(
 
 @public_router.get("/prospects/payment-status")
 async def get_stale_prospect_payment_status(
+    background_tasks: BackgroundTasks,
     token: str | None = Query(default=None),
     code: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
@@ -694,6 +707,9 @@ async def get_stale_prospect_payment_status(
             prospect.payment_status = "completed"
             prospect.unlocked_at = datetime.utcnow()
             await db.commit()
+            # Same head start as the promo path — SumUp confirmation is the
+            # other moment a prospect actually becomes unlocked.
+            background_tasks.add_task(expand_report_in_background, str(prospect.id))
         elif sumup_status in {"FAILED", "EXPIRED"}:
             prospect.payment_status = "failed"
             await db.commit()
@@ -704,6 +720,7 @@ async def get_stale_prospect_payment_status(
 
 @public_router.get("/prospects/report", response_model=StaleProspectReportResponse)
 async def get_stale_prospect_report(
+    background_tasks: BackgroundTasks,
     token: str | None = Query(default=None),
     code: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
@@ -711,8 +728,15 @@ async def get_stale_prospect_report(
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
     if prospect.payment_status != "completed":
         raise HTTPException(status_code=402, detail="This full report is locked until payment is complete.")
-    await ensure_expanded_report(prospect)
-    await db.commit()
+    # This used to await the LLM expansion inline, which is exactly why the
+    # page took a long time to load — the browser sat on a multi-second Groq
+    # round trip before anything could render. Serve whatever's already
+    # there immediately; if it hasn't been expanded yet (e.g. this is the
+    # very first load right after unlocking, or the unlock happened on a
+    # different device/session that never scheduled it), schedule it in the
+    # background and let the next load/refresh pick up the richer version.
+    if not is_report_expanded(prospect):
+        background_tasks.add_task(expand_report_in_background, str(prospect.id))
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 

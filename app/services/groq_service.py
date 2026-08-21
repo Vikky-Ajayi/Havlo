@@ -216,9 +216,16 @@ async def generate_stale_listing_report(
 
     # Discovery uses a product-facing package name that is not one of the
     # report-generation tiers. Normalize it before the shared prompt and
-    # fallback logic use package-specific maps.
+    # fallback logic use package-specific maps. This is the automated
+    # stale-listing prospect's full report — mapped to premium_strategy (the
+    # richest existing tier: 6 findings/6 actions instead of 5, higher
+    # per-item length targets, and dimensions that are concretely actionable
+    # for a homeowner — e.g. exact language to use with their agent, an
+    # exit-risk read, a portal-relaunch plan) rather than a fresh, unproven
+    # prompt, so the homeowner-facing report is both more detailed and
+    # meaningfully more useful without touching the other paid tiers.
     package = {
-        "listing_recovery_assessment": "professional_review",
+        "listing_recovery_assessment": "premium_strategy",
     }.get(package, package)
     if package not in {"quick_insight", "professional_review", "premium_strategy"}:
         package = "professional_review"
