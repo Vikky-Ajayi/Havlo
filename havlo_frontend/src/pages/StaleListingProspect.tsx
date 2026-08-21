@@ -41,6 +41,7 @@ export const StaleListingProspectPreview = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
   const query = useMemo(() => accessQuery(token, params), [token, params]);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export const StaleListingProspectPreview = () => {
       if (token) body.token = token;
       const code = params.get('code');
       if (code) body.property_code = code;
+      if (promoCode.trim()) body.promo_code = promoCode.trim();
       const response = await fetch(`${API_BASE}/stale-listings/prospects/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +111,18 @@ export const StaleListingProspectPreview = () => {
               {data.unlocked ? (
                 <Link to={`/stale-listings/prospect/report?${query}`}>Open full report</Link>
               ) : (
-                <button onClick={checkout} disabled={checkingOut}>{checkingOut ? 'Creating secure checkout...' : 'Unlock full report for £149.99'}</button>
+                <>
+                  <button onClick={checkout} disabled={checkingOut}>{checkingOut ? 'Creating secure checkout...' : 'Unlock full report for £149.99'}</button>
+                  <div className="slx-promo">
+                    <input
+                      type="text"
+                      placeholder="Have a promo code?"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      disabled={checkingOut}
+                    />
+                  </div>
+                </>
               )}
             </section>
           </>
@@ -186,5 +199,5 @@ export const StaleListingProspectReport = () => {
 
 const ProspectStyles = () => (
   <style>{`
-    .slx-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;background:#f6f6f6;color:#111;min-height:100vh}.slx-header{height:72px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 9%;border-bottom:1px solid #eee}.slx-logo{font-weight:950;font-size:24px;line-height:.75;text-decoration:none;color:#222}.slx-logo span{display:block;font-size:10px;text-align:center;margin-top:6px}.slx-header nav{display:flex;gap:24px}.slx-header nav a{font-weight:800;color:#111;text-decoration:none}.slx-main{max-width:1120px;margin:0 auto;padding:54px 20px}.slx-error{background:#fff0f0;border:1px solid #ffc9c9;color:#9b001d;border-radius:12px;padding:14px}.slx-hero{background:linear-gradient(120deg,#fff,#fff0fc);border-radius:28px;padding:42px;border:1px solid #f1d4f8}.slx-hero span{display:inline-block;background:#fbebff;color:#9c00c6;border-radius:999px;padding:8px 12px;font-weight:900}.slx-hero h1{font-size:48px;line-height:1;letter-spacing:-.05em;margin:18px 0}.slx-hero p{font-size:20px;color:#444}.slx-hero strong{color:#a900d8;font-size:26px}.slx-score{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:center;margin:26px 0;background:#fff;border:1px solid #e5e5e5;border-radius:22px;padding:28px}.slx-score div{background:#0b0b0b;color:#fff;border-radius:20px;padding:26px;text-align:center}.slx-score small{display:block;text-transform:uppercase;color:#bbb;font-weight:900}.slx-score b{font-size:60px;color:#b400e7}.slx-score p{font-size:18px;line-height:1.6}.slx-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.slx-grid>div{background:#fff;border-radius:22px;border:1px solid #e5e5e5;padding:26px}.slx-grid h2{font-size:30px}.slx-grid article{border-top:1px solid #eee;padding:22px 0}.slx-grid article span{color:#b400e7;font-size:12px;text-transform:uppercase;font-weight:950}.slx-grid article h3{font-size:22px;margin:6px 0}.slx-grid article p{white-space:pre-line;color:#333;line-height:1.65}.slx-unlock{margin-top:28px;background:#080808;color:#fff;border-radius:28px;text-align:center;padding:42px}.slx-unlock h2,.slx-unlock h1{font-size:34px}.slx-unlock p{max-width:720px;margin:0 auto 24px;color:#ddd}.slx-unlock a,.slx-unlock button{display:inline-block;border:0;border-radius:12px;background:#fff;color:#000;padding:15px 24px;font-weight:950;text-decoration:none;cursor:pointer}.slx-unlock button:disabled{opacity:.65}@media(max-width:760px){.slx-header{padding:0 18px}.slx-header nav{display:none}.slx-main{padding:28px 16px}.slx-hero{padding:28px 20px}.slx-hero h1{font-size:34px}.slx-hero p{font-size:17px}.slx-score,.slx-grid{grid-template-columns:1fr}.slx-unlock{padding:32px 18px}.slx-unlock h2,.slx-unlock h1{font-size:28px}}`}</style>
+    .slx-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;background:#f6f6f6;color:#111;min-height:100vh}.slx-header{height:72px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 9%;border-bottom:1px solid #eee}.slx-logo{font-weight:950;font-size:24px;line-height:.75;text-decoration:none;color:#222}.slx-logo span{display:block;font-size:10px;text-align:center;margin-top:6px}.slx-header nav{display:flex;gap:24px}.slx-header nav a{font-weight:800;color:#111;text-decoration:none}.slx-main{max-width:1120px;margin:0 auto;padding:54px 20px}.slx-error{background:#fff0f0;border:1px solid #ffc9c9;color:#9b001d;border-radius:12px;padding:14px}.slx-hero{background:linear-gradient(120deg,#fff,#fff0fc);border-radius:28px;padding:42px;border:1px solid #f1d4f8}.slx-hero span{display:inline-block;background:#fbebff;color:#9c00c6;border-radius:999px;padding:8px 12px;font-weight:900}.slx-hero h1{font-size:48px;line-height:1;letter-spacing:-.05em;margin:18px 0}.slx-hero p{font-size:20px;color:#444}.slx-hero strong{color:#a900d8;font-size:26px}.slx-score{display:grid;grid-template-columns:220px 1fr;gap:28px;align-items:center;margin:26px 0;background:#fff;border:1px solid #e5e5e5;border-radius:22px;padding:28px}.slx-score div{background:#0b0b0b;color:#fff;border-radius:20px;padding:26px;text-align:center}.slx-score small{display:block;text-transform:uppercase;color:#bbb;font-weight:900}.slx-score b{font-size:60px;color:#b400e7}.slx-score p{font-size:18px;line-height:1.6}.slx-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}.slx-grid>div{background:#fff;border-radius:22px;border:1px solid #e5e5e5;padding:26px}.slx-grid h2{font-size:30px}.slx-grid article{border-top:1px solid #eee;padding:22px 0}.slx-grid article span{color:#b400e7;font-size:12px;text-transform:uppercase;font-weight:950}.slx-grid article h3{font-size:22px;margin:6px 0}.slx-grid article p{white-space:pre-line;color:#333;line-height:1.65}.slx-unlock{margin-top:28px;background:#080808;color:#fff;border-radius:28px;text-align:center;padding:42px}.slx-unlock h2,.slx-unlock h1{font-size:34px}.slx-unlock p{max-width:720px;margin:0 auto 24px;color:#ddd}.slx-unlock a,.slx-unlock button{display:inline-block;border:0;border-radius:12px;background:#fff;color:#000;padding:15px 24px;font-weight:950;text-decoration:none;cursor:pointer}.slx-unlock button:disabled{opacity:.65}.slx-promo{margin-top:14px}.slx-promo input{width:220px;max-width:80%;border-radius:12px;border:1px solid #333;background:#111;color:#fff;padding:12px 16px;font-weight:700;text-align:center}.slx-promo input::placeholder{color:#888}@media(max-width:760px){.slx-header{padding:0 18px}.slx-header nav{display:none}.slx-main{padding:28px 16px}.slx-hero{padding:28px 20px}.slx-hero h1{font-size:34px}.slx-hero p{font-size:17px}.slx-score,.slx-grid{grid-template-columns:1fr}.slx-unlock{padding:32px 18px}.slx-unlock h2,.slx-unlock h1{font-size:28px}}`}</style>
 );

@@ -547,6 +547,7 @@ class StaleProspectCheckoutRequest(BaseModel):
     token: Optional[str] = Field(None, max_length=200)
     property_code: Optional[str] = Field(None, min_length=4, max_length=12)
     redirect_url: Optional[str] = Field(None, max_length=2000)
+    promo_code: Optional[str] = Field(None, max_length=100)
 
 
 class StaleProspectAdminCreateRequest(BaseModel):

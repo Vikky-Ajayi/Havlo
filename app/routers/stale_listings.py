@@ -288,6 +288,21 @@ def _promo_code_valid(package: str, code: str | None) -> bool:
     return submitted.upper() == configured.upper()
 
 
+def _stale_prospect_promo_valid(code: str | None) -> bool:
+    """Check a submitted promo code for the automated stale-prospect unlock.
+
+    Separate from `_promo_code_valid` above (that one only applies to the
+    older "listing_recovery_assessment" submit form) — this is a distinct
+    100%-off code for the QR-code / property-code report unlock flow, mainly
+    so we can pull up any listing's full report for review without paying.
+    """
+    configured = get_settings().STALE_PROSPECT_PROMO_CODE.strip()
+    submitted = (code or "").strip()
+    if not configured or not submitted:
+        return False
+    return submitted.upper() == configured.upper()
+
+
 @public_router.post(
     "/verify-promo",
     response_model=StaleListingPromoVerifyResponse,
@@ -607,6 +622,20 @@ async def create_stale_prospect_checkout(
             checkout_url=redirect_url,
             checkout_id=prospect.sumup_checkout_id or "",
             amount=amount,
+            currency=currency,
+        )
+
+    if _stale_prospect_promo_valid(payload.promo_code):
+        prospect.payment_status = "completed"
+        prospect.unlocked_at = datetime.utcnow()
+        await db.commit()
+        logger.info("Stale prospect %s unlocked via promo code (no payment taken).", prospect.property_code)
+        return StaleProspectCheckoutResponse(
+            prospect_id=str(prospect.id),
+            property_code=prospect.property_code,
+            checkout_url=redirect_url,
+            checkout_id="",
+            amount=0.0,
             currency=currency,
         )
 

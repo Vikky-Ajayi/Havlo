@@ -90,6 +90,10 @@ class Settings(BaseSettings):
 
     # ── Promo codes ──────────────────────────────────────────────────────
     LISTING_RECOVERY_PROMO_CODE: str = ""
+    # Free-unlock code for the automated stale-prospect report (the QR-code /
+    # property-code flow). Defaults to AUDIT001 so it works without extra
+    # env setup; override or blank it out in Railway to rotate or disable it.
+    STALE_PROSPECT_PROMO_CODE: str = "AUDIT001"
 
     # ── Groq LLM ─────────────────────────────────────────────────────────
     GROQ_API_KEY: str = ""
