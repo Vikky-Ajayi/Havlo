@@ -9,6 +9,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -399,6 +400,45 @@ async def _scrape_detail_bounded(sem: asyncio.Semaphore, candidate: Candidate) -
         return await scrape_single_listing(candidate.url)
 
 
+_DISCOVERY_CURSOR_FILE = Path(
+    os.getenv("STALE_LISTINGS_CURSOR_FILE", "/tmp/stale_listing_discovery_cursor.json")
+)
+
+
+def _load_discovery_cursors() -> dict[str, int]:
+    """Per-location "resume from this page" cursor, persisted across the
+    15-minute discovery cycles (same /tmp-file convention already used by
+    the marketplace Rightmove scraper's own progress file).
+
+    Without this, every cycle restarted every location at page 0. Once the
+    front of a location's oldest-first results had already been turned into
+    prospects by an earlier cycle, every later cycle burned its entire
+    per-cycle candidate budget re-confirming those same duplicates and never
+    reached fresh inventory deeper in the results — this is the actual
+    reason emails stopped going out entirely once the initial backlog was
+    cleared (eligible=0, skipped=<budget> every cycle).
+    """
+    try:
+        if _DISCOVERY_CURSOR_FILE.exists():
+            data = json.loads(_DISCOVERY_CURSOR_FILE.read_text())
+            if isinstance(data, dict):
+                return {
+                    str(key): int(value)
+                    for key, value in data.items()
+                    if isinstance(value, (int, float)) or str(value).lstrip("-").isdigit()
+                }
+    except Exception as exc:
+        logger.debug("Could not load stale-listing discovery cursor file: %s", exc)
+    return {}
+
+
+def _save_discovery_cursors(cursors: dict[str, int]) -> None:
+    try:
+        _DISCOVERY_CURSOR_FILE.write_text(json.dumps(cursors))
+    except Exception as exc:
+        logger.debug("Could not persist stale-listing discovery cursor file: %s", exc)
+
+
 def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
     try:
         results = json.loads(run.result_json or "{}")
@@ -660,11 +700,18 @@ async def _run_location(
     city: str,
     location_id: str,
     location_sem: asyncio.Semaphore,
-) -> None:
+    start_page: int,
+) -> tuple[str, int]:
+    """Scan one location starting from its persisted page cursor.
+
+    Returns `(location_id, next_start_page)` so the caller can persist where
+    this location left off for the next 15-minute cycle.
+    """
     async with location_sem:
-        for page in range(state.params.max_pages_per_location):
+        for offset in range(state.params.max_pages_per_location):
+            page = start_page + offset
             if await _should_stop(state):
-                return
+                return location_id, page
             try:
                 candidates = await _fetch_search_page(client, city, location_id, page, state.params.min_price)
             except Exception as exc:
@@ -673,14 +720,31 @@ async def _run_location(
                     state.results["failed"].append({"location": city, "page": page, "reason": str(exc)[:240]})
                     state.dirty = True
                     await _flush_run_progress(state)
-                return
+                return location_id, page
 
             if not candidates:
-                return
+                # No more results at this index for this location/price
+                # filter. Restart from the front next cycle rather than
+                # remembering a page index past the end of what Rightmove
+                # will ever return here.
+                return location_id, 0
 
             # One bulk lookup replaces the old one-query-per-candidate check.
-            async with AsyncSessionLocal() as db:
-                existing_map = await _bulk_existing_prospects(db, candidates)
+            # A transient DB/connection-pool hiccup here must not propagate:
+            # this coroutine runs concurrently with every other location
+            # under asyncio.gather, and an uncaught exception here previously
+            # cancelled the *entire* cycle — discarding every other
+            # location's real, already-committed progress for one blip.
+            try:
+                async with AsyncSessionLocal() as db:
+                    existing_map = await _bulk_existing_prospects(db, candidates)
+            except Exception as exc:
+                async with state.lock:
+                    state.failed_count += 1
+                    state.results["failed"].append({"location": city, "page": page, "reason": str(exc)[:240]})
+                    state.dirty = True
+                    await _flush_run_progress(state)
+                return location_id, page
 
             # Pre-fetch detail pages concurrently for anything the search
             # response doesn't already prove is too recent/cheap/duplicate.
@@ -713,17 +777,28 @@ async def _run_location(
 
             finalize_tasks: list[asyncio.Task] = []
             for candidate in candidates:
+                # Checked, and skipped, before the candidate budget is
+                # touched: this used to run after the budget gate below, so
+                # every already-known listing consumed one of the cycle's
+                # max_candidates slots just like a genuinely new one. Once a
+                # location's earliest oldest-first pages were fully turned
+                # into prospects by an earlier cycle, the whole budget got
+                # burned re-confirming those same duplicates before any
+                # location ever reached fresh, un-prospected listings —
+                # which is why emails stopped going out entirely once the
+                # initial backlog was cleared. Duplicates are cheap (one
+                # bulk lookup, no detail fetch) and free to skip.
+                duplicate_code = _candidate_duplicate_code(candidate, existing_map)
+                if duplicate_code is not None:
+                    await _record_skip(state, candidate, reason="duplicate_prospect", property_code=duplicate_code)
+                    continue
+
                 async with state.lock:
                     if state.processed >= state.params.max_candidates or state.target_reached:
                         break
                     state.processed += 1
                     state.candidates_seen += 1
                     state.dirty = True
-
-                duplicate_code = _candidate_duplicate_code(candidate, existing_map)
-                if duplicate_code is not None:
-                    await _record_skip(state, candidate, reason="duplicate_prospect", property_code=duplicate_code)
-                    continue
 
                 # The search result already contains enough information to
                 # discard most non-qualifying listings before the expensive
@@ -773,7 +848,9 @@ async def _run_location(
                 await _flush_run_progress(state)
 
             if await _should_stop(state):
-                return
+                return location_id, page + 1
+
+        return location_id, start_page + state.params.max_pages_per_location
 
 
 async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
@@ -813,12 +890,38 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
     location_sem = asyncio.Semaphore(location_concurrency)
     locations = _locations_for_request(params.location_names)
 
+    # A dry run (the admin "explore" endpoint) never creates prospects, so
+    # advancing the real cursor from one would make the next automated cycle
+    # silently skip pages that were never actually mined for real prospects.
+    cursors = _load_discovery_cursors() if not params.dry_run else {}
+
     try:
         async with httpx.AsyncClient() as client:
-            await asyncio.gather(*(
-                _run_location(state, client, city, location_id, location_sem)
+            # return_exceptions=True is deliberate defense-in-depth on top of
+            # _run_location's own internal try/except blocks: with plain
+            # gather(), a single location raising anything unexpected cancels
+            # every other still-running location and discards their progress
+            # for the entire cycle — confirmed live when one transient
+            # Supabase connection blip in one location took down all ~107.
+            location_results = await asyncio.gather(*(
+                _run_location(
+                    state, client, city, location_id, location_sem,
+                    cursors.get(location_id, 0),
+                )
                 for city, location_id in locations
-            ))
+            ), return_exceptions=True)
+
+        if not params.dry_run:
+            for (city, location_id), outcome in zip(locations, location_results):
+                if isinstance(outcome, BaseException):
+                    logger.warning(
+                        "Location %s (%s) raised and was skipped for this cycle: %s",
+                        city, location_id, outcome,
+                    )
+                    continue
+                _, next_page = outcome
+                cursors[location_id] = next_page
+            _save_discovery_cursors(cursors)
 
         async with state.lock:
             state.dirty = True
