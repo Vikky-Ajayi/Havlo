@@ -56,7 +56,9 @@ class WorkItem:
 COUNTRIES: tuple[CountryConfig, ...] = (
     CountryConfig("america", "USA", "/overseas-property-for-sale/USA.html", "USD"),
     CountryConfig("dubai", "Dubai", "/overseas-property-for-sale/Dubai.html", "GBP"),
-    CountryConfig("canada", "Canada", "/overseas-property-for-sale/Canada.html", "USD"),
+    # Canada intentionally removed: it now comes from realtor_ca_scraper.py
+    # (real Canadian MLS data via realtor.ca) instead of Rightmove's overseas
+    # section. Only Canada changed — America and Dubai still come from here.
 )
 
 PRICE_BANDS: tuple[tuple[str, Optional[int], Optional[int]], ...] = (

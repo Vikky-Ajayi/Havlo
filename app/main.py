@@ -575,6 +575,11 @@ async def startup() -> None:
         scraper_specs = [
             ("Rightmove", "DISABLE_RIGHTMOVE_SCRAPER", "app.services.rightmove_scraper"),
             ("Rightmove overseas", "DISABLE_RIGHTMOVE_OVERSEAS_SCRAPER", "app.services.rightmove_overseas_scraper"),
+            # Canada listings now come from realtor.ca instead of Rightmove's
+            # overseas section (see rightmove_overseas_scraper.py's COUNTRIES
+            # tuple — "canada" was removed from it). This scraper already
+            # existed but was never scheduled here.
+            ("Realtor.ca", "DISABLE_REALTOR_CA_SCRAPER", "app.services.realtor_ca_scraper"),
         ]
         app.state.scraper_tasks = []
         import importlib
