@@ -243,6 +243,19 @@ function costRowsFor(listing: Listing) {
   ];
 }
 
+function calcMortgage(priceGbp: number, depositPct: number, termYears: number) {
+  const RATE = 0.07; // 7% p.a. typical non-resident mortgage
+  const loanGbp = priceGbp * (1 - depositPct / 100);
+  const monthlyRate = RATE / 12;
+  const n = termYears * 12;
+  const monthlyGbp = n > 0
+    ? loanGbp * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1)
+    : 0;
+  const totalGbp = monthlyGbp * n;
+  const interestGbp = Math.max(0, totalGbp - loanGbp);
+  return { loanGbp, monthlyGbp, interestGbp };
+}
+
 function imageFor(listing: Listing, index: number) {
   return listing.images?.[0] || fallbackImages[index % fallbackImages.length];
 }
@@ -305,6 +318,65 @@ function FooterCta() {
         <p>© 2025 Havlo Buy Abroad. A Havlo service</p>
       </footer>
     </>
+  );
+}
+
+function ImageLightbox({
+  images,
+  index,
+  title,
+  onClose,
+  onChange,
+}: {
+  images: string[];
+  index: number;
+  title: string;
+  onClose: () => void;
+  onChange: (index: number) => void;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'ArrowRight') onChange((index + 1) % images.length);
+      if (event.key === 'ArrowLeft') onChange((index - 1 + images.length) % images.length);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [index, images.length, onClose, onChange]);
+
+  return (
+    <div className="baml-lightbox-overlay" onClick={(event) => event.target === event.currentTarget && onClose()}>
+      <button className="baml-close baml-lightbox-close" onClick={onClose} aria-label="Close">
+        <X size={22} />
+      </button>
+      <div className="baml-lightbox-stage">
+        {images.length > 1 && (
+          <button
+            className="baml-lightbox-arrow baml-lightbox-prev"
+            onClick={() => onChange((index - 1 + images.length) % images.length)}
+            aria-label="Previous image"
+          >
+            <ChevronLeft size={28} />
+          </button>
+        )}
+        <img src={images[index]} alt={`${title} ${index + 1}`} />
+        {images.length > 1 && (
+          <button
+            className="baml-lightbox-arrow baml-lightbox-next"
+            onClick={() => onChange((index + 1) % images.length)}
+            aria-label="Next image"
+          >
+            <ChevronRight size={28} />
+          </button>
+        )}
+      </div>
+      {images.length > 1 && <div className="baml-lightbox-counter">{index + 1} / {images.length}</div>}
+    </div>
   );
 }
 
@@ -744,7 +816,7 @@ function MarketplaceStyles() {
   return (
     <>
     <style>{`
-      .baml-page{min-height:100vh;background:#f3f4f6;color:#111;font-family:Inter,Arial,sans-serif;overflow-x:hidden}.baml-page,.baml-page *{box-sizing:border-box}.baml-header{height:90px;background:#fff;display:flex;align-items:center;padding:0 clamp(18px,5vw,80px);gap:38px;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:20}.baml-logo{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#111;line-height:1;flex:0 0 auto}.baml-logo img{width:136px;height:auto;display:block}.baml-logo span{font-size:16px;margin-top:0;font-weight:400}.baml-nav{display:flex;align-items:center;justify-content:center;gap:45px;flex:1;min-width:0}.baml-nav a{font-size:18px;font-weight:700;color:#222;text-decoration:none;padding:17px 0 11px;border-bottom:4px solid transparent;display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.baml-nav-icon{flex:0 0 auto}.baml-nav-icon.home{color:#111;fill:#e39a53}.baml-nav-icon.bulb{color:#d59b02;fill:#ffe37d}.baml-nav-icon.money{color:#111;fill:#d79a30}.baml-nav a.active{border-color:#111}.baml-consult{border:0;background:transparent;font-weight:800;font-size:16px}.baml-actions{display:flex;align-items:center;gap:14px}.baml-pill{height:48px;min-width:70px;border:0;border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.05);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800}.baml-pill span{background:#b20adc;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}.baml-menu{border:0;background:transparent;display:none}.baml-hero{padding:72px 24px 64px;text-align:center}.baml-hero h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:42px;line-height:1.1;margin:0 0 22px;font-weight:900;text-transform:uppercase}.baml-hero p{max-width:540px;margin:0 auto 42px;color:#6b6b6b;font-size:17px;line-height:1.45}.baml-search{width:min(690px,calc(100% - 48px));height:52px;margin:0 auto;display:grid;grid-template-columns:58px minmax(0,1fr) 52px;border-radius:28px;background:#fff;box-shadow:0 7px 22px rgba(0,0,0,.1);overflow:visible}.baml-search button,.baml-search input{border:0;background:#fff}.baml-search button{display:flex;align-items:center;justify-content:center}.baml-search>button:first-child{border-radius:28px 0 0 28px;border-right:2px solid #f0f0f0}.baml-search input{font-size:12px;padding:0 14px;min-width:0}.baml-search .search{background:#b20adc;color:#fff;border-radius:50%;width:52px;height:52px;align-self:center;justify-self:center;box-shadow:0 4px 12px rgba(178,10,220,.25)}.baml-market{background:#fff;border-radius:26px 26px 0 0;padding:70px clamp(18px,5vw,80px) 90px}.baml-row-section{margin-bottom:78px}.baml-row-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}.baml-row-head h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:28px;font-weight:900;margin:0}.baml-row-head>button,.baml-row-arrows button{border:0;border-radius:50%;background:#f3f4f6;width:35px;height:35px;font-weight:900;font-size:24px;display:inline-flex;align-items:center;justify-content:center}.baml-row-head>button img{width:32px;height:32px;display:block}.baml-row-arrows{margin-left:auto;display:flex;gap:16px}.baml-row-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px}.baml-card{position:relative;min-width:0}.baml-card-img{display:block;aspect-ratio:1.23;border-radius:18px;overflow:hidden;background:#eee}.baml-card-img img{width:100%;height:100%;object-fit:cover;display:block}.baml-heart{position:absolute;top:23px;left:22px;border:0;background:transparent;color:#777;text-shadow:0 1px 8px rgba(255,255,255,.9);line-height:1;padding:0}.baml-heart.active{color:#b20adc}.baml-card-title{display:block;margin:16px 0 7px;color:#111;text-decoration:none;font-size:16px;font-weight:900}.baml-meta{font-size:14px;color:#555;margin:0 0 8px;white-space:nowrap;display:flex;align-items:center;gap:3px;min-width:0}.baml-meta svg{flex:0 0 auto;color:#6b6b6b}.baml-price{font-size:15px;color:#666;margin:0}.baml-cta{width:min(1200px,calc(100% - 48px));margin:25px auto 80px;background:#050505;color:#fff;border-radius:18px;padding:48px 56px;display:flex;align-items:center;justify-content:space-between;gap:30px}.baml-cta h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:31px;line-height:1.05;margin:0 0 18px;font-weight:900}.baml-cta p{margin:0;color:#fff;font-size:15px;max-width:560px;line-height:1.45}.baml-call{background:#fff;color:#111;border-radius:10px;text-decoration:none;font-weight:900;padding:13px 25px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}.baml-call-mark{width:28px;height:28px;border-radius:50%;border:3px solid #0b8cff;color:#0b8cff;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.baml-footer{padding:0 clamp(24px,6vw,90px) 40px;display:flex;align-items:end;justify-content:space-between}.baml-footer p{font-size:17px}.baml-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}.baml-auth{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:22px;padding:24px;position:relative;scrollbar-width:none}.baml-auth::-webkit-scrollbar,.baml-all-homes::-webkit-scrollbar{display:none}.baml-close{position:absolute;right:18px;top:18px;border:0;background:#f1f2f4;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}.baml-auth h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;margin:0 0 32px;font-size:25px;font-weight:900;letter-spacing:-.04em}.baml-auth-copy{font-size:19px;line-height:1.35;color:#666;margin:-15px 0 34px}.baml-auth-copy.strong{font-weight:700;color:#111;font-size:16px}.baml-auth label{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:800;margin-bottom:22px}.baml-auth input{height:50px;border:0;border-radius:12px;background:#f1f2f5;padding:0 16px;font-size:16px}.baml-password{display:flex;background:#f1f2f5;border-radius:12px;overflow:hidden}.baml-password input{flex:1}.baml-password svg{margin:auto 15px}.baml-primary,.baml-secondary{width:100%;height:50px;border-radius:8px;font-size:15px}.baml-primary{border:0;background:#000;color:#fff;font-weight:700;margin-top:18px}.baml-secondary{border:1px solid #e9e9e9;background:#fff;margin-top:12px}.baml-link,.baml-back{border:0;background:transparent;font-weight:800;color:#081735;margin:4px 0 25px;text-align:left}.baml-back{text-align:center;width:100%;font-size:15px;color:#111;display:inline-flex;align-items:center;justify-content:center;gap:6px}.baml-error{color:#b00020;font-weight:700}.baml-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:34px}.baml-role-grid button{height:137px;border:0;border-radius:12px;background:#f1f2f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.baml-role-grid button.active{border:1.5px solid #b20adc;background:#fff}.baml-role-grid strong{font-size:15px}.baml-role-grid small{font-size:14px;color:#666}.baml-otp{display:flex;gap:14px;margin:0 0 28px}.baml-otp input{width:51px;height:49px;text-align:center;font-size:34px;font-weight:900;border:1.5px solid #00c986}.baml-resend{text-align:center;color:#555}.baml-resend button{border:0;background:transparent;color:#06f;font-size:16px}.baml-all-homes{position:relative;background:#fff;border-radius:32px 32px 0 0;align-self:end;width:100%;max-height:calc(100dvh - 90px);overflow:auto;padding:44px clamp(18px,5vw,84px)}.baml-all-homes h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px;margin:0 0 92px;font-weight:900}.baml-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:86px 33px}.baml-pagination{display:flex;justify-content:center;gap:20px;margin-top:78px}.baml-pagination button{width:40px;height:40px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800}.baml-pagination .active{background:#b20adc;color:#fff}.baml-basket-main{padding:70px clamp(18px,6vw,86px)}.baml-basket-main h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px}.baml-basket-layout{display:grid;grid-template-columns:1fr 430px;gap:35px}.baml-basket-item{height:123px;border:1px solid #ddd;border-radius:18px;display:flex;align-items:center;margin-bottom:36px;overflow:hidden}.baml-basket-item img{width:126px;height:100%;object-fit:cover}.baml-basket-info{padding:0 25px;flex:1}.baml-basket-info h3{margin:0 0 8px}.baml-trash{border:0;background:transparent;margin-right:25px}.baml-summary{border:1px solid #ddd;border-radius:20px;padding:22px;box-shadow:0 8px 22px rgba(0,0,0,.06)}.baml-summary-row{display:flex;justify-content:space-between;margin:26px 0;font-size:17px}.baml-total{border-top:1px solid #ddd;padding-top:22px;font-size:22px}.baml-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}.baml-back-link{color:#b20adc;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px}.baml-empty{grid-column:1/-1;padding:60px 0;color:#666}.baml-detail-main{padding:50px clamp(18px,6vw,76px)}.baml-detail-top{display:flex;justify-content:space-between;align-items:center}.baml-save-button{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#111}.baml-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0}.baml-gallery-main{grid-row:span 2}.baml-gallery img{width:100%;height:238px;object-fit:cover}.baml-gallery-main img{height:500px}.baml-detail-content{display:grid;grid-template-columns:1fr 380px;gap:30px}.baml-cost-card,.baml-cost-table{border:1px solid #ddd;border-radius:20px;padding:20px}.baml-cost-card{box-shadow:0 8px 22px rgba(0,0,0,.08)}.baml-cost-table .tabs{display:grid;grid-template-columns:1fr 1fr;margin:-20px -20px 25px}.baml-cost-table .tabs div{padding:18px;text-align:center;background:#f1f2f5;border-bottom:2px solid #ccc}.baml-cost-table .tabs .active{background:#fff;border-bottom-color:#b20adc}.baml-cost-row{display:flex;justify-content:space-between;margin:24px 0;font-size:18px}.purple{color:#b20adc}.baml-sidebar-actions button,.baml-sidebar-actions a{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;text-decoration:none;margin:10px 0;font-weight:800}.baml-sidebar-actions button{width:100%;border:0;background:#000;color:#fff}.baml-sidebar-actions a{border:1px solid #ddd;color:#111}.baml-cost-legend{display:flex;gap:12px;flex-wrap:wrap}.baml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#111;margin-right:4px}.purple-dot{background:#b20adc}.baml-info-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:16px;font-size:13px;margin-top:30px;display:flex;align-items:flex-start;gap:9px}
+      .baml-page{min-height:100vh;background:#f3f4f6;color:#111;font-family:Inter,Arial,sans-serif;overflow-x:hidden}.baml-page,.baml-page *{box-sizing:border-box}.baml-header{height:90px;background:#fff;display:flex;align-items:center;padding:0 clamp(18px,5vw,80px);gap:38px;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:20}.baml-logo{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#111;line-height:1;flex:0 0 auto}.baml-logo img{width:136px;height:auto;display:block}.baml-logo span{font-size:16px;margin-top:0;font-weight:400}.baml-nav{display:flex;align-items:center;justify-content:center;gap:45px;flex:1;min-width:0}.baml-nav a{font-size:18px;font-weight:700;color:#222;text-decoration:none;padding:17px 0 11px;border-bottom:4px solid transparent;display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.baml-nav-icon{flex:0 0 auto}.baml-nav-icon.home{color:#111;fill:#e39a53}.baml-nav-icon.bulb{color:#d59b02;fill:#ffe37d}.baml-nav-icon.money{color:#111;fill:#d79a30}.baml-nav a.active{border-color:#111}.baml-consult{border:0;background:transparent;font-weight:800;font-size:16px}.baml-actions{display:flex;align-items:center;gap:14px}.baml-pill{height:48px;min-width:70px;border:0;border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.05);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800}.baml-pill span{background:#b20adc;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}.baml-menu{border:0;background:transparent;display:none}.baml-hero{padding:72px 24px 64px;text-align:center}.baml-hero h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:42px;line-height:1.1;margin:0 0 22px;font-weight:900;text-transform:uppercase}.baml-hero p{max-width:540px;margin:0 auto 42px;color:#6b6b6b;font-size:17px;line-height:1.45}.baml-search{width:min(690px,calc(100% - 48px));height:52px;margin:0 auto;display:grid;grid-template-columns:58px minmax(0,1fr) 52px;border-radius:28px;background:#fff;box-shadow:0 7px 22px rgba(0,0,0,.1);overflow:visible}.baml-search button,.baml-search input{border:0;background:#fff}.baml-search button{display:flex;align-items:center;justify-content:center}.baml-search>button:first-child{border-radius:28px 0 0 28px;border-right:2px solid #f0f0f0}.baml-search input{font-size:12px;padding:0 14px;min-width:0}.baml-search .search{background:#b20adc;color:#fff;border-radius:50%;width:52px;height:52px;align-self:center;justify-self:center;box-shadow:0 4px 12px rgba(178,10,220,.25)}.baml-market{background:#fff;border-radius:26px 26px 0 0;padding:70px clamp(18px,5vw,80px) 90px}.baml-row-section{margin-bottom:78px}.baml-row-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}.baml-row-head h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:28px;font-weight:900;margin:0}.baml-row-head>button,.baml-row-arrows button{border:0;border-radius:50%;background:#f3f4f6;width:35px;height:35px;font-weight:900;font-size:24px;display:inline-flex;align-items:center;justify-content:center}.baml-row-head>button img{width:32px;height:32px;display:block}.baml-row-arrows{margin-left:auto;display:flex;gap:16px}.baml-row-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px}.baml-card{position:relative;min-width:0}.baml-card-img{display:block;aspect-ratio:1.23;border-radius:18px;overflow:hidden;background:#eee}.baml-card-img img{width:100%;height:100%;object-fit:cover;display:block}.baml-heart{position:absolute;top:23px;left:22px;border:0;background:transparent;color:#777;text-shadow:0 1px 8px rgba(255,255,255,.9);line-height:1;padding:0}.baml-heart.active{color:#b20adc}.baml-card-title{display:block;margin:16px 0 7px;color:#111;text-decoration:none;font-size:16px;font-weight:900}.baml-meta{font-size:14px;color:#555;margin:0 0 8px;white-space:nowrap;display:flex;align-items:center;gap:3px;min-width:0}.baml-meta svg{flex:0 0 auto;color:#6b6b6b}.baml-price{font-size:15px;color:#666;margin:0}.baml-cta{width:min(1200px,calc(100% - 48px));margin:25px auto 80px;background:#050505;color:#fff;border-radius:18px;padding:48px 56px;display:flex;align-items:center;justify-content:space-between;gap:30px}.baml-cta h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:31px;line-height:1.05;margin:0 0 18px;font-weight:900}.baml-cta p{margin:0;color:#fff;font-size:15px;max-width:560px;line-height:1.45}.baml-call{background:#fff;color:#111;border-radius:10px;text-decoration:none;font-weight:900;padding:13px 25px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}.baml-call-mark{width:28px;height:28px;border-radius:50%;border:3px solid #0b8cff;color:#0b8cff;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.baml-footer{padding:0 clamp(24px,6vw,90px) 40px;display:flex;align-items:end;justify-content:space-between}.baml-footer p{font-size:17px}.baml-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}.baml-auth{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:22px;padding:24px;position:relative;scrollbar-width:none}.baml-auth::-webkit-scrollbar,.baml-all-homes::-webkit-scrollbar{display:none}.baml-close{position:absolute;right:18px;top:18px;border:0;background:#f1f2f4;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}.baml-auth h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;margin:0 0 32px;font-size:25px;font-weight:900;letter-spacing:-.04em}.baml-auth-copy{font-size:19px;line-height:1.35;color:#666;margin:-15px 0 34px}.baml-auth-copy.strong{font-weight:700;color:#111;font-size:16px}.baml-auth label{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:800;margin-bottom:22px}.baml-auth input{height:50px;border:0;border-radius:12px;background:#f1f2f5;padding:0 16px;font-size:16px}.baml-password{display:flex;background:#f1f2f5;border-radius:12px;overflow:hidden}.baml-password input{flex:1}.baml-password svg{margin:auto 15px}.baml-primary,.baml-secondary{width:100%;height:50px;border-radius:8px;font-size:15px}.baml-primary{border:0;background:#000;color:#fff;font-weight:700;margin-top:18px}.baml-secondary{border:1px solid #e9e9e9;background:#fff;margin-top:12px}.baml-link,.baml-back{border:0;background:transparent;font-weight:800;color:#081735;margin:4px 0 25px;text-align:left}.baml-back{text-align:center;width:100%;font-size:15px;color:#111;display:inline-flex;align-items:center;justify-content:center;gap:6px}.baml-error{color:#b00020;font-weight:700}.baml-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:34px}.baml-role-grid button{height:137px;border:0;border-radius:12px;background:#f1f2f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.baml-role-grid button.active{border:1.5px solid #b20adc;background:#fff}.baml-role-grid strong{font-size:15px}.baml-role-grid small{font-size:14px;color:#666}.baml-otp{display:flex;gap:14px;margin:0 0 28px}.baml-otp input{width:51px;height:49px;text-align:center;font-size:34px;font-weight:900;border:1.5px solid #00c986}.baml-resend{text-align:center;color:#555}.baml-resend button{border:0;background:transparent;color:#06f;font-size:16px}.baml-all-homes{position:relative;background:#fff;border-radius:32px 32px 0 0;align-self:end;width:100%;max-height:calc(100dvh - 90px);overflow:auto;padding:44px clamp(18px,5vw,84px)}.baml-all-homes h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px;margin:0 0 92px;font-weight:900}.baml-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:86px 33px}.baml-pagination{display:flex;justify-content:center;gap:20px;margin-top:78px}.baml-pagination button{width:40px;height:40px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800}.baml-pagination .active{background:#b20adc;color:#fff}.baml-basket-main{padding:70px clamp(18px,6vw,86px)}.baml-basket-main h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px}.baml-basket-layout{display:grid;grid-template-columns:1fr 430px;gap:35px}.baml-basket-item{height:123px;border:1px solid #ddd;border-radius:18px;display:flex;align-items:center;margin-bottom:36px;overflow:hidden}.baml-basket-item img{width:126px;height:100%;object-fit:cover}.baml-basket-info{padding:0 25px;flex:1}.baml-basket-info h3{margin:0 0 8px}.baml-trash{border:0;background:transparent;margin-right:25px}.baml-summary{border:1px solid #ddd;border-radius:20px;padding:22px;box-shadow:0 8px 22px rgba(0,0,0,.06)}.baml-summary-row{display:flex;justify-content:space-between;margin:26px 0;font-size:17px}.baml-total{border-top:1px solid #ddd;padding-top:22px;font-size:22px}.baml-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}.baml-back-link{color:#b20adc;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px}.baml-empty{grid-column:1/-1;padding:60px 0;color:#666}.baml-detail-main{padding:50px clamp(18px,6vw,76px)}.baml-detail-top{display:flex;justify-content:space-between;align-items:center}.baml-save-button{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#111}.baml-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0}.baml-gallery-main{grid-row:span 2}.baml-gallery img{width:100%;height:238px;object-fit:cover}.baml-gallery-main img{height:500px}.baml-gallery-main,.baml-gallery>div{cursor:pointer;overflow:hidden}.baml-gallery-main img,.baml-gallery>div img{transition:transform .2s}.baml-gallery-main:hover img,.baml-gallery>div:hover img{transform:scale(1.03)}.baml-detail-content{display:grid;grid-template-columns:1fr 380px;gap:30px}.baml-cost-card,.baml-cost-table{border:1px solid #ddd;border-radius:20px;padding:20px}.baml-cost-card{box-shadow:0 8px 22px rgba(0,0,0,.08)}.baml-cost-table .tabs{display:grid;grid-template-columns:1fr 1fr;margin:-20px -20px 25px}.baml-cost-table .tabs button{padding:18px;text-align:center;background:#f1f2f5;border:0;border-bottom:2px solid #ccc;font:inherit;font-weight:800;color:#666;cursor:pointer;transition:background .15s,color .15s}.baml-cost-table .tabs button:hover:not(.active){background:#e9eaee;color:#333}.baml-cost-table .tabs button.active{background:#fff;border-bottom-color:#b20adc;color:#111}.baml-mortgage-sub{color:#888;font-size:13px;margin:-6px 0 20px}.baml-mortgage-row{margin-bottom:18px}.baml-mortgage-row label{display:block;font-size:14px;font-weight:700;color:#333;margin-bottom:8px}.baml-slider{width:100%;accent-color:#b20adc;cursor:pointer}.baml-slider-labels{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px}.baml-mortgage-disc{font-size:12px;color:#aaa;margin:16px 0 0;line-height:1.5}.baml-lightbox-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px}.baml-lightbox-close{position:fixed;top:20px;right:20px;background:rgba(255,255,255,.15);color:#fff}.baml-lightbox-close:hover{background:rgba(255,255,255,.3)}.baml-lightbox-stage{position:relative;max-width:min(1100px,92vw);max-height:88vh;display:flex;align-items:center;justify-content:center}.baml-lightbox-stage img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:8px;display:block}.baml-lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}.baml-lightbox-arrow:hover{background:rgba(255,255,255,.3)}.baml-lightbox-prev{left:-8px}.baml-lightbox-next{right:-8px}.baml-lightbox-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(255,255,255,.15);padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700}@media(max-width:640px){.baml-lightbox-arrow{width:40px;height:40px}.baml-lightbox-prev{left:4px}.baml-lightbox-next{right:4px}.baml-lightbox-stage img{max-height:78vh}}.baml-cost-row{display:flex;justify-content:space-between;margin:24px 0;font-size:18px}.purple{color:#b20adc}.baml-sidebar-actions button,.baml-sidebar-actions a{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;text-decoration:none;margin:10px 0;font-weight:800}.baml-sidebar-actions button{width:100%;border:0;background:#000;color:#fff}.baml-sidebar-actions a{border:1px solid #ddd;color:#111}.baml-cost-legend{display:flex;gap:12px;flex-wrap:wrap}.baml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#111;margin-right:4px}.purple-dot{background:#b20adc}.baml-info-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:16px;font-size:13px;margin-top:30px;display:flex;align-items:flex-start;gap:9px}
       .baml-detail-main h1,.baml-detail-copy h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-weight:900;letter-spacing:-.04em}.baml-detail-main h1{font-size:32px;margin:26px 0 0}.baml-detail-copy h2{font-size:24px;margin:0 0 14px}.baml-save-button{border:0;background:transparent;font-size:16px;font-weight:800}.baml-detail-meta{font-size:15px;color:#666;border-bottom:1px solid #e4e4e4;padding-bottom:20px}.baml-description{font-size:21px;line-height:1.15;margin:20px 0 26px}.baml-cost-card small{color:#777;font-weight:900}.baml-cost-card h2{font-size:34px;margin:8px 0 10px}.baml-progress{height:5px;background:#111;border-radius:999px;position:relative;margin:8px 0 6px}.baml-progress span{position:absolute;right:0;top:0;height:5px;width:22%;background:#b20adc;border-radius:999px}.baml-total strong{font-size:34px}
       .baml-row-arrows button{display:inline-flex;align-items:center;justify-content:center}
       .baml-homes-overlay{align-items:flex-start;background:rgba(0,0,0,.48);padding:0;padding-top:90px;overflow:auto}.baml-homes-overlay .baml-all-homes{align-self:flex-start;width:100%;min-height:calc(100dvh - 90px);max-height:none;border-radius:34px 34px 0 0;padding:42px clamp(54px,5.6vw,88px) 80px;background:#fff;overflow:visible}.baml-homes-overlay .baml-close{right:clamp(42px,5vw,76px);top:40px}.baml-homes-overlay .baml-all-homes h2{font-size:32px;line-height:1.1;margin:0 0 112px}.baml-homes-overlay .baml-all-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:92px 32px}.baml-homes-overlay .baml-card-img{border-radius:18px}.baml-homes-overlay .baml-card-title{font-size:16px;margin-top:16px}.baml-homes-overlay .baml-pagination{justify-content:center;gap:20px;margin-top:90px}.baml-homes-overlay .baml-pagination button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;font-size:15px}
@@ -904,6 +976,10 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
   const [authView, setAuthView] = useState<AuthView | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [costTab, setCostTab] = useState<'cash' | 'mortgage'>('cash');
+  const [deposit, setDeposit] = useState(25);
+  const [term, setTerm] = useState(25);
   const auth = useAuth();
 
   usePageMeta({
@@ -1002,9 +1078,25 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
           <button className="baml-save-button" onClick={toggleFav}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Saved' : 'Save'}</button>
         </div>
         <section className="baml-gallery">
-          <div className="baml-gallery-main"><img src={images[0] || fallbackImages[0]} alt={active.title} /></div>
+          <div
+            className="baml-gallery-main"
+            role="button"
+            tabIndex={0}
+            onClick={() => setLightboxIndex(0)}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setLightboxIndex(0); }}
+          >
+            <img src={images[0] || fallbackImages[0]} alt={active.title} />
+          </div>
           {[1, 2, 3, 4].map((slot) => (
-            <div key={slot}><img src={images[slot] || fallbackImages[slot % fallbackImages.length]} alt={`${active.title} ${slot + 1}`} /></div>
+            <div
+              key={slot}
+              role="button"
+              tabIndex={0}
+              onClick={() => setLightboxIndex(slot)}
+              onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setLightboxIndex(slot); }}
+            >
+              <img src={images[slot] || fallbackImages[slot % fallbackImages.length]} alt={`${active.title} ${slot + 1}`} />
+            </div>
           ))}
         </section>
         <section className="baml-detail-content">
@@ -1017,13 +1109,56 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
             </p>
             <p className="baml-description">{cleanText(active.description) || cleanText(active.address) || 'Contact Havlo for a full property review, local due diligence, and purchase guidance.'}</p>
             <div className="baml-cost-table">
-              <div className="tabs"><div className="active">Cash Buyer</div><div>Mortgage Buyer</div></div>
-              <h3>Other Associated Costs</h3>
-              {costRows.map((row) => (
-                <div className="baml-cost-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatGbp(row.amount)}</strong></div>
-              ))}
-              <div className="baml-cost-row"><span>Property price:</span><strong>{formatGbp(propertyPrice)}</strong></div>
-              <div className="baml-cost-row baml-total"><span>Total Estimated cost including other fees:</span><strong>{formatGbp(totalEstimated)}</strong></div>
+              <div className="tabs">
+                <button type="button" className={costTab === 'cash' ? 'active' : ''} onClick={() => setCostTab('cash')}>Cash Buyer</button>
+                <button type="button" className={costTab === 'mortgage' ? 'active' : ''} onClick={() => setCostTab('mortgage')}>Mortgage Buyer</button>
+              </div>
+              {costTab === 'cash' ? (
+                <>
+                  <h3>Other Associated Costs</h3>
+                  {costRows.map((row) => (
+                    <div className="baml-cost-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatGbp(row.amount)}</strong></div>
+                  ))}
+                  <div className="baml-cost-row"><span>Property price:</span><strong>{formatGbp(propertyPrice)}</strong></div>
+                  <div className="baml-cost-row baml-total"><span>Total Estimated cost including other fees:</span><strong>{formatGbp(totalEstimated)}</strong></div>
+                </>
+              ) : (
+                <>
+                  <h3>Mortgage Calculator</h3>
+                  <p className="baml-mortgage-sub">Based on a 7% p.a. non-resident mortgage rate</p>
+                  <div className="baml-mortgage-row">
+                    <label>Deposit: <strong>{deposit}%</strong> ({formatGbp(Math.round(propertyPrice * deposit / 100))})</label>
+                    <input
+                      type="range" min={10} max={50} step={5}
+                      value={deposit}
+                      onChange={(event) => setDeposit(Number(event.target.value))}
+                      className="baml-slider"
+                    />
+                    <div className="baml-slider-labels"><span>10%</span><span>50%</span></div>
+                  </div>
+                  <div className="baml-mortgage-row">
+                    <label>Loan term: <strong>{term} years</strong></label>
+                    <input
+                      type="range" min={5} max={30} step={5}
+                      value={term}
+                      onChange={(event) => setTerm(Number(event.target.value))}
+                      className="baml-slider"
+                    />
+                    <div className="baml-slider-labels"><span>5 yrs</span><span>30 yrs</span></div>
+                  </div>
+                  {(() => {
+                    const mortgage = calcMortgage(propertyPrice, deposit, term);
+                    return (
+                      <>
+                        <div className="baml-cost-row"><span>Loan amount:</span><strong>{formatGbp(mortgage.loanGbp)}</strong></div>
+                        <div className="baml-cost-row"><span>Total interest:</span><strong>{formatGbp(mortgage.interestGbp)}</strong></div>
+                        <div className="baml-cost-row baml-total"><span>Monthly payment:</span><strong>{formatGbp(mortgage.monthlyGbp)}/mo</strong></div>
+                      </>
+                    );
+                  })()}
+                  <p className="baml-mortgage-disc">Indicative only. Actual rates vary by lender. We connect you with specialist non-resident mortgage brokers.</p>
+                </>
+              )}
             </div>
           </div>
           <aside className="baml-cost-card">
@@ -1042,6 +1177,15 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
       </main>
       <FooterCta />
       {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          index={lightboxIndex}
+          title={active.title}
+          onClose={() => setLightboxIndex(null)}
+          onChange={setLightboxIndex}
+        />
+      )}
     </div>
   );
 };
