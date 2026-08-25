@@ -204,20 +204,68 @@ class DiscoveryCursorAndDuplicateBudgetTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.finalized, [])
 
 
-class DiscoveryCursorFilePersistenceTest(unittest.TestCase):
-    def test_cursor_file_round_trips(self) -> None:
+class _FakeCursorDb:
+    """Stands in for AsyncSessionLocal() backed by a single `scraper_kv_state`
+    row, so the cursor round-trip can be tested without a live database."""
+
+    _store: dict[str, str] = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def execute(self, statement, params=None):
+        sql = str(statement).strip().upper()
+        params = params or {}
+        if sql.startswith("SELECT"):
+            value = type(self)._store.get(params.get("key"))
+            return _FakeResult(value)
+        if sql.startswith("INSERT"):
+            type(self)._store[params["key"]] = params["value"]
+            return _FakeResult(None)
+        raise AssertionError(f"Unexpected statement in fake cursor DB: {statement}")
+
+    async def commit(self) -> None:
+        return None
+
+
+class _FakeResult:
+    def __init__(self, value):
+        self._value = value
+
+    def first(self):
+        return (self._value,) if self._value is not None else None
+
+
+class DiscoveryCursorPersistenceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_cursor_round_trips_through_the_database(self) -> None:
+        """Cursor state now lives in scraper_kv_state, not an /tmp file, so it
+        survives a Railway redeploy (which wipes /tmp and used to silently
+        reset every location back to page 0)."""
+        _FakeCursorDb._store = {}
+        with patch.object(discovery, "AsyncSessionLocal", lambda: _FakeCursorDb()):
+            self.assertEqual(await discovery._load_discovery_cursors(), {})
+            await discovery._save_discovery_cursors({"REGION^1": 12, "REGION^2": 0})
+            self.assertEqual(
+                await discovery._load_discovery_cursors(),
+                {"REGION^1": 12, "REGION^2": 0},
+            )
+
+    async def test_falls_back_to_legacy_file_if_the_db_read_fails(self) -> None:
         import tempfile
         from pathlib import Path
 
+        async def raising_session():
+            raise ConnectionError("db unavailable")
+
         with tempfile.TemporaryDirectory() as tmp:
             cursor_file = Path(tmp) / "cursor.json"
-            with patch.object(discovery, "_DISCOVERY_CURSOR_FILE", cursor_file):
-                self.assertEqual(discovery._load_discovery_cursors(), {})
-                discovery._save_discovery_cursors({"REGION^1": 12, "REGION^2": 0})
-                self.assertEqual(
-                    discovery._load_discovery_cursors(),
-                    {"REGION^1": 12, "REGION^2": 0},
-                )
+            cursor_file.write_text('{"REGION^1": 7}')
+            with patch.object(discovery, "_DISCOVERY_CURSOR_FILE", cursor_file), \
+                 patch.object(discovery, "AsyncSessionLocal", side_effect=ConnectionError("db down")):
+                self.assertEqual(await discovery._load_discovery_cursors(), {"REGION^1": 7})
 
 
 if __name__ == "__main__":

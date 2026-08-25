@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal
@@ -400,43 +400,87 @@ async def _scrape_detail_bounded(sem: asyncio.Semaphore, candidate: Candidate) -
         return await scrape_single_listing(candidate.url)
 
 
+_DISCOVERY_CURSOR_KEY = "stale_listing_discovery_cursor"
+# Legacy /tmp file, kept only so a mid-cycle deploy doesn't lose an
+# in-flight cursor outright; the durable source of truth is now the
+# scraper_kv_state DB table (see _load_discovery_cursors below).
 _DISCOVERY_CURSOR_FILE = Path(
     os.getenv("STALE_LISTINGS_CURSOR_FILE", "/tmp/stale_listing_discovery_cursor.json")
 )
 
 
-def _load_discovery_cursors() -> dict[str, int]:
+async def _load_discovery_cursors() -> dict[str, int]:
     """Per-location "resume from this page" cursor, persisted across the
-    15-minute discovery cycles (same /tmp-file convention already used by
-    the marketplace Rightmove scraper's own progress file).
+    15-minute discovery cycles.
 
     Without this, every cycle restarted every location at page 0. Once the
     front of a location's oldest-first results had already been turned into
     prospects by an earlier cycle, every later cycle burned its entire
     per-cycle candidate budget re-confirming those same duplicates and never
-    reached fresh inventory deeper in the results — this is the actual
-    reason emails stopped going out entirely once the initial backlog was
-    cleared (eligible=0, skipped=<budget> every cycle).
+    reached fresh inventory deeper in the results — this was the reason
+    emails stopped going out entirely once the initial backlog was cleared
+    (eligible=0, skipped=<budget> every cycle).
+
+    This used to be a JSON file under /tmp, which works within one running
+    container but is wiped on every Railway deploy/restart — so the cursor
+    kept silently resetting to page 0 every time we shipped an unrelated
+    change, and discovery went back to re-scanning the same near-threshold
+    listings instead of progressing deeper into stale inventory. It is now
+    persisted in the database (scraper_kv_state) so it survives redeploys.
     """
     try:
-        if _DISCOVERY_CURSOR_FILE.exists():
-            data = json.loads(_DISCOVERY_CURSOR_FILE.read_text())
-            if isinstance(data, dict):
-                return {
-                    str(key): int(value)
-                    for key, value in data.items()
-                    if isinstance(value, (int, float)) or str(value).lstrip("-").isdigit()
-                }
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                text("SELECT value_json FROM scraper_kv_state WHERE key = :key"),
+                {"key": _DISCOVERY_CURSOR_KEY},
+            )
+            row = result.first()
+            if row and row[0]:
+                data = json.loads(row[0])
+                if isinstance(data, dict):
+                    return {
+                        str(key): int(value)
+                        for key, value in data.items()
+                        if isinstance(value, (int, float)) or str(value).lstrip("-").isdigit()
+                    }
     except Exception as exc:
-        logger.debug("Could not load stale-listing discovery cursor file: %s", exc)
+        logger.debug("Could not load stale-listing discovery cursor from DB: %s", exc)
+        # Fall back to the legacy file in case the DB table isn't there yet
+        # (e.g. migration hasn't run) — better than silently losing state.
+        try:
+            if _DISCOVERY_CURSOR_FILE.exists():
+                data = json.loads(_DISCOVERY_CURSOR_FILE.read_text())
+                if isinstance(data, dict):
+                    return {str(key): int(value) for key, value in data.items()}
+        except Exception:
+            pass
     return {}
 
 
-def _save_discovery_cursors(cursors: dict[str, int]) -> None:
+async def _save_discovery_cursors(cursors: dict[str, int]) -> None:
+    payload = json.dumps(cursors)
     try:
-        _DISCOVERY_CURSOR_FILE.write_text(json.dumps(cursors))
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                text(
+                    """
+                    INSERT INTO scraper_kv_state (key, value_json, updated_at)
+                    VALUES (:key, :value, now())
+                    ON CONFLICT (key) DO UPDATE
+                        SET value_json = EXCLUDED.value_json, updated_at = now()
+                    """
+                ),
+                {"key": _DISCOVERY_CURSOR_KEY, "value": payload},
+            )
+            await db.commit()
     except Exception as exc:
-        logger.debug("Could not persist stale-listing discovery cursor file: %s", exc)
+        logger.debug("Could not persist stale-listing discovery cursor to DB: %s", exc)
+    # Best-effort legacy write too, so a container that dies before the next
+    # deploy still has something to resume from if the DB write ever fails.
+    try:
+        _DISCOVERY_CURSOR_FILE.write_text(payload)
+    except Exception:
+        pass
 
 
 def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
@@ -893,7 +937,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
     # A dry run (the admin "explore" endpoint) never creates prospects, so
     # advancing the real cursor from one would make the next automated cycle
     # silently skip pages that were never actually mined for real prospects.
-    cursors = _load_discovery_cursors() if not params.dry_run else {}
+    cursors = await _load_discovery_cursors() if not params.dry_run else {}
 
     try:
         async with httpx.AsyncClient() as client:
@@ -921,7 +965,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                     continue
                 _, next_page = outcome
                 cursors[location_id] = next_page
-            _save_discovery_cursors(cursors)
+            await _save_discovery_cursors(cursors)
 
         async with state.lock:
             state.dirty = True
