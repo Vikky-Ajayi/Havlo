@@ -23,6 +23,10 @@ from app.schemas.schemas import (
     StaleProspectAdminCreateResponse,
     StaleProspectCheckoutRequest,
     StaleProspectCheckoutResponse,
+    StaleProspectConfirmRequest,
+    StaleProspectConfirmResponse,
+    StaleProspectDetailsRequest,
+    StaleProspectDetailsResponse,
     StaleProspectDiscoveryRunRequest,
     StaleProspectDiscoveryRunResponse,
     StaleProspectLookupRequest,
@@ -622,6 +626,49 @@ async def get_stale_prospect_preview(
     return StaleProspectPreviewResponse(**serialize_preview(prospect))
 
 
+@public_router.post("/prospects/confirm", response_model=StaleProspectConfirmResponse)
+async def confirm_stale_prospect_property(
+    payload: StaleProspectConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectConfirmResponse:
+    """"Yes, this is my property" on the Confirm Property step. "No, try
+    another ID" needs no backend call — the frontend just resets to the
+    Landing step — so this only ever records a positive confirmation."""
+    prospect = await _get_prospect_by_access(
+        db, token=payload.token, property_code=payload.property_code
+    )
+    if prospect.property_confirmed_at is None:
+        prospect.property_confirmed_at = datetime.utcnow()
+        await db.commit()
+    return StaleProspectConfirmResponse(
+        prospect_id=str(prospect.id), property_code=prospect.property_code, confirmed=True
+    )
+
+
+@public_router.post("/prospects/details", response_model=StaleProspectDetailsResponse)
+async def submit_stale_prospect_details(
+    payload: StaleProspectDetailsRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectDetailsResponse:
+    """The "Your Details" step. Re-checks email/confirm-email match
+    server-side even though the frontend already does — never trust a
+    client-side-only check for data we're about to store and email."""
+    if payload.email.lower() != payload.confirm_email.lower():
+        raise HTTPException(status_code=400, detail="Email and confirm email must match.")
+    prospect = await _get_prospect_by_access(
+        db, token=payload.token, property_code=payload.property_code
+    )
+    prospect.contact_name = payload.full_name.strip()[:200]
+    prospect.contact_email = str(payload.email).strip().lower()[:255]
+    prospect.contact_phone = payload.mobile_number.strip()[:50]
+    await db.commit()
+    return StaleProspectDetailsResponse(
+        prospect_id=str(prospect.id),
+        property_code=prospect.property_code,
+        contact_name=prospect.contact_name,
+    )
+
+
 @public_router.post("/prospects/checkout", response_model=StaleProspectCheckoutResponse)
 async def create_stale_prospect_checkout(
     payload: StaleProspectCheckoutRequest,
@@ -678,6 +725,27 @@ async def create_stale_prospect_checkout(
             unlocked=True,
         )
 
+    if payload.payment_method == "bank_transfer":
+        reference = prospect.bank_transfer_reference or f"SLP-{prospect.property_code}-{uuid.uuid4().hex[:6].upper()}"
+        prospect.payment_method = "bank_transfer"
+        prospect.bank_transfer_reference = reference
+        prospect.payment_status = "awaiting_bank_transfer"
+        await db.commit()
+        settings = get_settings()
+        return StaleProspectCheckoutResponse(
+            prospect_id=str(prospect.id),
+            property_code=prospect.property_code,
+            checkout_url="",
+            checkout_id="",
+            amount=amount,
+            currency=currency,
+            payment_method="bank_transfer",
+            bank_transfer_reference=reference,
+            bank_transfer_account_name=settings.BANK_TRANSFER_ACCOUNT_NAME,
+            bank_transfer_account_number=settings.BANK_TRANSFER_ACCOUNT_NUMBER,
+            bank_transfer_bank_name=settings.BANK_TRANSFER_BANK_NAME,
+        )
+
     try:
         checkout = await sumup_service.create_checkout(
             amount=amount,
@@ -701,6 +769,7 @@ async def create_stale_prospect_checkout(
     prospect.sumup_checkout_id = checkout_id
     prospect.sumup_checkout_url = checkout_url
     prospect.payment_status = "pending"
+    prospect.payment_method = "card"
     await db.commit()
     return StaleProspectCheckoutResponse(
         prospect_id=str(prospect.id),
@@ -1049,6 +1118,34 @@ async def mark_stale_listing_paid(
     assessment.payment_status = "completed"
     await db.commit()
     return {"ok": True, "payment_status": "completed", "reference": assessment.reference}
+
+
+@admin_router.post("/admin/prospects/{prospect_id}/mark-bank-transfer-paid")
+async def mark_stale_prospect_bank_transfer_paid(
+    prospect_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Manual reconciliation for the "Bank Transfer" payment option: once you
+    see the funds land under the reference shown to the homeowner, mark it
+    here to unlock their report — same unlock path as SumUp/promo."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+    if prospect.payment_status != "completed":
+        prospect.payment_status = "completed"
+        prospect.unlocked_at = datetime.utcnow()
+        await db.commit()
+        background_tasks.add_task(expand_report_in_background, str(prospect.id))
+    return {
+        "ok": True,
+        "payment_status": "completed",
+        "property_code": prospect.property_code,
+        "bank_transfer_reference": prospect.bank_transfer_reference,
+    }
 
 
 @public_router.post("/agency-pricing-request")

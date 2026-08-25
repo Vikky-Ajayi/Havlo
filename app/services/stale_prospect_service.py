@@ -335,10 +335,14 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "rightmove_url": prospect.rightmove_url,
         "asking_price": prospect.asking_price,
         "listing_duration_days": prospect.listing_duration_days,
+        "bedrooms": prospect.bedrooms,
+        "bathrooms": prospect.bathrooms,
         "listing_snapshot": _safe_json(prospect.listing_snapshot_json),
         "preview": _safe_json(prospect.preview_json),
         "payment_status": prospect.payment_status,
         "is_unlocked": prospect.payment_status == "completed",
+        "property_confirmed": prospect.property_confirmed_at is not None,
+        "has_contact_details": bool(prospect.contact_email),
     }
 
 

@@ -88,6 +88,14 @@ class Settings(BaseSettings):
     SUMUP_API_KEY: str = ""
     SUMUP_MERCHANT_CODE: str = ""
 
+    # ── Bank transfer (manual reconciliation) ───────────────────────────
+    # Same account already shown to Buy Abroad UK applicants as a bank
+    # transfer option (see BuyAbroadUkApply.tsx) — reused here as the
+    # stale-listing prospect flow's manual bank transfer payment method.
+    BANK_TRANSFER_ACCOUNT_NAME: str = "OHENTPAY - HAVLO LTD"
+    BANK_TRANSFER_ACCOUNT_NUMBER: str = "4568961712"
+    BANK_TRANSFER_BANK_NAME: str = "Fidelity Bank"
+
     # ── Promo codes ──────────────────────────────────────────────────────
     LISTING_RECOVERY_PROMO_CODE: str = ""
     # Free-unlock code for the automated stale-prospect report (the QR-code /

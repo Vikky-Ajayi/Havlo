@@ -548,6 +548,21 @@ class StaleProspectCheckoutRequest(BaseModel):
     property_code: Optional[str] = Field(None, min_length=4, max_length=12)
     redirect_url: Optional[str] = Field(None, max_length=2000)
     promo_code: Optional[str] = Field(None, max_length=100)
+    payment_method: str = Field("card", pattern="^(card|bank_transfer)$")
+
+
+class StaleProspectConfirmRequest(BaseModel):
+    token: Optional[str] = Field(None, max_length=200)
+    property_code: Optional[str] = Field(None, min_length=4, max_length=12)
+
+
+class StaleProspectDetailsRequest(BaseModel):
+    token: Optional[str] = Field(None, max_length=200)
+    property_code: Optional[str] = Field(None, min_length=4, max_length=12)
+    full_name: str = Field(..., min_length=1, max_length=200)
+    email: EmailStr
+    confirm_email: EmailStr
+    mobile_number: str = Field(..., min_length=5, max_length=50)
 
 
 class StaleProspectAdminCreateRequest(BaseModel):
@@ -564,10 +579,16 @@ class StaleProspectPreviewResponse(BaseModel):
     rightmove_url: str
     asking_price: Optional[float] = None
     listing_duration_days: Optional[int] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
     listing_snapshot: dict = Field(default_factory=dict)
     preview: dict = Field(default_factory=dict)
     payment_status: str
     is_unlocked: bool
+    # Lets the frontend wizard resume at the right step on reload instead of
+    # forcing every visit back through Confirm Property / Your Details.
+    property_confirmed: bool = False
+    has_contact_details: bool = False
 
 
 class StaleProspectCheckoutResponse(BaseModel):
@@ -578,6 +599,23 @@ class StaleProspectCheckoutResponse(BaseModel):
     amount: float
     currency: str
     unlocked: bool = False
+    payment_method: str = "card"
+    bank_transfer_reference: Optional[str] = None
+    bank_transfer_account_name: Optional[str] = None
+    bank_transfer_account_number: Optional[str] = None
+    bank_transfer_bank_name: Optional[str] = None
+
+
+class StaleProspectConfirmResponse(BaseModel):
+    prospect_id: str
+    property_code: str
+    confirmed: bool
+
+
+class StaleProspectDetailsResponse(BaseModel):
+    prospect_id: str
+    property_code: str
+    contact_name: str
 
 
 class StaleProspectReportResponse(BaseModel):
