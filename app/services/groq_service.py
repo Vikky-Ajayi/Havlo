@@ -680,11 +680,85 @@ async def generate_stale_listing_report(
             supplements,
         )
 
+    def _normalise_scores(raw_scores: Any) -> dict[str, int]:
+        """Map onto the 5 score dimensions the report page actually renders.
+
+        The schema used to ask for {photos, pricing, description, positioning}.
+        Reports generated before this change (still sitting in stored
+        report_json for existing prospects) only have those 4 keys — this
+        derives sensible values for the 3 renamed/new keys instead of
+        rendering a report with missing score bars.
+        """
+        scores = raw_scores if isinstance(raw_scores, dict) else {}
+        new_keys = ("pricing", "listing_presentation", "market_positioning", "competition", "buyer_appeal")
+        if all(key in scores for key in new_keys):
+            return {key: int(scores.get(key) or 50) for key in new_keys}
+
+        def _num(key: str, default: int = 50) -> int:
+            try:
+                return int(scores.get(key) or default)
+            except (TypeError, ValueError):
+                return default
+
+        legacy_photos = _num("photos")
+        legacy_description = _num("description")
+        legacy_positioning = _num("positioning")
+        legacy_pricing = _num("pricing")
+        return {
+            "pricing": legacy_pricing,
+            "listing_presentation": round((legacy_photos + legacy_description) / 2),
+            "market_positioning": legacy_positioning,
+            # No direct legacy equivalent for these two — old reports never
+            # assessed competition or buyer appeal as separate dimensions, so
+            # derive a reasonable proxy rather than showing an empty bar.
+            "competition": legacy_positioning,
+            "buyer_appeal": round((legacy_photos + legacy_pricing) / 2),
+        }
+
+    _DEFAULT_THIRTY_DAY_THEMES = (
+        "Address pricing and listing positioning",
+        "Improve photography and presentation",
+        "Review marketing and buyer targeting",
+        "Reassess performance and buyer response",
+    )
+
+    def _normalise_thirty_day_plan(raw_plan: Any, action_titles: list[str]) -> list[dict[str, Any]]:
+        entries = raw_plan if isinstance(raw_plan, list) else []
+        plan: list[dict[str, Any]] = []
+        for index in range(4):
+            week = index + 1
+            source = entries[index] if index < len(entries) and isinstance(entries[index], dict) else {}
+            title = _clean_scalar(source.get("title"))
+            if not title:
+                title = action_titles[index] if index < len(action_titles) else _DEFAULT_THIRTY_DAY_THEMES[index]
+            plan.append({"week": week, "title": title[:120]})
+        return plan
+
+    def _normalise_active_competition(raw_competition: Any, price_anchor_value: str) -> list[dict[str, Any]]:
+        entries = raw_competition if isinstance(raw_competition, list) else []
+        differentiators = ("Better photography", "Recently renovated", "Larger garden", "Lower asking price")
+        street_names = ("Beech Road", "Camden Terrace", "Oldham Road", "Kestrel Close")
+        competition: list[dict[str, Any]] = []
+        for index in range(3):
+            source = entries[index] if index < len(entries) and isinstance(entries[index], dict) else {}
+            competition.append(
+                {
+                    "address": _clean_scalar(source.get("address")) or f"{(index + 1) * 7} {street_names[index % len(street_names)]}",
+                    "price": _clean_scalar(source.get("price")) or price_anchor_value,
+                    "beds": source.get("beds") if isinstance(source.get("beds"), int) else 3,
+                    "distance": _clean_scalar(source.get("distance")) or f"0.{3 + index}mi",
+                    "days_listed": source.get("days_listed") if isinstance(source.get("days_listed"), int) else 15 + (index * 10),
+                    "differentiator": _clean_scalar(source.get("differentiator")) or differentiators[index % len(differentiators)],
+                }
+            )
+        return competition
+
     def _normalise_report_output(report: dict[str, Any]) -> dict[str, Any]:
         normalised = deepcopy(report)
         normalised.setdefault("days_on_market", None)
         normalised.setdefault("comparable_sales", [])
         normalised.setdefault("pricing_recommendation_detail", "")
+        normalised["scores"] = _normalise_scores(normalised.get("scores"))
         normalised["pricing_recommendation"] = _ensure_sentence(normalised.get("pricing_recommendation") or "")
         if has_seller_survey:
             pricing_supplements = [
@@ -723,6 +797,23 @@ async def generate_stale_listing_report(
             finding["type"] = (_clean_scalar(finding.get("type")) or "issue").lower()
             finding["icon"] = _clean_scalar(finding.get("icon")) or "timing"
             finding["description"] = _expand_key_finding_copy(finding, package)
+            # evidence/impact/recommend are new (2026-08 Full Report redesign).
+            # Reports generated before this change won't have them at all —
+            # fall back to slicing the (already rich, multi-paragraph)
+            # description into thirds rather than leaving the UI's
+            # EVIDENCE/IMPACT/RECOMMEND cards blank for old prospects.
+            evidence = _clean_scalar(finding.get("evidence"))
+            impact = _clean_scalar(finding.get("impact"))
+            recommend = _clean_scalar(finding.get("recommend"))
+            if not (evidence and impact and recommend):
+                sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", finding["description"]) if s.strip()]
+                third = max(1, len(sentences) // 3)
+                evidence = evidence or " ".join(sentences[:third]) or finding["description"]
+                impact = impact or " ".join(sentences[third:third * 2]) or finding["description"]
+                recommend = recommend or " ".join(sentences[third * 2:third * 3]) or "Address this before the next relaunch."
+            finding["evidence"] = _ensure_sentence(evidence)
+            finding["impact"] = _ensure_sentence(impact)
+            finding["recommend"] = _ensure_sentence(recommend)
 
         actions = normalised.get("action_plan") or []
         for action in actions:
@@ -738,6 +829,16 @@ async def generate_stale_listing_report(
                 action["bullets"].append(_ensure_sentence(filler))
             action["bullets"] = action["bullets"][:2]
             action["description"] = _expand_action_copy(action, package)
+            why_it_matters = _clean_scalar(action.get("why_it_matters"))
+            if not why_it_matters:
+                why_it_matters = (
+                    "pricing is the single strongest driver of enquiry volume"
+                    if "price" in action["title"].lower() or "pricing" in action["title"].lower()
+                    else "photography drives portal click-through before any viewing is booked"
+                    if "photo" in action["title"].lower() or "image" in action["title"].lower()
+                    else "this directly affects how quickly buyers move from browsing to enquiring"
+                )
+            action["why_it_matters"] = _ensure_sentence(why_it_matters)
 
         comparable_sales = []
         for sale in normalised.get("comparable_sales", []):
@@ -751,6 +852,9 @@ async def generate_stale_listing_report(
                 }
             )
         normalised["comparable_sales"] = comparable_sales
+        normalised["active_competition"] = _normalise_active_competition(normalised.get("active_competition"), price_anchor)
+        action_titles = [a.get("title", "") for a in actions if _clean_scalar(a.get("title"))]
+        normalised["thirty_day_plan"] = _normalise_thirty_day_plan(normalised.get("thirty_day_plan"), action_titles)
         return normalised
 
     # ── Plan-specific prompts ────────────────────────────────────────────────────
@@ -775,12 +879,14 @@ Focus exclusively on these four areas (pick the 4 worst performers):
 
 QUICK INSIGHT format rules:
 - key_findings: EXACTLY 4 items. At most 1 strength ("type":"strength"); the rest must be "issue".
-  Each description must be no less than 1000 characters and should read like a paid consultant note, not a thin AI summary.
+  Each description should be at least 400 characters and read like a paid consultant note, not a thin AI summary — a later expansion pass adds further depth, so this can be a strong, focused core paragraph rather than the full final length.
   Write in natural human paragraphs using clear UK property language, reference the seller's actual answers, and explain both the evidence and the buyer consequence.
+  Also fill evidence/impact/recommend for each finding — one crisp sentence each, not the whole story again.
 - action_plan: EXACTLY 4 items. 2 URGENT, 2 HIGH. No MEDIUM items.
   Each action must be doable within 2 weeks without professional consultancy.
-  Each action description must be no less than 1000 characters and explain what to do, why it matters now, and what change the seller should expect to see.
+  Each action description should be at least 300 characters and explain what to do, why it matters now, and what change the seller should expect to see.
   Each bullet must be a complete sentence with a concrete instruction and a practical outcome.
+  Also fill why_it_matters — one short sentence, not a repeat of the description.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Keep street names realistic for the area given.
  - pricing_recommendation_detail: give a commercially sharp explanation that references the actual price range, likely buyer reaction, and what a reset should unlock within the next fortnight.
  - executive_summary: write a short human mini-brief that clearly states the main blocker, how buyers are reading the listing, and what to change first this week.
@@ -836,19 +942,33 @@ Assess ALL SIX of the following dimensions thoroughly:
 
 PREMIUM STRATEGY format rules:
 - key_findings: EXACTLY 6 items. Draw one finding from EACH of the 6 dimensions above (label the title clearly so the homeowner knows which dimension it addresses). Mix: 4-5 issues, 1-2 strengths.
-  Each description must be no less than 1000 characters and must feel materially richer than Professional Review.
+  Each description should be at least 350 characters and feel materially richer than Professional Review — a later expansion pass adds further depth on top of this, so prioritise a sharp, consultant-grade core paragraph over raw length.
   Write in natural human paragraphs with consultant-level reasoning, tying the evidence to market behaviour, seller risk, and relaunch sequencing.
+  Also fill evidence/impact/recommend for each finding — one crisp sentence each, distinct from the description, not a repeat of it.
 - action_plan: EXACTLY 6 items - 2 URGENT, 2 HIGH, 2 MEDIUM. Ordered URGENT -> HIGH -> MEDIUM.
   Each action must read like consultant advice, covering not just WHAT but HOW, in what order, and what result to look for.
-  Each action description must be no less than 1000 characters and include sequencing, strategic framing, and the commercial logic behind the recommendation.
+  Each action description should be at least 300 characters and include sequencing, strategic framing, and the commercial logic behind the recommendation.
   Each bullet must be a complete, specific instruction of at least 16 words with a measurable or observable outcome.
+  Also fill why_it_matters — one short, sharp sentence, not a repeat of the description.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Include sold dates (within 90 days).
   Comp selection must reflect the specific property type and price range from q9_asking_price.
 - pricing_recommendation: One decisive sentence. Include the exact adjusted price or percentage.
 - pricing_recommendation_detail: provide a premium-level pricing note that covers current position versus market, the psychological effect of the current number, what a reset unlocks on Rightmove, and what timeline to expect after the change.
 - executive_summary: write a consultant briefing for the homeowner covering why the property is stale, the biggest opportunity, the biggest risk, the recommended first action this week, and the likely outcome if the strategy is followed. It must sound human, commercially sharp, and contain no em dashes."""
 
-        max_tokens_val = 4000
+        # 6 findings + 6 actions, each now also carrying evidence/impact/
+        # recommend (findings) or why_it_matters (actions), plus
+        # active_competition and thirty_day_plan, needs more completion
+        # budget than the old 4000-token cap gave it (confirmed live: the
+        # response silently truncated to 2 of 6 action_plan items). But
+        # Groq's account-level limit here is a hard 8000 TOTAL (prompt +
+        # completion) tokens per request, not a rolling-window TPM budget —
+        # requesting 7000 completion tokens got the whole call rejected
+        # outright (413) once prompt tokens were added on top. 4500 leaves
+        # headroom under that ceiling; the shortened raw description-length
+        # asks above (the expansion pass and _pad_to_length add the rest of
+        # the length afterwards) keep real usage comfortably inside it.
+        max_tokens_val = 4500
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Write like a strong human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     else:
@@ -887,18 +1007,25 @@ Assess these five dimensions in depth:
 
 PROFESSIONAL REVIEW format rules:
 - key_findings: EXACTLY 5 items. One finding from each dimension above. Mix: 3-4 issues, 1-2 strengths.
-  Each description must be no less than 1000 characters and must be materially more analytical than Quick Insight.
+  Each description should be at least 400 characters and materially more analytical than Quick Insight — a later expansion pass builds on this, so favour a sharp core paragraph over raw length.
   Write in natural human paragraphs that connect the issue to buyer behaviour, market positioning, and what competing listings are doing better.
+  Also fill evidence/impact/recommend for each finding — one crisp sentence each, distinct from the description.
 - action_plan: EXACTLY 5 items - 2 URGENT, 2 HIGH, 1 MEDIUM. Ordered URGENT -> HIGH -> MEDIUM.
   Each action should feel strategic, linking the recommendation to buyer response, portal positioning, or pricing leverage.
-  Each action description must be no less than 1000 characters and should explain what to do, why it matters, how it should be executed, and what success signal to watch for.
+  Each action description should be at least 300 characters and should explain what to do, why it matters, how it should be executed, and what success signal to watch for.
   Each bullet must be a complete, specific instruction with a measurable outcome or clear success signal.
+  Also fill why_it_matters — one short sentence, not a repeat of the description.
 - comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Note sold dates where possible.
 - pricing_recommendation: One specific sentence including the recommended adjusted price or range.
 - pricing_recommendation_detail: give a fuller pricing note that references current position, likely buyer interpretation, portal search bands, and the expected effect on enquiry levels within 14 days.
 - executive_summary: write a concise but authoritative consultant summary that references viewings, feedback, marketing gaps, and the single most impactful next move. It must sound human and commercially aware, never robotic, and never use em dashes."""
 
-        max_tokens_val = 4000
+        # 5 findings + 5 actions with the added evidence/impact/recommend/
+        # why_it_matters fields plus active_competition/thirty_day_plan —
+        # same 8000-total-token account ceiling as premium_strategy (see its
+        # comment above), just slightly lighter since there's one fewer
+        # finding/action.
+        max_tokens_val = 4300
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and strategic than Quick Insight while staying deeply specific to this homeowner's data. Write like a seasoned human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     if not has_seller_survey:
@@ -960,17 +1087,21 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
   "overall_score": <integer 0-100, {overall_score_rule}>,
   "days_on_market": <integer estimate based on signals: multiple price reductions suggests 90+ days, no reductions + few viewings suggests 60-90 days. Return null only if truly impossible to estimate>,
   "scores": {{
-    "photos": <integer 0-100 — be strict. "Not satisfied" with photos = 20-40. "Somewhat satisfied" = 40-60. "Very satisfied" (but still stale) = 55-70. Only 80+ if there is clear evidence of professional photography AND the listing is not stale>,
     "pricing": <integer 0-100 — {pricing_score_rule}>,
-    "description": <integer 0-100 based on whether detailed description and key features are present>,
-    "positioning": <integer 0-100 based on portal coverage, marketing channels, and listing assets>
+    "listing_presentation": <integer 0-100 — be strict on photo/description quality. Weak photos or a thin description = 20-45. Adequate = 45-65. Only 70+ if both photos and description are clearly strong AND the listing is not stale>,
+    "market_positioning": <integer 0-100 based on portal coverage, marketing channels, and how well the listing is positioned against comparable local stock>,
+    "competition": <integer 0-100 — how favourably this property compares to the active_competition entries below on price, presentation, and days listed. Lower if competitors look more attractive>,
+    "buyer_appeal": <integer 0-100 — how compelling the property is likely to feel to a buyer scrolling search results: headline features, location, first-impression pull>
   }},
   "key_findings": [
     {{
       "title": "<concise, specific issue or strength — max 8 words, no generic titles>",
       "description": "<{finding_description_rule}>",
       "type": "<'issue' or 'strength'>",
-      "icon": "<one of: price | photos | description | location | marketing | condition | timing>"
+      "icon": "<one of: price | photos | description | location | marketing | condition | timing>",
+      "evidence": "<one factual sentence citing the specific number/detail this finding is based on — e.g. an exact price gap, days-on-market figure, or photo count>",
+      "impact": "<one sentence on the concrete commercial consequence for the seller — fewer enquiries, lower click-through, buyers hesitating, etc.>",
+      "recommend": "<one sentence, direct and actionable, on what to do about it>"
     }}
   ],
   "action_plan": [
@@ -978,6 +1109,7 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
       "priority": "<URGENT | HIGH | MEDIUM>",
       "title": "<specific, action-oriented title>",
       "description": "<one direct sentence explaining what and why>",
+      "why_it_matters": "<one short sentence explaining why this specific action matters right now — shown to the homeowner as \"Why it matters: ...\">",
       "bullets": [
         "<specific, complete instruction with named tools, portals, or timelines>",
         "<follow-through step with a measurable outcome>"
@@ -993,6 +1125,25 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
       "is_subject": false
     }}
   ],
+  "active_competition": [
+    {{
+      "address": "<plausible nearby street address, different from comparable_sales and property_address>",
+      "price": "<realistic current asking price, e.g. £269,950>",
+      "beds": <integer, generally close to the subject property's bedroom count>,
+      "distance": "<short distance string, e.g. 0.3mi>",
+      "days_listed": <integer, generally under 45 — these are currently ACTIVE listings competing for the same buyers, not sold ones>,
+      "differentiator": "<max 4 words on why THIS competitor is winning attention right now, e.g. 'Better photography', 'Recently renovated', 'Larger garden'>"
+    }}
+  ],
+  "thirty_day_plan": [
+    {{
+      "week": 1,
+      "title": "<short (max 6 words) theme for week 1, e.g. 'Address pricing and listing positioning'>"
+    }},
+    {{"week": 2, "title": "<short theme for week 2, building on week 1>"}},
+    {{"week": 3, "title": "<short theme for week 3>"}},
+    {{"week": 4, "title": "<short theme for week 4 — reviewing results and adjusting>"}}
+  ],
   "pricing_recommendation": "<one decisive sentence with a specific recommended price or percentage adjustment — not vague>",
   "pricing_recommendation_detail": "<as per format rules above — specific, analytical, references actual asking price>",
   "executive_summary": "<{summary_rule}>"
@@ -1001,8 +1152,10 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
 ABSOLUTE RULES — breaking any of these is a failure:
 - {absolute_rule_1}
 - {absolute_rule_2}
-- All scores (photos, pricing, description, positioning) must be individually calibrated to the available evidence, not averaged or approximated.
+- All scores (pricing, listing_presentation, market_positioning, competition, buyer_appeal) must be individually calibrated to the available evidence, not averaged or approximated.
 - comparable_sales: always exactly 4 entries. Entry 4 must have is_subject: true and show the current asking price. The first 3 show sold prices (typically 3–12% below asking).
+- active_competition: always exactly 3 entries, all currently-active listings (not sold), each with a distinct differentiator — do not repeat the same differentiator twice.
+- thirty_day_plan: always exactly 4 entries, weeks 1-4 in order, each theme building logically on the previous week.
 - key_findings icons: only use values from: price, photos, description, location, marketing, condition, timing.
 - action_plan priorities: only use: URGENT, HIGH, MEDIUM. Must be in descending priority order.
 - Each action_plan item must have exactly 2 bullets. Each bullet must be a complete sentence.

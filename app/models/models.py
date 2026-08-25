@@ -514,6 +514,15 @@ class StaleListingProspect(Base):
     sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     unlocked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Captured on the "Your Details" step of the QR-code landing-page wizard
+    # (see StaleListingProspect.tsx). Optional/nullable because every prospect
+    # created before this flow shipped has none of this.
+    contact_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    property_confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_method: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    bank_transfer_reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
