@@ -362,6 +362,7 @@ async def generate_prospect_report(
     snapshot: dict[str, Any],
     listing_duration_days: int | None,
     expand_report: bool = True,
+    base_report: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     questions_data = {
         "lead_source": "automated_letter_prospecting",
@@ -379,18 +380,27 @@ async def generate_prospect_report(
         # homeowner a letter — nobody has told us about viewings, feedback,
         # or offers. The report must not imply otherwise.
         has_seller_survey=False,
+        base_report=base_report,
     )
 
 
 async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, Any]:
-    """Regenerate the report in full detail the first time it's actually unlocked.
+    """Enrich the existing report in full detail the first time it's unlocked.
 
     Discovery creates every prospect with `expand_report=False` (line above)
-    to keep bulk scanning fast and cheap — that shallow report is only ever
-    meant to back the free preview. Without this, the "full" report a
-    homeowner unlocks was identical to the preview. This mutates
-    `prospect.report_json` in place; the caller is responsible for
-    committing the session.
+    to keep bulk scanning fast and cheap — that shallow report is what the
+    free preview's `key_issues`/`recommendations` are built from (see
+    `build_preview`, which just takes the first 3 of this report's
+    key_findings/action_plan). This used to call `generate_prospect_report`
+    without passing that report back in, which triggered a brand new,
+    independent Groq generation — since Groq's output isn't deterministic,
+    the "full" report came back with different findings entirely, so the
+    specific issues a homeowner saw in the preview would vanish once they
+    unlocked. Passing `base_report=report` skips that redundant fresh
+    generation and only runs the richer expansion pass on the SAME
+    findings, so every issue in the preview is still there, just expanded.
+    This mutates `prospect.report_json` in place; the caller is responsible
+    for committing the session.
     """
     report = _safe_json(prospect.report_json)
     if report.get("_expanded"):
@@ -402,6 +412,7 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
         snapshot=snapshot,
         listing_duration_days=prospect.listing_duration_days,
         expand_report=True,
+        base_report=report,
     )
     expanded["_expanded"] = True
     prospect.report_json = json.dumps(expanded, ensure_ascii=False)

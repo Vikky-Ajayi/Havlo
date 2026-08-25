@@ -206,6 +206,7 @@ async def generate_stale_listing_report(
     listing_snapshot: dict | None = None,
     expand_report: bool = True,
     has_seller_survey: bool = True,
+    base_report: dict | None = None,
 ) -> dict:
     """
     Generate a structured stale listing analysis report using Groq LLM.
@@ -226,6 +227,15 @@ async def generate_stale_listing_report(
       narrative fragment below must avoid asserting or implying any of
       that — the report is grounded only in what the public listing itself
       shows.
+
+    base_report: when given, skip the fresh first-pass LLM generation and
+    enrich this existing report instead (only the expansion pass runs on
+    top of it). This is what keeps the free preview and the unlocked full
+    report showing the SAME issues: the preview is built from the first 3
+    key_findings of the prospect's stored report, and if unlocking silently
+    re-ran the first pass from scratch, Groq's non-determinism would hand
+    back a different set of findings with different titles — the exact
+    issues the preview showed would vanish from the "full" report.
     """
     import asyncio as _aio
     import json
@@ -1378,8 +1388,16 @@ Return this exact shape:
         raise ValueError("Could not extract valid JSON from Groq response")
 
     try:
-        raw = await _aio.to_thread(_call_groq)
-        parsed = _extract_json(raw)
+        if base_report is not None:
+            # Reuse the findings already shown to the homeowner in the free
+            # preview instead of rolling fresh ones — see base_report's
+            # docstring above for why a second independent first-pass call
+            # here would make the preview and the unlocked report disagree.
+            parsed = deepcopy(base_report)
+            parsed.pop("_expanded", None)
+        else:
+            raw = await _aio.to_thread(_call_groq)
+            parsed = _extract_json(raw)
         # Ensure backward-compat defaults for new / optional fields
         parsed.setdefault("days_on_market", None)
         parsed.setdefault("comparable_sales", _DEFAULT_REPORT["comparable_sales"])
@@ -1406,4 +1424,7 @@ Return this exact shape:
         return _normalise_report_output(parsed)
     except Exception as exc:
         logger.error("Stale listing report generation failed, using fallback: %s", exc)
-        return _normalise_report_output(deepcopy(_default_report))
+        # If we had an existing report to enrich, fall back to it unchanged
+        # rather than _default_report — that at least keeps the full report
+        # consistent with whatever the homeowner already saw in the preview.
+        return _normalise_report_output(deepcopy(base_report) if base_report is not None else deepcopy(_default_report))
