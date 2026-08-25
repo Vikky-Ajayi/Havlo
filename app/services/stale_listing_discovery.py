@@ -128,6 +128,19 @@ RESIDENTIAL_EXCLUDE = (
     "development",
 )
 
+# Only these three house types are wanted. Substring matching on "detached"
+# also catches "Semi-Detached" and "Link-Detached", and "terrace" catches
+# both "Terraced" and "End of Terrace" — the Rightmove propertySubType
+# values actually seen for those categories. Everything else (flats,
+# apartments, penthouses, maisonettes, bungalows, park homes, barn
+# conversions, etc.) is deliberately excluded.
+TARGET_PROPERTY_TYPES = ("detached", "terrace")
+
+
+def is_target_property_type(property_type: str) -> bool:
+    text = str(property_type or "").lower()
+    return any(term in text for term in TARGET_PROPERTY_TYPES)
+
 
 @dataclass(slots=True)
 class DiscoveryParams:
@@ -135,7 +148,7 @@ class DiscoveryParams:
     location_names: list[str] | None = None
     max_candidates: int = 25
     max_pages_per_location: int = 2
-    min_price: int = 300001
+    min_price: int = 500000
     min_days_on_market: int = 180
     target_emails: int = 0
 
@@ -343,6 +356,8 @@ def _skip_reason(
     prop_type = str(snapshot.get("property_type") or "").lower()
     if any(term in prop_type for term in RESIDENTIAL_EXCLUDE):
         return "not_residential_sale"
+    if not is_target_property_type(prop_type):
+        return "not_target_property_type"
     if not listed_date or duration_days is None:
         return "missing_reliable_listing_date"
     if duration_days < params.min_days_on_market:
@@ -811,6 +826,8 @@ async def _run_location(
                     term in str(candidate.property_type or "").lower()
                     for term in RESIDENTIAL_EXCLUDE
                 ) and (
+                    candidate.property_type == "" or is_target_property_type(candidate.property_type)
+                ) and (
                     candidate_duration is None
                     or candidate_duration >= state.params.min_days_on_market
                 )
@@ -862,6 +879,8 @@ async def _run_location(
                     for term in RESIDENTIAL_EXCLUDE
                 ):
                     preliminary_reason = "not_residential_sale"
+                elif candidate.property_type and not is_target_property_type(candidate.property_type):
+                    preliminary_reason = "not_target_property_type"
                 elif (
                     candidate_listed_date is not None
                     and candidate_duration_days is not None
@@ -1006,7 +1025,7 @@ async def run_automatic_discovery_once(
         dry_run=False,
         max_candidates=max_candidates or _env_int("STALE_LISTINGS_MAX_CANDIDATES", 200),
         max_pages_per_location=max_pages_per_location or _env_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", 10),
-        min_price=_env_int("STALE_LISTINGS_MIN_PRICE", 300001),
+        min_price=_env_int("STALE_LISTINGS_MIN_PRICE", 500000),
         min_days_on_market=_env_int("STALE_LISTINGS_MIN_DAYS", 180),
         target_emails=max(0, target_emails),
     )

@@ -67,6 +67,15 @@ const accessQuery = (token: string | undefined, params: URLSearchParams) => {
 
 const priceLabel = (value?: number | null) => value ? new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(value) : '';
 
+// Mirrors _stale_prospect_checkout_amount in app/routers/stale_listings.py —
+// keep the two in sync if the tiers ever change.
+const unlockPrice = (askingPrice?: number | null) => {
+  const price = askingPrice || 0;
+  if (price >= 1_000_000) return 999.99;
+  if (price >= 500_000) return 499.99;
+  return 149.99;
+};
+
 const FINDING_ICONS: Record<string, string> = {
   price: '£', photos: '📷', description: '✏️', location: '📍', marketing: '●', condition: '🏠', timing: '⏱',
 };
@@ -170,7 +179,7 @@ export const StaleListingProspectPreview = () => {
                 <Link to={`/stale-listings/prospect/report?${query}`}>Open full report</Link>
               ) : (
                 <form className="slx-unlock-form" onSubmit={checkout}>
-                  <button type="submit" disabled={checkingOut}>{checkingOut ? 'Verifying…' : 'Unlock full report for £149.99'}</button>
+                  <button type="submit" disabled={checkingOut}>{checkingOut ? 'Verifying…' : `Unlock full report for £${unlockPrice(data.asking_price).toFixed(2)}`}</button>
                   <div className="slx-promo">
                     <input
                       type="text"

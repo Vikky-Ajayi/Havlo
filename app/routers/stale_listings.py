@@ -55,7 +55,12 @@ from app.services.stale_prospect_service import (
     send_prospect_letter_to_admin,
     snapshot_from_scrape,
 )
-from app.services.stale_listing_discovery import DiscoveryParams, run_discovery, serialize_discovery_run
+from app.services.stale_listing_discovery import (
+    DiscoveryParams,
+    is_target_property_type,
+    run_discovery,
+    serialize_discovery_run,
+)
 from app.services.sumup_service import SumUpError
 
 logger = logging.getLogger(__name__)
@@ -67,6 +72,25 @@ SL_PACKAGES: dict[str, dict] = {
     "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 149.99,  "currency": "GBP"},
     "free_trial_assessment":         {"name": "Free Trial Assessment",         "amount": 0.00,    "currency": "GBP"},
 }
+
+
+def _stale_prospect_checkout_amount(asking_price: float | None) -> float:
+    """Full-report checkout price for a letter prospect, tiered by asking price.
+
+    - >= GBP 1,000,000: GBP 999.99
+    - GBP 500,000 - 999,999.99: GBP 499.99
+    - below GBP 500,000: the original flat listing_recovery_assessment price.
+      Automated discovery no longer scrapes anything under GBP 500,000 (see
+      DiscoveryParams.min_price), so this only applies to prospects created
+      before that floor was raised — kept as-is rather than silently
+      repricing a backlog letter that already went out at the old price.
+    """
+    price = float(asking_price or 0)
+    if price >= 1_000_000:
+        return 999.99
+    if price >= 500_000:
+        return 499.99
+    return float(SL_PACKAGES["listing_recovery_assessment"]["amount"])
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
 admin_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings Admin"])
@@ -610,7 +634,7 @@ async def create_stale_prospect_checkout(
         property_code=payload.property_code,
     )
     package = SL_PACKAGES["listing_recovery_assessment"]
-    amount = float(package["amount"])
+    amount = _stale_prospect_checkout_amount(prospect.asking_price)
     currency = str(package["currency"])
     frontend = _frontend_base_url()
     access_key = f"token={payload.token.strip()}" if payload.token else f"code={prospect.property_code}"
@@ -765,8 +789,13 @@ async def create_stale_prospect_from_url(
     snapshot = snapshot_from_scrape(scraped, str(payload.rightmove_url))
     address = (payload.property_address or snapshot.get("address") or snapshot.get("title") or "").strip()
     price = payload.asking_price if payload.asking_price is not None else extract_price(snapshot.get("price"))
-    if price is None or price < 300000:
-        raise HTTPException(status_code=400, detail="Prospect must be a residential sale listing above GBP 300,000.")
+    if price is None or price < 500000:
+        raise HTTPException(status_code=400, detail="Prospect must be a residential sale listing above GBP 500,000.")
+    if not is_target_property_type(snapshot.get("property_type") or ""):
+        raise HTTPException(
+            status_code=400,
+            detail="Prospect must be a detached, semi-detached, or terraced house — flats, apartments, and other property types are not targeted.",
+        )
     if int(payload.listing_duration_days or 0) < 180:
         raise HTTPException(status_code=400, detail="Prospect must have been listed for at least 6 months.")
     if not is_specific_address(address):

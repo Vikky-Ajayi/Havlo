@@ -554,7 +554,7 @@ class StaleProspectAdminCreateRequest(BaseModel):
     rightmove_url: str = Field(..., min_length=8, max_length=2000)
     property_address: Optional[str] = Field(None, max_length=500)
     listing_duration_days: int = Field(180, ge=180)
-    asking_price: Optional[float] = Field(None, ge=300000)
+    asking_price: Optional[float] = Field(None, ge=500000)
 
 
 class StaleProspectPreviewResponse(BaseModel):
@@ -606,7 +606,7 @@ class StaleProspectDiscoveryRunRequest(BaseModel):
     location_names: Optional[list[str]] = None
     max_candidates: int = Field(25, ge=1, le=250)
     max_pages_per_location: int = Field(2, ge=1, le=10)
-    min_price: int = Field(300001, ge=300000)
+    min_price: int = Field(500000, ge=500000)
     min_days_on_market: int = Field(180, ge=180)
 
 
