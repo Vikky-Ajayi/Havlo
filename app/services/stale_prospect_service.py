@@ -375,6 +375,10 @@ async def generate_prospect_report(
         listing_url=rightmove_url,
         listing_snapshot=snapshot,
         expand_report=expand_report,
+        # We have only ever scraped this listing off Rightmove and mailed the
+        # homeowner a letter — nobody has told us about viewings, feedback,
+        # or offers. The report must not imply otherwise.
+        has_seller_survey=False,
     )
 
 

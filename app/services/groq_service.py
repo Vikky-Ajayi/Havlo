@@ -205,11 +205,27 @@ async def generate_stale_listing_report(
     listing_url: str = "",
     listing_snapshot: dict | None = None,
     expand_report: bool = True,
+    has_seller_survey: bool = True,
 ) -> dict:
     """
     Generate a structured stale listing analysis report using Groq LLM.
     Returns a dict matching StaleListingReportData schema.
     Falls back to a sensible default dict on any failure.
+
+    has_seller_survey distinguishes the two ways a report gets generated:
+
+    - True (default): the homeowner filled in the stale-listing form
+      themselves, answering real questions about viewings, buyer feedback,
+      price flexibility, and so on. The report can and should reference
+      those answers directly.
+    - False: this is an automated letter-prospect assessment built from
+      nothing but the public Rightmove listing (address, price, description,
+      photos, days on market). We have never spoken to this homeowner and
+      have no idea whether the property has had viewings, what feedback
+      buyers gave, or whether it has been under offer. Every prompt and
+      narrative fragment below must avoid asserting or implying any of
+      that — the report is grounded only in what the public listing itself
+      shows.
     """
     import asyncio as _aio
     import json
@@ -230,27 +246,49 @@ async def generate_stale_listing_report(
     if package not in {"quick_insight", "professional_review", "premium_strategy"}:
         package = "professional_review"
 
-    label_map = {
-        "q1_viewings": "Number of viewings since listing",
-        "q2_feedback": "Buyer feedback after viewings (may be multiple answers)",
-        "q3_under_offer": "Previously gone under offer and fallen through",
-        "q4_price_reduction": "Price reductions since launch",
-        "q5_flexibility": "Openness to adjusting pricing or marketing strategy",
-        "q6_marketing": "Current marketing channels used",
-        "q7_listing_features": "Listing features present (may be multiple)",
-        "q8_photos": "Satisfaction with listing photo quality",
-        "q9_asking_price": "Approximate asking price range",
-        "q10_challenge": "Biggest challenge currently facing",
-    }
+    if has_seller_survey:
+        label_map = {
+            "q1_viewings": "Number of viewings since listing",
+            "q2_feedback": "Buyer feedback after viewings (may be multiple answers)",
+            "q3_under_offer": "Previously gone under offer and fallen through",
+            "q4_price_reduction": "Price reductions since launch",
+            "q5_flexibility": "Openness to adjusting pricing or marketing strategy",
+            "q6_marketing": "Current marketing channels used",
+            "q7_listing_features": "Listing features present (may be multiple)",
+            "q8_photos": "Satisfaction with listing photo quality",
+            "q9_asking_price": "Approximate asking price range",
+            "q10_challenge": "Biggest challenge currently facing",
+        }
 
-    q_lines = []
-    for key, label in label_map.items():
-        val = questions_data.get(key, "Not provided")
-        if isinstance(val, list):
-            val = "; ".join(val) if val else "None selected"
-        q_lines.append(f"  {label}: {val}")
+        q_lines = []
+        for key, label in label_map.items():
+            val = questions_data.get(key, "Not provided")
+            if isinstance(val, list):
+                val = "; ".join(val) if val else "None selected"
+            q_lines.append(f"  {label}: {val}")
 
-    questionnaire = "\n".join(q_lines)
+        questionnaire = "\n".join(q_lines)
+    else:
+        # No homeowner has answered anything for this property — this is a
+        # cold letter-prospect assessment built purely from the scraped
+        # Rightmove listing. Telling the model that plainly (instead of
+        # silently handing it a page of "Not provided" answers) is what
+        # keeps it from inventing or implying viewing/feedback/offer detail.
+        _known_days = questions_data.get("days_on_market")
+        _known_days_line = (
+            f" We do know, precisely, that it has been listed for {int(_known_days)} days without selling — use that exact figure, do not estimate a different one."
+            if isinstance(_known_days, (int, float)) and _known_days
+            else ""
+        )
+        questionnaire = (
+            "No homeowner questionnaire exists for this property. This is an automated "
+            "outreach assessment based solely on the public Rightmove listing shown below "
+            "(address, asking price, description, photos, and property type)."
+            + _known_days_line
+            + " We have not spoken to this homeowner and have no information about "
+            "viewings, buyer feedback, enquiries, or offers — do not state, estimate, or "
+            "imply anything about any of those."
+        )
 
     snapshot = listing_snapshot if isinstance(listing_snapshot, dict) else {}
     property_lines = [
@@ -313,17 +351,52 @@ async def generate_stale_listing_report(
 
     property_anchor = _clean_scalar(snapshot.get("address") or property_address or snapshot.get("title") or "this property")
     price_anchor = _clean_scalar(snapshot.get("price") or questions_data.get("q9_asking_price") or "the current asking-price range")
-    viewings_summary = _clean_scalar(questions_data.get("q1_viewings")) or "an unclear level of viewings"
-    feedback_summary = _clean_scalar(questions_data.get("q2_feedback")) or "no detailed buyer feedback"
-    price_reduction_summary = _clean_scalar(questions_data.get("q4_price_reduction")) or "no clear record of price changes"
-    flexibility_summary = _clean_scalar(questions_data.get("q5_flexibility")) or "no clear statement on flexibility"
-    marketing_summary = _clean_scalar(questions_data.get("q6_marketing")) or "limited visibility on marketing channels"
     features_summary = _clean_scalar(snapshot.get("features") or questions_data.get("q7_listing_features")) or "few standout listing assets"
-    photo_summary = _clean_scalar(questions_data.get("q8_photos")) or "uncertain confidence in the current photo set"
-    challenge_summary = _clean_scalar(questions_data.get("q10_challenge")) or "slow buyer engagement"
     portal_summary = _clean_scalar(snapshot.get("platform")) or "the main portals already in use"
     description_summary = _clean_scalar(snapshot.get("description"))[:380]
-    comparable_anchor = f"The home is currently framed around {price_anchor}, the seller reports {viewings_summary}, buyer feedback has been recorded as {feedback_summary}, and the current marketing mix is {marketing_summary}."
+
+    if has_seller_survey:
+        viewings_summary = _clean_scalar(questions_data.get("q1_viewings")) or "an unclear level of viewings"
+        feedback_summary = _clean_scalar(questions_data.get("q2_feedback")) or "no detailed buyer feedback"
+        price_reduction_summary = _clean_scalar(questions_data.get("q4_price_reduction")) or "no clear record of price changes"
+        flexibility_summary = _clean_scalar(questions_data.get("q5_flexibility")) or "no clear statement on flexibility"
+        marketing_summary = _clean_scalar(questions_data.get("q6_marketing")) or "limited visibility on marketing channels"
+        photo_summary = _clean_scalar(questions_data.get("q8_photos")) or "uncertain confidence in the current photo set"
+        challenge_summary = _clean_scalar(questions_data.get("q10_challenge")) or "slow buyer engagement"
+        comparable_anchor = f"The home is currently framed around {price_anchor}, the seller reports {viewings_summary}, buyer feedback has been recorded as {feedback_summary}, and the current marketing mix is {marketing_summary}."
+    else:
+        # This is a cold letter prospect: we have never spoken to this
+        # homeowner. Nothing below may be attributed to "the seller" or to
+        # "buyer feedback" — every phrase is grounded only in what the
+        # public Rightmove listing itself shows (price, description, photo
+        # count, portal, and days on market). viewings/feedback/flexibility/
+        # challenge are deliberately left unset (None) as a tripwire: if any
+        # narrative branch below forgets to check has_seller_survey and
+        # tries to use one, it renders as the literal word "None" rather
+        # than a plausible-sounding invented answer.
+        duration_days_val = questions_data.get("days_on_market")
+        duration_summary = (
+            f"{int(duration_days_val)} days on the market with no recorded sale"
+            if isinstance(duration_days_val, (int, float)) and duration_days_val
+            else "an extended, unbroken stretch on the market"
+        )
+        photo_count = len(snapshot.get("images") or [])
+        photo_summary = (
+            f"{photo_count} listing photos"
+            if photo_count >= 4
+            else (
+                f"only {photo_count} listing photo{'s' if photo_count != 1 else ''}"
+                if photo_count
+                else "no photos visible in the current listing"
+            )
+        )
+        marketing_summary = f"{portal_summary} exposure, with nothing in the public listing suggesting a recent relaunch or refresh"
+        price_reduction_summary = "no visible evidence of a price change in the current listing"
+        viewings_summary = feedback_summary = flexibility_summary = challenge_summary = None
+        comparable_anchor = (
+            f"The home is currently marketed at {price_anchor} through {portal_summary}, has spent {duration_summary}, "
+            f"and the public listing shows {photo_summary} alongside {features_summary}."
+        )
 
     def _ensure_sentence(text: str) -> str:
         cleaned = _clean_copy(text)
@@ -342,16 +415,64 @@ async def generate_stale_listing_report(
                 continue
             output = f"{output}\n\n{addition}" if output else addition
             used.add(addition)
-        fallback = (
-            f"For {property_anchor}, the seller's own answers already tell a coherent commercial story. "
-            f"They describe {viewings_summary}, mention {feedback_summary}, and identify {challenge_summary} as the main obstacle. "
-            f"That is exactly the sort of evidence a good local valuer or instruction-winning agent would probe before deciding whether the next step should be pricing, presentation, marketing pressure, or a full relaunch."
-        )
+        if has_seller_survey:
+            fallback = (
+                f"For {property_anchor}, the seller's own answers already tell a coherent commercial story. "
+                f"They describe {viewings_summary}, mention {feedback_summary}, and identify {challenge_summary} as the main obstacle. "
+                f"That is exactly the sort of evidence a good local valuer or instruction-winning agent would probe before deciding whether the next step should be pricing, presentation, marketing pressure, or a full relaunch."
+            )
+        else:
+            fallback = (
+                f"For {property_anchor}, the public listing already tells a coherent commercial story on its own. "
+                f"It has spent {duration_summary} at {price_anchor}, with {photo_summary} and {marketing_summary}. "
+                f"That is exactly the sort of evidence a good local valuer or instruction-winning agent would use to decide whether the next step should be pricing, presentation, or a full relaunch."
+            )
         while len(output) < minimum:
             output = f"{output}\n\n{fallback}" if output else fallback
         return output
 
     def _finding_focus(icon: str, finding_type: str) -> str:
+        if not has_seller_survey:
+            if icon == "price":
+                return (
+                    f"Pricing is the first credibility check buyers apply, especially in the {price_anchor} bracket. "
+                    f"After {duration_summary}, buyers searching this price band start to wonder whether the number is realistic before they ever pick up the phone. "
+                    f"If the figure feels out of line for what else is available, buyers do not negotiate first, they usually move on to the next listing that looks easier to justify."
+                )
+            if icon == "photos":
+                return (
+                    f"Photos decide whether a home wins a second look, and the public listing currently shows {photo_summary}. "
+                    f"That matters because buyers scan dozens of options quickly, and weak first-frame presentation makes the property feel older, harder work, or poorer value even when the fundamentals are not the problem. "
+                    f"Once that impression sets in, the description has to work far too hard to recover interest."
+                )
+            if icon == "description":
+                return (
+                    f"The written listing has to translate features into buyer motivation, yet the current copy suggests {features_summary}. "
+                    f"When key selling points are buried, generic, or unsupported by the order of the copy, buyers conclude that the home lacks a compelling reason to book a viewing. "
+                    f"That is why a flat listing often struggles to convert portal interest even when the location or layout is decent."
+                )
+            if icon == "marketing":
+                return (
+                    f"Visibility is not just about being online, it is about being visible in the right places with a listing that feels active. "
+                    f"The public listing points to {marketing_summary}. "
+                    f"If that exposure is narrow or the listing looks unchanged for a long stretch, it starts slipping out of the active consideration set and becomes background noise to fresh buyers."
+                )
+            if icon == "location":
+                strength_lead = "A location-led strength only helps when the listing makes that advantage easy to recognise." if finding_type == "strength" else "Location can still be a drag if the listing fails to frame the right buyer story."
+                return (
+                    f"{strength_lead} For {property_anchor}, the market context still sits around {price_anchor}, and that means nearby competition will be judged very quickly on convenience, local reputation, and overall ease of living. "
+                    f"If the listing does not connect those strengths to why the buyer should care, the benefit remains latent rather than commercially useful."
+                )
+            if icon == "condition":
+                return (
+                    f"Condition issues are rarely judged in isolation. Buyers fold them into their mental estimate of time, effort, and post-move spend. "
+                    f"After {duration_summary} and with the listing showing {features_summary}, even small signs of neglect or unfinished presentation in the photos can push cautious buyers toward homes that feel easier to secure and easier to live in from day one."
+                )
+            return (
+                f"Timing matters because stale stock is interpreted differently from fresh stock. "
+                f"After {duration_summary} at {price_anchor}, buyers searching this area start to ask why the property is still available. "
+                f"That shifts the conversation from desire to doubt, and doubt is expensive in a market where buyers can move on quickly."
+            )
         if icon == "price":
             return (
                 f"Pricing is the first credibility check buyers apply, especially in the {price_anchor} bracket. "
@@ -396,6 +517,36 @@ async def generate_stale_listing_report(
     def _action_focus(title: str, priority: str, bullets: list[str]) -> str:
         title_lower = title.lower()
         steps_text = _clean_scalar(bullets) or "a short, specific delivery plan and a visible market response"
+        if not has_seller_survey:
+            if "photo" in title_lower or "image" in title_lower or "staging" in title_lower:
+                return (
+                    f"This action is about first impressions. The public listing currently shows {photo_summary}, so the market is probably deciding too much from a weak visual opening frame. "
+                    f"The supporting steps already suggest {steps_text}, and that matters because stronger imagery changes click-through quality before it changes anything else."
+                )
+            if "price" in title_lower or "pricing" in title_lower or "reduction" in title_lower:
+                return (
+                    f"This action is about regaining price credibility. The listing has spent {duration_summary} anchored around {price_anchor}, so any pricing move must look deliberate rather than desperate. "
+                    f"The suggested execution path, {steps_text}, should be handled as a repositioning exercise, not just a discount."
+                )
+            if "description" in title_lower or "copy" in title_lower or "listing" in title_lower:
+                return (
+                    f"This action is aimed at conversion quality. The listing currently has {features_summary}. "
+                    f"That means the wording must do a better job of connecting the strongest features to the practical reasons somebody would choose this home over the competing stock they are reviewing this week."
+                )
+            if "agent" in title_lower or "competition" in title_lower or "portal" in title_lower or "marketing" in title_lower:
+                return (
+                    f"This action is about market pressure and visibility. The public listing points to {marketing_summary}. "
+                    f"The steps already outlined, {steps_text}, need to be executed in a way that makes the listing feel refreshed, better targeted, and commercially easier to act on."
+                )
+            urgency_line = {
+                "URGENT": "This belongs at the top of the queue because it has the strongest chance of changing buyer behaviour in the next few days.",
+                "HIGH": "This should follow quickly because it improves the odds that the next wave of portal traffic converts more efficiently.",
+                "MEDIUM": "This is still worthwhile, but it delivers best value once the urgent blockers have already been tackled.",
+            }.get(priority, "This action matters because it improves the marketability of the property in a practical way.")
+            return (
+                f"{urgency_line} In this case the listing has spent {duration_summary} at {price_anchor}. "
+                f"The recommended delivery route, {steps_text}, should therefore be judged against a clear outcome: renewed portal visibility and a stronger reason for a buyer to move from curiosity into commitment."
+            )
         if "photo" in title_lower or "image" in title_lower or "staging" in title_lower:
             return (
                 f"This action is about first impressions. The current answers point to {photo_summary}, so the market is probably deciding too much from a weak visual opening frame. "
@@ -441,18 +592,32 @@ async def generate_stale_listing_report(
             if finding_type == "strength"
             else f"Until this is addressed, buyers will keep rationalising their hesitation with other stock that feels easier, cleaner, or better priced. That is why the issue is not just cosmetic, it is commercial."
         )
-        supplements = [
-            comparable_anchor,
-            _finding_focus(icon, finding_type),
-            tier_frame,
-            strength_frame,
-            (
-                f"The questionnaire also says the seller is {flexibility_summary} about changing strategy, and that matters because a stale listing normally improves only when the owner is willing to change either the presentation, the price story, the exposure, or the sequencing of all three."
-            ),
-            (
-                f"Viewed together, the case for {property_anchor} is not abstract. It is rooted in {viewings_summary}, feedback that reads as {feedback_summary}, the current photo position of {photo_summary}, and a stated challenge of {challenge_summary}. A serious agent would use that evidence to decide what to fix first rather than treating every issue as equally important."
-            ),
-        ]
+        if has_seller_survey:
+            supplements = [
+                comparable_anchor,
+                _finding_focus(icon, finding_type),
+                tier_frame,
+                strength_frame,
+                (
+                    f"The questionnaire also says the seller is {flexibility_summary} about changing strategy, and that matters because a stale listing normally improves only when the owner is willing to change either the presentation, the price story, the exposure, or the sequencing of all three."
+                ),
+                (
+                    f"Viewed together, the case for {property_anchor} is not abstract. It is rooted in {viewings_summary}, feedback that reads as {feedback_summary}, the current photo position of {photo_summary}, and a stated challenge of {challenge_summary}. A serious agent would use that evidence to decide what to fix first rather than treating every issue as equally important."
+                ),
+            ]
+        else:
+            supplements = [
+                comparable_anchor,
+                _finding_focus(icon, finding_type),
+                tier_frame,
+                strength_frame,
+                (
+                    "A stale listing normally only improves once the owner is willing to change the presentation, the price story, the exposure, or the sequencing of all three — that decision sits with the seller and their agent, not with this assessment."
+                ),
+                (
+                    f"Viewed together, the case for {property_anchor} is not abstract. It is rooted in {duration_summary}, the current asking position of {price_anchor}, {photo_summary}, and {marketing_summary}. A serious agent would use that evidence to decide what to fix first rather than treating every issue as equally important."
+                ),
+            ]
         return _pad_to_length(
             "\n\n".join([base_description, comparable_anchor, _finding_focus(icon, finding_type), tier_frame, strength_frame]),
             description_targets[selected_package],
@@ -469,20 +634,36 @@ async def generate_stale_listing_report(
             "professional_review": "For this plan, the action should not just fix a symptom. It should also improve how the property is positioned against the homes buyers are comparing it with right now.",
             "premium_strategy": "For this plan, the action should be treated as part of a broader relaunch sequence. It needs a clear owner, a clear order, and a clear test for whether it has improved the market response.",
         }[selected_package]
-        supplements = [
-            _action_focus(title, priority, bullets),
-            comparable_anchor,
-            tier_frame,
-            (
-                f"The owner has identified {challenge_summary} as the biggest challenge, so this step only earns its place if it tackles that obstacle directly. If it does not change the quality of enquiry, the tone of buyer feedback, or the speed of the next viewing request, it should be tightened and re-run quickly rather than left to drift."
-            ),
-            (
-                f"The delivery details matter. Current answers indicate {marketing_summary}, {price_reduction_summary}, and {photo_summary}. That combination means the action must be visible in the listing, obvious to the agent, and easy to monitor so the seller can judge whether it has improved click-through, viewings, or the seriousness of incoming conversations."
-            ),
-            (
-                f"For {property_anchor}, this is ultimately about recovering momentum. The aim is not just to complete a task list, it is to remove enough friction that a buyer who currently hesitates can picture a cleaner decision path and is more willing to book, revisit, or offer."
-            ),
-        ]
+        if has_seller_survey:
+            supplements = [
+                _action_focus(title, priority, bullets),
+                comparable_anchor,
+                tier_frame,
+                (
+                    f"The owner has identified {challenge_summary} as the biggest challenge, so this step only earns its place if it tackles that obstacle directly. If it does not change the quality of enquiry, the tone of buyer feedback, or the speed of the next viewing request, it should be tightened and re-run quickly rather than left to drift."
+                ),
+                (
+                    f"The delivery details matter. Current answers indicate {marketing_summary}, {price_reduction_summary}, and {photo_summary}. That combination means the action must be visible in the listing, obvious to the agent, and easy to monitor so the seller can judge whether it has improved click-through, viewings, or the seriousness of incoming conversations."
+                ),
+                (
+                    f"For {property_anchor}, this is ultimately about recovering momentum. The aim is not just to complete a task list, it is to remove enough friction that a buyer who currently hesitates can picture a cleaner decision path and is more willing to book, revisit, or offer."
+                ),
+            ]
+        else:
+            supplements = [
+                _action_focus(title, priority, bullets),
+                comparable_anchor,
+                tier_frame,
+                (
+                    f"After {duration_summary}, this step only earns its place if it tackles that head on. If it does not change the listing's visibility or its appeal in search results, it should be tightened and re-run quickly rather than left to drift."
+                ),
+                (
+                    f"The delivery details matter. The public listing currently shows {marketing_summary} and {photo_summary}. That combination means the action must be visible in the listing itself, obvious to the agent, and easy to monitor so the outcome can be judged by whether portal traffic and enquiries actually pick up."
+                ),
+                (
+                    f"For {property_anchor}, this is ultimately about recovering momentum. The aim is not just to complete a task list, it is to remove enough friction that a buyer scrolling past this listing has a clear reason to stop and look closer."
+                ),
+            ]
         return _pad_to_length(
             "\n\n".join([base_description, _action_focus(title, priority, bullets), tier_frame]),
             description_targets[selected_package],
@@ -495,22 +676,35 @@ async def generate_stale_listing_report(
         normalised.setdefault("comparable_sales", [])
         normalised.setdefault("pricing_recommendation_detail", "")
         normalised["pricing_recommendation"] = _ensure_sentence(normalised.get("pricing_recommendation") or "")
-        normalised["pricing_recommendation_detail"] = _pad_to_length(
-            _ensure_sentence(normalised.get("pricing_recommendation_detail") or normalised.get("pricing_recommendation") or "The price position needs to be reset against genuine buyer expectations."),
-            max(520, minimum_description_length // 2),
-            [
+        if has_seller_survey:
+            pricing_supplements = [
                 comparable_anchor,
                 f"Price sensitivity is tied directly to {viewings_summary} and {feedback_summary}. In this bracket, buyers respond quickly when a reduction or repositioning looks intentional and is paired with a refreshed listing rather than a tired one.",
                 f"The seller is currently dealing with {challenge_summary}, so price should be discussed as a lever for momentum, not as a standalone admission that the property was wrong before.",
-            ],
+            ]
+            summary_supplements = [
+                comparable_anchor,
+                f"The combination of {photo_summary}, {price_reduction_summary}, and {marketing_summary} is why the home is not currently converting interest with enough authority. A better result depends on sequencing the next changes properly and judging them against real market feedback rather than hope.",
+            ]
+        else:
+            pricing_supplements = [
+                comparable_anchor,
+                f"Price sensitivity is tied directly to {duration_summary}. In this bracket, buyers respond quickly when a reduction or repositioning looks intentional and is paired with a refreshed listing rather than a tired one.",
+                f"The listing has spent {duration_summary}, so price should be discussed as a lever for momentum, not as a standalone admission that the property was wrong before.",
+            ]
+            summary_supplements = [
+                comparable_anchor,
+                f"The combination of {photo_summary}, {price_reduction_summary}, and {marketing_summary} is why the home is not currently converting interest with enough authority. A better result depends on sequencing the next changes properly and judging them against what the public listing actually shows rather than assumptions about buyer response.",
+            ]
+        normalised["pricing_recommendation_detail"] = _pad_to_length(
+            _ensure_sentence(normalised.get("pricing_recommendation_detail") or normalised.get("pricing_recommendation") or "The price position needs to be reset against genuine buyer expectations."),
+            max(520, minimum_description_length // 2),
+            pricing_supplements,
         )
         normalised["executive_summary"] = _pad_to_length(
             _ensure_sentence(normalised.get("executive_summary") or "The property is behaving like a stale listing and needs a sharper relaunch plan."),
             620,
-            [
-                comparable_anchor,
-                f"The combination of {photo_summary}, {price_reduction_summary}, and {marketing_summary} is why the home is not currently converting interest with enough authority. A better result depends on sequencing the next changes properly and judging them against real market feedback rather than hope.",
-            ],
+            summary_supplements,
         )
 
         findings = normalised.get("key_findings") or []
@@ -526,11 +720,12 @@ async def generate_stale_listing_report(
             action["title"] = _clean_scalar(action.get("title")) or "Immediate corrective action"
             action["bullets"] = [_ensure_sentence(item) for item in action.get("bullets", []) if _clean_scalar(item)]
             while len(action["bullets"]) < 2:
-                action["bullets"].append(
-                    _ensure_sentence(
-                        f"Use this step to address {challenge_summary} and measure whether the market response improves within the next review cycle."
-                    )
+                filler = (
+                    f"Use this step to address {challenge_summary} and measure whether the market response improves within the next review cycle."
+                    if has_seller_survey
+                    else "Use this step to strengthen the listing's public position and measure whether portal visibility and enquiries improve within the next review cycle."
                 )
+                action["bullets"].append(_ensure_sentence(filler))
             action["bullets"] = action["bullets"][:2]
             action["description"] = _expand_action_copy(action, package)
 
@@ -696,6 +891,51 @@ PROFESSIONAL REVIEW format rules:
         max_tokens_val = 4000
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Professional Review report that is noticeably more analytical and strategic than Quick Insight while staying deeply specific to this homeowner's data. Write like a seasoned human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
+    if not has_seller_survey:
+        # This is a cold letter-prospect assessment: nobody has answered any
+        # questions about this property. The tier-specific task_block above
+        # was written for the self-service flow and repeatedly tells the
+        # model to cite viewings, buyer feedback, and under-offer history —
+        # none of which exist here. This override takes precedence over
+        # every one of those instructions.
+        task_block += """
+
+DATA AVAILABILITY OVERRIDE — this takes precedence over every dimension and format
+rule above:
+This is a cold outreach assessment. There is no homeowner questionnaire behind it —
+nobody has told us anything about viewings, buyer feedback, enquiry levels, or whether
+the property has been under offer. You only have the public Rightmove listing itself:
+address, asking price, description, photos, property type, and days on market
+computed from the listing's own dates.
+
+Wherever the dimensions or format rules above refer to viewings, buyer feedback,
+enquiry activity, under-offer history, "the seller reports", or "the homeowner says",
+ignore those specific data points entirely. Do not invent, estimate, or imply a number
+of viewings, a feedback quote, or an offer history under any circumstance — this is an
+absolute rule, not a stylistic preference. Ground every finding and action only in
+what is actually knowable: how long the property has been listed, how it is priced,
+what the description and photos communicate, and what a buyer scrolling past a
+listing this stale would reasonably conclude. Frame every observation as what the
+public listing itself suggests to a buyer, never as something the seller told you."""
+        system_msg += " This is an automated cold-outreach assessment with no homeowner questionnaire behind it — base every claim only on the public listing itself, and never state or imply a viewing count, buyer feedback, or offer history, since none of that data exists for this property."
+
+    if has_seller_survey:
+        overall_score_rule = "honest saleability score — be tough. 0-40 = serious problems, 41-60 = significant issues, 61-75 = moderate issues, 76-100 = minor polish needed. Low viewings + no price drops + poor photos = max 55"
+        pricing_score_rule = "low if buyers gave price feedback or if no reductions despite long time on market. 0-35 = confirmed overpriced. 36-55 = likely overpriced. 56-70 = borderline. 71+ = reasonable for the market"
+        finding_description_rule = "as per format rules above — specific to THIS property's answers"
+        summary_rule = "as per format rules above — written for THIS homeowner, references their specific answers"
+        absolute_rule_1 = "NEVER use generic placeholder descriptions. Every sentence must reference THIS homeowner's actual questionnaire answers."
+        absolute_rule_2 = "overall_score: calibrate against the number of viewings, buyer feedback, price reductions, portal coverage, and photo quality. Most stale listings score 35–60."
+        absolute_rule_price = "pricing_recommendation and pricing_recommendation_detail must reference the actual price range from q9_asking_price."
+    else:
+        overall_score_rule = "honest saleability score — be tough. 0-40 = serious problems, 41-60 = significant issues, 61-75 = moderate issues, 76-100 = minor polish needed. Long time on market + weak description + few photos = max 55"
+        pricing_score_rule = "low if the price looks out of step with a listing that has sat unsold this long. 0-35 = confirmed overpriced for how long it has been on market. 36-55 = likely overpriced. 56-70 = borderline. 71+ = reasonable for the market"
+        finding_description_rule = "as per format rules above — specific to THIS property's public listing details, never a viewing count, feedback quote, or offer history"
+        summary_rule = "as per format rules above — written for this homeowner based only on the public listing, never referencing viewings, feedback, or offers"
+        absolute_rule_1 = "NEVER use generic placeholder descriptions. Every sentence must reference THIS property's actual public listing details (price, description, photos, days on market) — never invent or imply a viewing count, buyer feedback, or offer history, since none of that data exists for this property."
+        absolute_rule_2 = "overall_score: calibrate against days on market, price positioning, listing content quality, and photo count. Most stale listings score 35–60."
+        absolute_rule_price = "pricing_recommendation and pricing_recommendation_detail must reference the actual asking price from the listing itself."
+
     schema_block = f"""
 {property_context}
 
@@ -707,18 +947,18 @@ Questionnaire answers:
 Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text before or after the JSON):
 
 {{
-  "overall_score": <integer 0-100, honest saleability score — be tough. 0-40 = serious problems, 41-60 = significant issues, 61-75 = moderate issues, 76-100 = minor polish needed. Low viewings + no price drops + poor photos = max 55>,
+  "overall_score": <integer 0-100, {overall_score_rule}>,
   "days_on_market": <integer estimate based on signals: multiple price reductions suggests 90+ days, no reductions + few viewings suggests 60-90 days. Return null only if truly impossible to estimate>,
   "scores": {{
     "photos": <integer 0-100 — be strict. "Not satisfied" with photos = 20-40. "Somewhat satisfied" = 40-60. "Very satisfied" (but still stale) = 55-70. Only 80+ if there is clear evidence of professional photography AND the listing is not stale>,
-    "pricing": <integer 0-100 — low if buyers gave price feedback or if no reductions despite long time on market. 0-35 = confirmed overpriced. 36-55 = likely overpriced. 56-70 = borderline. 71+ = reasonable for the market>,
+    "pricing": <integer 0-100 — {pricing_score_rule}>,
     "description": <integer 0-100 based on whether detailed description and key features are present>,
     "positioning": <integer 0-100 based on portal coverage, marketing channels, and listing assets>
   }},
   "key_findings": [
     {{
       "title": "<concise, specific issue or strength — max 8 words, no generic titles>",
-      "description": "<as per format rules above — specific to THIS property's answers>",
+      "description": "<{finding_description_rule}>",
       "type": "<'issue' or 'strength'>",
       "icon": "<one of: price | photos | description | location | marketing | condition | timing>"
     }}
@@ -745,19 +985,26 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
   ],
   "pricing_recommendation": "<one decisive sentence with a specific recommended price or percentage adjustment — not vague>",
   "pricing_recommendation_detail": "<as per format rules above — specific, analytical, references actual asking price>",
-  "executive_summary": "<as per format rules above — written for THIS homeowner, references their specific answers>"
+  "executive_summary": "<{summary_rule}>"
 }}
 
 ABSOLUTE RULES — breaking any of these is a failure:
-- NEVER use generic placeholder descriptions. Every sentence must reference THIS homeowner's actual questionnaire answers.
-- overall_score: calibrate against the number of viewings, buyer feedback, price reductions, portal coverage, and photo quality. Most stale listings score 35–60.
-- All scores (photos, pricing, description, positioning) must be individually calibrated to the answers, not averaged or approximated.
+- {absolute_rule_1}
+- {absolute_rule_2}
+- All scores (photos, pricing, description, positioning) must be individually calibrated to the available evidence, not averaged or approximated.
 - comparable_sales: always exactly 4 entries. Entry 4 must have is_subject: true and show the current asking price. The first 3 show sold prices (typically 3–12% below asking).
 - key_findings icons: only use values from: price, photos, description, location, marketing, condition, timing.
 - action_plan priorities: only use: URGENT, HIGH, MEDIUM. Must be in descending priority order.
 - Each action_plan item must have exactly 2 bullets. Each bullet must be a complete sentence.
-- pricing_recommendation and pricing_recommendation_detail must reference the actual price range from q9_asking_price.
+- {absolute_rule_price}
 - Do NOT use filler phrases like "leveraging synergies", "holistic approach", or "maximise your property's potential". Write like a direct, experienced human professional."""
+    if not has_seller_survey:
+        schema_block += (
+            "\n- Never write or imply a specific number of viewings, a buyer feedback quote, an enquiry "
+            "count, or an under-offer history anywhere in the report — none of that data exists for this "
+            "property. Base every claim only on the public listing (price, description, photos, property "
+            "type, days on market)."
+        )
 
     prompt = schema_block
 
@@ -810,7 +1057,11 @@ Return ONLY valid JSON with additive copy. Do not repeat the existing text.
 Make every addition specific to the property and questionnaire context below.
 Use clear UK property language, buyer behaviour, market positioning, and
 commercial consequences. Never use em dashes.
-
+{"" if has_seller_survey else (
+    "This is a cold outreach assessment with no homeowner questionnaire — never state, "
+    "estimate, or imply a viewing count, buyer feedback, or offer history anywhere in "
+    "your additions; base every addition only on the public listing described below.\n"
+)}
 Property context:
 {property_context[:2600]}
 
@@ -837,6 +1088,13 @@ Return this exact shape:
                     "content": (
                         "You are a senior UK property sales consultant. "
                         "Return only valid JSON and add useful detail without filler."
+                        if has_seller_survey
+                        else (
+                            "You are a senior UK property sales consultant working from a public "
+                            "listing only, with no homeowner questionnaire. Return only valid JSON, "
+                            "add useful detail without filler, and never state or imply a viewing "
+                            "count, buyer feedback, or offer history."
+                        )
                     ),
                 },
                 {"role": "user", "content": expansion_prompt},
@@ -974,6 +1232,105 @@ Return this exact shape:
         "executive_summary": "Your property is showing the classic signs of a stale listing: declining portal visibility, discouraging or absent buyer feedback, and presentation that isn't converting views into viewings. The good news is that all of these issues are fixable — and quickly. A combination of fresh photography, a realistic price adjustment, and an updated description can reignite genuine buyer interest within 2–3 weeks.",
     }
 
+    # Used only if the Groq call itself fails outright (rare) for a cold
+    # letter-prospect assessment. Must not repeat _DEFAULT_REPORT's viewing/
+    # feedback framing above — that would be exactly the misleading claim
+    # this whole has_seller_survey path exists to prevent.
+    _DEFAULT_REPORT_PUBLIC: dict = {
+        "overall_score": 48,
+        "days_on_market": None,
+        "scores": {"photos": 42, "pricing": 50, "description": 45, "positioning": 40},
+        "key_findings": [
+            {
+                "title": "Listing has been stale for a long stretch",
+                "description": "A long, unbroken run on the market without selling is itself a signal to buyers browsing the portal, independent of anything about who has or hasn't looked at it.",
+                "type": "issue",
+                "icon": "timing",
+            },
+            {
+                "title": "Asking price needs review",
+                "description": "The current asking price may be misaligned with what active buyers in this area are willing to pay for a property that has been listed this long.",
+                "type": "issue",
+                "icon": "price",
+            },
+            {
+                "title": "Photography may be undermining first impressions",
+                "description": "Listing photos are the single biggest driver of click-through from portals. Weak or dated photos significantly reduce how many buyers stop to look closer.",
+                "type": "issue",
+                "icon": "photos",
+            },
+            {
+                "title": "Description doesn't convert browsers",
+                "description": "The listing description is not working hard enough to convert portal views into booking requests — key selling points are likely buried or missing.",
+                "type": "issue",
+                "icon": "description",
+            },
+            {
+                "title": "Location fundamentals are sound",
+                "description": "The property's core location attributes are attractive to the right buyer. With improved presentation and realistic pricing, renewed interest should be achievable.",
+                "type": "strength",
+                "icon": "location",
+            },
+        ],
+        "action_plan": [
+            {
+                "priority": "URGENT",
+                "title": "Commission professional photography immediately",
+                "description": "New photos will reset the listing's appearance of freshness and improve click-through rates from portal searches.",
+                "bullets": [
+                    "Book a local property photographer this week — aim to reshoot within 7 days.",
+                    "Update all portal images simultaneously to trigger a 'recently updated' visibility boost.",
+                ],
+            },
+            {
+                "priority": "URGENT",
+                "title": "Review asking price against recent sold comparables",
+                "description": "Compare against properties that actually sold in the past 90 days — not just listed.",
+                "bullets": [
+                    "Use Rightmove's sold prices tool to find comparables within 0.5 miles sold in the last 90 days.",
+                    "Discuss a targeted 3–5% reduction with your agent — this often unlocks a significantly larger active buyer pool.",
+                ],
+            },
+            {
+                "priority": "HIGH",
+                "title": "Rewrite the listing description",
+                "description": "Restructure the copy to lead immediately with the property's strongest selling points.",
+                "bullets": [
+                    "Open with the top 2–3 benefits — garden, parking, school catchment — in the very first sentence.",
+                    "Add a short 'Key Features' bullet list near the top of the portal listing.",
+                ],
+            },
+            {
+                "priority": "HIGH",
+                "title": "Expand portal and marketing presence",
+                "description": "Widen exposure beyond a single portal to reach buyers who search across multiple platforms.",
+                "bullets": [
+                    "Ensure the listing is live on both Rightmove and Zoopla — and OnTheMarket if not already.",
+                    "Ask the agent to share it on social media with targeted local buyer groups.",
+                ],
+            },
+            {
+                "priority": "MEDIUM",
+                "title": "Add missing listing assets",
+                "description": "Complete listing assets improve search ranking and buyer confidence.",
+                "bullets": [
+                    "Add a floor plan if not present — listings with floor plans consistently convert better.",
+                    "Ensure the lead photo is the strongest exterior shot, taken in good daylight.",
+                ],
+            },
+        ],
+        "comparable_sales": [
+            {"address": "14 Maple Street, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£362,000", "is_subject": False},
+            {"address": "7 Oak Avenue, nearby area", "beds": 3, "property_type": "Terrace", "sold_asking": "£355,000", "is_subject": False},
+            {"address": "22 Birch Lane, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£368,000", "is_subject": False},
+            {"address": "Subject property", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£385,000 asking", "is_subject": True},
+        ],
+        "pricing_recommendation": "A targeted 3–5% reduction to align with recent comparables would re-enter the property into active buyer searches at a competitive price point.",
+        "pricing_recommendation_detail": "A price change triggers a 'Price Reduced' flag on Rightmove, generating renewed attention from buyers who have already saved the listing. Properties that reduce by 3–5% and simultaneously refresh their photos consistently see a surge in enquiries within 2 weeks of relaunching.",
+        "executive_summary": "This property is showing the classic signs of a stale listing: a long stretch on the market, presentation that may not be converting portal views, and a price position worth re-testing against recent comparables. The good news is that these issues are fixable — and quickly. A combination of fresh photography, a realistic price adjustment, and an updated description can reignite genuine buyer interest within 2–3 weeks.",
+    }
+    _default_report = _DEFAULT_REPORT if has_seller_survey else _DEFAULT_REPORT_PUBLIC
+
     def _extract_json(raw: str) -> dict:
         """Strip markdown fences and extract the outermost JSON object."""
         import re
@@ -1049,4 +1406,4 @@ Return this exact shape:
         return _normalise_report_output(parsed)
     except Exception as exc:
         logger.error("Stale listing report generation failed, using fallback: %s", exc)
-        return _normalise_report_output(deepcopy(_DEFAULT_REPORT))
+        return _normalise_report_output(deepcopy(_default_report))
