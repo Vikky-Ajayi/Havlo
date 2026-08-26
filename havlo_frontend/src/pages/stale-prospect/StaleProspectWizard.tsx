@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   confirmProspectProperty,
@@ -22,6 +22,36 @@ import {
 
 // ── Small shared bits ──────────────────────────────────────────────────────
 
+// Same icon set as the "Homes that sit too long..." section on
+// StaleListingsLanding.tsx, which this section's copy was taken from —
+// reused verbatim rather than re-drawn so the house/bulb/handshake marks
+// are pixel-identical to the rest of the site instead of rough approximations.
+const PURPLE = '#A409D2';
+const HouseIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 19.9825V24.1665C5 29.6662 5 32.416 6.70855 34.1247C8.41708 35.8332 11.1669 35.8332 16.6667 35.8332H23.3333C28.833 35.8332 31.5828 35.8332 33.2915 34.1247C35 32.416 35 29.6662 35 24.1665V19.9825C35 17.1803 35 15.7794 34.4068 14.5666C33.8137 13.3538 32.7078 12.4936 30.496 10.7734L27.1627 8.18075C23.7218 5.50459 22.0015 4.1665 20 4.1665C17.9985 4.1665 16.2782 5.50459 12.8374 8.18075L9.50402 10.7734C7.29222 12.4936 6.18632 13.3538 5.59317 14.5666C5 15.7794 5 17.1803 5 19.9825Z" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M28.333 29.1667V22.5" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const BulbIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.149 24.9986C9.51836 23.5809 9.16675 22.0038 9.16675 20.3418C9.16675 14.1692 14.017 9.16528 20.0001 9.16528C25.9832 9.16528 30.8334 14.1692 30.8334 20.3418C30.8334 22.0038 30.4818 23.5809 29.8511 24.9986" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
+    <path d="M20 3.33191V4.99858" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M36.6667 19.9988H35" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M4.99992 19.9988H3.33325" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M31.784 8.21313L30.6055 9.39165" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9.39458 9.39324L8.21606 8.21472" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M24.1951 32.1759C25.8791 31.6313 26.5544 30.0899 26.7444 28.5396C26.8011 28.0764 26.4201 27.6923 25.9534 27.6923L14.1282 27.6926C13.6455 27.6926 13.2579 28.1023 13.3155 28.5814C13.5016 30.1288 13.9713 31.2591 15.7558 32.1759M24.1951 32.1759C24.1951 32.1759 16.0496 32.1759 15.7558 32.1759M24.1951 32.1759C23.9926 35.4176 23.0564 36.7014 20.0114 36.6654C16.7544 36.7256 16.0051 35.1388 15.7558 32.1759" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const HandshakeIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M36.6663 11.2498H32.0182C31.0163 11.2498 30.5153 11.2498 30.043 11.1068C29.5707 10.9638 29.1538 10.6859 28.3202 10.1302C27.0698 9.29655 25.6433 8.34559 24.9347 8.13104C24.2262 7.9165 23.4747 7.9165 21.9718 7.9165C19.9282 7.9165 18.6108 7.9165 17.692 8.2971C16.7732 8.6777 16.0506 9.40029 14.6055 10.8454L13.3337 12.1172C13.008 12.4429 12.8451 12.6058 12.7446 12.7665C12.3719 13.3625 12.4132 14.1283 12.8478 14.6807C12.9651 14.8297 13.1445 14.9741 13.5033 15.2629C14.8296 16.3302 16.7417 16.2237 17.9427 15.0155L19.9997 12.9463H21.6663L31.6663 23.0058C32.5868 23.9318 32.5868 25.433 31.6663 26.359C30.7458 27.285 29.2535 27.285 28.333 26.359L27.4997 25.5206M22.4997 27.1973L24.1663 28.8738C25.0868 29.7998 26.5792 29.7998 27.4997 28.8738C28.4202 27.948 28.4202 26.4466 27.4997 25.5206L22.4997 20.491M19.1663 23.864L22.4997 27.1973C23.4202 28.1231 23.4202 29.6245 22.4997 30.5505C21.5792 31.4763 20.0868 31.4763 19.1663 30.5505L16.6663 28.0355M3.33301 24.5831H3.86457C5.24647 24.5831 5.93744 24.5831 6.55692 24.8435C7.17641 25.104 7.65992 25.5975 8.62696 26.5846L13.333 31.3888C14.2535 32.3146 15.7459 32.3146 16.6663 31.3888C17.5868 30.4628 17.5868 28.9615 16.6663 28.0355L15.833 27.1973" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M36.6667 24.5835H32.5" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
+    <path d="M14.1663 11.25H3.33301" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
+
 const UkFlag = () => (
   <svg viewBox="0 0 60 30" className="slw-uk-flag" aria-hidden="true">
     <rect width="60" height="30" fill="#00247d" />
@@ -33,10 +63,7 @@ const UkFlag = () => (
 );
 
 const HavloLogo = () => (
-  <div className="slw-logo">
-    <span className="slw-logo-mark">H&#7488;VLO</span>
-    <span className="slw-logo-sub">StaleListings</span>
-  </div>
+  <img className="slw-logo-mark" src="/stale-listings/stale-listings-logo.svg" alt="Havlo StaleListings" />
 );
 
 const Header = () => {
@@ -90,12 +117,23 @@ const GoBack = ({ onClick }: { onClick: () => void }) => (
 
 const Stepper = ({ step }: { step: WizardStep }) => {
   const activeIndex = stepperIndexFor(step);
+  const activeRef = useRef<HTMLLIElement | null>(null);
+
+  // On narrow viewports the stepper scrolls horizontally instead of
+  // wrapping (matches the mobile design, which shows the active step
+  // centered with neighbours peeking at both edges) — without this, later
+  // steps render off-screen to the right with no indication to scroll.
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [activeIndex]);
+
   return (
     <div className="slw-stepper-wrap slw-noprint">
       <ol className="slw-stepper">
         {STEPPER_ITEMS.map((item, index) => (
           <li
             key={item.key}
+            ref={index === activeIndex ? activeRef : undefined}
             className={
               index === activeIndex ? 'slw-step-active' : index < activeIndex ? 'slw-step-done' : ''
             }
@@ -127,6 +165,13 @@ const LandingStep = ({
     e.preventDefault();
     if (code.trim()) onSubmit(code.trim());
   };
+  const handleCodeChange = (value: string) => {
+    const next = value.replace(/\D/g, '').slice(0, 4);
+    setCode(next);
+    if (next.length === 4 && !loading) {
+      window.setTimeout(() => onSubmit(next), 80);
+    }
+  };
   return (
     <>
       <section className="slw-hero">
@@ -145,17 +190,19 @@ const LandingStep = ({
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
             <input
               type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
               placeholder="Enter property ID"
               value={code}
-              maxLength={12}
-              onChange={(e) => setCode(e.target.value)}
+              maxLength={4}
+              onChange={(e) => handleCodeChange(e.target.value)}
             />
           </label>
           <p className="slw-id-hint">
             <span className="slw-info-dot">i</span> Your Property ID can be found on the letter you received from Havlo.
           </p>
           {error && <p className="slw-error">{error}</p>}
-          <button type="submit" className="slw-btn-black slw-id-submit" disabled={loading}>
+          <button type="submit" className="slw-btn-black slw-id-submit" disabled={loading} aria-label="Find my property">
             {loading ? 'Searching…' : 'Find My Property'}
           </button>
         </form>
@@ -183,17 +230,17 @@ const LandingStep = ({
         </h2>
         <div className="slw-value-grid">
           <div>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 11l9-8 9 8M5 10v10h14V10" /></svg>
+            <HouseIcon />
             <h3>Spot What Buyers Notice</h3>
             <p>Uncover the small issues that can reduce buyer interest and slow down your sale.</p>
           </div>
           <div>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></svg>
+            <BulbIcon />
             <h3>Expert-Backed Selling Insights</h3>
             <p>Combine data-driven analysis with experienced local property expertise.</p>
           </div>
           <div>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M11 17l2 2 4-4M3 12l4-4 4 4M7 8v9M21 12l-4-4-4 4M17 8v9" /></svg>
+            <HandshakeIcon />
             <h3>Works With Your Current Agent</h3>
             <p>Use our recommendations alongside your existing estate agent, no switching required.</p>
           </div>
@@ -351,30 +398,39 @@ const DetailsStep = ({
 // ── Shared: saleability gauge ──────────────────────────────────────────────
 
 const SaleabilityGauge = ({ score, size = 190 }: { score: number; size?: number }) => {
-  // Semicircle gauge, 0-100 mapped left-to-right across 180deg, needle
-  // rotates from -90deg (score 0) to +90deg (score 100).
-  const angle = -90 + (Math.min(100, Math.max(0, score)) / 100) * 180;
+  const angle = 180 - (Math.min(100, Math.max(0, score)) / 100) * 180;
   const r = size / 2 - 14;
   const cx = size / 2;
   const cy = size / 2;
+  const point = (deg: number, radius = r) => ({
+    x: cx + radius * Math.cos((deg * Math.PI) / 180),
+    y: cy - radius * Math.sin((deg * Math.PI) / 180),
+  });
+  const arcPath = (from: number, to: number) => {
+    const start = point(from);
+    const end = point(to);
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
+  };
+  const segments = [
+    { from: 180, to: 148, color: '#F03A17' },
+    { from: 140, to: 108, color: '#FF8A00' },
+    { from: 100, to: 68, color: '#D7D93A' },
+    { from: 60, to: 28, color: '#3FD88E' },
+    { from: 20, to: 0, color: '#09D9B2' },
+  ];
   return (
     <div className="slw-gauge" style={{ width: size, height: size / 2 + 40 }}>
       <svg width={size} height={size / 2 + 20} viewBox={`0 0 ${size} ${size / 2 + 20}`}>
-        <defs>
-          <linearGradient id="slw-gauge-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#E33709" />
-            <stop offset="35%" stopColor="#F5A623" />
-            <stop offset="65%" stopColor="#E9D400" />
-            <stop offset="100%" stopColor="#00E9B2" />
-          </linearGradient>
-        </defs>
-        <path
-          d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
-          fill="none"
-          stroke="url(#slw-gauge-grad)"
-          strokeWidth="10"
-          strokeLinecap="round"
-        />
+        {segments.map((segment) => (
+          <path
+            key={segment.color}
+            d={arcPath(segment.from, segment.to)}
+            fill="none"
+            stroke={segment.color}
+            strokeWidth="13"
+            strokeLinecap="round"
+          />
+        ))}
         <path
           d={`M ${cx - r - 8} ${cy} A ${r + 8} ${r + 8} 0 0 1 ${cx + r + 8} ${cy}`}
           fill="none"
@@ -386,7 +442,7 @@ const SaleabilityGauge = ({ score, size = 190 }: { score: number; size?: number 
           x1={cx}
           y1={cy}
           x2={cx + r * 0.72 * Math.cos((angle * Math.PI) / 180)}
-          y2={cy + r * 0.72 * Math.sin((angle * Math.PI) / 180)}
+          y2={cy - r * 0.72 * Math.sin((angle * Math.PI) / 180)}
           stroke="#111"
           strokeWidth="2.5"
           strokeLinecap="round"
@@ -527,6 +583,16 @@ const FINDING_ICONS: Record<string, string> = {
 
 // ── Step: Payment ───────────────────────────────────────────────────────────
 
+const CardMethodIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><rect x="2" y="5" width="20" height="14" rx="2.5" /><path d="M2 10h20" /><path d="M6 15h4" /></svg>
+);
+const BankMethodIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><path d="M3 10l9-6 9 6" /><path d="M4 10v9M9 10v9M15 10v9M20 10v9" /><path d="M2 21h20" /></svg>
+);
+const CryptoMethodIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.5 8.5h3.2a1.9 1.9 0 0 1 0 3.8H9.5m0-3.8V16m0-3.7h3.6a1.9 1.9 0 0 1 0 3.7H9.5m0 0V16M11 7v1.5M11 16v1.5M13.5 7v1.5M13.5 16v1.5" /></svg>
+);
+
 const PaymentStep = ({
   prospect,
   onPayCard,
@@ -542,10 +608,17 @@ const PaymentStep = ({
   loading: boolean;
   error: string;
 }) => {
-  const [method, setMethod] = useState<'card' | 'bank_transfer'>('card');
+  const [method, setMethod] = useState<'card' | 'bank_transfer' | 'crypto'>('card');
+  const [showCryptoContact, setShowCryptoContact] = useState(false);
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const price = unlockPrice(prospect.asking_price);
+
+  const handlePayClick = () => {
+    if (method === 'card') onPayCard();
+    else if (method === 'bank_transfer') onPayBankTransfer();
+    else setShowCryptoContact(true);
+  };
 
   return (
     <section className="slw-payment">
@@ -553,13 +626,17 @@ const PaymentStep = ({
       <div className="slw-payment-grid">
         <div className="slw-payment-methods">
           <b>Select a payment method to continue.</b>
-          <button type="button" className={`slw-method ${method === 'card' ? 'slw-method-active' : ''}`} onClick={() => setMethod('card')}>
-            <span className="slw-method-icon">💳</span>
+          <button type="button" className={`slw-method ${method === 'card' ? 'slw-method-active' : ''}`} onClick={() => { setMethod('card'); setShowCryptoContact(false); }}>
+            <span className="slw-method-icon"><CardMethodIcon /></span>
             <span><b>Card</b><small>Visa, Amex, MasterCard, Verve</small></span>
           </button>
-          <button type="button" className={`slw-method ${method === 'bank_transfer' ? 'slw-method-active' : ''}`} onClick={() => setMethod('bank_transfer')}>
-            <span className="slw-method-icon">🏦</span>
+          <button type="button" className={`slw-method ${method === 'bank_transfer' ? 'slw-method-active' : ''}`} onClick={() => { setMethod('bank_transfer'); setShowCryptoContact(false); }}>
+            <span className="slw-method-icon"><BankMethodIcon /></span>
             <span><b>Bank Transfer</b><small>Pay Directly from your Bank</small></span>
+          </button>
+          <button type="button" className={`slw-method ${method === 'crypto' ? 'slw-method-active' : ''}`} onClick={() => { setMethod('crypto'); setShowCryptoContact(false); }}>
+            <span className="slw-method-icon"><CryptoMethodIcon /></span>
+            <span><b>Crypto</b><small>BTC, ETH, USDT</small></span>
           </button>
         </div>
         <div className="slw-payment-summary">
@@ -583,6 +660,19 @@ const PaymentStep = ({
             <div><span>Reference (required)</span><b>{bankDetails.reference}</b></div>
           </div>
         </div>
+      ) : showCryptoContact ? (
+        <div className="slw-bank-details">
+          <b>Pay with crypto</b>
+          <p>
+            Crypto payment for this report is arranged directly with our team so we can confirm
+            the network and current exchange rate with you first. Email{' '}
+            <a href="mailto:myhavloservices@gmail.com?subject=Crypto%20payment%20-%20Property%20{prospect.property_code}">
+              myhavloservices@gmail.com
+            </a>{' '}
+            with your Property ID ({prospect.property_code}) and we&rsquo;ll send you payment
+            details and unlock your report once received.
+          </p>
+        </div>
       ) : (
         <>
           {error && <p className="slw-error">{error}</p>}
@@ -590,9 +680,15 @@ const PaymentStep = ({
             type="button"
             className="slw-btn-black slw-pay-btn"
             disabled={loading}
-            onClick={method === 'card' ? onPayCard : onPayBankTransfer}
+            onClick={handlePayClick}
           >
-            {loading ? 'Processing…' : method === 'card' ? `Pay ${formatGbp(price, { maximumFractionDigits: 2 })} & View My Report` : 'Get Bank Transfer Details'}
+            {loading
+              ? 'Processing…'
+              : method === 'card'
+                ? `Pay ${formatGbp(price, { maximumFractionDigits: 2 })} & View My Report`
+                : method === 'bank_transfer'
+                  ? 'Get Bank Transfer Details'
+                  : 'Pay With Crypto'}
           </button>
         </>
       )}
@@ -612,7 +708,13 @@ const SuccessStep = ({
   onDownloadPdf: () => void;
 }) => (
   <section className="slw-success">
-    <div className="slw-success-check">✓</div>
+    <svg className="slw-success-check" width="80" height="80" viewBox="0 0 80 80" fill="none">
+      <path
+        d="M40 4l4.7 6.2 7.4-2.6 2.4 7.5 7.8.4-.4 7.8 7.5 2.4-2.6 7.4L73 40l-6.2 4.7 2.6 7.4-7.5 2.4-.4 7.8-7.8-.4-2.4 7.5-7.4-2.6L40 73l-4.7-6.2-7.4 2.6-2.4-7.5-7.8-.4.4-7.8-7.5-2.4 2.6-7.4L4 40l6.2-4.7-2.6-7.4 7.5-2.4.4-7.8 7.8.4 2.4-7.5 7.4 2.6L40 4z"
+        fill="#d1fae5"
+      />
+      <path d="M27 41l9 9 17-17" stroke="#059669" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
     <h1>Your full assessment is ready</h1>
     <p>Your complete Havlo Property Assessment for {prospect.property_address} has been unlocked.</p>
     <button type="button" className="slw-btn-black" onClick={onViewReport}>View My full Assessment</button>
@@ -805,6 +907,28 @@ export const StaleProspectWizard = () => {
   const [showRecommendation, setShowRecommendation] = useState(false);
   const [pendingPrint, setPendingPrint] = useState(false);
   const [pollHandle, setPollHandle] = useState<number | null>(null);
+
+  useEffect(() => {
+    document.body.classList.add('slw-prospect-active');
+    const hideInjectedChat = () => {
+      const tawk = (window as any).Tawk_API;
+      if (tawk?.hideWidget) tawk.hideWidget();
+      document.querySelectorAll<HTMLElement>('body > iframe, body > div#chat-bubble').forEach((element) => {
+        element.style.setProperty('display', 'none', 'important');
+        element.style.setProperty('visibility', 'hidden', 'important');
+        element.style.setProperty('pointer-events', 'none', 'important');
+      });
+    };
+    hideInjectedChat();
+    const observer = new MutationObserver(hideInjectedChat);
+    observer.observe(document.body, { childList: true, subtree: false });
+    return () => {
+      observer.disconnect();
+      document.body.classList.remove('slw-prospect-active');
+      const tawk = (window as any).Tawk_API;
+      if (tawk?.showWidget) tawk.showWidget();
+    };
+  }, []);
 
   const query = useMemo(() => {
     const token = params.get('token') || undefined;
@@ -1035,7 +1159,7 @@ export const StaleProspectWizard = () => {
       <Header />
       <div className="slw-shell">
         {step !== 'landing' && step !== 'finding' && <GoBack onClick={handleGoBack} />}
-        {step !== 'finding' && <Stepper step={step} />}
+        {step !== 'landing' && step !== 'finding' && <Stepper step={step} />}
         <main className="slw-main">
           {step === 'landing' && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
           {step === 'finding' && <FindingStep />}
@@ -1076,13 +1200,17 @@ export const StaleProspectWizard = () => {
 
 const WizardStyles = () => (
   <style>{`
-    .slw-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#0a0a0a;background:#fff;min-height:100vh;display:flex;flex-direction:column}
+    .slw-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#1f2024;background:#fff;min-height:100vh;display:flex;flex-direction:column}
+    body.slw-prospect-active{overflow-x:hidden}
+    body.slw-prospect-active > iframe,
+    body.slw-prospect-active #chat-bubble{display:none !important;visibility:hidden !important;pointer-events:none !important}
     .slw-page *{box-sizing:border-box}
-    .slw-header{display:flex;align-items:center;justify-content:space-between;padding:20px 60px;border-bottom:1px solid #eee;position:relative}
-    .slw-logo-link{text-decoration:none;color:inherit}
-    .slw-logo{display:flex;flex-direction:column;line-height:1}
-    .slw-logo-mark{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:24px;letter-spacing:0.5px}
-    .slw-logo-sub{font-size:11px;color:#555;margin-top:2px}
+    .slw-header{display:flex;align-items:center;justify-content:space-between;padding:16px max(24px,calc((100vw - 1240px)/2));border-bottom:1px solid #eee;position:relative}
+    .slw-logo-link{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
+    .slw-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px max(24px,calc((100vw - 1240px)/2));border-top:1px solid #eee;color:#2f3034;font-size:13px;font-weight:700}
+    .slw-footer-links{display:flex;gap:20px}
+    .slw-footer-links a{color:#2f3034;text-decoration:none}
+    .slw-logo-mark{width:137px;height:52px;display:block;object-fit:contain}
     .slw-nav{display:flex;gap:32px;font-weight:600;font-size:15px}
     .slw-nav a{color:#111;text-decoration:none}
     .slw-burger{display:none;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:8px}
@@ -1090,146 +1218,150 @@ const WizardStyles = () => (
     .slw-mobile-nav{position:absolute;top:100%;left:0;right:0;background:#fff;border-bottom:1px solid #eee;display:flex;flex-direction:column;padding:12px 20px;gap:14px;font-weight:600;z-index:20}
     .slw-mobile-nav a{color:#111;text-decoration:none}
 
-    .slw-shell{max-width:1240px;margin:0 auto;padding:0 60px;width:100%;flex:1}
-    .slw-goback{display:flex;align-items:center;gap:8px;background:none;border:none;color:#666;font-size:15px;cursor:pointer;padding:28px 0 0;font-family:inherit}
-    .slw-stepper-wrap{overflow-x:auto;margin:22px 0 10px;-ms-overflow-style:none;scrollbar-width:none}
+    .slw-shell{max-width:1240px;margin:0 auto;width:min(calc(100% - 200px),1240px);flex:1}
+    .slw-goback{display:flex;align-items:center;gap:8px;background:none;border:none;color:#666;font-size:14px;cursor:pointer;padding:58px 0 0;font-family:inherit}
+    .slw-stepper-wrap{overflow-x:auto;margin:48px 0 36px;-ms-overflow-style:none;scrollbar-width:none}
     .slw-stepper-wrap::-webkit-scrollbar{display:none}
-    .slw-stepper{display:flex;align-items:center;list-style:none;margin:0;padding:0;white-space:nowrap;font-size:15px;font-weight:600;color:#9aa0a6}
-    .slw-stepper li{display:flex;align-items:center;gap:10px}
-    .slw-step-sep{width:34px;height:1px;background:#e2e4e8;margin:0 6px}
+    .slw-stepper{display:flex;align-items:center;justify-content:space-between;list-style:none;margin:0;padding:0;white-space:nowrap;font-size:15px;font-weight:700;color:#26313d}
+    .slw-stepper li{display:flex;align-items:center;gap:24px}
+    .slw-step-sep{width:56px;height:1px;background:#e2e4e8;margin:0}
     .slw-step-active{color:#A409D2}
     .slw-step-done{color:#111}
-    .slw-main{padding:20px 0 80px}
+    .slw-main{padding:0 0 80px}
 
     .slw-accent{color:#A409D2}
-    .slw-hero{text-align:center;max-width:760px;margin:40px auto 0}
-    .slw-hero h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:56px;line-height:1.02;letter-spacing:-1px;margin:0}
-    .slw-hero-copy{color:#555;font-size:16px;line-height:1.6;margin:22px auto 0;max-width:560px}
-    .slw-id-form{margin:28px auto 0;max-width:560px}
-    .slw-id-input{display:flex;align-items:center;gap:12px;background:#eef0f2;border-radius:14px;padding:16px 20px;color:#111}
+    .slw-hero{text-align:center;max-width:760px;margin:48px auto 0;position:relative;z-index:2;padding-bottom:34px}
+    .slw-hero h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:62px;line-height:0.98;letter-spacing:0;margin:0;color:#202124}
+    .slw-hero-copy{color:#334155;font-size:16px;line-height:1.55;margin:18px auto 0;max-width:590px}
+    .slw-id-form{margin:24px auto 0;max-width:560px}
+    .slw-id-input{display:flex;align-items:center;gap:18px;background:#eef0f2;border-radius:12px;padding:16px 18px;color:#111}
     .slw-id-input input{border:none;background:none;outline:none;font-size:16px;flex:1;color:#111;font-family:inherit}
     .slw-id-input input::placeholder{color:#9aa0a6}
-    .slw-id-hint{display:flex;align-items:center;justify-content:center;gap:8px;color:#666;font-size:13px;margin:12px 0 0}
+    .slw-id-hint{display:flex;align-items:center;justify-content:center;gap:8px;color:#334155;font-size:13px;margin:10px 0 0}
     .slw-info-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#A409D2;color:#fff;font-size:11px;font-style:italic;font-weight:700;flex:none}
-    .slw-id-submit{margin-top:18px;width:100%}
+    .slw-id-submit{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;padding:0;border:0}
     .slw-error{color:#c02626;font-size:14px;margin:10px 0 0}
 
-    .slw-stats{display:flex;justify-content:center;gap:56px;margin:32px 0 0}
-    .slw-stats b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;display:block}
-    .slw-stats span{color:#666;font-size:13px}
-    .slw-rating{display:flex;align-items:center;justify-content:center;gap:10px;margin:24px 0 40px;font-size:14px}
+    .slw-stats{display:flex;justify-content:center;gap:64px;margin:24px 0 0}
+    .slw-stats b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;display:block;color:#202124}
+    .slw-stats span{color:#334155;font-size:13px;line-height:1.55}
+    .slw-rating{display:flex;align-items:center;justify-content:center;gap:10px;margin:20px 0 0;font-size:14px;font-weight:700}
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
-    .slw-hero-image{height:230px;border-radius:0;margin:0 -60px;background:linear-gradient(180deg,#e9d5ff 0%,#fbcfe8 45%,#fff 100%);position:relative;overflow:hidden}
-    .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center bottom / cover no-repeat}
+    .slw-hero-image{height:510px;border-radius:0;margin:-118px calc(50% - 50vw) 0;background:#f4dcff;position:relative;overflow:hidden;z-index:1}
+    .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:240px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.96) 26%,rgba(255,255,255,.66) 58%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
+    .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -112px / cover no-repeat;z-index:1}
 
-    .slw-value-section{padding:56px 0 40px}
-    .slw-value-section h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:800;font-size:34px;line-height:1.15;margin:0 0 40px}
-    .slw-value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:36px}
-    .slw-value-grid svg{color:#A409D2;margin-bottom:16px}
-    .slw-value-grid h3{font-size:19px;margin:0 0 8px}
-    .slw-value-grid p{color:#666;font-size:14.5px;line-height:1.55;margin:0}
+    .slw-value-section{padding:72px 4px 64px}
+    .slw-value-section h2{font-family:'Inter','Plus Jakarta Sans',sans-serif;font-weight:500;font-size:47px;line-height:1.18;margin:0 0 80px;color:#202124;letter-spacing:0}
+    .slw-value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:46px}
+    .slw-value-grid svg{color:#A409D2;margin-bottom:50px}
+    .slw-value-grid h3{font-size:27px;line-height:1.12;margin:0 0 14px;font-weight:700;color:#202124}
+    .slw-value-grid p{color:#111;font-size:18px;line-height:1.45;margin:0}
 
     .slw-finding{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:120px 0;color:#555;font-size:16px}
     .slw-spinner{width:40px;height:40px;border-radius:50%;border:3px solid #eee;border-top-color:#A409D2;animation:slw-spin 0.8s linear infinite}
     @keyframes slw-spin{to{transform:rotate(360deg)}}
 
-    .slw-confirm{max-width:900px;margin:0 auto;text-align:center}
-    .slw-confirm h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:36px;margin:0 0 10px}
-    .slw-confirm-copy{color:#666;margin:0 0 32px}
+    .slw-confirm{max-width:none;margin:0 auto;text-align:center}
+    .slw-confirm h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 12px;color:#202124}
+    .slw-confirm-copy{color:#334155;margin:0 0 38px;font-size:16px}
     .slw-confirm-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #eee;border-radius:16px;overflow:hidden;text-align:left;background:#fff}
-    .slw-confirm-image{min-height:280px;background-size:cover;background-position:center;background-color:#e5e7eb}
-    .slw-confirm-details{padding:32px}
-    .slw-confirm-details h2{font-size:26px;margin:0 0 12px;line-height:1.2}
-    .slw-confirm-price{color:#A409D2;font-size:26px;font-weight:800}
-    .slw-badge{display:inline-block;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
-    .slw-confirm-facts{display:flex;gap:24px;margin:20px 0;padding-top:20px;border-top:1px solid #eee;color:#333;font-size:15px}
+    .slw-confirm-image{min-height:542px;background-size:cover;background-position:center;background-color:#e5e7eb}
+    .slw-confirm-details{padding:36px 40px;display:flex;flex-direction:column;justify-content:center}
+    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;font-weight:900;margin:0 0 14px;line-height:1;color:#202124}
+    .slw-confirm-price{color:#A409D2;font-size:34px;font-weight:800}
+    .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
+    .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-size:18px}
     .slw-confirm-facts span{display:flex;align-items:center;gap:8px}
     .slw-confirm-facts svg{color:#A409D2}
-    .slw-confirm-question{font-weight:700;margin:8px 0 12px}
+    .slw-confirm-question{font-weight:800;margin:0 0 18px;text-align:center}
 
-    .slw-btn-black{background:#0a0a0a;color:#fff;border:none;border-radius:12px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
+    .slw-btn-black{background:#0a0a0a;color:#fff;border:none;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
     .slw-btn-black:disabled{opacity:0.6;cursor:default}
-    .slw-btn-outline{background:#fff;color:#111;border:1px solid #ddd;border-radius:12px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;margin-top:12px}
+    .slw-btn-outline{background:#fff;color:#111;border:1px solid #ddd;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;margin-top:12px}
+    .slw-id-submit{display:none !important}
 
-    .slw-not-found{max-width:520px;margin:40px auto 0;text-align:center}
-    .slw-not-found-illustration{width:260px;margin:0 auto 24px;display:block}
-    .slw-not-found h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:30px;margin:0 0 12px}
-    .slw-not-found p{color:#666;margin:0 0 28px}
+    .slw-not-found{max-width:520px;margin:62px auto 0;text-align:center}
+    .slw-not-found-illustration{width:300px;margin:0 auto 34px;display:block}
+    .slw-not-found h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:39px;line-height:1;margin:0 0 18px;color:#202124}
+    .slw-not-found p{color:#334155;margin:0 0 36px;font-size:16px;line-height:1.45}
     .slw-help-link{display:block;margin-top:18px;color:#A409D2;font-weight:700;text-decoration:none}
 
     .slw-details{max-width:640px;margin:0 auto;text-align:center}
-    .slw-details h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:34px;margin:0 0 20px}
-    .slw-details p{color:#555;line-height:1.6;margin:0 0 16px}
-    .slw-accent-line{color:#A409D2;font-weight:700}
-    .slw-details-form{text-align:left;background:#fff;border:1px solid #eee;border-radius:16px;padding:32px;margin-top:24px}
-    .slw-details-form label{display:block;font-size:14px;font-weight:600;margin-bottom:18px}
-    .slw-details-form input{width:100%;margin-top:8px;background:#f3f4f6;border:none;border-radius:10px;padding:14px 16px;font-size:15px;font-family:inherit;outline:none}
-    .slw-phone-input{display:flex;align-items:center;gap:10px;background:#f3f4f6;border-radius:10px;padding:0 14px;margin-top:8px}
+    .slw-details h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 18px;color:#202124}
+    .slw-details p{color:#334155;line-height:1.55;margin:0 auto 26px;max-width:550px;font-size:16px}
+    .slw-details p.slw-accent-line{color:#A409D2;font-weight:700}
+    .slw-details-form{text-align:left;background:#fff;border:1px solid #eee;border-radius:12px;padding:26px;margin:34px auto 0;box-shadow:0 16px 40px rgba(15,23,42,.08);max-width:594px}
+    .slw-details-form label{display:block;font-size:12px;font-weight:600;margin-bottom:20px;color:#111}
+    .slw-details-form input{width:100%;margin-top:8px;background:#f1f2f4;border:none;border-radius:12px;padding:18px 18px;font-size:15px;font-family:inherit;outline:none}
+    .slw-phone-input{display:flex;align-items:center;gap:12px;background:#f1f2f4;border-radius:12px;padding:0 14px;margin-top:8px}
     .slw-uk-flag{width:26px;height:16px;border-radius:2px;flex:none}
     .slw-phone-input input{background:none;padding:14px 0}
     .slw-consent{display:flex;gap:8px;color:#666;font-size:13px;line-height:1.5;margin:6px 0 22px}
     .slw-consent .slw-info-dot{margin-top:2px}
+    .slw-details-form .slw-btn-black{max-width:190px;margin:18px auto 0;display:block;white-space:nowrap;padding:14px 18px;font-size:14px}
 
     /* Assessment step */
-    .slw-assessment h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:32px;margin:0 0 24px}
-    .slw-assess-top{display:grid;grid-template-columns:1.6fr 1fr;gap:0;background:#f7f8fa;border-radius:18px;padding:20px;margin-bottom:36px}
-    .slw-assess-property{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#fff;border-radius:14px;padding:16px;margin-right:16px}
-    .slw-assess-image{border-radius:10px;min-height:170px;background-size:cover;background-position:center;background-color:#e5e7eb}
-    .slw-assess-property-info h2{font-size:20px;margin:0 0 16px;line-height:1.3}
-    .slw-assess-facts{display:flex;flex-direction:column;gap:14px}
+    .slw-assessment h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 34px;color:#202124}
+    .slw-assess-top{display:grid;grid-template-columns:2fr .85fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-bottom:50px}
+    .slw-assess-property{display:grid;grid-template-columns:1fr 1.05fr;gap:24px;background:#fff;border-radius:14px;padding:12px 24px 12px 12px;margin-right:0;align-items:center}
+    .slw-assess-image{border-radius:10px;min-height:306px;background-size:cover;background-position:center;background-color:#e5e7eb}
+    .slw-assess-property-info h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;font-weight:900;margin:0 0 86px;line-height:1;color:#202124}
+    .slw-assess-facts{display:grid;grid-template-columns:1fr 1fr;gap:24px;border-top:1px solid #e5e7eb;padding-top:22px}
     .slw-assess-facts div{display:flex;flex-direction:column;gap:4px}
-    .slw-assess-facts span{color:#777;font-size:13px}
-    .slw-assess-facts b{font-size:20px}
-    .slw-assess-gauge-card{background:#fff;border-radius:14px;padding:20px;text-align:center;display:flex;flex-direction:column;align-items:center}
+    .slw-assess-facts span{color:#111;font-size:15px}
+    .slw-assess-facts b{font-size:30px;line-height:1}
+    .slw-assess-gauge-card{background:#fff;border-radius:14px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
     .slw-assess-gauge-card b{margin-top:6px;font-size:16px}
-    .slw-assess-gauge-card p{color:#777;font-size:13px;line-height:1.5;margin:8px 0 0}
+    .slw-assess-gauge-card p{color:#667085;font-size:13px;line-height:1.45;margin:8px 0 0;max-width:250px}
     .slw-gauge{display:flex;flex-direction:column;align-items:center;position:relative}
     .slw-gauge-score{margin-top:-32px;font-size:15px;color:#666}
     .slw-gauge-score b{font-size:30px;color:#111}
 
-    .slw-assess-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:26px;margin:0 0 6px}
-    .slw-assess-subheading{color:#777;margin:0 0 22px}
-    .slw-assess-findings-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-bottom:40px}
-    .slw-assess-findings-grid h3{font-size:17px;margin:0 0 16px}
-    .slw-finding-card{display:flex;gap:14px;border:1px solid #eee;border-radius:14px;padding:18px;margin-bottom:14px}
+    .slw-assess-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1;margin:0 0 14px;color:#202124}
+    .slw-assess-subheading{color:#4b5563;margin:0 0 28px;font-weight:700}
+    .slw-assess-findings-grid{display:grid;grid-template-columns:1fr 1.45fr;gap:32px;margin-bottom:60px}
+    .slw-assess-findings-grid h3{font-size:17px;margin:0 0 28px;font-weight:800}
+    .slw-finding-card{display:flex;gap:16px;border:2px solid #edf0f4;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 0 rgba(15,23,42,.02)}
     .slw-finding-icon{font-size:20px;flex:none}
-    .slw-finding-card b{display:block;margin-bottom:6px;font-size:15px}
-    .slw-finding-card p{color:#666;font-size:14px;line-height:1.5;margin:0}
-    .slw-locked-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .slw-locked-card{display:flex;align-items:flex-start;gap:8px;background:#f7f8fa;border-radius:12px;padding:14px;color:#8a8f98;font-size:13.5px;line-height:1.35}
+    .slw-finding-card b{display:block;margin-bottom:7px;font-size:17px;color:#202124}
+    .slw-finding-card p{color:#475467;font-size:14px;line-height:1.42;margin:0}
+    .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:36px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}
     .slw-locked-card svg{flex:none;margin-top:1px}
 
-    .slw-unlock-cta{background:#f7f8fa;border-radius:18px;padding:32px;display:grid;grid-template-columns:1.3fr 1fr;gap:32px}
-    .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:26px;margin:0 0 12px}
-    .slw-unlock-cta-copy p{color:#666;line-height:1.6;margin:0 0 22px}
-    .slw-price-box{background:#0a0a0a;color:#fff;border-radius:14px;padding:22px}
+    .slw-unlock-cta{background:#f5f6f8;border-radius:18px;padding:32px;display:grid;grid-template-columns:1fr 1.08fr;gap:32px;align-items:center}
+    .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1.05;margin:0 0 20px;color:#202124}
+    .slw-unlock-cta-copy p{color:#475467;line-height:1.55;margin:0 0 34px;font-size:16px}
+    .slw-price-box{background:#0a0a0a;color:#fff;border-radius:18px;padding:28px}
     .slw-price-box>div{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
     .slw-price-box span{font-size:14px;color:#ccc}
-    .slw-price-box b{font-size:24px}
-    .slw-btn-white{background:#fff;color:#111;border:none;border-radius:12px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
-    .slw-unlock-cta-includes{background:#fff;border-radius:14px;padding:24px}
+    .slw-price-box b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px}
+    .slw-btn-white{background:#fff;color:#111;border:none;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
+    .slw-unlock-cta-includes{background:#fff;border-radius:16px;padding:28px}
     .slw-unlock-cta-includes b{display:block;margin-bottom:14px;font-size:16px}
     .slw-unlock-cta-includes ul{margin:0;padding-left:20px;color:#444;font-size:14px;line-height:2}
 
     /* Payment step */
-    .slw-payment h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:32px;margin:0 0 24px}
-    .slw-payment-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:0;background:#f7f8fa;border-radius:18px;padding:24px}
-    .slw-payment-methods{display:flex;flex-direction:column;gap:12px}
-    .slw-payment-methods>b{font-size:15px;margin-bottom:6px}
-    .slw-method{display:flex;align-items:center;gap:14px;background:#f3f4f6;border:2px solid transparent;border-radius:12px;padding:16px;text-align:left;cursor:pointer;font-family:inherit}
+    .slw-payment h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 54px;color:#202124}
+    .slw-payment-grid{display:grid;grid-template-columns:.48fr 1fr;gap:16px;background:#f5f6f8;border-radius:18px;padding:14px}
+    .slw-payment-methods{display:flex;flex-direction:column;gap:14px;background:#fff;border-radius:16px;padding:24px}
+    .slw-payment-methods>b{font-size:18px;margin-bottom:14px;color:#111}
+    .slw-method{display:flex;align-items:center;gap:16px;background:#f1f2f4;border:1.5px solid transparent;border-radius:10px;padding:20px;text-align:left;cursor:pointer;font-family:inherit}
     .slw-method-active{background:#fff;border-color:#A409D2}
-    .slw-method-icon{font-size:20px}
+    .slw-method-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#f3e6fb;flex:none}
     .slw-method b{display:block;font-size:15px}
     .slw-method small{color:#777;font-size:12.5px}
-    .slw-payment-summary{background:#fff;border-radius:14px;padding:20px;margin-left:20px}
-    .slw-payment-image{border-radius:10px;min-height:170px;background-size:cover;background-position:center;margin-bottom:16px;background-color:#e5e7eb}
-    .slw-payment-summary h2{font-size:19px;margin:0 0 16px}
-    .slw-payment-breakdown div{display:flex;justify-content:space-between;padding:10px 0;font-size:14px;color:#555}
+    .slw-payment-summary{background:#fff;border-radius:16px;padding:12px 28px 12px 12px;margin-left:0;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+    .slw-payment-image{border-radius:10px;min-height:338px;background-size:cover;background-position:center;background-color:#e5e7eb;grid-row:1 / span 2}
+    .slw-payment-summary h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;line-height:1;margin:0 0 92px;color:#202124}
+    .slw-payment-breakdown{grid-column:2}
+    .slw-payment-breakdown div{display:flex;justify-content:space-between;padding:15px 0;font-size:15px;color:#111}
     .slw-payment-total{border-top:1px solid #eee;font-weight:700;color:#111 !important}
     .slw-payment-total span,.slw-payment-total b{color:#111}
-    .slw-pay-btn{max-width:520px;margin:28px auto 0;display:block}
+    .slw-pay-btn{max-width:370px;margin:56px auto 0;display:block}
     .slw-bank-details{max-width:520px;margin:28px auto 0;background:#f7f8fa;border-radius:14px;padding:24px}
     .slw-bank-details p{color:#666;font-size:14px;margin:6px 0 18px}
     .slw-bank-details-grid{display:grid;gap:12px}
@@ -1237,26 +1369,26 @@ const WizardStyles = () => (
     .slw-bank-details-grid span{color:#777}
 
     /* Success step */
-    .slw-success{max-width:460px;margin:40px auto 0;text-align:center}
-    .slw-success-check{width:64px;height:64px;border-radius:50%;background:#d1fae5;color:#059669;font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px}
-    .slw-success h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:26px;margin:0 0 12px}
-    .slw-success p{color:#666;margin:0 0 28px;line-height:1.5}
+    .slw-success{max-width:460px;margin:90px auto 0;text-align:center}
+    .slw-success-check{display:block;margin:0 auto 30px}
+    .slw-success h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:39px;line-height:1;margin:0 0 18px;color:#202124}
+    .slw-success p{color:#334155;margin:0 0 32px;line-height:1.5}
     .slw-success .slw-btn-outline{margin-top:12px}
 
     /* Full report */
     .slw-report-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
-    .slw-report h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:32px;margin:0}
+    .slw-report h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0;color:#202124}
     .slw-pdf-btn{width:auto;padding:12px 20px}
-    .slw-report-summary-row{display:grid;grid-template-columns:1fr 1.3fr;gap:20px;background:#f7f8fa;border-radius:18px;padding:20px;margin-bottom:36px}
+    .slw-report-summary-row{display:grid;grid-template-columns:.74fr 2fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-bottom:36px}
     .slw-report-summary-card,.slw-report-property-card{background:#fff;border-radius:14px;padding:24px}
-    .slw-report-summary-card b{display:block;font-size:18px;margin-bottom:12px}
+    .slw-report-summary-card b{display:block;font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;line-height:1;margin-bottom:22px;color:#202124}
     .slw-report-summary-card p{color:#555;line-height:1.6;margin:0;font-size:14.5px}
-    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:center}
-    .slw-report-image{border-radius:10px;align-self:stretch;background-size:cover;background-position:center;background-color:#e5e7eb;min-height:150px}
-    .slw-report-property-card h2{font-size:19px;margin:0 0 16px}
+    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:center;padding:12px 28px 12px 12px}
+    .slw-report-image{border-radius:10px;align-self:stretch;background-size:cover;background-position:center;background-color:#e5e7eb;min-height:260px}
+    .slw-report-property-card h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;line-height:1;margin:0 0 74px;color:#202124}
 
-    .slw-section-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:26px;margin:44px 0 20px}
-    .slw-score-row{display:grid;grid-template-columns:1fr 1.4fr;gap:20px;background:#f7f8fa;border-radius:18px;padding:24px}
+    .slw-section-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1;margin:44px 0 20px;color:#202124}
+    .slw-score-row{display:grid;grid-template-columns:.75fr 2fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px}
     .slw-score-gauge-card{background:#fff;border-radius:14px;padding:24px;text-align:center;display:flex;flex-direction:column;align-items:center}
     .slw-score-gauge-card b{margin-top:6px}
     .slw-score-gauge-card p{color:#777;font-size:13px;line-height:1.5;margin:8px 0 0}
@@ -1267,18 +1399,18 @@ const WizardStyles = () => (
     .slw-score-bar-track{height:8px;border-radius:4px;background:#eee}
     .slw-score-bar-fill{height:100%;border-radius:4px}
 
-    .slw-why-not-selling{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f7f8fa;border-radius:18px;padding:24px}
+    .slw-why-not-selling{display:grid;grid-template-columns:1fr 1fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px}
     .slw-why-card{background:#fff;border-radius:14px;padding:22px}
     .slw-why-card h3{font-size:17px;margin:0 0 16px}
-    .slw-why-card>div{margin-bottom:14px}
+    .slw-why-card>div{display:flex;gap:16px;margin-bottom:14px}
     .slw-why-card>div:last-child{margin-bottom:0}
-    .slw-why-label{display:block;font-size:11px;font-weight:800;letter-spacing:0.5px;margin-bottom:4px}
+    .slw-why-label{display:block;font-size:11px;font-weight:800;letter-spacing:0.5px;flex:0 0 86px}
     .slw-why-evidence{color:#d97706}
     .slw-why-impact{color:#dc2626}
     .slw-why-recommend{color:#059669}
     .slw-why-card p{margin:0;font-size:14px;color:#444;line-height:1.5}
 
-    .slw-report-two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f7f8fa;border-radius:18px;padding:24px;margin-top:20px}
+    .slw-report-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-top:38px}
     .slw-competition-card,.slw-actions-card{background:#fff;border-radius:14px;padding:22px}
     .slw-competition-card>b,.slw-actions-card>b{display:block;font-size:17px;margin-bottom:6px}
     .slw-competition-card>p{color:#777;font-size:13.5px;margin:0 0 16px}
@@ -1293,22 +1425,22 @@ const WizardStyles = () => (
     .slw-action-row p{margin:0 0 6px;font-size:13.5px;color:#444;line-height:1.5}
     .slw-why-it-matters{color:#777 !important;font-size:12.5px !important}
 
-    .slw-thirty-day-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;background:#f7f8fa;border-radius:18px;padding:20px}
+    .slw-thirty-day-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;background:#f5f6f8;border-radius:18px;padding:14px}
     .slw-week-card{background:#fff;border-radius:12px;padding:18px}
-    .slw-week-card span{color:#A409D2;font-size:12px;font-weight:700;display:block;margin-bottom:8px}
+    .slw-week-card span{color:#D35506;font-size:12px;font-weight:700;display:block;margin-bottom:8px}
     .slw-week-card b{font-size:14.5px;line-height:1.4}
 
-    .slw-recommendation-callout{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #eee;border-radius:16px;padding:24px 28px;margin-top:36px}
-    .slw-recommendation-callout b{font-size:19px}
+    .slw-recommendation-callout{display:flex;justify-content:space-between;align-items:center;background:#fff;border:14px solid #f5f6f8;border-radius:18px;padding:24px 28px;margin-top:42px}
+    .slw-recommendation-callout b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1}
     .slw-recommendation-callout .slw-btn-black{width:auto;padding:14px 22px}
 
     /* Recommendation modal */
-    .slw-modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;z-index:100;overflow-y:auto}
-    .slw-modal{background:#fff;border-radius:20px;max-width:900px;width:100%;padding:0;max-height:calc(100vh - 80px);display:flex;flex-direction:column}
-    .slw-modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:32px 32px 0}
-    .slw-modal-head h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;margin:0}
-    .slw-modal-close{background:#f3f4f6;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:15px;flex:none}
-    .slw-modal-body{padding:24px 32px 32px;overflow-y:auto;line-height:1.6;font-size:14.5px;color:#333}
+    .slw-modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:flex;align-items:flex-start;justify-content:center;z-index:100;overflow-y:auto}
+    .slw-modal{background:#fff;border-radius:28px 28px 0 0;max-width:100%;width:100%;min-height:calc(100vh - 96px);margin-top:96px;padding:0;display:flex;flex-direction:column}
+    .slw-modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:48px 64px 0;max-width:1180px;margin:0 auto;width:100%}
+    .slw-modal-head h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:44px;margin:0}
+    .slw-modal-close{background:#f3f4f6;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:15px;flex:none}
+    .slw-modal-body{margin:32px auto 64px;max-width:1180px;width:calc(100% - 64px);border:1px solid #eee;border-radius:20px;padding:32px 40px;line-height:1.6;font-size:14.5px;color:#333}
     .slw-modal-body h3{font-size:17px;margin:24px 0 8px}
     .slw-modal-body h3:first-of-type{margin-top:0}
     .slw-modal-body p{margin:0 0 12px}
@@ -1322,33 +1454,90 @@ const WizardStyles = () => (
     }
 
     @media (max-width: 900px){
-      .slw-header{padding:16px 20px}
+      .slw-footer{flex-direction:column;align-items:center;text-align:center;padding:34px 20px}
+      .slw-header{padding:14px 16px}
+      .slw-logo-mark{width:137px;height:52px}
       .slw-nav{display:none}
       .slw-burger{display:flex}
-      .slw-shell{padding:0 20px}
-      .slw-hero h1{font-size:34px}
-      .slw-hero-image{margin:0 -20px;height:170px}
-      .slw-stats{gap:28px}
-      .slw-stats b{font-size:22px}
-      .slw-value-grid{grid-template-columns:1fr;gap:32px}
-      .slw-value-section h2{font-size:26px}
+      .slw-shell{width:100%;padding:0 14px}
+      .slw-main{padding-bottom:46px}
+      .slw-goback{padding-top:22px;font-size:11px;margin-left:2px}
+      .slw-stepper-wrap{margin:34px -14px 32px;padding:0 14px}
+      .slw-stepper{justify-content:flex-start;font-size:12px;gap:0}
+      .slw-stepper li{gap:22px}
+      .slw-step-sep{width:50px}
+      .slw-hero{margin:56px auto 0;padding-bottom:28px}
+      .slw-hero h1{font-size:39px;line-height:.94}
+      .slw-hero-copy{font-size:15px;line-height:1.45;margin-top:20px}
+      .slw-id-form{margin-top:26px}
+      .slw-id-input{border-radius:10px;padding:14px 16px}
+      .slw-id-hint{justify-content:flex-start;text-align:left;align-items:flex-start;line-height:1.35}
+      .slw-stats{gap:0;justify-content:space-between;margin-top:30px}
+      .slw-stats b{font-size:27px}
+      .slw-stats span{font-size:12px}
+      .slw-rating{justify-content:flex-start;flex-wrap:wrap;text-align:left;margin:26px 0 0;font-size:18px;gap:8px}
+      .slw-rating b{flex-basis:100%}
+      .slw-hero-image{margin:-70px -14px 0;height:380px}
+      .slw-hero-image::before{height:150px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.94) 26%,rgba(255,255,255,.58) 62%,rgba(255,255,255,0) 100%)}
+      .slw-hero-image::after{background-position:center -44px;background-size:cover}
+      .slw-value-section{padding:32px 2px 36px}
+      .slw-value-grid{grid-template-columns:1fr;gap:54px}
+      .slw-value-grid svg{margin-bottom:58px}
+      .slw-value-grid h3{font-size:30px}
+      .slw-value-grid p{font-size:20px}
+      .slw-value-section h2{font-size:31px;line-height:1.18;margin-bottom:44px}
+      .slw-finding{padding:90px 0}
+
+      .slw-confirm h1,.slw-details h1,.slw-payment h1,.slw-report h1{font-size:34px}
       .slw-confirm-card{grid-template-columns:1fr}
       .slw-confirm-image{min-height:220px}
+      .slw-confirm-details{padding:24px}
+      .slw-confirm-details h2{font-size:30px}
+      .slw-confirm-facts{margin-bottom:28px;flex-direction:column;gap:14px}
+      .slw-not-found{margin-top:32px}
+      .slw-not-found-illustration{width:240px}
+      .slw-not-found h1{font-size:34px}
+      .slw-details-form{padding:24px 20px}
 
       .slw-assess-top{grid-template-columns:1fr;gap:16px}
       .slw-assess-property{grid-template-columns:1fr;margin-right:0;margin-bottom:16px}
+      .slw-assess-property-info h2{font-size:31px;margin:0 0 18px}
+      .slw-assess-image{min-height:182px}
+      .slw-assess-facts{grid-template-columns:1fr 1fr;padding-top:0;border-top:0}
+      .slw-assess-facts b{font-size:24px}
       .slw-assess-findings-grid{grid-template-columns:1fr;gap:28px}
-      .slw-locked-grid{grid-template-columns:1fr}
-      .slw-unlock-cta{grid-template-columns:1fr}
+      .slw-locked-grid{grid-template-columns:repeat(2,1fr)}
+      .slw-locked-card{min-height:110px;gap:30px}
+      .slw-unlock-cta{grid-template-columns:1fr;padding:10px;gap:14px}
+      .slw-unlock-cta-copy{display:contents}
+      .slw-unlock-cta-copy h2{font-size:26px;order:1;margin:10px 10px 0}
+      .slw-unlock-cta-copy p{order:1;margin:0 10px 6px}
+      .slw-unlock-cta-includes{order:2}
+      .slw-price-box{order:3;padding:20px}
+      .slw-price-box>div{align-items:flex-start}
+      .slw-price-box b{font-size:34px}
 
       .slw-payment-grid{grid-template-columns:1fr}
-      .slw-payment-summary{margin-left:0;margin-top:20px}
+      .slw-payment{padding-top:8px}
+      .slw-payment h1{margin-bottom:28px}
+      .slw-payment-summary{grid-template-columns:1fr;margin-left:0;margin-top:0;padding:12px}
+      .slw-payment-image{min-height:190px;grid-row:auto}
+      .slw-payment-breakdown{grid-column:auto}
+      .slw-payment-summary h2{font-size:31px;margin-bottom:32px}
+      .slw-pay-btn{max-width:none;margin-top:28px}
 
       .slw-report-summary-row{grid-template-columns:1fr}
       .slw-report-property-card{grid-template-columns:1fr}
       .slw-report-image{min-height:180px}
+      .slw-report-property-card h2{font-size:31px;margin-bottom:28px}
       .slw-score-row{grid-template-columns:1fr}
       .slw-why-not-selling{grid-template-columns:1fr}
+      .slw-why-card>div{flex-direction:column;gap:4px}
+      .slw-why-label{flex-basis:auto}
+      .slw-modal{margin-top:40px;min-height:calc(100vh - 40px);border-radius:20px 20px 0 0}
+      .slw-modal-head{padding:28px 20px 0}
+      .slw-modal-head h2{font-size:26px}
+      .slw-modal-body{width:calc(100% - 32px);margin:20px auto 40px;padding:20px}
       .slw-report-two-col{grid-template-columns:1fr}
       .slw-thirty-day-grid{grid-template-columns:1fr 1fr}
       .slw-recommendation-callout{flex-direction:column;align-items:flex-start;gap:16px}
