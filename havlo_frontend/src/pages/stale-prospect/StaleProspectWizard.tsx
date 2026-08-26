@@ -1257,7 +1257,7 @@ const WizardStyles = () => (
     .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -146px / cover no-repeat;z-index:1}
 
     .slw-value-section{padding:72px 4px 64px}
-    .slw-value-section h2{font-family:'Inter','Plus Jakarta Sans',sans-serif;font-weight:500;font-size:47px;line-height:1.18;margin:0 0 80px;color:#202124;letter-spacing:0}
+    .slw-value-section h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:600;font-size:48px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 80px;color:#202124}
     .slw-value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:46px}
     .slw-value-grid svg{color:#A409D2;margin-bottom:50px}
     .slw-value-grid h3{font-size:27px;line-height:1.12;margin:0 0 14px;font-weight:700;color:#202124}
