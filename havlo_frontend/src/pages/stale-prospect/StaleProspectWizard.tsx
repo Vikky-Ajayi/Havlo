@@ -1249,9 +1249,9 @@ const WizardStyles = () => (
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
-    .slw-hero-image{height:510px;border-radius:0;margin:-118px calc(50% - 50vw) 0;background:#f4dcff;position:relative;overflow:hidden;z-index:1}
+    .slw-hero-image{height:510px;border-radius:0;margin:-118px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
     .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:240px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.96) 26%,rgba(255,255,255,.66) 58%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
-    .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -112px / cover no-repeat;z-index:1}
+    .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -146px / cover no-repeat;z-index:1}
 
     .slw-value-section{padding:72px 4px 64px}
     .slw-value-section h2{font-family:'Inter','Plus Jakarta Sans',sans-serif;font-weight:500;font-size:47px;line-height:1.18;margin:0 0 80px;color:#202124;letter-spacing:0}
@@ -1479,7 +1479,7 @@ const WizardStyles = () => (
       .slw-rating b{flex-basis:100%}
       .slw-hero-image{margin:-70px -14px 0;height:380px}
       .slw-hero-image::before{height:150px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.94) 26%,rgba(255,255,255,.58) 62%,rgba(255,255,255,0) 100%)}
-      .slw-hero-image::after{background-position:center -44px;background-size:cover}
+      .slw-hero-image::after{background-position:center -57px;background-size:cover}
       .slw-value-section{padding:32px 2px 36px}
       .slw-value-grid{grid-template-columns:1fr;gap:54px}
       .slw-value-grid svg{margin-bottom:58px}
