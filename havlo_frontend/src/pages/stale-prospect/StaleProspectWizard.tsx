@@ -1248,6 +1248,7 @@ const WizardStyles = () => (
     .slw-stats b{font-family:'Righteous',cursive;font-weight:400;font-size:32px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;display:block;color:#202124}
     .slw-stats span{color:#334155;font-size:13px;line-height:1.55}
     .slw-rating{display:flex;align-items:center;justify-content:center;gap:10px;margin:20px 0 0;font-size:14px;font-weight:700}
+    .slw-rating b{font-family:'Inter',sans-serif;font-weight:700;font-size:16px;line-height:150%;letter-spacing:-0.02em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
