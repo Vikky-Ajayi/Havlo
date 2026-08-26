@@ -53,9 +53,7 @@ const StaleListingsLanding = React.lazy(() => import('./pages/StaleListingsLandi
 const StaleListingsHome = React.lazy(() => import('./pages/StaleListingsHome').then(m => ({ default: m.StaleListingsHome })));
 const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents').then(m => ({ default: m.StaleListingsAgents })));
 const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListingsPartnerships').then(m => ({ default: m.StaleListingsPartnerships })));
-const StaleListingProspectPreview = React.lazy(() => import('./pages/StaleListingProspect').then(m => ({ default: m.StaleListingProspectPreview })));
-const StaleListingProspectComplete = React.lazy(() => import('./pages/StaleListingProspect').then(m => ({ default: m.StaleListingProspectComplete })));
-const StaleListingProspectReport = React.lazy(() => import('./pages/StaleListingProspect').then(m => ({ default: m.StaleListingProspectReport })));
+const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/StaleProspectWizard').then(m => ({ default: m.StaleProspectWizard })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
 const StaleListingsReviewAccess = React.lazy(() => import('./pages/StaleListingsReviewAccess').then(m => ({ default: m.StaleListingsReviewAccess })));
 const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
@@ -330,10 +328,9 @@ export default function App() {
               <Route path="/stale-listings/seller" element={<StaleListingsLanding />} />
               <Route path="/stale-listings/agents" element={<StaleListingsAgents />} />
               <Route path="/stale-listings/partnerships" element={<StaleListingsPartnerships />} />
-              <Route path="/stale-listings/prospect/complete" element={<StaleListingProspectComplete />} />
-              <Route path="/stale-listings/prospect/report" element={<StaleListingProspectReport />} />
-              <Route path="/stale-listings/prospect/:token" element={<StaleListingProspectPreview />} />
-              <Route path="/stale-listings/prospect" element={<StaleListingProspectPreview />} />
+              <Route path="/stale-listings/prospect/complete" element={<StaleProspectWizard />} />
+              <Route path="/stale-listings/prospect/report" element={<StaleProspectWizard />} />
+              <Route path="/stale-listings/prospect" element={<StaleProspectWizard />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
               <Route path="/stale-listings/review-access" element={<StaleListingsReviewAccess />} />
               <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />

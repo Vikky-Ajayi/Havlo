@@ -271,7 +271,7 @@ async def send_prospect_letter_to_admin(
                 await db.commit()
         return False
 
-    preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect/{token}"
+    preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect?token={token}"
     async with AsyncSessionLocal() as db:
         prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
         if not prospect:
@@ -354,6 +354,7 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "rightmove_url": prospect.rightmove_url,
         "asking_price": prospect.asking_price,
         "listing_duration_days": prospect.listing_duration_days,
+        "contact_name": prospect.contact_name,
         "listing_snapshot": _safe_json(prospect.listing_snapshot_json),
         "report_data": _safe_json(prospect.report_json),
         "payment_status": prospect.payment_status,
@@ -470,7 +471,12 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     output_dir = Path("generated") / "stale-prospect-letters"
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = output_dir / f"stale-listing-{prospect.property_code}.pdf"
-    preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect/{token}"
+    # Query-string form (not a path segment) so scanning the QR auto-resumes
+    # the homeowner straight past "Enter Property ID" on the new wizard
+    # landing page — but the Property ID is now also printed visibly below,
+    # since the whole premise of that landing page is "enter the Property ID
+    # shown in your Havlo letter", and a token-only QR code never showed one.
+    preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect?token={token}"
 
     qr = qrcode.QRCode(box_size=8, border=2)
     qr.add_data(preview_url)
@@ -563,7 +569,11 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFillColor(ink)
     page.setFont("Helvetica", 6.8)
     page.drawCentredString(width / 2, y - 35 * mm, "Scan above for Stale Listings (Havlo's Sell Faster Programme)")
-    page.drawCentredString(width / 2, y - 39 * mm, "or visit www.heyhavlo.com/stale-listings")
+    page.drawCentredString(width / 2, y - 39 * mm, "or visit www.heyhavlo.com/stale-listings and enter your Property ID:")
+    page.setFillColor(accent)
+    page.setFont("Helvetica-Bold", 11)
+    page.drawCentredString(width / 2, y - 45 * mm, prospect.property_code)
+    page.setFillColor(ink)
     page.setFillColor(ink)
     page.setFont("Helvetica-Bold", 8.5)
     page.drawString(margin, y - 52 * mm, "Kind regards,")

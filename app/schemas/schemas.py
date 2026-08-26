@@ -625,6 +625,7 @@ class StaleProspectReportResponse(BaseModel):
     rightmove_url: str
     asking_price: Optional[float] = None
     listing_duration_days: Optional[int] = None
+    contact_name: Optional[str] = None
     listing_snapshot: dict = Field(default_factory=dict)
     report_data: dict = Field(default_factory=dict)
     payment_status: str
