@@ -1231,7 +1231,7 @@ const WizardStyles = () => (
 
     .slw-accent{color:#A409D2}
     .slw-hero{text-align:center;max-width:760px;margin:48px auto 0;position:relative;z-index:2;padding-bottom:34px}
-    .slw-hero h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:62px;line-height:0.98;letter-spacing:0;margin:0;color:#202124}
+    .slw-hero h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:64px;line-height:100%;letter-spacing:-0.03em;text-align:center;text-box-trim:both;text-box-edge:cap alphabetic;margin:0;color:#202124}
     .slw-hero-copy{color:#334155;font-size:16px;line-height:1.55;margin:18px auto 0;max-width:590px}
     .slw-id-form{margin:24px auto 0;max-width:560px}
     .slw-id-input{display:flex;align-items:center;gap:18px;background:#eef0f2;border-radius:12px;padding:16px 18px;color:#111}
