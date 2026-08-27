@@ -1303,7 +1303,7 @@ const WizardStyles = () => (
     .slw-confirm-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #eee;border-radius:16px;overflow:hidden;text-align:left;background:#fff}
     .slw-confirm-image{min-height:542px;background-size:cover;background-position:center;background-color:#e5e7eb}
     .slw-confirm-details{padding:36px 40px;display:flex;flex-direction:column;justify-content:center}
-    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;font-weight:500;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
+    .slw-confirm-details h2{font-family:'Bricolage Grotesque',sans-serif;font-size:40px;font-weight:500;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
     .slw-confirm-price{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
     .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
