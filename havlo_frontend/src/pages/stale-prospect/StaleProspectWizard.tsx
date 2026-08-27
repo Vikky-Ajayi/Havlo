@@ -1260,7 +1260,7 @@ const WizardStyles = () => (
     .slw-value-section h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:600;font-size:48px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 80px;color:#202124}
     .slw-value-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:46px}
     .slw-value-grid svg{color:#A409D2;margin-bottom:50px}
-    .slw-value-grid h3{font-size:27px;line-height:1.12;margin:0 0 14px;font-weight:700;color:#202124}
+    .slw-value-grid h3{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:32px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;font-weight:600;color:#202124}
     .slw-value-grid p{color:#111;font-size:18px;line-height:1.45;margin:0}
 
     .slw-finding{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:120px 0;color:#555;font-size:16px}
