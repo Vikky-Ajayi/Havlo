@@ -16,9 +16,13 @@ import {
   stepperIndexFor,
   unlockPrice,
   STEPPER_ITEMS,
+  type ActiveCompetitor,
+  type ComparableSale,
   type FullReportData,
   type ProspectPreview,
   type ProspectReport,
+  type ReportAction,
+  type ThirtyDayPlanWeek,
   type WizardStep,
 } from './types';
 
@@ -553,6 +557,41 @@ function firstSentence(text: string): string {
   return (match ? match[0] : clean).trim();
 }
 
+// Older reports never generated active_competition (currently-listed
+// properties competing for the same buyers), but they do have
+// comparable_sales (recently sold nearby properties) — real, sourced data,
+// just a different kind of comparison. Reusing it keeps the section always
+// populated with something true rather than inventing competitor listings
+// that were never actually found.
+function deriveCompetitionFromComparables(comparableSales?: ComparableSale[]): ActiveCompetitor[] {
+  return (comparableSales || [])
+    .filter((sale) => !sale.is_subject)
+    .map((sale) => ({
+      address: sale.address,
+      price: sale.sold_asking,
+      beds: typeof sale.beds === 'number' ? sale.beds : undefined,
+      differentiator: sale.property_type,
+    }));
+}
+
+// Older reports never generated thirty_day_plan either. action_plan is
+// always present and already ordered URGENT -> HIGH -> MEDIUM, so bucket
+// those same real actions into four weeks instead of showing an empty
+// section — every word is still something the report actually said.
+function deriveThirtyDayPlanFromActions(actions?: ReportAction[]): ThirtyDayPlanWeek[] {
+  const list = (actions || []).filter((a) => a.title);
+  if (!list.length) return [];
+  const weekCount = Math.min(4, list.length);
+  const perWeek = Math.ceil(list.length / weekCount);
+  const weeks: ThirtyDayPlanWeek[] = [];
+  for (let i = 0; i < weekCount; i++) {
+    const chunk = list.slice(i * perWeek, (i + 1) * perWeek);
+    if (!chunk.length) break;
+    weeks.push({ week: i + 1, title: chunk.map((a) => a.title).join(' and ') });
+  }
+  return weeks;
+}
+
 // ── Step: Assessment (locked preview) ──────────────────────────────────────
 
 const LOCKED_FINDING_LABELS = [
@@ -826,6 +865,18 @@ const FullReportStep = ({
     }
   }
 
+  // Competition analysis and the 30-day plan must always have something —
+  // older reports never generated active_competition/thirty_day_plan, so
+  // fall back to real data the report does have (comparable_sales,
+  // action_plan) rather than showing an empty section.
+  const hasRealCompetition = (data.active_competition || []).length > 0;
+  const competitionItems = hasRealCompetition
+    ? (data.active_competition as ActiveCompetitor[])
+    : deriveCompetitionFromComparables(data.comparable_sales);
+  const thirtyDayPlan = (data.thirty_day_plan || []).length > 0
+    ? (data.thirty_day_plan as ThirtyDayPlanWeek[])
+    : deriveThirtyDayPlanFromActions(data.action_plan);
+
   return (
     <section className="slw-report">
       <div className="slw-report-head">
@@ -885,20 +936,20 @@ const FullReportStep = ({
         })}
       </div>
 
-      <div className={`slw-report-two-col ${(data.active_competition || []).length === 0 ? 'slw-report-two-col-single' : ''}`}>
-        {(data.active_competition || []).length > 0 && (
+      <div className={`slw-report-two-col ${competitionItems.length === 0 ? 'slw-report-two-col-single' : ''}`}>
+        {competitionItems.length > 0 && (
           <div className="slw-competition-card">
             <b>Competition analysis</b>
-            <p>Properties currently competing for the same buyers:</p>
-            {(data.active_competition || []).map((c, i) => (
+            <p>{hasRealCompetition ? 'Properties currently competing for the same buyers:' : 'Recent comparable sales in the area:'}</p>
+            {competitionItems.map((c, i) => (
               <div className="slw-competitor-row" key={i}>
                 <div>
                   <b>{c.address}</b>
-                  <span>{c.beds} bed &middot; {c.distance} &middot; {c.differentiator}</span>
+                  <span>{[c.beds ? `${c.beds} bed` : null, c.distance, c.differentiator].filter(Boolean).join(' · ')}</span>
                 </div>
                 <div className="slw-competitor-price">
                   <b>{c.price}</b>
-                  <span>{c.days_listed} days listed</span>
+                  {c.days_listed != null && <span>{c.days_listed} days listed</span>}
                 </div>
               </div>
             ))}
@@ -914,8 +965,7 @@ const FullReportStep = ({
                 <ExpandableText text={action.description} maxChars={200} />
                 {whyItMatters && (
                   <p className="slw-why-it-matters">
-                    <i>Why it matters: </i>
-                    <ExpandableText text={whyItMatters} maxChars={140} as="span" />
+                    <i>Why it matters: {whyItMatters}</i>
                   </p>
                 )}
               </div>
@@ -924,11 +974,11 @@ const FullReportStep = ({
         </div>
       </div>
 
-      {(data.thirty_day_plan || []).length > 0 && (
+      {thirtyDayPlan.length > 0 && (
         <>
           <h2 className="slw-section-heading">30-day action plan</h2>
           <div className="slw-thirty-day-grid">
-            {(data.thirty_day_plan || []).map((week) => (
+            {thirtyDayPlan.map((week) => (
               <div className="slw-week-card" key={week.week}>
                 <span>Week {week.week}</span>
                 <b>{week.title}</b>
@@ -955,6 +1005,7 @@ const RecommendationModal = ({ contactName, onClose }: { contactName: string; on
         <h2>Havlo Stale Listing Recommendation</h2>
         <button type="button" className="slw-modal-close" onClick={onClose} aria-label="Close">✕</button>
       </div>
+      <div className="slw-modal-scroll">
       <div className="slw-modal-body">
         <p>Dear {contactName || '(name)'},</p>
         <p>Following our assessment of your property&rsquo;s current market position, we believe there may be an opportunity to broaden the way your property is promoted and reach potential buyers beyond traditional property-portal searches. In addition to the assessment report for your property, we recommend discussing the following strategies with your estate agent:</p>
@@ -990,6 +1041,7 @@ const RecommendationModal = ({ contactName, onClose }: { contactName: string; on
         <p className="slw-modal-team">Havlo Sales Advisory Team</p>
         <p>Property Intelligence &bull; Sales Strategy &bull; Buyer Generation</p>
         <p className="slw-modal-disclaimer">This recommendation is strategic guidance based on the information available to Havlo at the time of assessment. Individual strategies should be evaluated against the property&rsquo;s circumstances and current market conditions. Results will vary and no particular strategy guarantees a sale.</p>
+      </div>
       </div>
     </div>
   </div>
@@ -1560,11 +1612,13 @@ const WizardStyles = () => (
     .slw-recommendation-callout .slw-btn-black{width:auto;padding:14px 22px}
 
     /* Recommendation modal */
-    .slw-modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:flex;align-items:flex-start;justify-content:center;z-index:100;overflow-y:auto}
-    .slw-modal{background:#fff;border-radius:28px 28px 0 0;max-width:100%;width:100%;min-height:calc(100vh - 96px);margin-top:96px;padding:0;display:flex;flex-direction:column}
-    .slw-modal-head{display:flex;justify-content:space-between;align-items:flex-start;padding:48px 64px 0;max-width:1180px;margin:0 auto;width:100%}
+    .slw-modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:flex;align-items:flex-start;justify-content:center;z-index:100}
+    .slw-modal{background:#fff;border-radius:28px 28px 0 0;max-width:100%;width:100%;height:calc(100vh - 96px);margin-top:96px;padding:0;display:flex;flex-direction:column;overflow:hidden}
+    .slw-modal-head{flex:none;display:flex;justify-content:space-between;align-items:flex-start;padding:48px 64px 0;max-width:1180px;margin:0 auto;width:100%}
     .slw-modal-head h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:44px;margin:0}
     .slw-modal-close{background:#f3f4f6;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:15px;flex:none}
+    .slw-modal-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}
+    .slw-modal-scroll::-webkit-scrollbar{display:none}
     .slw-modal-body{margin:32px auto 64px;max-width:1180px;width:calc(100% - 64px);border:1px solid #eee;border-radius:20px;padding:32px 40px;line-height:1.6;font-size:14.5px;color:#333}
     .slw-modal-body h3{font-size:17px;margin:24px 0 8px}
     .slw-modal-body h3:first-of-type{margin-top:0}
@@ -1659,7 +1713,7 @@ const WizardStyles = () => (
       .slw-why-not-selling{grid-template-columns:1fr}
       .slw-why-card>div{flex-direction:column;gap:4px}
       .slw-why-label{flex-basis:auto}
-      .slw-modal{margin-top:40px;min-height:calc(100vh - 40px);border-radius:20px 20px 0 0}
+      .slw-modal{margin-top:40px;height:calc(100vh - 40px);border-radius:20px 20px 0 0}
       .slw-modal-head{padding:28px 20px 0}
       .slw-modal-head h2{font-size:26px}
       .slw-modal-body{width:calc(100% - 32px);margin:20px auto 40px;padding:20px}
