@@ -709,14 +709,15 @@ const CardMethodIcon = () => (
 const BankMethodIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><path d="M3 10l9-6 9 6" /><path d="M4 10v9M9 10v9M15 10v9M20 10v9" /><path d="M2 21h20" /></svg>
 );
-const CryptoMethodIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.5 8.5h3.2a1.9 1.9 0 0 1 0 3.8H9.5m0-3.8V16m0-3.7h3.6a1.9 1.9 0 0 1 0 3.7H9.5m0 0V16M11 7v1.5M11 16v1.5M13.5 7v1.5M13.5 16v1.5" /></svg>
+const PromoMethodIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><path d="M20.5 12.79V6a1 1 0 0 0-1-1h-6.79a1 1 0 0 0-.7.29l-8 8a1 1 0 0 0 0 1.42l6.79 6.79a1 1 0 0 0 1.42 0l8-8a1 1 0 0 0 .28-.71z" /><circle cx="16" cy="8" r="1.4" fill={PURPLE} stroke="none" /></svg>
 );
 
 const PaymentStep = ({
   prospect,
   onPayCard,
   onPayBankTransfer,
+  onApplyPromo,
   bankDetails,
   loading,
   error,
@@ -724,12 +725,13 @@ const PaymentStep = ({
   prospect: ProspectPreview;
   onPayCard: () => void;
   onPayBankTransfer: () => void;
+  onApplyPromo: (code: string) => void;
   bankDetails: { reference: string; accountName: string; accountNumber: string; bankName: string } | null;
   loading: boolean;
   error: string;
 }) => {
-  const [method, setMethod] = useState<'card' | 'bank_transfer' | 'crypto'>('card');
-  const [showCryptoContact, setShowCryptoContact] = useState(false);
+  const [method, setMethod] = useState<'card' | 'bank_transfer' | 'promo'>('card');
+  const [promoCode, setPromoCode] = useState('');
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const price = unlockPrice(prospect.asking_price);
@@ -737,7 +739,7 @@ const PaymentStep = ({
   const handlePayClick = () => {
     if (method === 'card') onPayCard();
     else if (method === 'bank_transfer') onPayBankTransfer();
-    else setShowCryptoContact(true);
+    else if (promoCode.trim()) onApplyPromo(promoCode.trim());
   };
 
   return (
@@ -746,18 +748,30 @@ const PaymentStep = ({
       <div className="slw-payment-grid">
         <div className="slw-payment-methods">
           <b>Select a payment method to continue.</b>
-          <button type="button" className={`slw-method ${method === 'card' ? 'slw-method-active' : ''}`} onClick={() => { setMethod('card'); setShowCryptoContact(false); }}>
+          <button type="button" className={`slw-method ${method === 'card' ? 'slw-method-active' : ''}`} onClick={() => setMethod('card')}>
             <span className="slw-method-icon"><CardMethodIcon /></span>
             <span><b>Card</b><small>Visa, Amex, MasterCard, Verve</small></span>
           </button>
-          <button type="button" className={`slw-method ${method === 'bank_transfer' ? 'slw-method-active' : ''}`} onClick={() => { setMethod('bank_transfer'); setShowCryptoContact(false); }}>
+          <button type="button" className={`slw-method ${method === 'bank_transfer' ? 'slw-method-active' : ''}`} onClick={() => setMethod('bank_transfer')}>
             <span className="slw-method-icon"><BankMethodIcon /></span>
             <span><b>Bank Transfer</b><small>Pay Directly from your Bank</small></span>
           </button>
-          <button type="button" className={`slw-method ${method === 'crypto' ? 'slw-method-active' : ''}`} onClick={() => { setMethod('crypto'); setShowCryptoContact(false); }}>
-            <span className="slw-method-icon"><CryptoMethodIcon /></span>
-            <span><b>Crypto</b><small>BTC, ETH, USDT</small></span>
+          <button type="button" className={`slw-method ${method === 'promo' ? 'slw-method-active' : ''}`} onClick={() => setMethod('promo')}>
+            <span className="slw-method-icon"><PromoMethodIcon /></span>
+            <span><b>Promo Code</b><small>Have a code? Redeem it here</small></span>
           </button>
+          {method === 'promo' && (
+            <label className="slw-promo-input">
+              Promo code
+              <input
+                type="text"
+                placeholder="Enter promo code"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                autoCapitalize="characters"
+              />
+            </label>
+          )}
         </div>
         <div className="slw-payment-summary">
           <div className="slw-payment-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
@@ -780,26 +794,13 @@ const PaymentStep = ({
             <div><span>Reference (required)</span><b>{bankDetails.reference}</b></div>
           </div>
         </div>
-      ) : showCryptoContact ? (
-        <div className="slw-bank-details">
-          <b>Pay with crypto</b>
-          <p>
-            Crypto payment for this report is arranged directly with our team so we can confirm
-            the network and current exchange rate with you first. Email{' '}
-            <a href="mailto:myhavloservices@gmail.com?subject=Crypto%20payment%20-%20Property%20{prospect.property_code}">
-              myhavloservices@gmail.com
-            </a>{' '}
-            with your Property ID ({prospect.property_code}) and we&rsquo;ll send you payment
-            details and unlock your report once received.
-          </p>
-        </div>
       ) : (
         <>
           {error && <p className="slw-error">{error}</p>}
           <button
             type="button"
             className="slw-btn-black slw-pay-btn"
-            disabled={loading}
+            disabled={loading || (method === 'promo' && !promoCode.trim())}
             onClick={handlePayClick}
           >
             {loading
@@ -808,7 +809,7 @@ const PaymentStep = ({
                 ? `Pay ${formatGbp(price, { maximumFractionDigits: 2 })} & View My Report`
                 : method === 'bank_transfer'
                   ? 'Get Bank Transfer Details'
-                  : 'Pay With Crypto'}
+                  : 'Apply Code & View My Report'}
           </button>
         </>
       )}
@@ -1245,6 +1246,27 @@ export const StaleProspectWizard = () => {
     }
   };
 
+  const handleApplyPromo = async (code: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      // payment_method here is a required field but irrelevant once a valid
+      // promo_code is present — the backend unlocks on the code alone before
+      // it ever looks at how payment would otherwise have been taken.
+      const result = await createProspectCheckout({ ...access, payment_method: 'card', promo_code: code });
+      if (result.unlocked) {
+        await loadReport();
+        setStep('success');
+      } else {
+        setError('That promo code is not valid. Please check it and try again.');
+      }
+    } catch {
+      setError('We could not apply that code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePayBankTransfer = async () => {
     setLoading(true);
     setError('');
@@ -1351,6 +1373,7 @@ export const StaleProspectWizard = () => {
               prospect={prospect}
               onPayCard={handlePayCard}
               onPayBankTransfer={handlePayBankTransfer}
+              onApplyPromo={handleApplyPromo}
               bankDetails={bankDetails}
               loading={loading}
               error={error}
@@ -1526,12 +1549,15 @@ const WizardStyles = () => (
     .slw-payment-methods>b{font-size:18px;margin-bottom:14px;color:#111}
     .slw-method{display:flex;align-items:center;gap:16px;background:#f1f2f4;border:1.5px solid transparent;border-radius:10px;padding:20px;text-align:left;cursor:pointer;font-family:inherit}
     .slw-method-active{background:#fff;border-color:#A409D2}
+    .slw-promo-input{display:block;font-size:13px;font-weight:600;color:#333;margin-top:2px}
+    .slw-promo-input input{width:100%;margin-top:8px;background:#fff;border:1px solid #e2e4e8;border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit;letter-spacing:0.04em;outline:none}
+    .slw-promo-input input:focus{border-color:#A409D2}
     .slw-method-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#f3e6fb;flex:none}
     .slw-method b{display:block;font-size:15px}
     .slw-method small{color:#777;font-size:12.5px}
     .slw-payment-summary{background:#fff;border-radius:16px;padding:12px 28px 12px 12px;margin-left:0;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
     .slw-payment-image{border-radius:10px;min-height:338px;background-size:cover;background-position:center;background-color:#e5e7eb;grid-row:1 / span 2}
-    .slw-payment-summary h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;line-height:1;margin:0 0 92px;color:#202124}
+    .slw-payment-summary h2{font-family:'Bricolage Grotesque',sans-serif;font-size:40px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 92px;color:#202124}
     .slw-payment-breakdown{grid-column:2}
     .slw-payment-breakdown div{display:flex;justify-content:space-between;padding:15px 0;font-size:15px;color:#111}
     .slw-payment-total{border-top:1px solid #eee;font-weight:700;color:#111 !important}
