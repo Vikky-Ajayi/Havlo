@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
+import { StaleListingsLogo } from '../../components/shared/StaleListingsLogo';
 import {
   confirmProspectProperty,
   createProspectCheckout,
@@ -53,15 +54,11 @@ const HandshakeIcon = () => (
   </svg>
 );
 
-const HavloLogo = () => (
-  <img className="slw-logo-mark" src="/stale-listings/stale-listings-logo.svg" alt="Havlo StaleListings" />
-);
-
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="slw-header">
-      <a href="/stale-listings" className="slw-logo-link"><HavloLogo /></a>
+      <a href="/stale-listings" className="slw-logo-link"><StaleListingsLogo className="slw-logo-mark" /></a>
       <nav className="slw-nav slw-noprint">
         <a href="/stale-listings">How it works</a>
         <a href="/stale-listings">Faq</a>
@@ -88,7 +85,7 @@ const Header = () => {
 
 const Footer = () => (
   <footer className="slw-footer slw-noprint">
-    <HavloLogo />
+    <StaleListingsLogo className="slw-logo-mark" />
     <p>&copy; 2025 StaleListings. All rights reserved.</p>
     <div className="slw-footer-links">
       <a href="/privacy-policy">Privacy Policy</a>
@@ -909,7 +906,7 @@ const RecommendationModal = ({ contactName, onClose }: { contactName: string; on
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
 export const StaleProspectWizard = () => {
-  const [params] = useSearchParams();
+  const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
   const [prospect, setProspect] = useState<ProspectPreview | null>(null);
@@ -1010,11 +1007,30 @@ export const StaleProspectWizard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the URL's token/code in sync with access as the user progresses
+  // through the wizard, so refreshing on any step (confirm, details,
+  // assessment, payment...) has something for the resume-on-reload effect
+  // above to key off — otherwise a refresh always lands back on 'landing'.
+  useEffect(() => {
+    if (!access.token && !access.code) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (access.token) next.set('token', access.token);
+        if (access.code) next.set('code', access.code);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [access.token, access.code, setSearchParams]);
+
   const handleGoBack = () => {
     if (step === 'confirm' || step === 'not_found') setStep('landing');
     else if (step === 'details') setStep('confirm');
     else if (step === 'assessment') setStep('details');
     else if (step === 'payment') setStep('assessment');
+    else if (step === 'success') setStep('payment');
+    else if (step === 'report') setStep('success');
     else navigate(-1);
   };
 
@@ -1286,8 +1302,8 @@ const WizardStyles = () => (
     .slw-confirm-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #eee;border-radius:16px;overflow:hidden;text-align:left;background:#fff}
     .slw-confirm-image{min-height:542px;background-size:cover;background-position:center;background-color:#e5e7eb}
     .slw-confirm-details{padding:36px 40px;display:flex;flex-direction:column;justify-content:center}
-    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;font-weight:300;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
-    .slw-confirm-price{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
+    .slw-confirm-details h2{font-family:'Bricolage Grotesque',sans-serif;font-size:40px;font-weight:300;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
+    .slw-confirm-price{font-family:'Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
     .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
     .slw-confirm-facts span{display:flex;align-items:center;gap:8px}
@@ -1323,7 +1339,7 @@ const WizardStyles = () => (
     .slw-assess-top{display:grid;grid-template-columns:2fr .85fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-bottom:50px}
     .slw-assess-property{display:grid;grid-template-columns:1fr 1.05fr;gap:24px;background:#fff;border-radius:14px;padding:12px 24px 12px 12px;margin-right:0;align-items:center}
     .slw-assess-image{border-radius:10px;min-height:306px;background-size:cover;background-position:center;background-color:#e5e7eb}
-    .slw-assess-property-info h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;font-weight:900;margin:0 0 86px;line-height:1;color:#202124}
+    .slw-assess-property-info h2{font-family:'Bricolage Grotesque',sans-serif;font-size:42px;font-weight:500;margin:0 0 86px;line-height:1;color:#202124}
     .slw-assess-facts{display:grid;grid-template-columns:1fr 1fr;gap:24px;border-top:1px solid #e5e7eb;padding-top:22px}
     .slw-assess-facts div{display:flex;flex-direction:column;gap:4px}
     .slw-assess-facts span{color:#111;font-size:15px}
