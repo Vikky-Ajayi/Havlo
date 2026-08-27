@@ -446,9 +446,10 @@ const SaleabilityGauge = ({ score, size = 190 }: { score: number; size?: number 
         <path
           d={`M ${cx - r - 8} ${cy} A ${r + 8} ${r + 8} 0 0 1 ${cx + r + 8} ${cy}`}
           fill="none"
-          stroke="#e5e7eb"
-          strokeWidth="1"
-          strokeDasharray="1 7"
+          stroke="#d1d5db"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray="0.5 8"
         />
         <line
           x1={cx}
