@@ -1214,17 +1214,22 @@ ABSOLUTE RULES — breaking any of these is a failure:
                 if isinstance(item, dict)
             ],
         }
+        override_note = (
+            ""
+            if has_seller_survey
+            else (
+                "This is a cold outreach assessment with no homeowner questionnaire — never state, "
+                "estimate, or imply a viewing count, buyer feedback, or offer history anywhere in "
+                "your additions; base every addition only on the public listing described below.\n"
+            )
+        )
         expansion_prompt = f"""
 You are expanding an existing UK property sales report for the {package} package.
 Return ONLY valid JSON with additive copy. Do not repeat the existing text.
 Make every addition specific to the property and questionnaire context below.
 Use clear UK property language, buyer behaviour, market positioning, and
 commercial consequences. Never use em dashes.
-{"" if has_seller_survey else (
-    "This is a cold outreach assessment with no homeowner questionnaire — never state, "
-    "estimate, or imply a viewing count, buyer feedback, or offer history anywhere in "
-    "your additions; base every addition only on the public listing described below.\n"
-)}
+{override_note}
 Property context:
 {property_context[:2600]}
 
