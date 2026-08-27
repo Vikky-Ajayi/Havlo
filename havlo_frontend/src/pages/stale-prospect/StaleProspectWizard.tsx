@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import {
   confirmProspectProperty,
   createProspectCheckout,
@@ -49,16 +50,6 @@ const HandshakeIcon = () => (
     <path d="M36.6663 11.2498H32.0182C31.0163 11.2498 30.5153 11.2498 30.043 11.1068C29.5707 10.9638 29.1538 10.6859 28.3202 10.1302C27.0698 9.29655 25.6433 8.34559 24.9347 8.13104C24.2262 7.9165 23.4747 7.9165 21.9718 7.9165C19.9282 7.9165 18.6108 7.9165 17.692 8.2971C16.7732 8.6777 16.0506 9.40029 14.6055 10.8454L13.3337 12.1172C13.008 12.4429 12.8451 12.6058 12.7446 12.7665C12.3719 13.3625 12.4132 14.1283 12.8478 14.6807C12.9651 14.8297 13.1445 14.9741 13.5033 15.2629C14.8296 16.3302 16.7417 16.2237 17.9427 15.0155L19.9997 12.9463H21.6663L31.6663 23.0058C32.5868 23.9318 32.5868 25.433 31.6663 26.359C30.7458 27.285 29.2535 27.285 28.333 26.359L27.4997 25.5206M22.4997 27.1973L24.1663 28.8738C25.0868 29.7998 26.5792 29.7998 27.4997 28.8738C28.4202 27.948 28.4202 26.4466 27.4997 25.5206L22.4997 20.491M19.1663 23.864L22.4997 27.1973C23.4202 28.1231 23.4202 29.6245 22.4997 30.5505C21.5792 31.4763 20.0868 31.4763 19.1663 30.5505L16.6663 28.0355M3.33301 24.5831H3.86457C5.24647 24.5831 5.93744 24.5831 6.55692 24.8435C7.17641 25.104 7.65992 25.5975 8.62696 26.5846L13.333 31.3888C14.2535 32.3146 15.7459 32.3146 16.6663 31.3888C17.5868 30.4628 17.5868 28.9615 16.6663 28.0355L15.833 27.1973" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M36.6667 24.5835H32.5" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
     <path d="M14.1663 11.25H3.33301" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
-  </svg>
-);
-
-const UkFlag = () => (
-  <svg viewBox="0 0 60 30" className="slw-uk-flag" aria-hidden="true">
-    <rect width="60" height="30" fill="#00247d" />
-    <path d="M0 0L60 30M60 0L0 30" stroke="#fff" strokeWidth="6" />
-    <path d="M0 0L60 30M60 0L0 30" stroke="#cf142b" strokeWidth="2" />
-    <path d="M30 0V30M0 15H60" stroke="#fff" strokeWidth="10" />
-    <path d="M30 0V30M0 15H60" stroke="#cf142b" strokeWidth="6" />
   </svg>
 );
 
@@ -353,6 +344,7 @@ const DetailsStep = ({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
+  const [dialCode, setDialCode] = useState('+44');
   const [mobile, setMobile] = useState('');
   const [localError, setLocalError] = useState('');
 
@@ -363,7 +355,12 @@ const DetailsStep = ({
       return;
     }
     setLocalError('');
-    onSubmit({ full_name: fullName.trim(), email: email.trim(), confirm_email: confirmEmail.trim(), mobile_number: mobile.trim() });
+    onSubmit({
+      full_name: fullName.trim(),
+      email: email.trim(),
+      confirm_email: confirmEmail.trim(),
+      mobile_number: `${dialCode} ${mobile.trim()}`.trim(),
+    });
   };
 
   return (
@@ -396,7 +393,7 @@ const DetailsStep = ({
         <label>
           Mobile Number
           <div className="slw-phone-input">
-            <UkFlag />
+            <CountryCodeSelect value={dialCode} onChange={setDialCode} />
             <input type="tel" placeholder="0000 000 0000 .000" value={mobile} onChange={(e) => setMobile(e.target.value)} required />
           </div>
         </label>
@@ -1289,7 +1286,7 @@ const WizardStyles = () => (
     .slw-confirm-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #eee;border-radius:16px;overflow:hidden;text-align:left;background:#fff}
     .slw-confirm-image{min-height:542px;background-size:cover;background-position:center;background-color:#e5e7eb}
     .slw-confirm-details{padding:36px 40px;display:flex;flex-direction:column;justify-content:center}
-    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;font-weight:500;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
+    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;font-weight:300;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
     .slw-confirm-price{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
     .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
@@ -1309,14 +1306,13 @@ const WizardStyles = () => (
     .slw-help-link{display:block;margin-top:18px;color:#A409D2;font-weight:700;text-decoration:none}
 
     .slw-details{max-width:640px;margin:0 auto;text-align:center}
-    .slw-details h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 18px;color:#202124}
+    .slw-details h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:40px;line-height:100%;letter-spacing:-0.03em;text-align:center;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 18px;color:#202124}
     .slw-details p{color:#334155;line-height:1.55;margin:0 auto 26px;max-width:550px;font-size:16px}
     .slw-details p.slw-accent-line{color:#A409D2;font-weight:700}
-    .slw-details-form{text-align:left;background:#fff;border:1px solid #eee;border-radius:12px;padding:26px;margin:34px auto 0;box-shadow:0 16px 40px rgba(15,23,42,.08);max-width:594px}
+    .slw-details-form{text-align:left;background:#fff;border:1px solid #eee;border-radius:12px;padding:26px;margin:34px auto 0;box-shadow:0 16px 40px rgba(15,23,42,.08);max-width:891px}
     .slw-details-form label{display:block;font-size:12px;font-weight:600;margin-bottom:20px;color:#111}
     .slw-details-form input{width:100%;margin-top:8px;background:#f1f2f4;border:none;border-radius:12px;padding:18px 18px;font-size:15px;font-family:inherit;outline:none}
     .slw-phone-input{display:flex;align-items:center;gap:12px;background:#f1f2f4;border-radius:12px;padding:0 14px;margin-top:8px}
-    .slw-uk-flag{width:26px;height:16px;border-radius:2px;flex:none}
     .slw-phone-input input{background:none;padding:14px 0}
     .slw-consent{display:flex;gap:8px;color:#666;font-size:13px;line-height:1.5;margin:6px 0 22px}
     .slw-consent .slw-info-dot{margin-top:2px}
