@@ -484,6 +484,74 @@ const ScoreBar = ({ label, value }: { label: string; value: number }) => {
   );
 };
 
+// ── Shared: long-text handling ──────────────────────────────────────────────
+//
+// Real Groq-generated report text runs 1000-3000+ characters per field (the
+// prompt deliberately asks for consultant-length prose), which is exactly
+// right for a report someone paid for and wants to actually read, but is far
+// too dense for the small, scannable cards the design uses. Rather than
+// shortening the underlying content, every long block on these two pages is
+// shown clamped by default with a "Read more" toggle — nothing is ever lost,
+// the page just doesn't open looking like a wall of text.
+
+const ExpandableText = ({
+  text,
+  maxChars = 220,
+  allowExpand = true,
+  as: Tag = 'p',
+  className,
+}: {
+  text?: string;
+  maxChars?: number;
+  allowExpand?: boolean;
+  as?: 'p' | 'span';
+  className?: string;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const clean = (text || '').trim();
+  if (!clean) return null;
+  const isLong = clean.length > maxChars;
+  const truncated = isLong ? clean.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : clean;
+  const shown = expanded ? clean : truncated;
+  return (
+    <Tag className={className}>
+      {shown}
+      {isLong && allowExpand && (
+        <button type="button" className="slw-read-more" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Show less' : 'Read more'}
+        </button>
+      )}
+    </Tag>
+  );
+};
+
+// Older reports (generated before evidence/impact/recommend existed) only
+// ever stored one long `description` per finding. Rather than showing those
+// three labels with nothing under them, split the description into rough
+// thirds on sentence boundaries so every report — old or new — gets a
+// sensible EVIDENCE / IMPACT / RECOMMEND breakdown.
+function splitIntoThree(text: string): [string, string, string] {
+  const clean = (text || '').trim();
+  if (!clean) return ['', '', ''];
+  const sentences = clean.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).filter(Boolean);
+  if (sentences.length < 3) return [clean, '', ''];
+  const third = Math.ceil(sentences.length / 3);
+  return [
+    sentences.slice(0, third).join(' '),
+    sentences.slice(third, third * 2).join(' '),
+    sentences.slice(third * 2).join(' '),
+  ];
+}
+
+// Same idea for action_plan.why_it_matters, which is also empty on older
+// reports — fall back to the description's first sentence.
+function firstSentence(text: string): string {
+  const clean = (text || '').trim();
+  if (!clean) return '';
+  const match = clean.match(/^.*?[.!?](?=\s|$)/);
+  return (match ? match[0] : clean).trim();
+}
+
 // ── Step: Assessment (locked preview) ──────────────────────────────────────
 
 const LOCKED_FINDING_LABELS = [
@@ -550,7 +618,11 @@ const AssessmentStep = ({
               <span className="slw-finding-icon">{FINDING_ICONS[finding.icon || 'timing'] || '●'}</span>
               <div>
                 <b>{finding.title}</b>
-                <p>{finding.description}</p>
+                {/* This is a free, locked preview — the full analysis is what
+                    the paid report is for, so it's clamped with no expand
+                    option here rather than showing the whole 1000+ character
+                    finding for free. */}
+                <ExpandableText text={finding.description} maxChars={150} allowExpand={false} />
               </div>
             </div>
           ))}
@@ -767,7 +839,7 @@ const FullReportStep = ({
       <div className="slw-report-summary-row">
         <div className="slw-report-summary-card">
           <b>Executive summary</b>
-          <p>{data.executive_summary}</p>
+          <ExpandableText text={data.executive_summary} maxChars={320} />
         </div>
         <div className="slw-report-property-card">
           <div className="slw-report-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
@@ -797,54 +869,77 @@ const FullReportStep = ({
 
       <h2 className="slw-section-heading">Why your property may not be selling</h2>
       <div className="slw-why-not-selling">
-        {heroFindings.map((finding, i) => (
-          <div className="slw-why-card" key={i}>
-            <h3>{String(i + 1).padStart(2, '0')} &mdash; {finding.title}</h3>
-            <div><span className="slw-why-label slw-why-evidence">EVIDENCE</span><p>{finding.evidence}</p></div>
-            <div><span className="slw-why-label slw-why-impact">IMPACT</span><p>{finding.impact}</p></div>
-            <div><span className="slw-why-label slw-why-recommend">RECOMMEND</span><p>{finding.recommend}</p></div>
-          </div>
-        ))}
+        {heroFindings.map((finding, i) => {
+          // Reports generated before evidence/impact/recommend existed only
+          // ever stored one long description — derive the three-way split
+          // from it instead of rendering three labels with nothing under them.
+          const hasStructured = finding.evidence && finding.impact && finding.recommend;
+          const [ev, im, rec] = hasStructured
+            ? [finding.evidence as string, finding.impact as string, finding.recommend as string]
+            : splitIntoThree(finding.description || '');
+          return (
+            <div className="slw-why-card" key={i}>
+              <h3>{String(i + 1).padStart(2, '0')} &mdash; {finding.title}</h3>
+              <div><span className="slw-why-label slw-why-evidence">EVIDENCE</span><ExpandableText text={ev} maxChars={180} /></div>
+              <div><span className="slw-why-label slw-why-impact">IMPACT</span><ExpandableText text={im} maxChars={180} /></div>
+              <div><span className="slw-why-label slw-why-recommend">RECOMMEND</span><ExpandableText text={rec} maxChars={180} /></div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="slw-report-two-col">
-        <div className="slw-competition-card">
-          <b>Competition analysis</b>
-          <p>Properties currently competing for the same buyers:</p>
-          {(data.active_competition || []).map((c, i) => (
-            <div className="slw-competitor-row" key={i}>
-              <div>
-                <b>{c.address}</b>
-                <span>{c.beds} bed &middot; {c.distance} &middot; {c.differentiator}</span>
+      <div className={`slw-report-two-col ${(data.active_competition || []).length === 0 ? 'slw-report-two-col-single' : ''}`}>
+        {(data.active_competition || []).length > 0 && (
+          <div className="slw-competition-card">
+            <b>Competition analysis</b>
+            <p>Properties currently competing for the same buyers:</p>
+            {(data.active_competition || []).map((c, i) => (
+              <div className="slw-competitor-row" key={i}>
+                <div>
+                  <b>{c.address}</b>
+                  <span>{c.beds} bed &middot; {c.distance} &middot; {c.differentiator}</span>
+                </div>
+                <div className="slw-competitor-price">
+                  <b>{c.price}</b>
+                  <span>{c.days_listed} days listed</span>
+                </div>
               </div>
-              <div className="slw-competitor-price">
-                <b>{c.price}</b>
-                <span>{c.days_listed} days listed</span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <div className="slw-actions-card">
           <b>Recommended actions</b>
-          {(data.action_plan || []).map((action, i) => (
-            <div className="slw-action-row" key={i}>
-              <b>{action.title}</b>
-              <p>{action.description}</p>
-              {action.why_it_matters && <p className="slw-why-it-matters"><i>Why it matters: {action.why_it_matters}</i></p>}
-            </div>
-          ))}
+          {(data.action_plan || []).map((action, i) => {
+            const whyItMatters = action.why_it_matters || firstSentence(action.description || '');
+            return (
+              <div className="slw-action-row" key={i}>
+                <b>{action.title}</b>
+                <ExpandableText text={action.description} maxChars={200} />
+                {whyItMatters && (
+                  <p className="slw-why-it-matters">
+                    <i>Why it matters: </i>
+                    <ExpandableText text={whyItMatters} maxChars={140} as="span" />
+                  </p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <h2 className="slw-section-heading">30-day action plan</h2>
-      <div className="slw-thirty-day-grid">
-        {(data.thirty_day_plan || []).map((week) => (
-          <div className="slw-week-card" key={week.week}>
-            <span>Week {week.week}</span>
-            <b>{week.title}</b>
+      {(data.thirty_day_plan || []).length > 0 && (
+        <>
+          <h2 className="slw-section-heading">30-day action plan</h2>
+          <div className="slw-thirty-day-grid">
+            {(data.thirty_day_plan || []).map((week) => (
+              <div className="slw-week-card" key={week.week}>
+                <span>Week {week.week}</span>
+                <b>{week.title}</b>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       <div className="slw-recommendation-callout">
         <b>Havlo Stale Listing Recommendation</b>
@@ -1442,6 +1537,8 @@ const WizardStyles = () => (
     .slw-why-card p{margin:0;font-size:14px;color:#444;line-height:1.5}
 
     .slw-report-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-top:38px}
+    .slw-report-two-col-single{grid-template-columns:1fr}
+    .slw-read-more{display:inline;background:none;border:none;padding:0;margin-left:4px;color:#A409D2;font-weight:700;font-size:inherit;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:2px}
     .slw-competition-card,.slw-actions-card{background:#fff;border-radius:14px;padding:22px}
     .slw-competition-card>b,.slw-actions-card>b{display:block;font-size:17px;margin-bottom:6px}
     .slw-competition-card>p{color:#777;font-size:13.5px;margin:0 0 16px}
