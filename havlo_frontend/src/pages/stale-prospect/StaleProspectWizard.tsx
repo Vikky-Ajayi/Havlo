@@ -912,7 +912,7 @@ const RecommendationModal = ({ contactName, onClose }: { contactName: string; on
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
 export const StaleProspectWizard = () => {
-  const [params] = useSearchParams();
+  const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
   const [prospect, setProspect] = useState<ProspectPreview | null>(null);
@@ -1012,6 +1012,23 @@ export const StaleProspectWizard = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the URL's token/code in sync with access as the user progresses
+  // through the wizard, so refreshing on any step (confirm, details,
+  // assessment, payment...) has something for the resume-on-reload effect
+  // above to key off — otherwise a refresh always lands back on 'landing'.
+  useEffect(() => {
+    if (!access.token && !access.code) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (access.token) next.set('token', access.token);
+        if (access.code) next.set('code', access.code);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [access.token, access.code, setSearchParams]);
 
   const handleGoBack = () => {
     if (step === 'confirm' || step === 'not_found') setStep('landing');
