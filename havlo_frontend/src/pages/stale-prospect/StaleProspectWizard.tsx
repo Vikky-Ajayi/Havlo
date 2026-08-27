@@ -1327,7 +1327,7 @@ const WizardStyles = () => (
     .slw-assess-top{display:grid;grid-template-columns:2fr .85fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-bottom:50px}
     .slw-assess-property{display:grid;grid-template-columns:1fr 1.05fr;gap:24px;background:#fff;border-radius:14px;padding:12px 24px 12px 12px;margin-right:0;align-items:center}
     .slw-assess-image{border-radius:10px;min-height:306px;background-size:cover;background-position:center;background-color:#e5e7eb}
-    .slw-assess-property-info h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;font-weight:900;margin:0 0 86px;line-height:1;color:#202124}
+    .slw-assess-property-info h2{font-family:'Bricolage Grotesque',sans-serif;font-size:42px;font-weight:500;margin:0 0 86px;line-height:1;color:#202124}
     .slw-assess-facts{display:grid;grid-template-columns:1fr 1fr;gap:24px;border-top:1px solid #e5e7eb;padding-top:22px}
     .slw-assess-facts div{display:flex;flex-direction:column;gap:4px}
     .slw-assess-facts span{color:#111;font-size:15px}
