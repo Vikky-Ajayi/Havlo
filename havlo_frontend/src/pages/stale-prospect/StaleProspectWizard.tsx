@@ -1032,6 +1032,8 @@ export const StaleProspectWizard = () => {
     else if (step === 'details') setStep('confirm');
     else if (step === 'assessment') setStep('details');
     else if (step === 'payment') setStep('assessment');
+    else if (step === 'success') setStep('payment');
+    else if (step === 'report') setStep('success');
     else navigate(-1);
   };
 
