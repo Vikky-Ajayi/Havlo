@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { StaleListingsLogo } from '../../components/shared/StaleListingsLogo';
 import {
   confirmProspectProperty,
   createProspectCheckout,
@@ -62,15 +63,11 @@ const UkFlag = () => (
   </svg>
 );
 
-const HavloLogo = () => (
-  <img className="slw-logo-mark" src="/stale-listings/stale-listings-logo.svg" alt="Havlo StaleListings" />
-);
-
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="slw-header">
-      <a href="/stale-listings" className="slw-logo-link"><HavloLogo /></a>
+      <a href="/stale-listings" className="slw-logo-link"><StaleListingsLogo className="slw-logo-mark" /></a>
       <nav className="slw-nav slw-noprint">
         <a href="/stale-listings">How it works</a>
         <a href="/stale-listings">Faq</a>
@@ -97,7 +94,7 @@ const Header = () => {
 
 const Footer = () => (
   <footer className="slw-footer slw-noprint">
-    <HavloLogo />
+    <StaleListingsLogo className="slw-logo-mark" />
     <p>&copy; 2025 StaleListings. All rights reserved.</p>
     <div className="slw-footer-links">
       <a href="/privacy-policy">Privacy Policy</a>
