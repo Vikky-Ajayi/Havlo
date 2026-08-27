@@ -1227,12 +1227,19 @@ export const StaleProspectWizard = () => {
     return data;
   };
 
+  // createProspectCheckout (unlike getProspectReport/getProspectPaymentStatus)
+  // matches the backend schema field name property_code, not access's own
+  // code field - spreading `access` straight into it sends a `code` key the
+  // backend's checkout endpoint doesn't recognize, so every checkout call
+  // must translate through this instead of `...access`.
+  const checkoutAccess = () => (access.token ? { token: access.token } : { property_code: access.code });
+
   const handlePayCard = async () => {
     setLoading(true);
     setError('');
     try {
       const redirectUrl = window.location.href.split('#')[0];
-      const result = await createProspectCheckout({ ...access, payment_method: 'card', redirect_url: redirectUrl });
+      const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', redirect_url: redirectUrl });
       if (result.unlocked) {
         await loadReport();
         setStep('success');
@@ -1253,7 +1260,7 @@ export const StaleProspectWizard = () => {
       // payment_method here is a required field but irrelevant once a valid
       // promo_code is present — the backend unlocks on the code alone before
       // it ever looks at how payment would otherwise have been taken.
-      const result = await createProspectCheckout({ ...access, payment_method: 'card', promo_code: code });
+      const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', promo_code: code });
       if (result.unlocked) {
         await loadReport();
         setStep('success');
@@ -1271,7 +1278,7 @@ export const StaleProspectWizard = () => {
     setLoading(true);
     setError('');
     try {
-      const result = await createProspectCheckout({ ...access, payment_method: 'bank_transfer' });
+      const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'bank_transfer' });
       if (result.unlocked) {
         await loadReport();
         setStep('success');
