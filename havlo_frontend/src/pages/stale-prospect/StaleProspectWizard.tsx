@@ -292,10 +292,26 @@ const ConfirmStep = ({
           ) : null}
           <div className="slw-confirm-facts">
             {prospect.bedrooms ? (
-              <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M3 18v2M21 18v2M3 12V8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>{prospect.bedrooms} Bedrooms</span>
+              <span>
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M29.3332 23.334H2.6665" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M29.3332 28V21.3333C29.3332 18.8192 29.3332 17.5621 28.5521 16.7811C27.771 16 26.514 16 23.9998 16H7.99984C5.48568 16 4.2286 16 3.44756 16.7811C2.6665 17.5621 2.6665 18.8192 2.6665 21.3333V28" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M14.6667 16V13.6179C14.6667 13.1103 14.5904 12.9405 14.1996 12.7405C13.386 12.3239 12.3982 12 11.3333 12C10.2685 12 9.28073 12.3239 8.467 12.7405C8.07628 12.9405 8 13.1103 8 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                  <path d="M24.0002 16V13.6179C24.0002 13.1103 23.9239 12.9405 23.5331 12.7405C22.7195 12.3239 21.7318 12 20.6668 12C19.6019 12 18.6142 12.3239 17.8006 12.7405C17.4098 12.9405 17.3335 13.1103 17.3335 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                  <path d="M28 16V9.81409C28 8.89191 28 8.43081 27.7439 7.99537C27.4876 7.55993 27.1227 7.33455 26.3925 6.88377C23.4492 5.06637 19.8657 4 16 4C12.1342 4 8.55085 5.06637 5.60744 6.88377C4.87739 7.33455 4.51236 7.55993 4.25617 7.99537C4 8.43081 4 8.89191 4 9.81409V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                </svg>
+                {prospect.bedrooms} Bedrooms
+              </span>
             ) : null}
             {prospect.bathrooms ? (
-              <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3zM7 12V6a2 2 0 0 1 3.5-1.3" /></svg>{prospect.bathrooms} Bathrooms</span>
+              <span>
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M25.3333 13.334H6.66667C5.19391 13.334 4 14.5279 4 16.0007C4 20.4189 7.58172 24.0007 12 24.0007H20C24.4183 24.0007 28 20.4189 28 16.0007C28 14.5279 26.8061 13.334 25.3333 13.334Z" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6.6665 13.3327V8.66602C6.6665 7.56144 7.56193 6.66602 8.6665 6.66602C9.77108 6.66602 10.6665 7.56144 10.6665 8.66602V9.33268" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M9.33333 24L8 25.3333M22.6667 24L24 25.3333" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {prospect.bathrooms} Bathrooms
+              </span>
             ) : null}
           </div>
           <p className="slw-confirm-question">Is this your property?</p>
@@ -1268,18 +1284,18 @@ const WizardStyles = () => (
     @keyframes slw-spin{to{transform:rotate(360deg)}}
 
     .slw-confirm{max-width:none;margin:0 auto;text-align:center}
-    .slw-confirm h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 12px;color:#202124}
-    .slw-confirm-copy{color:#334155;margin:0 0 38px;font-size:16px}
+    .slw-confirm h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:40px;line-height:100%;letter-spacing:-0.03em;text-align:center;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 12px;color:#202124}
+    .slw-confirm-copy{font-family:'Inter',sans-serif;font-weight:500;color:#334155;margin:0 0 38px;font-size:20px;line-height:150%;letter-spacing:-0.02em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-confirm-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #eee;border-radius:16px;overflow:hidden;text-align:left;background:#fff}
     .slw-confirm-image{min-height:542px;background-size:cover;background-position:center;background-color:#e5e7eb}
     .slw-confirm-details{padding:36px 40px;display:flex;flex-direction:column;justify-content:center}
-    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px;font-weight:900;margin:0 0 14px;line-height:1;color:#202124}
-    .slw-confirm-price{color:#A409D2;font-size:34px;font-weight:800}
+    .slw-confirm-details h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;font-weight:500;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
+    .slw-confirm-price{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
-    .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-size:18px}
+    .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
     .slw-confirm-facts span{display:flex;align-items:center;gap:8px}
     .slw-confirm-facts svg{color:#A409D2}
-    .slw-confirm-question{font-weight:800;margin:0 0 18px;text-align:center}
+    .slw-confirm-question{font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 18px;text-align:center}
 
     .slw-btn-black{background:#0a0a0a;color:#fff;border:none;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
     .slw-btn-black:disabled{opacity:0.6;cursor:default}
