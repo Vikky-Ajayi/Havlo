@@ -618,11 +618,7 @@ const AssessmentStep = ({
               <span className="slw-finding-icon">{FINDING_ICONS[finding.icon || 'timing'] || '●'}</span>
               <div>
                 <b>{finding.title}</b>
-                {/* This is a free, locked preview — the full analysis is what
-                    the paid report is for, so it's clamped with no expand
-                    option here rather than showing the whole 1000+ character
-                    finding for free. */}
-                <ExpandableText text={finding.description} maxChars={150} allowExpand={false} />
+                <ExpandableText text={finding.description} maxChars={150} />
               </div>
             </div>
           ))}
