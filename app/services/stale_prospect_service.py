@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 import os
 import random
 import re
@@ -16,6 +17,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 from datetime import datetime, timezone
+from xml.sax.saxutils import escape as _xml_escape
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +28,25 @@ from app.models.models import RightmoveListing, StaleListingProspect
 from app.services.groq_service import generate_stale_listing_report
 
 logger = logging.getLogger(__name__)
+
+# qrcode and reportlab are pinned, required dependencies (requirements.txt),
+# not truly optional — imported eagerly here (rather than lazily inside
+# generate_letter_pdf, as before) so the many small drawing helpers below
+# can use them as plain module-level functions. Still guarded so a broken
+# install fails with a clear message instead of an import-time traceback
+# taking down the whole module.
+try:
+    import qrcode
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import ImageReader
+    from reportlab.platypus import Paragraph
+    from reportlab.pdfgen import canvas as rl_canvas
+    _PDF_LIBS_IMPORT_ERROR: ImportError | None = None
+except ImportError as _pdf_libs_exc:  # pragma: no cover - depends on deployment image
+    _PDF_LIBS_IMPORT_ERROR = _pdf_libs_exc
 
 
 def create_access_token() -> str:
@@ -487,19 +508,435 @@ async def expand_report_in_background(prospect_id: str) -> None:
         logger.exception("Background report expansion failed for prospect %s", prospect_id)
 
 
-def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:
-    """Generate the printable homeowner letter PDF and return its absolute path."""
+# ── Letter PDF drawing helpers ──────────────────────────────────────────────
+#
+# Two-page homeowner letter matching the "Property Performance Snapshot"
+# design reference (Aug 2026 redesign). All measurements below were taken
+# directly off the reference PDF via pixel-run analysis at 2x zoom (so
+# img_px / 2 = pt), not eyeballed — in particular the corner flourish is a
+# plain rounded rect bleeding off the top+right edges (left edge x=565pt,
+# bottom edge y=725pt), not the diagonal ribbon it first looks like in a
+# casual crop.
+
+_LETTER_MARGIN = 44.0
+_LETTER_INK = colors.HexColor("#141414") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_MUTED = colors.HexColor("#6B7280") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_ACCENT = colors.HexColor("#A409D2") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_ACCENT_PALE = colors.HexColor("#F3E6FB") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_CARD_BG = colors.HexColor("#F7F7F8") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_CARD_BORDER = colors.HexColor("#E7E7EA") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_GREEN = colors.HexColor("#0E7D4C") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_RED = colors.HexColor("#DE2921") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_ORANGE = colors.HexColor("#B14F0A") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_TRUST_GREEN = colors.HexColor("#00B67A") if not _PDF_LIBS_IMPORT_ERROR else None
+_LETTER_LOGO_PATH = Path("havlo_frontend/Havlo Black Transparent.png")
+
+if not _PDF_LIBS_IMPORT_ERROR:
+    _LETTER_BODY_STYLE = ParagraphStyle("LetterBody", fontName="Helvetica", fontSize=10, leading=14.5, textColor=_LETTER_INK)
+    _LETTER_LEGAL_TEXT = (
+        "Havlo Ltd, registered in England and Wales (Company No. 15369975). Office: 2nd Floor, Berkeley Square, "
+        "London, England, W1J 6BD. Havlo provides property marketing intelligence to help sellers understand and "
+        "improve the performance of their property listings. We identified your property using publicly available "
+        "listing information. You have the right to opt out of future marketing communications from us at any time. "
+        "To opt out, email <a href=\"mailto:hello@heyhavlo.com\">hello@heyhavlo.com</a> and we will remove your address "
+        "from our marketing records."
+    )
+    _LETTER_STYLE_LEGAL = ParagraphStyle("LetterLegal", fontName="Helvetica-Oblique", fontSize=6.8, leading=9.4, textColor=_LETTER_MUTED, alignment=1)
+    _LETTER_STYLE_NOTE = ParagraphStyle("LetterNote", fontName="Helvetica-Oblique", fontSize=7.6, leading=10.2, textColor=_LETTER_MUTED, alignment=1)
+
+_LETTER_GAUGE_START = 205.0
+_LETTER_GAUGE_END = -25.0
+_LETTER_GAUGE_SPAN = _LETTER_GAUGE_START - _LETTER_GAUGE_END
+
+
+def _letter_esc(text: Any) -> str:
+    return _xml_escape(str(text))
+
+
+def _letter_para(page, text: str, x: float, y: float, w: float, style: "ParagraphStyle") -> float:
+    p = Paragraph(text, style)
+    _, h = p.wrap(w, 200 * mm)
+    p.drawOn(page, x, y - h)
+    return y - h
+
+
+def _letter_draw_checkmark(page, cx: float, cy: float, r: float = 6.5) -> None:
+    page.setFillColor(_LETTER_ACCENT)
+    page.circle(cx, cy, r, stroke=0, fill=1)
+    page.setStrokeColor(colors.white)
+    page.setLineWidth(1.3)
+    page.setLineCap(1)
+    page.setLineJoin(1)
+    p = page.beginPath()
+    p.moveTo(cx - r * 0.45, cy - r * 0.02)
+    p.lineTo(cx - r * 0.12, cy - r * 0.38)
+    p.lineTo(cx + r * 0.48, cy + r * 0.35)
+    page.drawPath(p, stroke=1, fill=0)
+
+
+def _letter_icon_coins(page, cx, cy, s, color) -> None:
+    page.setStrokeColor(color)
+    page.setLineWidth(1.1)
+    for dy in (-s * 0.42, -s * 0.08, s * 0.26):
+        page.ellipse(cx - s * 0.62, cy + dy - s * 0.16, cx + s * 0.62, cy + dy + s * 0.16, stroke=1, fill=0)
+
+
+def _letter_icon_hourglass(page, cx, cy, s, color) -> None:
+    page.setStrokeColor(color)
+    page.setLineWidth(1.15)
+    page.setLineJoin(1)
+    top = page.beginPath()
+    top.moveTo(cx - s * 0.55, cy + s * 0.62)
+    top.lineTo(cx + s * 0.55, cy + s * 0.62)
+    top.lineTo(cx, cy)
+    top.close()
+    page.drawPath(top, stroke=1, fill=0)
+    bot = page.beginPath()
+    bot.moveTo(cx - s * 0.55, cy - s * 0.62)
+    bot.lineTo(cx + s * 0.55, cy - s * 0.62)
+    bot.lineTo(cx, cy)
+    bot.close()
+    page.drawPath(bot, stroke=1, fill=0)
+    page.line(cx - s * 0.62, cy + s * 0.62, cx + s * 0.62, cy + s * 0.62)
+    page.line(cx - s * 0.62, cy - s * 0.62, cx + s * 0.62, cy - s * 0.62)
+
+
+def _letter_icon_trending_up(page, cx, cy, s, color) -> None:
+    page.setStrokeColor(color)
+    page.setLineWidth(1.3)
+    page.setLineCap(1)
+    page.setLineJoin(1)
+    p = page.beginPath()
+    p.moveTo(cx - s * 0.62, cy - s * 0.4)
+    p.lineTo(cx - s * 0.12, cy + s * 0.05)
+    p.lineTo(cx + s * 0.2, cy - s * 0.15)
+    p.lineTo(cx + s * 0.62, cy + s * 0.5)
+    page.drawPath(p, stroke=1, fill=0)
+    page.line(cx + s * 0.62, cy + s * 0.5, cx + s * 0.22, cy + s * 0.5)
+    page.line(cx + s * 0.62, cy + s * 0.5, cx + s * 0.62, cy + s * 0.1)
+
+
+def _letter_icon_people(page, cx, cy, s, color) -> None:
+    page.setStrokeColor(color)
+    page.setLineWidth(1.1)
+    for dx in (-s * 0.32, s * 0.32):
+        page.circle(cx + dx, cy + s * 0.3, s * 0.24, stroke=1, fill=0)
+        arcbox = (cx + dx - s * 0.42, cy - s * 0.5, cx + dx + s * 0.42, cy + s * 0.1)
+        page.arc(*arcbox, 0, 180)
+
+
+def _letter_icon_scan_frame(page, cx, cy, s, color) -> None:
+    page.setStrokeColor(color)
+    page.setLineWidth(1.5)
+    page.setLineCap(0)
+    L = s * 0.85
+    c = s * 0.45
+    for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+        x0, y0 = cx + sx * L, cy + sy * L
+        page.line(x0, y0, x0 - sx * c, y0)
+        page.line(x0, y0, x0, y0 - sy * c)
+
+
+def _letter_draw_gauge(page, cx, cy, radius, score, color) -> None:
+    """Semicircle-ish gauge (a ~230deg sweep, not a plain 180deg semicircle
+    — also measured off the reference, not assumed). score 0 -> needle/arc
+    at the start angle, 100 -> needle/arc at the end angle."""
+    fraction = max(0, min(100, score or 0)) / 100.0
+    value_angle = _LETTER_GAUGE_START - fraction * _LETTER_GAUGE_SPAN
+    page.setLineCap(1)
+    page.setStrokeColor(colors.HexColor("#ECECEE"))
+    page.setLineWidth(radius * 0.24)
+    page.arc(cx - radius, cy - radius, cx + radius, cy + radius, _LETTER_GAUGE_END, _LETTER_GAUGE_SPAN)
+    page.setStrokeColor(color)
+    page.arc(cx - radius, cy - radius, cx + radius, cy + radius, value_angle, _LETTER_GAUGE_START - value_angle)
+    needle_len = radius * 0.55
+    nx = cx + needle_len * math.cos(math.radians(value_angle))
+    ny = cy + needle_len * math.sin(math.radians(value_angle))
+    page.setStrokeColor(colors.HexColor("#111111"))
+    page.setLineWidth(1.6)
+    page.setLineCap(1)
+    page.line(cx, cy, nx, ny)
+    page.setFillColor(colors.HexColor("#111111"))
+    page.circle(cx, cy, radius * 0.065, stroke=0, fill=1)
+
+
+def _letter_draw_trustpilot(page, right_x, top_y) -> None:
+    page.setFillColor(_LETTER_INK)
+    page.setFont("Helvetica-Bold", 10.5)
+    label_w = page.stringWidth("Excellent", "Helvetica-Bold", 10.5)
+    total_w = label_w + 8 + 5 * 15
+    start_x = right_x - total_w
+    page.drawString(start_x, top_y, "Excellent")
+    sx = start_x + label_w + 8
+    for i in range(5):
+        bx = sx + i * 15
+        page.setFillColor(_LETTER_TRUST_GREEN)
+        page.rect(bx, top_y - 2, 13, 13, stroke=0, fill=1)
+        page.setFillColor(colors.white)
+        cx, cy_ = bx + 6.5, top_y + 4.5
+        pts = []
+        for k in range(10):
+            ang = math.radians(90 + k * 36)
+            rad = 4.8 if k % 2 == 0 else 1.9
+            pts.append((cx + rad * math.cos(ang), cy_ + rad * math.sin(ang)))
+        p = page.beginPath()
+        p.moveTo(*pts[0])
+        for pt in pts[1:]:
+            p.lineTo(*pt)
+        p.close()
+        page.drawPath(p, stroke=0, fill=1)
+    page.setFont("Helvetica-Bold", 8)
+    page.setFillColor(_LETTER_INK)
+    page.drawRightString(right_x, top_y - 16, "Based on verified customer feedback")
+
+
+def _letter_draw_corner_flag(page, width, height) -> None:
+    x0, y0 = 565.0, 725.0
+    w, h = 90.0, 147.0  # generous bleed so the top/right edges stay off-page
+    r = 20.0
+    page.setFillColor(_LETTER_ACCENT_PALE)
+    page.roundRect(x0 - 7, y0 + 7, w, h, r, stroke=0, fill=1)
+    page.setFillColor(_LETTER_ACCENT)
+    page.roundRect(x0, y0, w, h, r, stroke=0, fill=1)
+
+
+def _letter_draw_header(page, width, height) -> None:
+    top = height - 46
+    if _LETTER_LOGO_PATH.is_file():
+        page.drawImage(str(_LETTER_LOGO_PATH), _LETTER_MARGIN, top - 22, width=100, height=23.3, mask="auto", preserveAspectRatio=True)
+    else:
+        page.setFillColor(_LETTER_INK)
+        page.setFont("Helvetica-Bold", 24)
+        page.drawString(_LETTER_MARGIN, top - 18, "HAVLO")
+    page.setFillColor(colors.HexColor("#3A3A3C"))
+    page.setFont("Helvetica", 9.5)
+    page.drawString(_LETTER_MARGIN + 1, top - 34, "StaleListings")
+
+    page.setFillColor(_LETTER_ACCENT)
+    page.setFont("Helvetica-Bold", 17)
+    right_x = width - _LETTER_MARGIN
+    page.drawRightString(right_x, top, "See your property through the")
+    page.drawRightString(right_x, top - 20, "eyes of the market")
+    _letter_draw_trustpilot(page, right_x, top - 46)
+
+    _letter_draw_corner_flag(page, width, height)
+
+
+def _letter_make_qr(url: str) -> BytesIO:
+    qr = qrcode.QRCode(box_size=8, border=2)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+
+def _letter_fetch_photo(url: str | None) -> "ImageReader | None":
+    """Best-effort fetch of the listing's hero photo for page 2's property
+    card. Deliberately swallows every failure (bad URL, timeout, non-image
+    response) — a missing photo should never be the reason a prospect
+    letter fails to generate, same spirit as the optional background art
+    in the old single-page design."""
+    if not url:
+        return None
     try:
-        import qrcode
-        from reportlab.lib import colors
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import ParagraphStyle
-        from reportlab.lib.units import mm
-        from reportlab.lib.utils import ImageReader
-        from reportlab.platypus import Paragraph
-        from reportlab.pdfgen import canvas
-    except ImportError as exc:  # pragma: no cover - depends on deployment image
-        raise RuntimeError("Install reportlab and qrcode to generate prospect letters.") from exc
+        import httpx
+
+        resp = httpx.get(url, timeout=5.0, follow_redirects=True)
+        resp.raise_for_status()
+        return ImageReader(BytesIO(resp.content))
+    except Exception:
+        logger.warning("Could not fetch listing photo for letter PDF: %s", url, exc_info=True)
+        return None
+
+
+def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str) -> None:
+    page.setFillColor(_LETTER_CARD_BG)
+    page.setStrokeColor(_LETTER_CARD_BORDER)
+    page.setLineWidth(1)
+    page.roundRect(x, y, w, h, 14, stroke=1, fill=1)
+
+    id_box_w = 138
+    id_x = x + w - id_box_w
+    page.setFillColor(_LETTER_ACCENT)
+    p = page.beginPath()
+    r = 14
+    p.moveTo(id_x, y)
+    p.lineTo(id_x + id_box_w - r, y)
+    p.curveTo(id_x + id_box_w, y, id_x + id_box_w, y, id_x + id_box_w, y + r)
+    p.lineTo(id_x + id_box_w, y + h - r)
+    p.curveTo(id_x + id_box_w, y + h, id_x + id_box_w, y + h, id_x + id_box_w - r, y + h)
+    p.lineTo(id_x, y + h)
+    p.close()
+    page.drawPath(p, stroke=0, fill=1)
+
+    page.setFillColor(colors.white)
+    page.setFont("Helvetica-Bold", 8)
+    page.drawCentredString(id_x + id_box_w / 2, y + h - 22, "YOUR PROPERTY ID")
+    page.setFont("Helvetica-Bold", 26)
+    page.drawCentredString(id_x + id_box_w / 2, y + h / 2 - 6, property_code)
+    small = ParagraphStyle("LetterIdSmall", fontName="Helvetica", fontSize=7.4, leading=9.6, textColor=colors.white, alignment=1)
+    _letter_para(page, "Scan the QR code, then enter this code to access your assessment.", id_x + 10, y + 30, id_box_w - 20, small)
+
+    _letter_icon_scan_frame(page, x + 26, y + h - 24, 15, _LETTER_INK)
+    label_style = ParagraphStyle("LetterScanLabel", fontName="Helvetica-Bold", fontSize=13.5, leading=16, textColor=_LETTER_INK)
+    _letter_para(page, "Scan to view your property findings", x + 52, y + h - 14, 190, label_style)
+
+    qr_size = h - 24
+    page.drawImage(ImageReader(qr_reader), x + 300, y + (h - qr_size) / 2, qr_size, qr_size)
+
+
+def _letter_footer_height(width: float, extra_note: str) -> float:
+    """Total vertical space the footer (divider through legal paragraph)
+    needs, so the QR box above it can be anchored with a fixed gap instead
+    of colliding with it — the legal paragraph's wrapped height depends on
+    exactly how it breaks at this column width, so this has to actually
+    measure it rather than guess a fixed offset."""
+    w = width - 2 * _LETTER_MARGIN
+    _, h_legal = Paragraph(_LETTER_LEGAL_TEXT, _LETTER_STYLE_LEGAL).wrap(w, 200 * mm)
+    _, h_note = Paragraph(_letter_esc(extra_note), _LETTER_STYLE_NOTE).wrap(w, 200 * mm)
+    return 22 + h_legal + 3 + h_note + 24 + 8
+
+
+def _letter_draw_footer(page, width: float, extra_note: str) -> None:
+    w = width - 2 * _LETTER_MARGIN
+    _, h_legal = Paragraph(_LETTER_LEGAL_TEXT, _LETTER_STYLE_LEGAL).wrap(w, 200 * mm)
+    _, h_note = Paragraph(_letter_esc(extra_note), _LETTER_STYLE_NOTE).wrap(w, 200 * mm)
+
+    legal_top = 22 + h_legal
+    note_top = legal_top + 3 + h_note
+    havlo_top = note_top + 24
+    divider_y = havlo_top + 8
+
+    page.setStrokeColor(colors.HexColor("#DDDDDD"))
+    page.setLineWidth(0.6)
+    page.line(_LETTER_MARGIN, divider_y, width - _LETTER_MARGIN, divider_y)
+    page.setFillColor(_LETTER_INK)
+    page.setFont("Helvetica-Bold", 9.5)
+    page.drawString(_LETTER_MARGIN, havlo_top, "Havlo")
+    page.setFont("Helvetica-Oblique", 8.5)
+    page.drawString(_LETTER_MARGIN, havlo_top - 11, "Property Advisory")
+
+    _letter_para(page, _letter_esc(extra_note), _LETTER_MARGIN, note_top, w, _LETTER_STYLE_NOTE)
+    _letter_para(page, _LETTER_LEGAL_TEXT, _LETTER_MARGIN, legal_top, w, _LETTER_STYLE_LEGAL)
+
+
+def _letter_draw_checklist_grid(page, x, y, w, items, cols, row_h=30) -> float:
+    col_w = w / cols
+    for i, item in enumerate(items):
+        col = i % cols
+        row = i // cols
+        cx0 = x + col * col_w
+        cy0 = y - row * row_h
+        _letter_draw_checkmark(page, cx0 + 7, cy0)
+        page.setFillColor(_LETTER_INK)
+        page.setFont("Helvetica-Bold", 9.6)
+        page.drawString(cx0 + 20, cy0 - 3.4, item)
+    rows = math.ceil(len(items) / cols)
+    return y - rows * row_h
+
+
+def _letter_draw_stat_row(page, x, y, w, stats) -> None:
+    n = len(stats)
+    col_w = w / n
+    for i, (icon_fn, label, value) in enumerate(stats):
+        cx = x + col_w * i + col_w / 2
+        icon_fn(page, cx, y, 15, _LETTER_INK)
+        page.setFillColor(_LETTER_MUTED)
+        page.setFont("Helvetica", 8.6)
+        page.drawCentredString(cx, y - 26, label)
+        page.setFillColor(_LETTER_INK)
+        page.setFont("Helvetica-Bold", 13.5)
+        page.drawCentredString(cx, y - 44, value)
+        if i > 0:
+            page.setStrokeColor(colors.HexColor("#E2E2E5"))
+            page.setLineWidth(0.75)
+            page.line(x + col_w * i, y - 48, x + col_w * i, y + 14)
+
+
+def _letter_draw_gauge_row(page, x, y_top, w, cards, card_h=178) -> None:
+    gap = 14
+    n = len(cards)
+    card_w = (w - gap * (n - 1)) / n
+    for i, (title, status_text, status_color, score, result_label, desc_html) in enumerate(cards):
+        cx0 = x + i * (card_w + gap)
+        cy0 = y_top - card_h
+        page.setFillColor(_LETTER_CARD_BG)
+        page.roundRect(cx0, cy0, card_w, card_h, 12, stroke=0, fill=1)
+
+        page.setFillColor(_LETTER_INK)
+        page.setFont("Helvetica-Bold", 10.5)
+        page.drawCentredString(cx0 + card_w / 2, cy0 + card_h - 22, title)
+        page.setFillColor(status_color)
+        page.setFont("Helvetica-Bold", 8.6)
+        page.drawCentredString(cx0 + card_w / 2, cy0 + card_h - 35, status_text)
+        page.setStrokeColor(colors.HexColor("#E2E2E5"))
+        page.setLineWidth(0.75)
+        page.line(cx0 + 14, cy0 + card_h - 43, cx0 + card_w - 14, cy0 + card_h - 43)
+
+        gauge_cy = cy0 + card_h - 92
+        _letter_draw_gauge(page, cx0 + card_w / 2, gauge_cy, 45, score, status_color)
+
+        page.setFillColor(_LETTER_INK)
+        page.setFont("Helvetica-Bold", 10.5)
+        page.drawCentredString(cx0 + card_w / 2, cy0 + 48, result_label)
+        desc_style = ParagraphStyle("LetterGaugeDesc", fontName="Helvetica", fontSize=8.1, leading=11.2, textColor=_LETTER_MUTED, alignment=1)
+        _letter_para(page, desc_html, cx0 + 12, cy0 + 36, card_w - 24, desc_style)
+
+
+def _letter_parse_money(text: Any) -> float | None:
+    if not text:
+        return None
+    m = re.search(r"[\d,]+(?:\.\d+)?", str(text))
+    if not m:
+        return None
+    try:
+        return float(m.group(0).replace(",", ""))
+    except ValueError:
+        return None
+
+
+def _letter_price_position(asking_price: float | None, comparable_sales: list[dict]) -> tuple[str, str, str, Any]:
+    """Compares asking_price to the average of the comparable SOLD prices
+    (comparable_sales always has exactly 4 entries per the Groq schema —
+    3 sold comps + 1 is_subject entry, which is excluded) to produce a
+    factual above/in-line/below verdict, rather than guessing a direction
+    from the abstract 0-100 pricing score."""
+    sold = [v for s in comparable_sales if not s.get("is_subject") for v in [_letter_parse_money(s.get("sold_asking"))] if v]
+    if not asking_price or not sold:
+        return "In Line with Market", "in line with", "Fairly positioned", _LETTER_ORANGE
+    avg = sum(sold) / len(sold)
+    diff = (asking_price - avg) / avg
+    if diff > 0.03:
+        return "Above Market", "above", "Potential concern identified", _LETTER_ORANGE
+    if diff < -0.03:
+        return "Below Market", "below", "Room to reprice", _LETTER_GREEN
+    return "In Line with Market", "in line with", "Fairly positioned", _LETTER_GREEN
+
+
+def _letter_score_tier(score: float) -> str:
+    if score < 45:
+        return "low"
+    if score < 65:
+        return "mid"
+    return "high"
+
+
+def _letter_fmt_gbp(value: float | None) -> str:
+    if not value:
+        return "N/A"
+    return f"£{value:,.0f}"
+
+
+def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:
+    """Generate the printable two-page homeowner letter PDF and return its
+    absolute path (page 1: intro + initial checklist; page 2: property
+    snapshot with the pricing/competition/presentation gauges), matching
+    the "Property Performance Snapshot" design reference."""
+    if _PDF_LIBS_IMPORT_ERROR:
+        raise RuntimeError("Install reportlab and qrcode to generate prospect letters.") from _PDF_LIBS_IMPORT_ERROR
 
     output_dir = Path("generated") / "stale-prospect-letters"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -510,120 +947,174 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # since the whole premise of that landing page is "enter the Property ID
     # shown in your Havlo letter", and a token-only QR code never showed one.
     preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect?token={token}"
+    qr_reader = _letter_make_qr(preview_url)
 
-    qr = qrcode.QRCode(box_size=8, border=2)
-    qr.add_data(preview_url)
-    qr.make(fit=True)
-    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    qr_buffer = BytesIO()
-    qr_img.save(qr_buffer, format="PNG")
-    qr_buffer.seek(0)
+    report = _safe_json(prospect.report_json)
+    snapshot = _safe_json(prospect.listing_snapshot_json)
+    scores = report.get("scores") or {}
+    active_competition = report.get("active_competition") or []
+    comparable_sales = report.get("comparable_sales") or []
+    photo_url = snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
+    photo_reader = _letter_fetch_photo(photo_url)
 
-    page = canvas.Canvas(str(pdf_path), pagesize=A4)
+    M = _LETTER_MARGIN
+    page = rl_canvas.Canvas(str(pdf_path), pagesize=A4)
     width, height = A4
-    margin = 18 * mm
-    ink = colors.HexColor("#121212")
-    muted = colors.HexColor("#5b6470")
-    accent = colors.HexColor("#A800D6")
-    pale = colors.HexColor("#F4F3F4")
 
-    def para(text: str, x: float, y: float, w: float, style: ParagraphStyle) -> float:
-        p = Paragraph(text, style)
-        _, h = p.wrap(w, 120 * mm)
-        p.drawOn(page, x, y - h)
-        return y - h
+    # ── Page 1 ──
+    _letter_draw_header(page, width, height)
+    y = height - 150
 
-    body_style = ParagraphStyle("Body", fontName="Helvetica", fontSize=9.2, leading=12.4, textColor=ink)
-    headline_style = ParagraphStyle("Headline", fontName="Helvetica-Bold", fontSize=17.5, leading=20, textColor=accent)
-    subhead_style = ParagraphStyle("Subhead", fontName="Helvetica-Bold", fontSize=9.5, leading=12, textColor=ink)
-
-    # The two supplied artwork files are the actual direct-mail background
-    # assets, not decorative approximations.  Keep them optional so older
-    # deployments can still create a letter if assets are not present.
-    pattern_path = Path("attached_assets/IMG_7099_1787157339060.png")
-    globe_path = Path("attached_assets/IMG_7100_1787157339060.png")
-    if pattern_path.is_file():
-        page.drawImage(str(pattern_path), 0, 0, width=width, height=height, mask="auto")
-    else:
-        page.setFillColor(colors.white)
-        page.rect(0, 0, width, height, fill=1, stroke=0)
-    if globe_path.is_file():
-        page.drawImage(str(globe_path), width - 92 * mm, height - 47 * mm, width=92 * mm, height=42 * mm, mask="auto")
-
-    logo_path = Path("havlo_frontend/Havlo Black Transparent.png")
-    if logo_path.is_file():
-        page.drawImage(str(logo_path), margin, height - 26 * mm, width=35 * mm, height=8.2 * mm, mask="auto", preserveAspectRatio=True)
-    else:
-        page.setFillColor(ink)
-        page.setFont("Helvetica-Bold", 20)
-        page.drawString(margin, height - 23 * mm, "HAVLO")
-    page.setFillColor(colors.white)
-    for label, y_button in (("Relaunch", height - 15 * mm), ("Reach Buyers", height - 27 * mm), ("Sell Faster", height - 39 * mm)):
-        page.setFillColor(accent)
-        page.rect(width - 66 * mm, y_button - 4.5 * mm, 57 * mm, 9 * mm, fill=1, stroke=0)
-        page.setFillColor(colors.white)
-        page.setFont("Helvetica-Bold", 11)
-        page.drawRightString(width - 11 * mm, y_button - 1.8 * mm, label)
-
-    # Address block, matching the reference's postal-letter position.
-    y = height - 50 * mm
+    page.setFillColor(_LETTER_INK)
+    page.setFont("Helvetica", 10.5)
     address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
-    page.setFont("Helvetica-Bold", 8.5)
-    page.setFillColor(ink)
-    for line in address_lines[:5]:
-        page.drawString(margin, y, line.upper()[:64])
-        y -= 4.4 * mm
+    for line in ["Regarding your property for sale"] + address_lines[:5]:
+        page.drawString(M, y, line)
+        y -= 14.5
+    y -= 22
 
-    y -= 14 * mm
-    y = para("6+ Months on the Market? There Is a Faster Way to Sell", margin, y, width - (2 * margin), headline_style)
-    y -= 3 * mm
-    days = prospect.listing_duration_days or 180
-    price = f"GBP {prospect.asking_price:,.0f}" if prospect.asking_price else "your current asking price"
-    intro = (
-        f"We have reviewed the online listing for <b>{prospect.property_address}</b>. "
-        f"It appears to have been marketed for around <b>{days} days</b> at <b>{price}</b>, "
-        "which usually means the issue is not demand alone. More often, it is presentation, positioning, "
-        "pricing signals, portal visibility, or the way the listing is being relaunched to buyers. "
-        "Once that initial surge of interest fades, enquiries slow — and the property starts to get overlooked."
-    )
-    y = para(intro, margin, y, width - (2 * margin), body_style)
-    y -= 4 * mm
-    y = para("We actively promote your property to qualified UK and international buyers — creating fresh, serious demand and generating enquiries from buyers ready to proceed, without disrupting your current sale process.", margin, y, width - (2 * margin), body_style)
-    y -= 2 * mm
-    y = para("• You keep full control<br/>• We don't interfere with your agent<br/>• All enquiries go directly to you or your agent<br/>All we need is a link to your current listing.", margin, y, width - (2 * margin), body_style)
-    y -= 2 * mm
-    y = para("This is a structured marketing programme designed to maximise your property's exposure:<br/>• A one-time setup fee<br/>• Ongoing monthly management<br/>• A dedicated advertising budget<br/>Most clients agree a sale within 4–12 weeks of launching.", margin, y, width - (2 * margin), body_style)
-    y -= 2 * mm
-    y = para("If you're not ready for a full relaunch, we also offer a <b>Property Sale Audit</b> — a clear breakdown of why your property hasn't sold and what's holding it back.", margin, y, width - (2 * margin), body_style)
-    y -= 2 * mm
-    y = para("To get started:<br/>• Visit: www.heyhavlo.com<br/>• Or scan the QR code<br/>• Or speak to our team for a no-obligation call", margin, y, width - (2 * margin), body_style)
-    y -= 2 * mm
-    page.drawImage(ImageReader(qr_buffer), width / 2 - 16 * mm, y - 32 * mm, 32 * mm, 32 * mm)
-    page.setFillColor(ink)
-    page.setFont("Helvetica", 6.8)
-    page.drawCentredString(width / 2, y - 35 * mm, "Scan above for Stale Listings (Havlo's Sell Faster Programme)")
-    page.drawCentredString(width / 2, y - 39 * mm, "or visit www.heyhavlo.com/stale-listings and enter your Property ID:")
-    page.setFillColor(accent)
+    headline_style = ParagraphStyle("LetterHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=_LETTER_ACCENT)
+    y = _letter_para(page, "Your property has been on the market for more than six months.", M, y, width - 2 * M, headline_style)
+    y -= 16
+
+    y = _letter_para(page, "We have reviewed the available market information for this property and identified several factors that may be affecting its ability to attract the right buyer.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 8
+    y = _letter_para(page, "Havlo specialises in analysing properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 8
+    y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(prospect.property_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 14
+
+    page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica-Bold", 11)
-    page.drawCentredString(width / 2, y - 45 * mm, prospect.property_code)
-    page.setFillColor(ink)
-    page.setFillColor(ink)
-    page.setFont("Helvetica-Bold", 8.5)
-    page.drawString(margin, y - 52 * mm, "Kind regards,")
-    page.drawString(margin, y - 57 * mm, "Cathy Elwell")
-    page.setFont("Helvetica", 7.5)
-    page.drawString(margin, y - 61 * mm, "Property Marketing Director")
+    page.drawString(M, y, "WHAT WE FOUND")
+    y -= 18
+    y = _letter_para(page, "Our initial assessment has identified <b>several areas worth your attention,</b> including potential opportunities around:", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 14
 
-    page.setStrokeColor(colors.HexColor("#D7D7D7"))
-    page.line(margin, 25 * mm, width - margin, 25 * mm)
-    page.setFillColor(muted)
-    page.setFont("Helvetica", 7)
-    page.drawRightString(width - margin, 18 * mm, "www.heyhavlo.com")
-    page.drawCentredString(width / 2, 14 * mm, "2nd Floor, Berkeley Square, London, England, W1J 6BD")
-    page.drawCentredString(width / 2, 10 * mm, "Phone: 0333 339 0423, 0791 948 3480")
-    page.drawCentredString(width / 2, 6 * mm, "Email: hello@heyhavlo.com")
-    page.setFont("Helvetica", 5.3)
-    page.drawCentredString(width / 2, 2.5 * mm, "Havlo is a trading style of Sprint Technologies Ltd, registered in England and Wales (Company No. 14949095).")
+    y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Buyer Appeal"], 2, row_h=26)
+    y -= 6
+    y = _letter_para(page, "We've summarised some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 16
+
+    page.setFont("Helvetica-Bold", 11)
+    page.drawString(M, y, "YOUR FULL ASSESSMENT")
+    y -= 18
+    y = _letter_para(page, "Your complete property assessment contains our detailed analysis and recommendations.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 4
+    _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+
+    footer_note = "This is a property marketing and saleability analysis, not a formal valuation, survey or structural assessment."
+    qr_h = 91
+    qr_bottom = _letter_footer_height(width, footer_note) + 18
+    _letter_draw_qr_box(page, M, qr_bottom, width - 2 * M, qr_h, qr_reader, prospect.property_code)
+    _letter_draw_footer(page, width, footer_note)
+    page.showPage()
+
+    # ── Page 2 ──
+    _letter_draw_header(page, width, height)
+    y = height - 128
+    page.setFillColor(_LETTER_INK)
+    page.setFont("Helvetica-Bold", 17)
+    page.drawString(M, y, "Property Performance Snapshot")
+    y -= 26
+
+    card_h = 70
+    page.setFillColor(colors.white)
+    page.setStrokeColor(_LETTER_CARD_BORDER)
+    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=1, fill=1)
+    photo_w = 96
+    if photo_reader is not None:
+        try:
+            page.drawImage(photo_reader, M + 12, y - card_h + 12, photo_w, card_h - 24, mask="auto", preserveAspectRatio=True, anchor="c")
+        except Exception:
+            photo_reader = None
+    if photo_reader is None:
+        page.setFillColor(colors.HexColor("#E5E7EB"))
+        page.roundRect(M + 12, y - card_h + 12, photo_w, card_h - 24, 8, stroke=0, fill=1)
+    tx = M + 12 + photo_w + 18
+    page.setFillColor(_LETTER_MUTED)
+    page.setFont("Helvetica", 9)
+    page.drawString(tx, y - 26, "Prepared specifically for this property")
+    addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
+    _letter_para(page, _letter_esc(prospect.property_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
+    y -= card_h + 20
+
+    page.setFont("Helvetica-Bold", 11)
+    page.drawString(M, y, "PROPERTY AT A GLANCE")
+    y -= 36
+
+    days = prospect.listing_duration_days
+    months = max(1, round(days / 30)) if days else 0
+    competing_count = len(active_competition) or 3
+    stats = [
+        (_letter_icon_coins, "Current asking price", _letter_fmt_gbp(prospect.asking_price)),
+        (_letter_icon_hourglass, "Time on market", f"{months} months" if months else "—"),
+        # No price-history tracking exists for cold-outreach discovery
+        # (the q4_price_reduction seller-survey answer this would otherwise
+        # come from never runs here — has_seller_survey=False) — show "—"
+        # rather than fabricate a number, same rule the report prompt
+        # itself enforces for cold outreach.
+        (_letter_icon_trending_up, "Price changes", "—"),
+        (_letter_icon_people, "Competing properties", str(competing_count)),
+    ]
+    _letter_draw_stat_row(page, M, y, width - 2 * M, stats)
+    y -= 62
+
+    page.setFont("Helvetica-Bold", 11)
+    page.drawString(M, y, "OUR INITIAL FINDINGS")
+    y -= 14
+
+    price_label, price_dir, price_status, price_color = _letter_price_position(prospect.asking_price, comparable_sales)
+    comp_score = scores.get("competition", 50)
+    comp_tier = _letter_score_tier(comp_score)
+    comp_label = {"low": "High Competition", "mid": "Moderate Competition", "high": "Low Competition"}[comp_tier]
+    comp_status = {"low": "Highly competitive", "mid": "Some competition", "high": "Well positioned"}[comp_tier]
+    comp_color = {"low": _LETTER_RED, "mid": _LETTER_ORANGE, "high": _LETTER_GREEN}[comp_tier]
+
+    pres_score = scores.get("listing_presentation", 50)
+    pres_tier = _letter_score_tier(pres_score)
+    pres_label = {"low": "Needs Improvement", "mid": "Average", "high": "Strong"}[pres_tier]
+    pres_status = {"low": "Needs attention", "mid": "Opportunity identified", "high": "Performing well"}[pres_tier]
+    pres_color = {"low": _LETTER_RED, "mid": _LETTER_ORANGE, "high": _LETTER_GREEN}[pres_tier]
+
+    gauge_cards = [
+        ("Pricing and Positioning", price_status, price_color, scores.get("pricing", 50), price_label, f"Current asking price appears <b>{price_dir}</b> comparable properties."),
+        ("Market Competition", comp_status, comp_color, comp_score, comp_label, f"<b>{competing_count}</b> similar properties are currently competing for the same buyers."),
+        ("Listing Presentation", pres_status, pres_color, pres_score, pres_label, "Opportunities identified to improve how the property is presented to buyers."),
+    ]
+    _letter_draw_gauge_row(page, M, y, width - 2 * M, gauge_cards)
+    y -= 178 + 16
+
+    page.setFont("Helvetica-Bold", 11)
+    page.drawString(M, y, "WHAT'S IN THE FULL ASSESSMENT?")
+    y -= 16
+    y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
+    y -= 4
+
+    y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= 12
+
+    _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
+    y -= qr_h + 22
+
+    bottom_stats = [
+        ("61%", "Of assessed stale listings sold within 9 weeks"),
+        ("87%", "of Havlo recommendations implemented led to renewed buyer interest"),
+        ("10K+", "Stale listings analysed nationwide"),
+        ("YOU", "Stay in Control. We Provide Insight."),
+    ]
+    page.setStrokeColor(colors.HexColor("#DDDDDD"))
+    page.setLineWidth(0.6)
+    page.line(M, y, width - M, y)
+    col_w = (width - 2 * M) / 4
+    for i, (num, label) in enumerate(bottom_stats):
+        cx = M + col_w * i + col_w / 2
+        page.setFillColor(_LETTER_INK)
+        page.setFont("Helvetica-Bold", 16)
+        page.drawCentredString(cx, y - 24, num)
+        stat_style = ParagraphStyle("LetterBottomStat", fontName="Helvetica", fontSize=7.4, leading=9.6, textColor=_LETTER_MUTED, alignment=1)
+        _letter_para(page, label, cx - col_w / 2 + 8, y - 37, col_w - 16, stat_style)
+
     page.save()
     return os.path.abspath(pdf_path)
 
