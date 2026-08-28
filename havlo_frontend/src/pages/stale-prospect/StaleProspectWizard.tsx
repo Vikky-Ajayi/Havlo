@@ -1603,7 +1603,7 @@ const WizardStyles = () => (
     .slw-report-summary-card,.slw-report-property-card{background:#fff;border-radius:14px;padding:24px}
     .slw-report-summary-card b{display:block;font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;line-height:1;margin-bottom:22px;color:#202124}
     .slw-report-summary-card p{color:#555;line-height:1.6;margin:0;font-size:14.5px}
-    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:center;align-self:start;padding:12px 28px 12px 12px}
+    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:start;padding:12px 28px 12px 12px}
     .slw-report-image{border-radius:10px;align-self:stretch;background-size:cover;background-position:center;background-color:#e5e7eb;min-height:260px}
     .slw-report-property-card h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;line-height:1;margin:0 0 74px;color:#202124}
 
