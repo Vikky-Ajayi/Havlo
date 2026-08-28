@@ -458,8 +458,8 @@ const SaleabilityGauge = ({ score, size = 190 }: { score: number; size?: number 
         <line
           x1={cx}
           y1={cy}
-          x2={cx + r * 0.72 * Math.cos((angle * Math.PI) / 180)}
-          y2={cy - r * 0.72 * Math.sin((angle * Math.PI) / 180)}
+          x2={cx + r * 0.3 * Math.cos((angle * Math.PI) / 180)}
+          y2={cy - r * 0.3 * Math.sin((angle * Math.PI) / 180)}
           stroke="#111"
           strokeWidth="2.5"
           strokeLinecap="round"
@@ -582,11 +582,20 @@ function deriveThirtyDayPlanFromActions(actions?: ReportAction[]): ThirtyDayPlan
   const list = (actions || []).filter((a) => a.title);
   if (!list.length) return [];
   const weekCount = Math.min(4, list.length);
-  const perWeek = Math.ceil(list.length / weekCount);
   const weeks: ThirtyDayPlanWeek[] = [];
+  // Distribute evenly across exactly weekCount weeks (never fewer): taking a
+  // flat ceil(list.length / weekCount) per week only works when it divides
+  // evenly - e.g. 6 actions over 4 weeks gives ceil(6/4)=2/week, which uses
+  // up all 6 actions in 3 weeks and leaves week 4 with nothing to slice, so
+  // it silently got dropped instead of shown. Recomputing the chunk size
+  // from what's left before each week guarantees every week gets at least
+  // one item.
+  let idx = 0;
   for (let i = 0; i < weekCount; i++) {
-    const chunk = list.slice(i * perWeek, (i + 1) * perWeek);
-    if (!chunk.length) break;
+    const remainingWeeks = weekCount - i;
+    const take = Math.ceil((list.length - idx) / remainingWeeks);
+    const chunk = list.slice(idx, idx + take);
+    idx += take;
     weeks.push({ week: i + 1, title: chunk.map((a) => a.title).join(' and ') });
   }
   return weeks;
@@ -756,21 +765,26 @@ const PaymentStep = ({
             <span className="slw-method-icon"><BankMethodIcon /></span>
             <span><b>Bank Transfer</b><small>Pay Directly from your Bank</small></span>
           </button>
-          <button type="button" className={`slw-method ${method === 'promo' ? 'slw-method-active' : ''}`} onClick={() => setMethod('promo')}>
-            <span className="slw-method-icon"><PromoMethodIcon /></span>
-            <span><b>Promo Code</b><small>Have a code? Redeem it here</small></span>
-          </button>
-          {method === 'promo' && (
-            <label className="slw-promo-input">
-              Promo code
+          {method === 'promo' ? (
+            // Selecting Promo Code transforms this card in place into the
+            // input, rather than adding a separate field below it.
+            <div className="slw-method slw-method-active">
+              <span className="slw-method-icon"><PromoMethodIcon /></span>
               <input
                 type="text"
+                className="slw-promo-inline-input"
                 placeholder="Enter promo code"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                 autoCapitalize="characters"
+                autoFocus
               />
-            </label>
+            </div>
+          ) : (
+            <button type="button" className="slw-method" onClick={() => setMethod('promo')}>
+              <span className="slw-method-icon"><PromoMethodIcon /></span>
+              <span><b>Promo Code</b><small>Have a code? Redeem it here</small></span>
+            </button>
           )}
         </div>
         <div className="slw-payment-summary">
@@ -966,7 +980,7 @@ const FullReportStep = ({
                 <ExpandableText text={action.description} maxChars={200} />
                 {whyItMatters && (
                   <p className="slw-why-it-matters">
-                    <i>Why it matters: {whyItMatters}</i>
+                    <i>Why it matters: <ExpandableText as="span" text={whyItMatters} maxChars={160} /></i>
                   </p>
                 )}
               </div>
@@ -1556,9 +1570,8 @@ const WizardStyles = () => (
     .slw-payment-methods>b{font-size:18px;margin-bottom:14px;color:#111}
     .slw-method{display:flex;align-items:center;gap:16px;background:#f1f2f4;border:1.5px solid transparent;border-radius:10px;padding:20px;text-align:left;cursor:pointer;font-family:inherit}
     .slw-method-active{background:#fff;border-color:#A409D2}
-    .slw-promo-input{display:block;font-size:13px;font-weight:600;color:#333;margin-top:2px}
-    .slw-promo-input input{width:100%;margin-top:8px;background:#fff;border:1px solid #e2e4e8;border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit;letter-spacing:0.04em;outline:none}
-    .slw-promo-input input:focus{border-color:#A409D2}
+    .slw-promo-inline-input{flex:1;min-width:0;border:none;background:transparent;padding:0;font-family:inherit;font-size:15px;font-weight:600;color:#202124;letter-spacing:0.04em;outline:none}
+    .slw-promo-inline-input::placeholder{color:#9aa0a6;font-weight:500;letter-spacing:normal}
     .slw-method-icon{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:#f3e6fb;flex:none}
     .slw-method b{display:block;font-size:15px}
     .slw-method small{color:#777;font-size:12.5px}
@@ -1591,7 +1604,7 @@ const WizardStyles = () => (
     .slw-report-summary-card,.slw-report-property-card{background:#fff;border-radius:14px;padding:24px}
     .slw-report-summary-card b{display:block;font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;line-height:1;margin-bottom:22px;color:#202124}
     .slw-report-summary-card p{color:#555;line-height:1.6;margin:0;font-size:14.5px}
-    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:center;padding:12px 28px 12px 12px}
+    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:center;align-self:start;padding:12px 28px 12px 12px}
     .slw-report-image{border-radius:10px;align-self:stretch;background-size:cover;background-position:center;background-color:#e5e7eb;min-height:260px}
     .slw-report-property-card h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;line-height:1;margin:0 0 74px;color:#202124}
 
