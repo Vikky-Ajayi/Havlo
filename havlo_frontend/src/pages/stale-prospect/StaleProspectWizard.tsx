@@ -905,7 +905,7 @@ const FullReportStep = ({
         </div>
         <div className="slw-report-property-card">
           <div className="slw-report-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
-          <div>
+          <div className="slw-report-property-text">
             <h2>{report.property_address}</h2>
             <div className="slw-assess-facts">
               <div><span>Asking Price</span><b className="slw-accent">{formatGbp(report.asking_price)}</b></div>
@@ -1605,7 +1605,8 @@ const WizardStyles = () => (
     .slw-report-summary-card p{color:#555;line-height:1.6;margin:0;font-size:14.5px}
     .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:start;padding:12px 28px 12px 12px}
     .slw-report-image{border-radius:10px;align-self:stretch;background-size:cover;background-position:center;background-color:#e5e7eb;min-height:260px;max-height:460px}
-    .slw-report-property-card h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;line-height:1;margin:0 0 74px;color:#202124}
+    .slw-report-property-text{align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;min-height:100%}
+    .slw-report-property-card h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;line-height:1;margin:0;color:#202124}
 
     .slw-section-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1;margin:44px 0 20px;color:#202124}
     .slw-score-row{display:grid;grid-template-columns:.75fr 2fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px}
