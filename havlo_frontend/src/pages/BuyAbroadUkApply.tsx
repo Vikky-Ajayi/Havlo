@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { API_BASE } from '../lib/api';
+import { Footer } from '../components/shared/Footer';
 
 type Step = 'form' | 'submitting' | 'success';
 type FormStage = 1 | 2 | 3 | 4;
@@ -804,6 +805,7 @@ export function BuyAbroadUkApply() {
           </>
         )}
       </div>
+      <Footer />
     </div>
   );
 }

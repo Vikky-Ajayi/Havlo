@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 import { trackMetaPixelEvent } from '../lib/metaPixel';
 
 const PURPLE = '#A409D2';
@@ -376,6 +377,7 @@ export function StaleListingsQuestions() {
 
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { api, API_BASE } from '../lib/api';
 import { redirectToCheckout } from '../lib/paymentReturn';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { Footer } from '../components/shared/Footer';
 
 const MARKETPLACE_FAVS = 'havlo_buyabroad_favs';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
@@ -310,13 +311,7 @@ function FooterCta() {
         </div>
         <a href="https://calendly.com/havlo/consultation" target="_blank" rel="noreferrer" className="baml-call"><span className="baml-call-mark">C</span> Book a Call</a>
       </section>
-      <footer className="baml-footer">
-        <a className="baml-logo" href="/buyabroad/uk" aria-label="Havlo Buy Abroad">
-          <img src="/Havlo Black Transparent.png" alt="Havlo" />
-          <span>Buy Abroad</span>
-        </a>
-        <p>© 2025 Havlo Buy Abroad. A Havlo service</p>
-      </footer>
+      <Footer />
     </>
   );
 }

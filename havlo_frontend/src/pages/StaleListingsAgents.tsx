@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const isLikelyUrl = (value: string) => {
@@ -1865,16 +1866,7 @@ export function StaleListingsAgents() {
         </section>
       </main>
 
-      <footer className="sla-footer">
-        <div className="sla-shell sla-footer-inner">
-          <StaleListingsLogo className="sla-footer-logo" />
-          <span>© 2026 StaleListings. All rights reserved.</span>
-          <nav className="sla-footer-links" aria-label="Legal links">
-            <a href="/privacy-policy">Privacy Policy</a>
-            <a href="/terms-of-use">Terms</a>
-          </nav>
-        </div>
-      </footer>
+      <Footer />
 
       {/* ── AGENCY PRICING MODAL ── */}
       {agencyModalOpen && (

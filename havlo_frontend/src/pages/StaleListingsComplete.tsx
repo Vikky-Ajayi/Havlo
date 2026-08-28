@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 import { staleListingsPlanParams, trackMetaPixelEvent } from '../lib/metaPixel';
 
 const PURPLE = '#A409D2';
@@ -351,6 +352,7 @@ export function StaleListingsComplete() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

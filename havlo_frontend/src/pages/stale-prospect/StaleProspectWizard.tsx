@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { StaleListingsLogo } from '../../components/shared/StaleListingsLogo';
+import { Footer as SiteFooter } from '../../components/shared/Footer';
 import {
   confirmProspectProperty,
   createProspectCheckout,
@@ -87,15 +88,13 @@ const Header = () => {
   );
 };
 
+// Wrapped in slw-noprint (same as Header's nav) so the full marketing
+// footer - newsletter, socials, nav links, disclaimer - never shows up in
+// the "Download PDF Report" print output, only on the live wizard pages.
 const Footer = () => (
-  <footer className="slw-footer slw-noprint">
-    <StaleListingsLogo className="slw-logo-mark" />
-    <p>&copy; 2025 StaleListings. All rights reserved.</p>
-    <div className="slw-footer-links">
-      <a href="/privacy-policy">Privacy Policy</a>
-      <a href="/terms">Terms</a>
-    </div>
-  </footer>
+  <div className="slw-noprint">
+    <SiteFooter />
+  </div>
 );
 
 const GoBack = ({ onClick }: { onClick: () => void }) => (

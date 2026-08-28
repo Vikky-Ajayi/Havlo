@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { CountryCodeSelect } from '../components/shared/CountryCodeSelect';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { staleListingsPlanParams, trackMetaPixelEvent } from '../lib/metaPixel';
 
@@ -1122,6 +1123,7 @@ export function StaleListingsPlan() {
           </div>
         </div>
       )}
+      <Footer />
     </div>
   );
 }

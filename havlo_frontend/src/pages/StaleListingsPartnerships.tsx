@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 
 const pressLogos = [
   { alt: 'The Times', src: '/press-logos/the-times.svg' },
@@ -123,11 +124,7 @@ export const StaleListingsPartnerships = () => (
       <small>Prefer email? Reach us directly at <a href="mailto:partnerships@heyhavlo.com">partnerships@heyhavlo.com</a></small>
     </section>
 
-    <footer>
-      <Link className="slp-logo" to="/stale-listings"><StaleListingsLogo className="slp-footer-logo" /></Link>
-      <p>&copy; 2026 Havlo. UK property intelligence, in partnership with agents, sellers, and platforms.</p>
-      <a href="mailto:partnerships@heyhavlo.com">partnerships@heyhavlo.com</a>
-    </footer>
+    <Footer />
 
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');

@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 import { readStaleReviewPreview, readStaleReviewSession } from '../lib/staleReviewAccess';
 
 interface ComparableSale {
@@ -1957,6 +1958,10 @@ export function StaleListingsReport() {
                   <p>Any third-party services referenced within this report are included solely to support the marketing and sale of your property and should not be interpreted as endorsement or formal affiliation.</p>
                 </div>
               </main>
+              {/* Inside .slr-screen (not .pdf-print-area) so it's hidden by
+                  the existing @media print rule and never appears in the
+                  exported PDF - only on the live report page. */}
+              <Footer />
             </div>
 
             <div className="pdf-print-area">

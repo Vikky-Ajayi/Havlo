@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, ChevronDown, MessageCircle, Phone, Users, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { Footer } from '../components/shared/Footer';
 
 type ApplicationStep = 'contact' | 'business' | 'referral' | 'submitted';
 
@@ -520,20 +521,7 @@ export const BuyAbroadUkAgents: React.FC = () => {
         </section>
       </main>
 
-      <footer className="buk-footer">
-        <div className="buk-inner">
-          <a href="/" className="buk-logo">
-            <img src="/Havlo Black Transparent.png" alt="Havlo" />
-            <span>Buy Abroad</span>
-          </a>
-          <p>© 2026 Havlo Buy Abroad. A Havlo service</p>
-          <nav>
-            <a href="/privacy-policy">Privacy Policy</a>
-            <a href="/terms">Terms</a>
-            <a href="/contact-us">Contact</a>
-          </nav>
-        </div>
-      </footer>
+      <Footer />
 
       {isConsultationOpen && (
         <div className="buk-modal" role="dialog" aria-modal="true" aria-label="Buy Abroad consultation form">

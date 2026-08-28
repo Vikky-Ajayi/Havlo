@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { Footer } from '../components/shared/Footer';
 
 const pressLogos = [
   { alt: 'The Times', src: '/press-logos/the-times.svg' },
@@ -245,13 +246,7 @@ export const StaleListingsHome = () => {
 
       <section className="slh-cta"><span><i />Ready when you are</span><h2>Get your listing moving again</h2><p>Whether you're managing 100 instructions or watching one listing go quiet, Havlo Stale Listings gives you a clear, specific reason it's stuck — and what to do next.</p><Link to="/stale-listings/agents">Get Started - Agents</Link><Link to="/stale-listings/seller">Get Started - Sellers</Link></section>
 
-      <footer className="slh-footer">
-        <Link to="/stale-listings" className="slh-logo" aria-label="Stale Listings by Havlo">
-          <StaleListingsLogo className="slh-footer-logo" />
-        </Link>
-        <p>&copy; 2026 Havlo. UK property intelligence, in partnership with agents, sellers, and platforms.</p>
-        <a href="mailto:partnerships@heyhavlo.com">partnerships@heyhavlo.com</a>
-      </footer>
+      <Footer />
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
