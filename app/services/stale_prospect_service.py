@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import asyncio
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -33,6 +34,38 @@ def create_access_token() -> str:
 
 def hash_access_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def unsubscribe_token(prospect_id: str) -> str:
+    """Deterministic per-prospect unsubscribe token — no extra DB column
+    needed, just an HMAC of the prospect id keyed on the app secret. Used to
+    build/verify the one-click unsubscribe link in abandonment drip emails."""
+    secret = (get_settings().SECRET_KEY or "").encode("utf-8")
+    return hmac.new(secret, str(prospect_id).encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+
+
+def verify_unsubscribe_token(prospect_id: str, token: str) -> bool:
+    expected = unsubscribe_token(prospect_id)
+    return hmac.compare_digest(expected, (token or "").strip())
+
+
+def prospect_unlock_price(asking_price: float | None) -> float:
+    """Full-report price shown to a letter prospect, tiered by asking price.
+
+    Mirrors app.routers.stale_listings._stale_prospect_checkout_amount and
+    the frontend's unlockPrice() (havlo_frontend/src/pages/stale-prospect/
+    types.ts) — three independent copies of the same tiers because the
+    frontend needs it before checkout resolves, the checkout route needs
+    the authoritative amount, and the abandonment email drip needs it to
+    show the recipient's real price rather than a hardcoded figure. Keep
+    all three in sync if the tiers ever change.
+    """
+    price = float(asking_price or 0)
+    if price >= 1_000_000:
+        return 999.99
+    if price >= 500_000:
+        return 499.99
+    return 149.99
 
 
 def normalize_property_code(code: str) -> str:

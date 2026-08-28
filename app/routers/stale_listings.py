@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
+from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +59,7 @@ from app.services.stale_prospect_service import (
     serialize_report,
     send_prospect_letter_to_admin,
     snapshot_from_scrape,
+    verify_unsubscribe_token,
 )
 from app.services.stale_listing_discovery import (
     DiscoveryParams,
@@ -661,6 +663,10 @@ async def submit_stale_prospect_details(
     prospect.contact_name = payload.full_name.strip()[:200]
     prospect.contact_email = str(payload.email).strip().lower()[:255]
     prospect.contact_phone = payload.mobile_number.strip()[:50]
+    # Anchor for the pre-purchase / cart-abandonment email drip — set once,
+    # never reset by a later edit of the same details.
+    if prospect.contact_details_submitted_at is None:
+        prospect.contact_details_submitted_at = datetime.utcnow()
     await db.commit()
     return StaleProspectDetailsResponse(
         prospect_id=str(prospect.id),
@@ -1021,6 +1027,125 @@ async def send_stale_prospect_test_email(
             detail="Email provider did not accept the test email. Check RESEND_API_KEY, EMAIL_FROM and verified sender/domain.",
         )
     return {"ok": True, "to_email": to_email}
+
+
+@admin_router.post("/admin/prospects/{prospect_id}/abandonment-test-email")
+async def send_stale_prospect_abandonment_test_email(
+    prospect_id: str,
+    stage: int = Query(..., ge=1, le=12, description="Which of the 12 drip stages to preview (1-12)."),
+    to_email: str | None = Query(None, description="Defaults to ADMIN_NOTIFY_EMAIL if omitted."),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """QA helper: send any one of the 12 abandonment-drip stages for a real
+    prospect's data right now, without waiting for its timer and without
+    recording it as sent (the real automated send loop is untouched)."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+    recipient = (to_email or get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Provide to_email or configure ADMIN_NOTIFY_EMAIL.")
+
+    from app.services.stale_prospect_abandonment import build_unsubscribe_url
+
+    sent = await asyncio.to_thread(
+        email_service.send_stale_prospect_abandonment_email_sync,
+        to_email=recipient,
+        first_name=(prospect.contact_name or "Test").split(" ")[0] or "Test",
+        stage=stage,
+        asking_price=prospect.asking_price,
+        property_code=prospect.property_code,
+        unsubscribe_url=build_unsubscribe_url(prospect.id),
+    )
+    if not sent:
+        raise HTTPException(
+            status_code=502,
+            detail="Email provider did not accept the test email. Check RESEND_API_KEY, EMAIL_FROM and verified sender/domain.",
+        )
+    return {"ok": True, "to_email": recipient, "stage": stage, "prospect_id": str(prospect.id)}
+
+
+@admin_router.post("/admin/prospects/{prospect_id}/post-purchase-test-email")
+async def send_stale_prospect_post_purchase_test_email(
+    prospect_id: str,
+    stage: int = Query(..., ge=1, le=12, description="Which of the 12 post-purchase stages to preview (1-12)."),
+    to_email: str | None = Query(None, description="Defaults to ADMIN_NOTIFY_EMAIL if omitted."),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """QA helper: send any one of the 12 post-purchase-drip stages for a
+    real prospect's data right now, without waiting for its timer and
+    without recording it as sent."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+    recipient = (to_email or get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Provide to_email or configure ADMIN_NOTIFY_EMAIL.")
+
+    from app.services.stale_prospect_abandonment import build_unsubscribe_url
+
+    sent = await asyncio.to_thread(
+        email_service.send_stale_prospect_post_purchase_email_sync,
+        to_email=recipient,
+        first_name=(prospect.contact_name or "Test").split(" ")[0] or "Test",
+        stage=stage,
+        asking_price=prospect.asking_price,
+        property_code=prospect.property_code,
+        unsubscribe_url=build_unsubscribe_url(prospect.id),
+    )
+    if not sent:
+        raise HTTPException(
+            status_code=502,
+            detail="Email provider did not accept the test email. Check RESEND_API_KEY, EMAIL_FROM and verified sender/domain.",
+        )
+    return {"ok": True, "to_email": recipient, "stage": stage, "prospect_id": str(prospect.id)}
+
+
+@public_router.get("/prospects/unsubscribe", response_class=HTMLResponse)
+async def unsubscribe_stale_prospect(
+    prospect_id: str,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """Public, no-login link clicked from an abandonment-drip email. Verifies
+    an HMAC token (see stale_prospect_service.unsubscribe_token) rather than
+    requiring auth, so it works straight from an inbox."""
+
+    def _page(message: str) -> HTMLResponse:
+        return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StaleListings</title></head>
+<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:60px 16px;">
+<tr><td align="center">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:14px;border:1px solid rgba(207,207,206,0.4);padding:40px 32px;text-align:center;">
+<tr><td style="font-size:16px;font-weight:800;color:#111111;padding-bottom:18px;">StaleListings</td></tr>
+<tr><td style="font-size:14px;line-height:22px;color:#556274;">{message}</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>""")
+
+    try:
+        prospect_uuid = uuid.UUID(prospect_id)
+    except ValueError:
+        return _page("This unsubscribe link is invalid.")
+
+    if not verify_unsubscribe_token(prospect_id, token):
+        return _page("This unsubscribe link is invalid or has expired.")
+
+    prospect = await db.get(StaleListingProspect, prospect_uuid)
+    if prospect and prospect.unsubscribed_at is None:
+        prospect.unsubscribed_at = datetime.utcnow()
+        await db.commit()
+
+    return _page("You've been unsubscribed from these reminder emails. You won't receive any more.")
 
 
 @admin_router.get("/admin", response_model=list[StaleListingAdminItem])

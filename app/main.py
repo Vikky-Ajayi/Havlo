@@ -605,6 +605,29 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Automatic stale-listing discovery disabled by ENABLE_STALE_LISTING_DISCOVERY.")
 
+    # ── Pre-purchase / cart-abandonment email drip ────────────────────────
+    # Twelve emails (30 min .. 60 days) for prospects who submitted "Your
+    # Details" but never completed checkout. Same advisory-lock pattern as
+    # the scrapers above, so it's safe to run under multiple uvicorn workers.
+    if HAS_DATABASE and _env_enabled("ENABLE_STALE_PROSPECT_ABANDONMENT_EMAILS", True):
+        from app.services.stale_prospect_abandonment import start_abandonment_email_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_abandonment_email_loop()))
+        logger.info("Stale-prospect abandonment email loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Stale-prospect abandonment emails disabled by ENABLE_STALE_PROSPECT_ABANDONMENT_EMAILS.")
+
+    # ── Post-purchase nurture / upsell email drip ("phase two") ───────────
+    # Twelve emails (immediately .. day 56) for prospects who completed
+    # checkout, counted from unlocked_at. Same advisory-lock pattern.
+    if HAS_DATABASE and _env_enabled("ENABLE_STALE_PROSPECT_POST_PURCHASE_EMAILS", True):
+        from app.services.stale_prospect_post_purchase import start_post_purchase_email_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_post_purchase_email_loop()))
+        logger.info("Stale-prospect post-purchase email loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Stale-prospect post-purchase emails disabled by ENABLE_STALE_PROSPECT_POST_PURCHASE_EMAILS.")
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:

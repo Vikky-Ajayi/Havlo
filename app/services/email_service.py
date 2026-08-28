@@ -1891,12 +1891,874 @@ async def send_stale_listing_agent_notification(
     )
 
 
+# ── StaleListings pre-purchase / cart-abandonment email drip ───────────────
+# Twelve emails sent after the "Your Details" step is submitted without
+# checkout completing — 30 min, 6h, 24h, 2d, 4d, 7d, 10d, 14d, 21d, 30d, 45d,
+# 60d later (schedule + send loop: app/services/stale_prospect_abandonment.py).
+# Distinct branded shell from _email_shell_html above — this series has its
+# own hero banner, a centred logo lockup, and a bottom "StaleListings"
+# watermark per the Figma reference, rather than the generic Havlo hero.
+#
+# NOTE: the hero banner (dark purple diagonal split, dot-grid pattern, B&W
+# house photo, purple wedge accent) is not yet a real asset in this repo.
+# It's referenced below as email-assets/stale-listings-abandonment-hero.png
+# and needs to be added to havlo_frontend/public/email-assets/ before these
+# emails go out for real — see brand["abandonment_hero_url"].
+
+def _stale_abandonment_brand(frontend_base_url: str | None = None, *, preview: bool = False) -> dict[str, str]:
+    brand = _email_brand(frontend_base_url, preview=preview)
+    brand["abandonment_hero_url"] = _email_asset_url(
+        "email-assets/stale-listings-abandonment-hero.png",
+        preview=preview,
+        frontend_base_url=frontend_base_url,
+    )
+    return brand
+
+
+def _stale_abandonment_hero_html(brand: dict[str, str]) -> str:
+    return f"""
+        <tr>
+          <td style="padding:0;line-height:0;font-size:0;">
+            <img src="{brand['abandonment_hero_url']}" alt="Clear answers. Better results. Some listings just need a second look."
+                 width="600" style="display:block;width:100%;max-width:600px;height:auto;" />
+          </td>
+        </tr>
+    """
+
+
+def _stale_abandonment_stars_html() -> str:
+    star_cell = (
+        '<td width="26" height="26" style="width:26px;height:26px;background:#00B67A;border-radius:3px;'
+        'text-align:center;vertical-align:middle;font-size:14px;line-height:26px;color:#FFFFFF;font-family:Arial,Helvetica,sans-serif;">&#9733;</td>'
+    )
+    spacer = '<td width="4" style="width:4px;font-size:0;line-height:0;">&nbsp;</td>'
+    stars_row = spacer.join([star_cell] * 5)
+    return f"""
+    <p style="margin:0 0 6px 0;font-size:19px;font-weight:800;color:#111111;text-align:center;font-family:Arial,Helvetica,sans-serif;">Excellent</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 8px auto;"><tr>{stars_row}</tr></table>
+    <p style="margin:0;font-size:12px;color:#667085;text-align:center;font-family:Arial,Helvetica,sans-serif;">Trusted by property owners</p>
+    """
+
+
+_STALE_ABANDONMENT_TESTIMONIALS: tuple[tuple[str, str], ...] = (
+    (
+        "After 3 months with barely any viewings, StaleListings helped us spot issues with our photos and "
+        "pricing strategy. We updated the listing and received two offers within weeks",
+        "Sarah M.",
+    ),
+    (
+        "Our estate agent was great, but having an extra layer of analysis made a huge difference. The "
+        "recommendations were detailed, practical, and easy to implement.",
+        "James & Olivia R.",
+    ),
+    (
+        "What I liked most was that we didn't need to change agents. We simply used the recommendations "
+        "alongside our current estate agent and improved the listing.",
+        "Michael T.",
+    ),
+)
+
+
+def _stale_abandonment_testimonials_html() -> str:
+    # 208px is a calibrated fixed height, not a percentage. Equal-height
+    # cards would normally use height:100% on the inner table so it fills
+    # its (row-equalized) outer <td>, but that's unreliable here: a table
+    # row's height only becomes "definite" for percentage-resolution when
+    # it's set explicitly, not when it's merely equalized to the tallest
+    # cell's content — Chromium (and Outlook) leave shorter cells' inner
+    # tables at their own natural height regardless of height:100%, tested
+    # directly in-browser. Since the three testimonials never vary, a fixed
+    # height calibrated to the tallest of them at this font-size/width is
+    # the reliable option; revisit this number if the testimonial copy
+    # below changes enough to need more room.
+    cells = []
+    for index, (quote, attribution) in enumerate(_STALE_ABANDONMENT_TESTIMONIALS):
+        # Straight quotes, not curly — matches the reference exactly. The
+        # first testimonial has no closing quote mark in the reference
+        # design too (consistent across the original mockup and the
+        # follow-up reference screenshot), so that's replicated as-is.
+        closing_quote = '"' if index != 0 else ""
+        # Quote and attribution are two separate rows (not one flowing
+        # block) so the attribution can be valign="bottom" — that's what
+        # keeps "— Name" on the same baseline across all three cards
+        # regardless of how many lines each quote wraps to, instead of it
+        # just trailing wherever the (shorter) quote happens to end.
+        cells.append(f"""
+          <td class="hv-testimonial-col" valign="top" style="width:33.33%;padding:0 3px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="hv-testimonial-card" style="background:#F5F6F8;border-radius:8px;height:208px;">
+              <tr>
+                <td valign="top" style="padding:14px 14px 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#333E48;">
+                  "{_html_lib.escape(quote)}{closing_quote}
+                </td>
+              </tr>
+              <tr>
+                <td valign="bottom" style="padding:10px 14px 14px 14px;">
+                  <p style="margin:0;font-weight:700;color:#111111;font-size:12px;">&mdash; {_html_lib.escape(attribution)}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        """)
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="hv-testimonial-table">
+      <tr>{"".join(cells)}</tr>
+    </table>
+    """
+
+
+def _stale_abandonment_list_card_html(items: list[tuple[str, str, str]]) -> str:
+    """Numbered PRICING/PRESENTATION/POSITIONING-style card used by emails 2 & 9."""
+    rows = []
+    for index, (number, label, description) in enumerate(items):
+        border = "border-bottom:1px solid #E5E7EB;" if index < len(items) - 1 else ""
+        rows.append(f"""
+          <tr>
+            <td width="30" valign="top" style="padding:14px 0;{border}font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:800;color:#A409D2;">{_html_lib.escape(number)}</td>
+            <td valign="top" style="padding:14px 0;{border}font-family:Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 4px 0;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#111111;">{_html_lib.escape(label)}</p>
+              <p style="margin:0;font-size:13px;line-height:20px;color:#556274;">{_html_lib.escape(description)}</p>
+            </td>
+          </tr>
+        """)
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F5F6F8;border-radius:10px;margin:0 0 26px 0;">
+      <tr>
+        <td style="padding:8px 22px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            {"".join(rows)}
+          </table>
+        </td>
+      </tr>
+    </table>
+    """
+
+
+def _stale_abandonment_watermark_html() -> str:
+    return """
+    <tr>
+      <td style="padding:0;">
+        <div class="hv-watermark-wrap" style="height:96px;overflow:hidden;">
+          <p class="hv-watermark-text" style="margin:0;font-size:104px;line-height:1;font-weight:800;letter-spacing:-2px;color:#F1F1F3;font-family:Arial,Helvetica,sans-serif;white-space:nowrap;">StaleListings</p>
+        </div>
+      </td>
+    </tr>
+    """
+
+
+def _stale_abandonment_shell_html(
+    *,
+    title: str,
+    preheader: str,
+    body_html: str,
+    brand: dict[str, str],
+    unsubscribe_url: str,
+) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{_html_lib.escape(title)}</title>
+<style>
+  body {{ margin:0; padding:0; background:#F5F6F8; }}
+  table {{ border-collapse:collapse; }}
+  img {{ border:0; outline:none; text-decoration:none; display:block; }}
+  a {{ color:#A409D2; text-decoration:none; }}
+  .hv-card {{ width:600px; max-width:600px; table-layout:fixed; }}
+  .hv-pad-x {{ padding-left:44px; padding-right:44px; }}
+  @media only screen and (max-width: 480px) {{
+    .hv-card {{ width:100% !important; max-width:100% !important; }}
+    .hv-pad-x {{ padding-left:20px !important; padding-right:20px !important; }}
+    .hv-testimonial-col {{ display:block !important; width:100% !important; padding:0 0 10px 0 !important; height:auto !important; }}
+    .hv-testimonial-col table {{ height:auto !important; }}
+    .hv-testimonial-table {{ display:block !important; }}
+    .hv-watermark-wrap {{ height:57px !important; }}
+    .hv-watermark-text {{ font-size:62px !important; }}
+  }}
+</style>
+</head>
+<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;color:#111111;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#F5F6F8;">
+  {_html_lib.escape(preheader)}
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F5F6F8">
+  <tr>
+    <td align="center" style="padding:36px 16px 22px;">
+
+      <table role="presentation" class="hv-card" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;margin:0 auto 18px auto;">
+        <tr>
+          <td align="center" style="padding:0 0 4px 0;">
+            <img src="{brand['logo_url']}" alt="Havlo" width="140" style="display:block;width:140px;max-width:220px;height:auto;margin:0 auto;" />
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:2px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#111111;">
+            StaleListings
+          </td>
+        </tr>
+      </table>
+
+      <table role="presentation" class="hv-card" cellpadding="0" cellspacing="0" border="0"
+             style="background:#FFFFFF;border:1px solid rgba(207,207,206,0.24);border-radius:14px;overflow:hidden;width:600px;max-width:600px;">
+        {_stale_abandonment_hero_html(brand)}
+        {body_html}
+        <tr>
+          <td class="hv-pad-x" style="padding:0 44px 24px 44px;">
+            <hr style="border:none;border-top:1px solid #ECECEC;margin:0 0 20px 0;" />
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td align="center" style="padding:0 0 16px 0;">{_email_social_buttons_html(brand)}</td>
+              </tr>
+              <tr>
+                <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:22px;color:#556274;">
+                  If you ever need support, we're always here:
+                  <a href="mailto:{brand['support_email_escaped']}" style="color:#A409D2;text-decoration:none;">{brand['support_email_escaped']}</a>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#111111;font-weight:700;">
+                  Copyright &copy;Havlo. All rights reserved.
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:16px;color:#98A2B3;">
+                  <a href="{_html_lib.escape(unsubscribe_url)}" style="color:#98A2B3;text-decoration:underline;">Unsubscribe from these reminders</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {_stale_abandonment_watermark_html()}
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+"""
+
+
+def _stale_abandonment_format_price(amount: float) -> str:
+    return f"£{amount:,.2f}"
+
+
+def _stale_abandonment_paragraph(html: str) -> str:
+    return (
+        f'<p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;'
+        f'font-size:14px;line-height:24px;color:#556274;">{html}</p>'
+    )
+
+
+def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text: str) -> dict:
+    """Static copy + layout for each of the twelve stages. Returns
+    subject / heading / cta_label / content_html (the paragraphs-or-list-card
+    block that sits between the headline and the CTA button).
+
+    Content transcribed from the Figma reference (Email 1.png .. Email
+    12.png). Two deliberate departures from the raw reference files, per
+    product decision:
+      - Emails 4 & 7 (case-study copy): dropped the raw "[Seller Name]...
+        [X months]" template-annotation line that appeared above the
+        concrete named example in the mockup, and de-duplicated Email 4's
+        repeated closing line — both read as mockup export artifacts, not
+        intended copy.
+      - Price mentions that quote the recipient's own assessment cost
+        (stages 1, 5, 6) use their actual tiered price (price_html) rather
+        than the mockup's hardcoded "£499.99". Email 4's "£499.99 Havlo
+        assessment" is a different customer's (John's) anecdote, not the
+        recipient's price, so it stays a fixed illustrative figure.
+    """
+    if stage == 1:
+        return {
+            "subject": "Your assessment is waiting",
+            "heading": "Your assessment is waiting",
+            "cta_label": "Unlock My Full Assessment",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Looks like you started telling us about your property but didn't get to checkout."
+                )
+                + _stale_abandonment_paragraph(
+                    f"Your assessment ({price_html}, one-off) will show you exactly why your listing isn't "
+                    "getting the attention it should — not just a score, but real recommendations on what to fix."
+                )
+            ),
+        }
+    if stage == 2:
+        return {
+            "subject": "See what's holding you back",
+            "heading": "See what's holding you back",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "A quick word on what's waiting for you once you check out: a clear breakdown of what's "
+                    "likely holding your listing back — pricing, presentation, positioning, or something else "
+                    "— plus specific recommendations, not just a generic \"your listing is stale\" flag."
+                )
+                + _stale_abandonment_list_card_html([
+                    ("01", "PRICING", "How your asking price compares to comparable local sales"),
+                    ("02", "PRESENTATION", "Whether your photos and listing copy are doing the property justice"),
+                    ("03", "POSITIONING", "Where your listing sits against newer competition nearby"),
+                ])
+            ),
+        }
+    if stage == 3:
+        return {
+            "subject": "What's stopping the viewings?",
+            "heading": "What's stopping the viewings?",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Most stale listings come down to one of a handful of things: the price drifted out of "
+                    "step with the local market, the photos aren't doing the property justice, or the listing "
+                    "simply got buried under newer ones."
+                )
+                + _stale_abandonment_paragraph(
+                    "Your assessment will tell you which of these (if any) applies to your property specifically."
+                )
+            ),
+        }
+    if stage == 4:
+        return {
+            "subject": "From stuck to sold",
+            "heading": "From stuck to sold",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "John's property had been sitting on the market for 7 months with barely any viewings."
+                )
+                + _stale_abandonment_paragraph(
+                    "Their £499.99 Havlo assessment flagged pricing 8% above comparable sales, they made the "
+                    "change, and had an offer within 3 weeks."
+                )
+                + _stale_abandonment_paragraph("Worth finding out what your own assessment would flag.")
+            ),
+        }
+    if stage == 5:
+        return {
+            "subject": f"Why {price_text}?",
+            "heading": f"Why {price_text}?",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Fair question. This isn't an automated score — it's a proper review of your listing "
+                    "against comparable local sales, your pricing, your presentation, and what's realistically "
+                    "holding back viewings, done by someone who actually looks at it, with clear "
+                    "recommendations at the end."
+                )
+                + _stale_abandonment_paragraph(
+                    f"That's what the {price_html} covers: a specific, actionable answer instead of a guess."
+                )
+            ),
+        }
+    if stage == 6:
+        return {
+            "subject": "Time isn't helping your listing",
+            "heading": "Time isn't helping your listing",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "The longer a listing sits without action, the more buyers assume something's wrong with "
+                    "it — even if nothing is."
+                )
+                + _stale_abandonment_paragraph(
+                    "Properties that get a fix early tend to sell faster and closer to asking price than ones "
+                    "that just sit and wait."
+                )
+                + _stale_abandonment_paragraph(
+                    f"Against the cost of another month or two of sitting unsold, {price_html} for a clear "
+                    "answer on what to change is a small ask."
+                )
+            ),
+        }
+    if stage == 7:
+        return {
+            "subject": "The right change made the difference",
+            "heading": "The right change made the difference",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph("Diane had gone 12 weeks without a single viewing.")
+                + _stale_abandonment_paragraph(
+                    "Their assessment showed the listing description and photos were not compelling, they "
+                    "adjusted it, and viewings picked up almost immediately."
+                )
+                + _stale_abandonment_paragraph(
+                    "You've already started yours — worth finishing the checkout to see what it says about "
+                    "your property."
+                )
+            ),
+        }
+    if stage == 8:
+        return {
+            "subject": "You're almost there",
+            "heading": "You're almost there",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph("We hear this a lot — people assume it's a long form. It isn't.")
+                + _stale_abandonment_paragraph(
+                    "Most people get through the remaining details and checkout in under two minutes from "
+                    "where you left off."
+                )
+                + _stale_abandonment_paragraph("No need to start over, your details are saved.")
+            ),
+        }
+    if stage == 9:
+        return {
+            "subject": "Here's what you'll get",
+            "heading": "Here's what you'll get",
+            "cta_label": "Complete my checkout",
+            "content_html": _stale_abandonment_list_card_html([
+                ("01", "PRICING REVIEW", "Your listing's price checked against comparable local sales"),
+                ("02", "PRESENTATION REVIEW", "A look at your photos and listing copy"),
+                ("03", "PLAIN-ENGLISH SUMMARY", "What's likely holding back viewings — and what to do about it"),
+            ]),
+        }
+    if stage == 10:
+        return {
+            "subject": "What if nothing changes?",
+            "heading": "What if nothing changes?",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "No pressure — but it's worth asking yourself: if nothing changes, does the listing get "
+                    "more views next month than it did this month?"
+                )
+                + _stale_abandonment_paragraph("Usually not.")
+                + _stale_abandonment_paragraph("The assessment is the fastest way to find out what to actually change.")
+            ),
+        }
+    if stage == 11:
+        return {
+            "subject": "Pick up where you left off",
+            "heading": "Pick up where you left off",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Everything you entered is still sitting there — you're not starting from scratch."
+                )
+                + _stale_abandonment_paragraph(
+                    "A couple of minutes finishes off the checkout and you'll have real answers on why your "
+                    "property isn't moving."
+                )
+            ),
+        }
+    if stage == 12:
+        return {
+            "subject": "Whenever you're ready",
+            "heading": "Whenever you're ready",
+            "cta_label": "Complete my checkout",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "This is the last weekly reminder about your unfinished checkout — we don't want to "
+                    "clutter your inbox if it's not the right time."
+                )
+                + _stale_abandonment_paragraph(
+                    "Your details are still saved if you ever want to pick it back up, and we'll check in "
+                    "again down the line."
+                )
+                + _stale_abandonment_paragraph(
+                    "If your listing's still not moving, the assessment is right here whenever you're ready."
+                )
+            ),
+        }
+    raise ValueError(f"Unknown abandonment stage: {stage}")
+
+
+def _stale_abandonment_body_html(*, first_name: str, heading: str, content_html: str, cta_url: str, cta_label: str) -> str:
+    return f"""
+        <tr>
+          <td class="hv-pad-x" style="padding:30px 44px 0 44px;">
+            <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#556274;">
+              Hi {_html_lib.escape(first_name)},
+            </p>
+            <h1 style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:30px;font-weight:800;letter-spacing:-.02em;color:#111111;">
+              {_html_lib.escape(heading)}
+            </h1>
+            {content_html}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" align="center" style="padding:6px 44px 26px 44px;">
+            {_email_button_html(cta_url, f"{cta_label} ›", accent="#000000", text_color="#FFFFFF")}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" style="padding:0 44px 22px 44px;">
+            {_stale_abandonment_stars_html()}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" style="padding:0 44px 8px 44px;">
+            {_stale_abandonment_testimonials_html()}
+          </td>
+        </tr>
+    """
+
+
+def send_stale_prospect_abandonment_email_sync(
+    *,
+    to_email: str,
+    first_name: str,
+    stage: int,
+    asking_price: float | None,
+    property_code: str,
+    unsubscribe_url: str,
+    frontend_base_url: str | None = None,
+) -> bool:
+    """Send one stage of the pre-purchase / cart-abandonment drip.
+
+    Called by app/services/stale_prospect_abandonment.py's send loop — never
+    call this directly from a request handler for a stage a prospect may
+    already have received; the loop is what enforces one-send-per-stage via
+    StaleProspectAbandonmentEmail's unique (prospect_id, stage) constraint.
+    """
+    from app.services.stale_prospect_service import prospect_unlock_price
+
+    price = prospect_unlock_price(asking_price)
+    price_text = _stale_abandonment_format_price(price)
+    price_html = f'<strong style="color:#111111;">{price_text}</strong>'
+    config = _stale_abandonment_stage_content(stage, price_html=price_html, price_text=price_text)
+
+    brand = _stale_abandonment_brand(frontend_base_url)
+    base_url = _frontend_base_url(override=frontend_base_url)
+    cta_url = f"{base_url}/stale-listings/prospect?code={quote(property_code)}"
+
+    body_html = _stale_abandonment_body_html(
+        first_name=first_name or "there",
+        heading=config["heading"],
+        content_html=config["content_html"],
+        cta_url=cta_url,
+        cta_label=config["cta_label"],
+    )
+    html_body = _stale_abandonment_shell_html(
+        title=config["subject"],
+        preheader=config["heading"],
+        body_html=body_html,
+        brand=brand,
+        unsubscribe_url=unsubscribe_url,
+    )
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"{config['heading']}\n\n"
+        f"{config['cta_label']}: {cta_url}\n\n"
+        f"Unsubscribe from these reminders: {unsubscribe_url}\n\n"
+        "Copyright ©Havlo. All rights reserved."
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=config["subject"],
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+
+# ── StaleListings post-purchase nurture / upsell email drip ("phase two") ──
+# Twelve emails counted from unlocked_at (when payment_status becomes
+# "completed") rather than contact_details_submitted_at: immediately, then
+# day 7, 14, 21, 25, 29, 35, 39, 43, 49, 53, 56 (schedule + send loop:
+# app/services/stale_prospect_post_purchase.py). Shares the exact same
+# branded shell/testimonials/stars/watermark as the abandonment drip above
+# (_stale_abandonment_shell_html etc. — generic despite the name).
+#
+# Stages 4-12 pitch the £1,499.99 Premium Strategy report (SL_PACKAGES
+# ["premium_strategy"]["amount"] in app/routers/stale_listings.py — keep in
+# sync if that price ever changes). There is deliberately no checkout flow
+# for that upgrade yet on an already-unlocked prospect, so those CTAs go to
+# a pre-filled support mailto rather than a broken "buy" button, per product
+# decision — swap in a real checkout URL here once that flow exists.
+#
+# Same two departures from the raw reference as the abandonment drip: the
+# "[Seller Name]... [X weeks]" template-annotation lines in stages 6 & 10
+# are dropped (kept only the concrete named example), and stage 10's "sold
+# within 5  of implementing it" (missing unit, double space in the source)
+# is completed to "sold within 5 weeks of implementing it".
+
+_STALE_PREMIUM_PRICE_HTML = '<strong style="color:#111111;">£1,499.99</strong>'
+
+
+def _stale_post_purchase_stage_content(stage: int, *, price_html: str, price_text: str) -> dict:
+    if stage == 1:
+        return {
+            "subject": "Your Assessment Is Ready",
+            "heading": "Your Assessment Is Ready",
+            "cta_label": "View my assessment",
+            "cta_kind": "report",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Thanks for your payment — your assessment is complete and the full breakdown is "
+                    "attached/available in your account: what's likely holding your listing back, and what "
+                    "we'd recommend changing first."
+                )
+                + _stale_abandonment_paragraph("Have a read through and let us know if anything's unclear.")
+            ),
+        }
+    if stage == 2:
+        return {
+            "subject": "Any Questions So Far?",
+            "heading": "Any Questions So Far?",
+            "cta_label": "View my assessment",
+            "cta_kind": "report",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Just checking in — have you had a chance to go through your recommendations yet?"
+                )
+                + _stale_abandonment_paragraph(
+                    "Happy to clarify anything, whether it's the pricing comparison, the presentation notes, "
+                    "or anything else in there."
+                )
+            ),
+        }
+    if stage == 3:
+        return {
+            "subject": "Putting Your Plan Into Action",
+            "heading": "Putting Your Plan Into Action",
+            "cta_label": "Review my recommendations",
+            "cta_kind": "report",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "A couple of weeks on from your assessment — have you started making any of the changes "
+                    "we recommended?"
+                )
+                + _stale_abandonment_paragraph(
+                    "Even small ones (updated photos, a price adjustment) tend to move the needle faster than "
+                    "people expect."
+                )
+            ),
+        }
+    if stage == 4:
+        return {
+            "subject": "When You Need a Deeper Plan",
+            "heading": "When You Need a Deeper Plan",
+            "cta_label": "Learn about the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Your assessment gives you a clear one-time read on what's wrong and what to do about it."
+                )
+                + _stale_abandonment_paragraph(
+                    "For sellers who want more than that — ongoing strategy as the market shifts, not just a "
+                    f"single snapshot — we also offer a premium strategy report at {_STALE_PREMIUM_PRICE_HTML}."
+                )
+                + _stale_abandonment_paragraph(
+                    "Not something everyone needs, but worth knowing it's there if your situation's more "
+                    "complex than a single fix."
+                )
+            ),
+        }
+    if stage == 5:
+        return {
+            "subject": "Are You Seeing Progress?",
+            "heading": "Are You Seeing Progress?",
+            "cta_label": "Learn about the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Checking in again — any change in viewings or interest since you acted on your assessment?"
+                )
+                + _stale_abandonment_paragraph(
+                    "If things are still slow, that's often a sign there's more going on than a single-point "
+                    "fix can address, which is exactly the gap the premium report is built for."
+                )
+            ),
+        }
+    if stage == 6:
+        return {
+            "subject": "When the First Fix Isn't Enough",
+            "heading": "When the First Fix Isn't Enough",
+            "cta_label": "Learn about the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Brenda completed their assessment, made the initial changes, but still weren't getting "
+                    "traction."
+                )
+                + _stale_abandonment_paragraph(
+                    "The premium strategy report gave them specific deeper insight (a full repositioning plan "
+                    "across pricing, timing, and agent strategy), and they had an offer within 4 weeks. Worth "
+                    "considering if your assessment fix alone hasn't been enough."
+                )
+            ),
+        }
+    if stage == 7:
+        return {
+            "subject": "What More Do You Get?",
+            "heading": "What More Do You Get?",
+            "cta_label": "Compare the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    f"Good question we get a lot. Your {price_html} assessment is a one-time diagnostic — "
+                    "what's wrong, and what to fix."
+                )
+                + _stale_abandonment_paragraph(
+                    f"The {_STALE_PREMIUM_PRICE_HTML} premium report goes further: a full strategic plan "
+                    "covering pricing, positioning, timing, and ongoing guidance as your listing moves through "
+                    "the market, not just a single snapshot in time."
+                )
+            ),
+        }
+    if stage == 8:
+        return {
+            "subject": "Your Market Keeps Moving",
+            "heading": "Your Market Keeps Moving",
+            "cta_label": "Learn about the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "It's been a couple of months since your assessment — worth knowing that local market "
+                    "conditions shift, and a plan built once can go stale just like a listing can."
+                )
+                + _stale_abandonment_paragraph(
+                    "If you're still not seeing the traction you want, the premium report accounts for that "
+                    "ongoing movement rather than a single point-in-time fix."
+                )
+            ),
+        }
+    if stage == 9:
+        return {
+            "subject": "Is It Worth the Upgrade?",
+            "heading": "Is It Worth the Upgrade?",
+            "cta_label": "Learn about the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Fair to ask. The honest answer: if your assessment fix already worked, you don't need it "
+                    "— no pressure to upgrade."
+                )
+                + _stale_abandonment_paragraph(
+                    "But if your listing's still sitting after acting on the recommendations, the cost of "
+                    f"several more months unsold is usually far higher than {_STALE_PREMIUM_PRICE_HTML}, and "
+                    "the report is built specifically to close whatever gap the one-off assessment couldn't."
+                )
+            ),
+        }
+    if stage == 10:
+        return {
+            "subject": "From Stuck to Sold",
+            "heading": "From Stuck to Sold",
+            "cta_label": "Learn about the premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "Edward had tried the assessment recommendations for 7 weeks with limited movement."
+                )
+                + _stale_abandonment_paragraph(
+                    "The premium report identified more, and their listing sold within 5 weeks of "
+                    "implementing it. If your situation sounds familiar, this might be the next step."
+                )
+            ),
+        }
+    if stage == 11:
+        return {
+            "subject": "Ready for the Next Step?",
+            "heading": "Ready for the Next Step?",
+            "cta_label": "Get my premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "No pressure, but since we haven't heard that your listing's sold yet — if the assessment "
+                    "recommendations alone haven't fully solved it, the premium strategy report is built for "
+                    "exactly that situation."
+                )
+                + _stale_abandonment_paragraph(
+                    f"{_STALE_PREMIUM_PRICE_HTML}, one-off, and gives you an ongoing plan rather than a single fix."
+                )
+            ),
+        }
+    if stage == 12:
+        return {
+            "subject": "Where Do Things Stand?",
+            "heading": "Where Do Things Stand?",
+            "cta_label": "Get my premium report",
+            "cta_kind": "contact",
+            "content_html": (
+                _stale_abandonment_paragraph(
+                    "It's been three months since your assessment — we'd love to know how things stand."
+                )
+                + _stale_abandonment_paragraph("If your listing's sold, congratulations, and thanks for using Havlo.")
+                + _stale_abandonment_paragraph(
+                    "If it's still on the market, the premium strategy report is there whenever you want a "
+                    "deeper plan, and we're always happy to talk it through directly."
+                )
+            ),
+        }
+    raise ValueError(f"Unknown post-purchase stage: {stage}")
+
+
+def send_stale_prospect_post_purchase_email_sync(
+    *,
+    to_email: str,
+    first_name: str,
+    stage: int,
+    asking_price: float | None,
+    property_code: str,
+    unsubscribe_url: str,
+    frontend_base_url: str | None = None,
+) -> bool:
+    """Send one stage of the post-purchase nurture / upsell drip.
+
+    Called by app/services/stale_prospect_post_purchase.py's send loop —
+    never call this directly for a stage a prospect may already have
+    received; the loop enforces one-send-per-stage via
+    StaleProspectPostPurchaseEmail's unique (prospect_id, stage) constraint.
+    """
+    from app.services.stale_prospect_service import prospect_unlock_price
+
+    price = prospect_unlock_price(asking_price)
+    price_text = _stale_abandonment_format_price(price)
+    price_html = f'<strong style="color:#111111;">{price_text}</strong>'
+    config = _stale_post_purchase_stage_content(stage, price_html=price_html, price_text=price_text)
+
+    brand = _stale_abandonment_brand(frontend_base_url)
+    base_url = _frontend_base_url(override=frontend_base_url)
+    if config["cta_kind"] == "report":
+        cta_url = f"{base_url}/stale-listings/prospect/report?code={quote(property_code)}"
+    else:
+        support_email = (get_settings().SUPPORT_EMAIL or "hello@heyhavlo.com").strip()
+        mailto_subject = quote(f"Premium Strategy report — property {property_code}")
+        mailto_body = quote(
+            "Hi Havlo team,\n\nI'd like to find out more about the Premium Strategy report for my property "
+            f"(code {property_code}).\n\nThanks,"
+        )
+        cta_url = f"mailto:{support_email}?subject={mailto_subject}&body={mailto_body}"
+
+    body_html = _stale_abandonment_body_html(
+        first_name=first_name or "there",
+        heading=config["heading"],
+        content_html=config["content_html"],
+        cta_url=cta_url,
+        cta_label=config["cta_label"],
+    )
+    html_body = _stale_abandonment_shell_html(
+        title=config["subject"],
+        preheader=config["heading"],
+        body_html=body_html,
+        brand=brand,
+        unsubscribe_url=unsubscribe_url,
+    )
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"{config['heading']}\n\n"
+        f"{config['cta_label']}: {cta_url}\n\n"
+        f"Unsubscribe from these reminders: {unsubscribe_url}\n\n"
+        "Copyright ©Havlo. All rights reserved."
+    )
+    return _send_sync(
+        to_email=to_email,
+        subject=config["subject"],
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+
 # Sync helpers exposed for FastAPI BackgroundTasks (which prefer sync callables).
 __all__ = [
     "send_welcome_email",
     "send_welcome_email_sync",
     "send_inbox_notification",
     "send_inbox_notification_sync",
+    "send_stale_prospect_abandonment_email_sync",
+    "send_stale_prospect_post_purchase_email_sync",
     "send_product_access_magic_link",
     "send_product_access_magic_link_sync",
     "send_stale_prospect_letter_sync",

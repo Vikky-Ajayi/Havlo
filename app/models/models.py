@@ -523,6 +523,13 @@ class StaleListingProspect(Base):
     property_confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     payment_method: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     bank_transfer_reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # Anchor timestamp for the pre-purchase / cart-abandonment email drip:
+    # set once, the first time the "Your Details" step is submitted. Never
+    # reset by later edits — it marks the moment they became abandon-able.
+    contact_details_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when the prospect clicks "unsubscribe" on a drip email. Checked
+    # before every send; permanently stops the sequence once set.
+    unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -532,6 +539,72 @@ class StaleListingProspect(Base):
 
     __table_args__ = (
         Index("ix_stale_listing_prospects_rightmove_url", "rightmove_url"),
+    )
+
+
+class StaleProspectAbandonmentEmail(Base):
+    """Records one sent step of the pre-purchase / cart-abandonment email
+    drip (see app/services/stale_prospect_abandonment.py) for a
+    StaleListingProspect. One row per (prospect, stage) — the unique
+    constraint is what makes the send loop idempotent even when several
+    uvicorn workers poll for due sends at once."""
+
+    __tablename__ = "stale_prospect_abandonment_emails"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # 1-12, matching the twelve stages (30 min through 60 days).
+    stage: Mapped[int] = mapped_column(Integer, nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index(
+            "ux_stale_prospect_abandonment_emails_prospect_stage",
+            "prospect_id",
+            "stage",
+            unique=True,
+        ),
+    )
+
+
+class StaleProspectPostPurchaseEmail(Base):
+    """Records one sent step of the post-purchase nurture/upsell drip (see
+    app/services/stale_prospect_post_purchase.py) for a StaleListingProspect
+    — the "phase two" sequence, counted from unlocked_at rather than
+    contact_details_submitted_at. Same one-row-per-(prospect, stage)
+    idempotency shape as StaleProspectAbandonmentEmail; kept as a separate
+    table (rather than a shared one with a sequence-name column) because the
+    two drips have independent, non-overlapping stage numbers and it keeps
+    each query simple."""
+
+    __tablename__ = "stale_prospect_post_purchase_emails"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # 1-12, matching the twelve stages (immediately after purchase through
+    # day 56).
+    stage: Mapped[int] = mapped_column(Integer, nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index(
+            "ux_stale_prospect_post_purchase_emails_prospect_stage",
+            "prospect_id",
+            "stage",
+            unique=True,
+        ),
     )
 
 
