@@ -535,7 +535,13 @@ const ExpandableText = ({
   const truncated = isLong ? clean.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : clean;
   const shown = expanded || forcePrint ? clean : truncated;
   return (
-    <Tag className={className}>
+    // The underlying text is written (and, since the duplication fix,
+    // stored) as \n\n-separated paragraphs, but plain HTML collapses
+    // newlines by default — every long field was rendering as one
+    // undifferentiated block no matter how it was punctuated in the data.
+    // pre-line respects the existing blank lines as real paragraph breaks
+    // while still wrapping normally within each line.
+    <Tag className={className} style={{ whiteSpace: 'pre-line' }}>
       {shown}
       {isLong && allowExpand && !forcePrint && (
         <button type="button" className="slw-read-more slw-noprint" onClick={() => setExpanded((v) => !v)}>
@@ -988,20 +994,26 @@ const FullReportStep = ({
         )}
         <div className="slw-actions-card">
           <b>Recommended actions</b>
-          {(data.action_plan || []).map((action, i) => {
-            const whyItMatters = action.why_it_matters || firstSentence(action.description || '');
+          {/* Two highlighted headline points, not the full write-up — this
+              card sits next to Competition analysis (a handful of short
+              comparable rows) and used to run every action's full
+              paragraph-length description, making it several times taller
+              than its neighbour. The complete list with full detail lives
+              one click away in the Recommendation modal. */}
+          {(data.action_plan || []).slice(0, 2).map((action, i) => {
+            const highlight = action.why_it_matters || firstSentence(action.description || '');
             return (
-              <div className="slw-action-row" key={i}>
+              <div className="slw-action-highlight" key={i}>
                 <b>{action.title}</b>
-                <ExpandableText text={action.description} maxChars={200} />
-                {whyItMatters && (
-                  <p className="slw-why-it-matters">
-                    <i>Why it matters: <ExpandableText as="span" text={whyItMatters} maxChars={160} /></i>
-                  </p>
-                )}
+                {highlight && <p>{highlight}</p>}
               </div>
             );
           })}
+          {(data.action_plan || []).length > 2 && (
+            <button type="button" className="slw-actions-see-all" onClick={onOpenRecommendation}>
+              See all {data.action_plan!.length} recommended actions →
+            </button>
+          )}
         </div>
       </div>
 
@@ -1029,7 +1041,15 @@ const FullReportStep = ({
 
 // ── Recommendation modal ────────────────────────────────────────────────────
 
-const RecommendationModal = ({ contactName, onClose }: { contactName: string; onClose: () => void }) => (
+const RecommendationModal = ({
+  contactName,
+  actions,
+  onClose,
+}: {
+  contactName: string;
+  actions: ReportAction[];
+  onClose: () => void;
+}) => (
   <div className="slw-modal-overlay" onClick={onClose}>
     <div className="slw-modal" onClick={(e) => e.stopPropagation()}>
       <div className="slw-modal-head">
@@ -1039,34 +1059,26 @@ const RecommendationModal = ({ contactName, onClose }: { contactName: string; on
       <div className="slw-modal-scroll">
       <div className="slw-modal-body">
         <p>Dear {contactName || '(name)'},</p>
-        <p>Following our assessment of your property&rsquo;s current market position, we believe there may be an opportunity to broaden the way your property is promoted and reach potential buyers beyond traditional property-portal searches. In addition to the assessment report for your property, we recommend discussing the following strategies with your estate agent:</p>
+        <p>Following our assessment of your property&rsquo;s current market position, here is the complete set of recommended actions in priority order, along with why each one matters and how to execute it:</p>
 
-        <h3>1) Neighbourhood Buyer Outreach</h3>
-        <p>Your property&rsquo;s next buyer may already live nearby &mdash; or have a reason to want to.</p>
-        <p>Neighbouring households are an often-overlooked source of potential buyers. A neighbour may have family members, adult children, friends or colleagues who would like to live closer, or they may personally be considering purchasing a larger, smaller or additional property within the area.</p>
-        <p>Some Havlo clients have used targeted neighbourhood outreach to generate buyer interest within weeks, including from people who were not actively searching for a property.</p>
-        <p>We recommend asking your agent to create a dedicated property flyer or letter and distribute it to carefully selected surrounding households. Rather than simply announcing that the property is for sale, the communication should clearly present the opportunity and encourage neighbours to share it with anyone they know who may want to live nearby.</p>
-        <p>This creates a direct route to potential buyers who may never have encountered the property through Rightmove, Zoopla or other portals.</p>
-
-        <h3>2) Havlo Premium Digital Buyer Acquisition</h3>
-        <p>You may also wish to explore Sell Faster (Havlo Relaunch&trade;) &mdash; Havlo&rsquo;s property-intelligence-led digital buyer acquisition programme, designed to work alongside your existing estate agent.</p>
-        <p>Using insights from your property&rsquo;s market position, Havlo identifies relevant buyer audiences and develops precision-targeted Meta campaigns designed to reach potential buyers based on factors such as location, lifestyle, interests and potential buyer profile.</p>
-        <p>Rather than relying solely on buyers actively searching property portals, Sell Faster (Havlo Relaunch&trade;) adds an additional route to market by taking the property directly to potential buyers who may not yet be searching.</p>
-        <p>Your estate agent remains your agent. Havlo&rsquo;s role is to provide additional property intelligence and buyer reach to support the existing sales process.</p>
-
-        <h3>3) Explore Alternative Buyer Profiles</h3>
-        <p>Ask your agent to consider buyer groups beyond the traditional owner-occupier, including private investors, landlords, relocation buyers and second-home purchasers.</p>
-        <p>For example, a buyer may see greater value in purchasing the property as a rental investment rather than occupying it themselves.</p>
-
-        <h3>4) Reposition the Opportunity</h3>
-        <p>Consider whether the property&rsquo;s strongest proposition is being communicated effectively.<br />
-        This could include its investment potential, rental opportunity, location, lifestyle appeal or suitability for a particular type of buyer.<br />
-        Sometimes the challenge is not simply finding more buyers, it is reaching the right buyers with the right proposition.</p>
+        {actions.map((action, i) => (
+          <div className="slw-modal-action" key={i}>
+            <h3>{i + 1}) {action.title}
+              {action.priority && <span className="slw-modal-priority"> &middot; {action.priority}</span>}
+            </h3>
+            {action.description && <p style={{ whiteSpace: 'pre-line' }}>{action.description}</p>}
+            {action.why_it_matters && <p><i>Why it matters: {action.why_it_matters}</i></p>}
+            {(action.bullets || []).length > 0 && (
+              <ul className="slw-modal-bullets">
+                {action.bullets!.map((bullet, bi) => <li key={bi}>{bullet}</li>)}
+              </ul>
+            )}
+          </div>
+        ))}
 
         <h3>OUR ADVISORY VIEW</h3>
-        <p>We recommend discussing these strategies with your existing agent and exploring how they could complement your current marketing approach.<br />
-        Your agent already has the property. The opportunity may simply be to expand how, where and to whom it is presented.</p>
-        <p>If you would like to explore a more targeted buyer acquisition strategy, Havlo can assess whether its Premium Digital Buyer Acquisition Campaign may be appropriate for your property.</p>
+        <p>We recommend working through these actions in the order shown, starting with the highest-priority items, and reviewing the result of each before moving to the next.<br />
+        Your existing agent remains fully in control of the sale &mdash; these recommendations are designed to support their work, not replace it.</p>
 
         <h3>Prepared &amp; reviewed by</h3>
         <p className="slw-modal-team">Havlo Sales Advisory Team</p>
@@ -1435,7 +1447,11 @@ export const StaleProspectWizard = () => {
       </div>
       <Footer />
       {showRecommendation && (
-        <RecommendationModal contactName={report?.contact_name || ''} onClose={() => setShowRecommendation(false)} />
+        <RecommendationModal
+          contactName={report?.contact_name || ''}
+          actions={report?.report_data?.action_plan || []}
+          onClose={() => setShowRecommendation(false)}
+        />
       )}
       <WizardStyles />
     </div>
@@ -1673,6 +1689,11 @@ const WizardStyles = () => (
     .slw-action-row b{display:block;font-size:14.5px;margin-bottom:6px}
     .slw-action-row p{margin:0 0 6px;font-size:13.5px;color:#444;line-height:1.5}
     .slw-why-it-matters{color:#777 !important;font-size:12.5px !important}
+    .slw-action-highlight{background:#F9F1FC;border-left:3px solid #A409D2;border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:12px}
+    .slw-action-highlight:last-of-type{margin-bottom:16px}
+    .slw-action-highlight b{display:block;font-size:14.5px;color:#202124;margin-bottom:4px}
+    .slw-action-highlight p{margin:0;font-size:13px;color:#555;line-height:1.5}
+    .slw-actions-see-all{display:block;width:100%;text-align:left;background:none;border:none;padding:0;color:#A409D2;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit}
 
     .slw-thirty-day-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;background:#f5f6f8;border-radius:18px;padding:14px}
     .slw-week-card{background:#fff;border-radius:12px;padding:18px}
@@ -1697,6 +1718,11 @@ const WizardStyles = () => (
     .slw-modal-body p{margin:0 0 12px}
     .slw-modal-team{font-weight:700;color:#999}
     .slw-modal-disclaimer{color:#999;font-size:12.5px;margin-top:16px}
+    .slw-modal-action{padding:20px 0;border-top:1px solid #eee}
+    .slw-modal-action:first-of-type{padding-top:0;border-top:none}
+    .slw-modal-priority{font-size:12px;font-weight:700;color:#A409D2;text-transform:uppercase;letter-spacing:0.4px}
+    .slw-modal-bullets{margin:0 0 12px;padding-left:20px}
+    .slw-modal-bullets li{margin-bottom:6px}
 
     @media print{
       /* The desktop grid layouts below (summary/property, score, why-not-
