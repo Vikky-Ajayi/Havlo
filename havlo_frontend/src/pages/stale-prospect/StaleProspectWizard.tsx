@@ -1128,9 +1128,22 @@ export const StaleProspectWizard = () => {
           if (cancelled) return;
           setReport(reportData);
           setStep('report');
+        } else if (!data.has_contact_details) {
+          // property_confirmed/has_contact_details must be checked before
+          // payment_status: every prospect is created with payment_status
+          // "pending" (it only ever becomes "completed", never anything
+          // else pre-payment), so a prospect who has never even confirmed
+          // their property still has payment_status "pending" - checking
+          // that first (as this used to) sent every fresh QR-code scan
+          // straight to the Payment step, skipping Confirm Property and
+          // Your Details entirely.
+          setStep(data.property_confirmed ? 'details' : 'confirm');
         } else if (data.payment_status === 'pending') {
-          // Landed back from a SumUp redirect while it was still confirming
-          // — poll the same way the payment step itself would.
+          // Already has contact details on file and isn't unlocked yet -
+          // either landed back from a SumUp/bank-transfer redirect while
+          // still confirming, or is simply revisiting the same link after
+          // already reaching Payment - either way, resume the same polling
+          // the payment step itself would run.
           setStep('payment');
           const handle = window.setInterval(async () => {
             try {
@@ -1146,12 +1159,8 @@ export const StaleProspectWizard = () => {
             }
           }, 4000);
           setPollHandle(handle);
-        } else if (data.has_contact_details) {
-          setStep('assessment');
-        } else if (data.property_confirmed) {
-          setStep('details');
         } else {
-          setStep('confirm');
+          setStep('assessment');
         }
       } catch {
         if (!cancelled) setStep('landing');
