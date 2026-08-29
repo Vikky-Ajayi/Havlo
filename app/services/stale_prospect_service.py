@@ -674,19 +674,24 @@ def _letter_draw_gauge(page, cx, cy, radius, score, color) -> None:
     value_angle = _LETTER_GAUGE_START - fraction * _LETTER_GAUGE_SPAN
     page.setLineCap(1)
     page.setStrokeColor(colors.HexColor("#ECECEE"))
-    page.setLineWidth(radius * 0.24)
+    page.setLineWidth(radius * 0.24 * 0.7)  # 30% thinner than the original track width
     page.arc(cx - radius, cy - radius, cx + radius, cy + radius, _LETTER_GAUGE_END, _LETTER_GAUGE_SPAN)
     page.setStrokeColor(color)
     page.arc(cx - radius, cy - radius, cx + radius, cy + radius, value_angle, _LETTER_GAUGE_START - value_angle)
+    # The needle pivots level with the arc's two open ends (_LETTER_GAUGE_START
+    # / _LETTER_GAUGE_END, symmetric about straight-down), not the circle's
+    # true center — matching a real dashboard gauge, where the needle sits at
+    # the track's baseline rather than floating above it.
+    pivot_y = cy + radius * math.sin(math.radians(_LETTER_GAUGE_START))
     needle_len = radius * 0.55
     nx = cx + needle_len * math.cos(math.radians(value_angle))
-    ny = cy + needle_len * math.sin(math.radians(value_angle))
+    ny = pivot_y + needle_len * math.sin(math.radians(value_angle))
     page.setStrokeColor(colors.HexColor("#111111"))
     page.setLineWidth(1.6)
     page.setLineCap(1)
-    page.line(cx, cy, nx, ny)
+    page.line(cx, pivot_y, nx, ny)
     page.setFillColor(colors.HexColor("#111111"))
-    page.circle(cx, cy, radius * 0.065, stroke=0, fill=1)
+    page.circle(cx, pivot_y, radius * 0.065, stroke=0, fill=1)
 
 
 def _letter_draw_trustpilot(page, right_x, top_y) -> None:
@@ -907,7 +912,10 @@ def _letter_draw_gauge_row(page, x, y_top, w, cards, card_h=178) -> None:
         page.setLineWidth(0.75)
         page.line(cx0 + 14, cy0 + card_h - 43, cx0 + card_w - 14, cy0 + card_h - 43)
 
-        gauge_cy = cy0 + card_h - 92
+        # 6pt lower than before (was card_h - 92) — the arc's top point sits
+        # at gauge_cy + radius, which was only 4pt below the divider line
+        # above it; this opens that up to a clearer ~10pt gap.
+        gauge_cy = cy0 + card_h - 98
         _letter_draw_gauge(page, cx0 + card_w / 2, gauge_cy, 45, score, status_color)
 
         page.setFillColor(_LETTER_INK)
