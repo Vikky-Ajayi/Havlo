@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
+import { useTypewriter } from '../hooks/useTypewriter';
 
 const pressLogos = [
   { alt: 'The Times', src: '/press-logos/the-times.svg' },
@@ -41,7 +42,7 @@ const BadgePlanIcon = () => (
 );
 
 const heroBadges = [
-  { icon: BadgeCheckIcon, title: 'Human Verified', sub: 'Every listing reviewed' },
+  { icon: BadgeCheckIcon, title: 'Human verified', sub: 'Every listing reviewed' },
   { icon: BadgeScoreIcon, title: 'Proprietary scoring', sub: 'The Havlo Index' },
   { icon: BadgePlanIcon, title: 'Actionable plans', sub: 'Get listings moving again' },
 ];
@@ -134,6 +135,7 @@ const Header = () => (
 export const StaleListingsHome = () => {
   const [code, setCode] = useState('');
   const navigate = useNavigate();
+  const typedTail = useTypewriter('a second look.');
 
   const lookup = (event: FormEvent) => {
     event.preventDefault();
@@ -147,7 +149,16 @@ export const StaleListingsHome = () => {
 
       <section className="slh-hero">
         <div className="slh-hero-copy">
-          <h1>Some <span>listings</span> just need a second look.</h1>
+          <h1>
+            Some <span>listings</span> just need{' '}
+            <span className="slh-hero-typed-wrap">
+              <span aria-hidden="true">
+                {typedTail}
+                <span className="slh-hero-cursor" />
+              </span>
+              <span className="sr-only">a second look.</span>
+            </span>
+          </h1>
           <p>Havlo Stale Listings is a property intelligence built around the Havlo Index, a proprietary scoring model that works out why a listing isn't selling, verified by human review, and turned into a plan to get it moving again.</p>
           <div className="slh-hero-actions">
             <Link to="/stale-listings/agents">Get Started - Agents</Link>
@@ -262,8 +273,12 @@ export const StaleListingsHome = () => {
         .slh-menu{display:none;width:36px;height:36px;background:none;border:0;padding:6px}
         .slh-menu span{display:block;height:2px;background:#111;margin:6px 0;border-radius:4px}
         .slh-hero{display:grid;grid-template-columns:minmax(0,1fr) 600px;gap:80px;align-items:center;padding:80px 11%;background:linear-gradient(110deg,#fff 30%,#fff1fb)}
-        .slh-hero h1{font-family:'Right Grotesk','Arial Black','Inter',sans-serif;font-size:64px;line-height:1.1;font-weight:900;letter-spacing:-.02em;max-width:600px;margin:0}
+        .slh-hero h1{font-family:'Right Grotesk','Arial Black','Inter',sans-serif;font-size:57.6px;line-height:1.1;font-weight:900;letter-spacing:-.02em;max-width:600px;margin:0}
         .slh-hero h1 span{color:#a900d8}
+        .slh-hero h1 .slh-hero-typed-wrap{color:#090909}
+        .slh-hero-cursor{display:inline-block;width:3px;margin-left:2px;background:currentColor;animation:slh-cursor-blink 0.85s step-end infinite;vertical-align:-0.08em;height:0.85em}
+        @keyframes slh-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+        .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
         .slh-hero-copy>p{max-width:610px;font-family:'Inter',sans-serif;font-weight:400;font-size:16px;line-height:150%;letter-spacing:-.02em;margin:12px 0 0}
         .slh-hero-actions{display:flex;gap:16px;margin:32px 0}
         .slh-hero-actions a,.slh-code-form button,.slh-platforms a,.slh-cta a{background:#000;color:#fff;text-decoration:none;border:0;border-radius:8px;padding:14px 22px;font-weight:850}
@@ -344,7 +359,7 @@ export const StaleListingsHome = () => {
         .slh-footer-logo{height:42px;width:auto;display:block}
         .slh-footer a:last-child{color:#111;text-decoration:none;border:1px solid #ddd;border-radius:8px;padding:10px 14px}
         @media(max-width:1100px){.slh-hero,.slh-problem{grid-template-columns:1fr;gap:42px}.slh-customer{width:100%;height:auto;max-width:480px}.slh-featured div{gap:28px}.slh-featured img{height:23px}.slh-brands div{gap:30px}}
-        @media(max-width:900px){.slh-header{padding:0 18px}.slh-logo-mark{height:34px}.slh-nav{display:none}.slh-menu{display:block}.slh-hero{display:flex;flex-direction:column;padding:34px 18px;gap:24px}.slh-hero h1{font-size:40px}.slh-hero-actions{display:grid;gap:10px}.slh-hero-actions a{text-align:center}.slh-badges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.slh-badges span{gap:6px}.slh-badges svg{width:18px;height:18px;flex-shrink:0}.slh-badges b{font-size:12px}.slh-badges small{font-size:10px}.slh-code-form div{display:grid}.slh-code-form button{margin-top:8px}.slh-featured{overflow:hidden}.slh-marquee{overflow:hidden}.slh-dup{display:block}.slh-featured .slh-marquee-track{flex-wrap:nowrap;justify-content:flex-start;width:max-content;gap:32px;animation:slh-marquee 18s linear infinite}.slh-featured img{height:20px}.slh-brands .slh-marquee-track{flex-wrap:nowrap;justify-content:flex-start;width:max-content;gap:28px;animation:slh-marquee 22s linear infinite}.slh-brands img{max-height:32px;max-width:130px}.slh-problem,.slh-section-head,.slh-platforms{display:block;padding:52px 18px}.slh-problem h2,.slh-section-head h2,.slh-platforms h2,.slh-reviews h2,.slh-cta h2{font-size:28px}.slh-section-head h2{margin:20px 0 20px}.slh-problem-copy>p{font-size:16px}.slh-approach{width:100%;height:auto;margin-top:34px;padding:28px;border-radius:24px;box-shadow:0 0 0 9px rgba(237,231,255,.9),0 24px 60px rgba(196,0,224,.45)}.slh-approach div{grid-template-columns:1fr}.slh-method{padding:48px 18px}.slh-method-grid{grid-template-columns:1fr;margin-top:0}.slh-reviews{overflow:hidden}.slh-reviews article.slh-dup{display:flex}.slh-reviews .slh-marquee-track{display:flex;flex-wrap:nowrap;justify-content:flex-start;width:max-content;gap:16px;animation:slh-marquee 26s linear infinite}.slh-reviews article{flex:0 0 260px;width:260px;min-height:270px}.slh-platforms ul{margin-top:24px}.slh-cta{margin:42px 18px}.slh-cta a{display:block;width:100%;box-sizing:border-box;margin:12px auto 0}.slh-cta a+a{margin-left:auto}.slh-footer{display:grid;text-align:center;justify-items:center}}
+        @media(max-width:900px){.slh-header{padding:0 18px}.slh-logo-mark{height:34px}.slh-nav{display:none}.slh-menu{display:block}.slh-hero{display:flex;flex-direction:column;padding:34px 18px;gap:24px}.slh-hero h1{font-size:36px}.slh-hero-actions{display:grid;gap:10px}.slh-hero-actions a{text-align:center}.slh-badges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.slh-badges span{gap:6px}.slh-badges svg{width:18px;height:18px;flex-shrink:0}.slh-badges b{font-size:12px}.slh-badges small{font-size:10px}.slh-code-form div{display:grid}.slh-code-form button{margin-top:8px}.slh-featured{overflow:hidden}.slh-marquee{overflow:hidden}.slh-dup{display:block}.slh-featured .slh-marquee-track{flex-wrap:nowrap;justify-content:flex-start;width:max-content;gap:32px;animation:slh-marquee 18s linear infinite}.slh-featured img{height:20px}.slh-brands .slh-marquee-track{flex-wrap:nowrap;justify-content:flex-start;width:max-content;gap:28px;animation:slh-marquee 22s linear infinite}.slh-brands img{max-height:32px;max-width:130px}.slh-problem,.slh-section-head,.slh-platforms{display:block;padding:52px 18px}.slh-problem h2,.slh-section-head h2,.slh-platforms h2,.slh-reviews h2,.slh-cta h2{font-size:28px}.slh-section-head h2{margin:20px 0 20px}.slh-problem-copy>p{font-size:16px}.slh-approach{width:100%;height:auto;margin-top:34px;padding:28px;border-radius:24px;box-shadow:0 0 0 9px rgba(237,231,255,.9),0 24px 60px rgba(196,0,224,.45)}.slh-approach div{grid-template-columns:1fr}.slh-method{padding:48px 18px}.slh-method-grid{grid-template-columns:1fr;margin-top:0}.slh-reviews{overflow:hidden}.slh-reviews article.slh-dup{display:flex}.slh-reviews .slh-marquee-track{display:flex;flex-wrap:nowrap;justify-content:flex-start;width:max-content;gap:16px;animation:slh-marquee 26s linear infinite}.slh-reviews article{flex:0 0 260px;width:260px;min-height:270px}.slh-platforms ul{margin-top:24px}.slh-cta{margin:42px 18px}.slh-cta a{display:block;width:100%;box-sizing:border-box;margin:12px auto 0}.slh-cta a+a{margin-left:auto}.slh-footer{display:grid;text-align:center;justify-items:center}}
       `}</style>
     </div>
   );
