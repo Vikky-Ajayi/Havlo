@@ -12,12 +12,18 @@ declare global {
   }
 }
 
-export type StaleListingsPixelPlanId = 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment';
+export type StaleListingsPixelPlanId = 'property_sale_assessment' | 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment';
 
 export const STALE_LISTINGS_PIXEL_PLANS: Record<
   StaleListingsPixelPlanId,
   { id: StaleListingsPixelPlanId; name: string; value: number; currency: 'GBP' }
 > = {
+  property_sale_assessment: {
+    id: 'property_sale_assessment',
+    name: 'Havlo Property Sale Assessment',
+    value: 499.99,
+    currency: 'GBP',
+  },
   quick_insight: {
     id: 'quick_insight',
     name: 'Quick Insight',
@@ -45,7 +51,7 @@ export const STALE_LISTINGS_PIXEL_PLANS: Record<
 };
 
 export function getStaleListingsPixelPlan(planId: string | null | undefined) {
-  return STALE_LISTINGS_PIXEL_PLANS[(planId || '') as StaleListingsPixelPlanId] || STALE_LISTINGS_PIXEL_PLANS.professional_review;
+  return STALE_LISTINGS_PIXEL_PLANS[(planId || '') as StaleListingsPixelPlanId] || STALE_LISTINGS_PIXEL_PLANS.property_sale_assessment;
 }
 
 export function trackMetaPixelEvent(eventName: MetaPixelEventName, params: MetaPixelParams = {}, eventId?: string) {

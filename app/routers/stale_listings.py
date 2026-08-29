@@ -72,6 +72,13 @@ from app.services.sumup_service import SumUpError
 logger = logging.getLogger(__name__)
 
 SL_PACKAGES: dict[str, dict] = {
+    # The single flagship offering as of the pricing-section redesign — the
+    # /stale-listings/seller marketing page and the /stale-listings/plan
+    # checkout step both now sell only this. quick_insight and
+    # professional_review are kept below (never offered by either page
+    # anymore) purely so existing historical orders still resolve a package
+    # name/amount correctly — do not remove them.
+    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 499.99,  "currency": "GBP"},
     "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},

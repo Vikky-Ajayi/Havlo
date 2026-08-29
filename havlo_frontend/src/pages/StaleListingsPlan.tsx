@@ -97,86 +97,45 @@ const TealHouseIllustration = () => (
   </div>
 );
 
-/* ─── PLAN DATA ─── */
+/* ─── PLAN DATA ───
+   Single flagship product as of the pricing-section redesign — see
+   SL_PACKAGES in app/routers/stale_listings.py. quick_insight,
+   professional_review and premium_strategy are no longer offered here
+   (kept server-side only so historical orders still resolve correctly). */
 const PLANS = [
   {
-    id: 'quick_insight' as const,
-    name: 'Quick Insight',
-    price: '£79.99',
-    amount: 79.99,
-    tagline: 'Vendors wanting a fast professional opinion.',
-    turnaround: 'Turnaround: 24–48 hours',
-    priceLabel: '£79.99 per report',
+    id: 'property_sale_assessment' as const,
+    name: 'Havlo Property Sale Assessment',
+    price: '£499.99',
+    amount: 499.99,
+    tagline: 'For serious sellers wanting expert guidance to improve saleability.',
+    turnaround: 'Turnaround: 24 hours',
+    priceLabel: '£499.99 per report',
     preNote: null as string | null,
     features: [
-      'Data-driven property market analysis',
+      'Market analysis',
+      'Comparable sales',
+      'Pricing position',
+      'Local competition',
+      'Area demand & buyer demographics',
+      'Listing performance',
+      'Photography & description',
+      'Buyer appeal',
+      'Why buyers may be overlooking the property',
       'Human estate agent review',
-      'Local comparable sales review',
-      'Pricing position check',
-      'Online listing performance review',
-      'Summary report with key issues slowing the sale',
+      'Home presentation & staging recommendations',
+      'Key issues slowing the sale',
       '3–5 actionable recommendations',
-    ],
-    Illustration: BlueHouseIllustration,
-    bestValue: false,
-    btnBg: '#000',
-    btnColor: '#fff',
-    btnGold: false,
-    borderColor: '1.5px solid #E8E8E8',
-    selectedBorderColor: '2px solid #000',
-  },
-  {
-    id: 'professional_review' as const,
-    name: 'Professional Review',
-    price: '£299.99',
-    amount: 299.99,
-    tagline: 'Serious sellers wanting expert guidance to improve saleability.',
-    turnaround: 'Turnaround: 24 hours',
-    priceLabel: '£299.99 per report',
-    preNote: 'Includes everything in Quick Insight, plus an in-depth assessment from a panel of experienced estate agents currently selling properties similar to yours in the local market.',
-    features: [
-      'Buyer appeal analysis',
-      'Listing photography & description review',
-      'Local competition benchmarking',
-      'Why buyers may be overlooking this property section',
-      'Recommended pricing strategy',
-      'Priority turnaround',
+      'Marketing improvement roadmap',
+      'Re-launch strategy',
     ],
     Illustration: GoldHouseIllustration,
-    bestValue: true,
+    bestValue: false,
     btnBg: '#EAA501',
     btnColor: '#000',
     btnGold: true,
     borderColor: '2px solid ' + TEAL,
     selectedBorderColor: '2px solid ' + TEAL,
-  },
-  {
-    id: 'premium_strategy' as const,
-    name: 'Premium Strategy',
-    price: '£1,499.99',
-    amount: 1499.99,
-    tagline: 'High-value homes or properties stuck on the market for months.',
-    turnaround: '24 hours + follow-up support',
-    priceLabel: '£1499.99 per report',
-    preNote: 'Includes everything in professional review plus:',
-    features: [
-      'Detailed property positioning strategy',
-      'Multi-platform listing audit',
-      'Area demand and buyer demographic analysis',
-      'Home presentation/staging recommendations',
-      'Marketing improvement roadmap',
-      'Re-launch strategy',
-      'Estate agent strategy review with improvement recommendations',
-      'Follow-up review after changes are implemented',
-      'Direct access for Q&A support for 14–30 days',
-    ],
-    Illustration: TealHouseIllustration,
-    bestValue: false,
-    btnBg: '#000',
-    btnColor: '#fff',
-    btnGold: false,
-    borderColor: '1.5px solid #E8E8E8',
-    selectedBorderColor: '2px solid #000',
   },
 ];
 
@@ -231,7 +190,7 @@ const FREE_PLAN = {
   selectedBorderColor: '2px solid #000',
 };
 
-type PlanId = 'quick_insight' | 'professional_review' | 'premium_strategy' | 'listing_recovery_assessment' | 'free_trial_assessment';
+type PlanId = 'property_sale_assessment' | 'listing_recovery_assessment' | 'free_trial_assessment';
 
 /* ─── STEPPER ─── */
 function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
@@ -301,7 +260,7 @@ export function StaleListingsPlan() {
   const isFreePlan = sessionStorage.getItem('sl_free_plan') === 'true';
   const visiblePlans = isAgentFlow ? [FREE_PLAN, AGENT_PLAN] : PLANS;
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
-    isFreePlan ? 'free_trial_assessment' : isAgentFlow ? 'listing_recovery_assessment' : 'professional_review'
+    isFreePlan ? 'free_trial_assessment' : isAgentFlow ? 'listing_recovery_assessment' : 'property_sale_assessment'
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
@@ -327,11 +286,10 @@ export function StaleListingsPlan() {
   const propertyLabel = address || listingUrl || 'Your listed property';
   const propertyDisplay = propertyLabel.length > 45 ? propertyLabel.slice(0, 45) + '…' : propertyLabel;
 
-  const turnaroundLabel = selectedPlan === 'quick_insight' ? '24–48 hours'
-    : selectedPlan === 'professional_review' ? '24 hours (priority)'
+  const turnaroundLabel = selectedPlan === 'property_sale_assessment' ? '24 hours'
     : selectedPlan === 'listing_recovery_assessment' ? 'Within 5 working days'
     : selectedPlan === 'free_trial_assessment' ? 'Within 5 working days'
-    : '24 hours + follow-up support';
+    : '24 hours';
 
   const handleVerifyPromo = async () => {
     if (!promoCode.trim()) {

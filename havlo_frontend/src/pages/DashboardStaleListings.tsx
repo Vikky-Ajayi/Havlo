@@ -41,6 +41,7 @@ interface AdminItem {
 }
 
 const PACKAGE_LABELS: Record<string, string> = {
+  property_sale_assessment: 'Havlo Property Sale Assessment',
   quick_insight: 'Quick Insight',
   professional_review: 'Professional Review',
   premium_strategy: 'Premium Strategy',

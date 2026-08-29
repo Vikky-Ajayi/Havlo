@@ -154,89 +154,54 @@ const TESTIMONIALS = [
   { text: "What I liked most was that we didn't need to change agents. We simply used the recommendations alongside our current estate agent and improved the listing.", name: '— Michael T.' },
 ];
 
-const PLANS = [
+/* ── PRICING: single flagship assessment (see StaleListingsPlan.tsx and
+   SL_PACKAGES in app/routers/stale_listings.py — all three stay in sync) ── */
+const CoinsIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A409D2" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <ellipse cx="9" cy="7" rx="6" ry="3" /><path d="M3 7v4c0 1.66 2.69 3 6 3s6-1.34 6-3V7" />
+    <path d="M3 11v4c0 1.66 2.69 3 6 3s6-1.34 6-3v-4" />
+    <ellipse cx="17" cy="13" rx="4" ry="2" /><path d="M13 13v3c0 1.1 1.79 2 4 2s4-.9 4-2v-3" />
+  </svg>
+);
+const ClipboardIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A409D2" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 3h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+    <path d="M8 12h8M8 16h5" />
+  </svg>
+);
+const PresentationIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A409D2" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="12" rx="1" /><path d="M8 20h8M12 16v4" />
+  </svg>
+);
+const TargetIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#A409D2" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" fill="#A409D2" />
+  </svg>
+);
+
+const ASSESSMENT_CATEGORIES = [
   {
-    id: 'quick_insight', name: 'Quick Insight', price: '£79.99',
-    tagline: 'Vendors wanting a fast professional opinion.',
-    turnaround: 'Turnaround: 24–48 hours',
-    features: ['Data-driven property market analysis','Human estate agent review','Local comparable sales review','Pricing position check','Online listing performance review','Summary report with key issues slowing the sale','3–5 actionable recommendations'],
-    popular: false,
+    name: 'Market & Pricing',
+    icon: CoinsIcon,
+    items: ['Market analysis', 'Comparable sales', 'Pricing position', 'Local competition', 'Area demand & buyer demographics'],
   },
   {
-    id: 'professional_review', name: 'Professional Review', price: '£299.99',
-    tagline: 'Serious sellers wanting expert guidance to improve saleability.',
-    preNote: 'Includes everything in Quick Insight, plus',
-    preNoteDetail: 'an in-depth assessment from a panel of experienced estate agents currently selling properties similar to yours in the local market.',
-    turnaround: 'Turnaround: 24 hours',
-    features: ['Buyer appeal analysis','Listing photography & description review','Local competition benchmarking','Why buyers may be overlooking this property section','Recommended pricing strategy','Priority turnaround'],
-    popular: true,
+    name: 'Listing & Buyer Appeal',
+    icon: ClipboardIcon,
+    items: ['Listing performance', 'Photography & description', 'Buyer appeal', 'Why buyers may be overlooking the property'],
   },
   {
-    id: 'premium_strategy', name: 'Premium Strategy', price: '£1,499.99',
-    tagline: 'High-value homes or properties stuck on the market for months.',
-    preNote: 'Includes everything in professional review plus:',
-    turnaround: '24 hours + follow-up support',
-    features: ['Detailed property positioning strategy','Multi-platform listing audit','Area demand and buyer demographic analysis','Home presentation/staging recommendations','Marketing improvement roadmap','Re-launch strategy','Estate agent strategy review with improvement recommendations','Follow-up review after changes are implemented','Direct access for Q&A support for 14–30 days'],
-    popular: false,
+    name: 'Property Presentation',
+    icon: PresentationIcon,
+    items: ['Human estate agent review', 'Home presentation & staging recommendations'],
+  },
+  {
+    name: 'Action Plan',
+    icon: TargetIcon,
+    items: ['Key issues slowing the sale', '3–5 actionable recommendations', 'Marketing improvement roadmap', 'Re-launch strategy'],
   },
 ];
-
-/* ── HOUSE ILLUSTRATIONS ── */
-const HouseBlue = () => (
-  <svg width="157" height="122" viewBox="0 0 157 122" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="18" y="52" width="121" height="70" rx="4" fill="#4A90D9"/>
-    <polygon points="78.5,8 8,55 149,55" fill="#2D6BB5"/>
-    <rect x="64" y="72" width="29" height="50" rx="3" fill="#1A4A80"/>
-    <rect x="30" y="65" width="22" height="22" rx="2" fill="#A8D4F5"/>
-    <rect x="35" y="70" width="12" height="12" rx="1" fill="#7ABDE8"/>
-    <rect x="105" y="65" width="22" height="22" rx="2" fill="#A8D4F5"/>
-    <rect x="110" y="70" width="12" height="12" rx="1" fill="#7ABDE8"/>
-    <circle cx="77" cy="97" r="3" fill="#A8D4F5"/>
-    <rect x="14" y="50" width="5" height="8" rx="2" fill="#F5A623"/>
-    <rect x="138" y="50" width="5" height="8" rx="2" fill="#F5A623"/>
-    <rect x="52" y="30" width="12" height="20" rx="2" fill="#4A90D9"/>
-    <rect x="55" y="27" width="6" height="6" rx="1" fill="#2D6BB5"/>
-  </svg>
-);
-const HouseOrange = () => (
-  <svg width="157" height="122" viewBox="0 0 157 122" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="18" y="52" width="121" height="70" rx="4" fill="#F5A623"/>
-    <polygon points="78.5,8 8,55 149,55" fill="#D4831A"/>
-    <rect x="64" y="72" width="29" height="50" rx="3" fill="#8B5209"/>
-    <rect x="30" y="65" width="22" height="22" rx="2" fill="#FDE8BB"/>
-    <rect x="35" y="70" width="12" height="12" rx="1" fill="#F5C870"/>
-    <rect x="105" y="65" width="22" height="22" rx="2" fill="#FDE8BB"/>
-    <rect x="110" y="70" width="12" height="12" rx="1" fill="#F5C870"/>
-    <circle cx="77" cy="97" r="3" fill="#FDE8BB"/>
-    <rect x="14" y="50" width="5" height="8" rx="2" fill="#E84393"/>
-    <rect x="138" y="50" width="5" height="8" rx="2" fill="#E84393"/>
-    <circle cx="120" cy="22" r="10" fill="#F5E642" opacity="0.9"/>
-    <circle cx="120" cy="22" r="6" fill="#F5E642"/>
-    <rect x="52" y="30" width="12" height="20" rx="2" fill="#F5A623"/>
-    <rect x="55" y="27" width="6" height="6" rx="1" fill="#D4831A"/>
-  </svg>
-);
-const HouseTeal = () => (
-  <svg width="157" height="122" viewBox="0 0 157 122" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="18" y="52" width="121" height="70" rx="4" fill="#2ABFBF"/>
-    <polygon points="78.5,8 8,55 149,55" fill="#1A9090"/>
-    <rect x="64" y="72" width="29" height="50" rx="3" fill="#0D5A5A"/>
-    <rect x="30" y="65" width="22" height="22" rx="2" fill="#AAEAEA"/>
-    <rect x="35" y="70" width="12" height="12" rx="1" fill="#5DCFCF"/>
-    <rect x="105" y="65" width="22" height="22" rx="2" fill="#AAEAEA"/>
-    <rect x="110" y="70" width="12" height="12" rx="1" fill="#5DCFCF"/>
-    <circle cx="77" cy="97" r="3" fill="#AAEAEA"/>
-    <rect x="14" y="50" width="5" height="8" rx="2" fill="#F5D742"/>
-    <rect x="138" y="50" width="5" height="8" rx="2" fill="#F5D742"/>
-    <circle cx="120" cy="20" r="8" fill="#F5D742" opacity="0.8"/>
-    <line x1="120" y1="10" x2="120" y2="4" stroke="#F5D742" strokeWidth="2"/>
-    <line x1="126" y1="13" x2="130" y2="9" stroke="#F5D742" strokeWidth="2"/>
-    <line x1="130" y1="20" x2="136" y2="20" stroke="#F5D742" strokeWidth="2"/>
-    <rect x="52" y="30" width="12" height="20" rx="2" fill="#2ABFBF"/>
-    <rect x="55" y="27" width="6" height="6" rx="1" fill="#1A9090"/>
-  </svg>
-);
-const HOUSE_ICONS = [HouseBlue, HouseOrange, HouseTeal];
 
 /* ─── FAQ ITEM ─── */
 function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: boolean }) {
@@ -704,7 +669,7 @@ export function StaleListingsLanding() {
           .sl-step-float--report { border-radius:24px !important; }
           .sl-input-bar { max-width:100% !important; width:100% !important; }
           .sl-pricing-cols { flex-wrap:wrap !important; }
-          .sl-plan-card {
+          .sl-category-card {
             flex:1 1 calc(50% - 8px) !important;
             min-width:280px !important;
           }
@@ -1106,7 +1071,7 @@ export function StaleListingsLanding() {
             flex-direction:column !important;
             gap:24px !important;
           }
-          .sl-plan-card {
+          .sl-category-card {
             border-radius:32px !important;
             min-width:0 !important;
           }
@@ -1621,80 +1586,67 @@ export function StaleListingsLanding() {
         </div>
       </section>
 
-      {/* ── PRICING ── */}
-      <section id="pricing" className="sl-pricing-section" style={{ padding:'80px 100px', background:'#FFB0E6' }}>
-        <div style={{ maxWidth:1440, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', gap:24 }}>
+      {/* ── PRICING: single flagship assessment ── */}
+      <section id="pricing" className="sl-pricing-section" style={{ padding:'80px 100px', background:'#FFFFFF' }}>
+        <div style={{ maxWidth:1080, margin:'0 auto', display:'flex', flexDirection:'column', alignItems:'center', gap:20 }}>
           <h2
             className="sl-pricing-heading"
-            style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:600, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, maxWidth:858, textAlign:'center' }}
+            style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%', margin:0, textAlign:'center' }}
           >
-            Find out why your property isn't selling and what you can do to improve it.
+            Havlo Property Sale Assessment
           </h2>
+          <p style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%', margin:0, textAlign:'center' }}>
+            For serious sellers wanting expert guidance to improve saleability.
+          </p>
           <p
             className="sl-pricing-desc"
             style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%', margin:0, maxWidth:734, textAlign:'center' }}
           >
-            Get expert insights, market analysis, and professional recommendations designed to help position your property more effectively and attract the right buyers faster.
+            Your assessment covers the key factors that can influence how quickly and effectively your property sells, including:
           </p>
-          {/* Plan cards */}
-          <div className="sl-pricing-cols" style={{ display:'flex', flexDirection:'row', gap:16, alignSelf:'stretch', alignItems:'stretch', width:'100%' }}>
-            {PLANS.map((plan, i) => {
-              const PlanHouseIcon = HOUSE_ICONS[i];
-              const isPopular = plan.popular;
+
+          {/* Category cards */}
+          <div className="sl-pricing-cols" style={{ display:'flex', flexDirection:'row', gap:16, alignSelf:'stretch', alignItems:'stretch', width:'100%', marginTop:16 }}>
+            {ASSESSMENT_CATEGORIES.map((cat) => {
+              const CatIcon = cat.icon;
               return (
                 <div
-                  key={i}
-                  className="sl-plan-card"
-                  style={{ position:'relative', display:'flex', flexDirection:'column', justifyContent:'space-between', padding:24, gap:32, flex:'1 0 0', background:'#FFFFFF', border: isPopular ? '2px solid #1A6B6B' : '1px solid rgba(0,0,0,0.05)', borderRadius:32, boxSizing:'border-box' }}
+                  key={cat.name}
+                  className="sl-category-card"
+                  style={{ display:'flex', flexDirection:'column', gap:20, flex:'1 0 0', background:'#F5F5FA', borderRadius:20, padding:24, boxSizing:'border-box' }}
                 >
-                  {isPopular && (
-                    <div style={{ position:'absolute', top:20, right:20, background:'#E53935', color:'#fff', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:11, letterSpacing:'0.5px', padding:'4px 10px', borderRadius:20, textTransform:'uppercase' }}>
-                      BEST VALUE
-                    </div>
-                  )}
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:32 }}>
-                    <PlanHouseIcon />
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:24, alignSelf:'stretch' }}>
-                      <div style={{ display:'flex', flexDirection:'column', gap:20, alignSelf:'stretch' }}>
-                        <div style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%' }}>{plan.name}</div>
-                        <div style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%' }}>{plan.tagline}</div>
-                      </div>
-                      <div style={{ display:'flex', flexDirection:'column', gap:16, paddingTop:16, borderTop:'1px solid rgba(0,0,0,0.1)', alignSelf:'stretch' }}>
-                        {(plan as any).preNote && (
-                          <div style={{ fontFamily:'Inter, sans-serif', fontSize:14, letterSpacing:'-0.03em', lineHeight:'130%' }}>
-                            <span style={{ fontWeight:700, color:'#050405' }}>{(plan as any).preNote}</span>
-                            {(plan as any).preNoteDetail && (
-                              <span style={{ fontWeight:400, color:'#050405' }}> {(plan as any).preNoteDetail}</span>
-                            )}
-                          </div>
-                        )}
-                        {plan.features.map((feat, j) => (
-                          <div key={j} style={{ display:'flex', flexDirection:'row', alignItems:'flex-start', gap:8 }}>
-                            <VerifyIcon />
-                            <span style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:14, color:'#050405', letterSpacing:'-0.03em', lineHeight:'120%', flex:1 }}>{feat}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  <CatIcon />
+                  <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:800, fontSize:16, color:'#050405', letterSpacing:'-0.02em', lineHeight:'130%', textTransform:'uppercase', borderBottom:'1px solid rgba(0,0,0,0.08)', paddingBottom:14 }}>
+                    {cat.name}
                   </div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
-                    <div style={{ display:'flex', justifyContent:'center', padding:'10px 12px', borderRadius:10, background:'#FAEBFE', alignSelf:'stretch' }}>
-                      <span style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:14, color:'#602ED3', letterSpacing:'-0.02em', lineHeight:'130%' }}>{(plan as any).turnaround}</span>
-                    </div>
-                    <div style={{ fontFamily:'Inter, sans-serif', fontWeight:600, fontSize:24, color:'#000000', letterSpacing:'-0.03em', lineHeight:'120%', alignSelf:'stretch', textAlign:'center' }}>
-                      {plan.price} per report
-                    </div>
-                    <button
-                      onClick={handlePricingStart}
-                      style={{ display:'flex', height:44, padding:'8px', justifyContent:'center', alignItems:'center', gap:8, borderRadius:10, background: isPopular ? '#F5A623' : '#000000', color: isPopular ? '#000' : '#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:16, letterSpacing:'-0.02em', border:'none', cursor:'pointer', alignSelf:'stretch' }}
-                    >
-                      Start Assessment
-                    </button>
+                  <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                    {cat.items.map((item) => (
+                      <div key={item} style={{ display:'flex', flexDirection:'row', alignItems:'flex-start', gap:8 }}>
+                        <VerifyIcon />
+                        <span style={{ fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:14, color:'#050405', letterSpacing:'-0.02em', lineHeight:'130%', flex:1 }}>{item}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          <p style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:16, color:'#000000', letterSpacing:'-0.02em', lineHeight:'150%', margin:'16px 0 0', maxWidth:734, textAlign:'center' }}>
+            Havlo Stale Listings assessment intelligence is built around the Havlo Index, a proprietary scoring model that works out why a listing isn&rsquo;t selling, verified by human review, and turned into a plan to get it moving again.
+          </p>
+
+          <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontSize:32, letterSpacing:'-0.02em', lineHeight:'120%', marginTop:8 }}>
+            <span style={{ fontWeight:700, color:'#000000' }}>From </span>
+            <span style={{ fontWeight:900, color:'#A409D2' }}>£499.99</span>
+          </div>
+
+          <button
+            onClick={handlePricingStart}
+            style={{ display:'flex', height:48, padding:'8px 40px', justifyContent:'center', alignItems:'center', gap:8, borderRadius:10, background:'#000000', color:'#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:500, fontSize:16, letterSpacing:'-0.02em', border:'none', cursor:'pointer' }}
+          >
+            Start Assessment
+          </button>
         </div>
       </section>
 

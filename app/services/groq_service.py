@@ -707,7 +707,9 @@ PREMIUM STRATEGY format rules:
         system_msg = "You are Mark Williams, a senior UK property sales consultant with 22 years of experience. Produce a Premium Strategy report that feels like a high-fee consultant briefing: comprehensive, analytical, commercially sharp, and deeply specific to this homeowner's data. This is the richest plan and must be noticeably more strategic than Professional Review. Write like a strong human consultant and never use em dashes. Return only valid JSON. No markdown, no code fences."
 
     else:
-        # professional_review (default)
+        # Default depth — this is what property_sale_assessment (the current
+        # sole flagship package) gets, along with the older professional_review
+        # id kept for historical orders.
         task_block = """Your task is to produce a PROFESSIONAL REVIEW report - thorough, behavioural, and positioning-focused.
 This goes beyond surface-level issues to analyse why buyers are choosing other properties instead.
 
