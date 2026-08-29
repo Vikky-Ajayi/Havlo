@@ -657,6 +657,15 @@ def _letter_icon_scan_frame(page, cx, cy, s, color) -> None:
         page.line(x0, y0, x0, y0 - sy * c)
 
 
+def _letter_icon_scan_badge(page, cx, cy, r) -> None:
+    """Circular pale-accent badge with a smaller scan-frame glyph inside,
+    matching the design reference's "Scan to view your property findings"
+    icon (a filled lavender circle, not a bare black viewfinder outline)."""
+    page.setFillColor(_LETTER_ACCENT_PALE)
+    page.circle(cx, cy, r, stroke=0, fill=1)
+    _letter_icon_scan_frame(page, cx, cy, r * 0.5, _LETTER_ACCENT)
+
+
 def _letter_draw_gauge(page, cx, cy, radius, score, color) -> None:
     """Semicircle-ish gauge (a ~230deg sweep, not a plain 180deg semicircle
     — also measured off the reference, not assumed). score 0 -> needle/arc
@@ -800,9 +809,11 @@ def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str
     small = ParagraphStyle("LetterIdSmall", fontName="Helvetica", fontSize=7.4, leading=9.6, textColor=colors.white, alignment=1)
     _letter_para(page, "Scan the QR code, then enter this code to access your assessment.", id_x + 10, y + 30, id_box_w - 20, small)
 
-    _letter_icon_scan_frame(page, x + 26, y + h - 24, 15, _LETTER_INK)
+    _letter_icon_scan_badge(page, x + 30, y + h / 2, 17)
     label_style = ParagraphStyle("LetterScanLabel", fontName="Helvetica-Bold", fontSize=13.5, leading=16, textColor=_LETTER_INK)
-    _letter_para(page, "Scan to view your property findings", x + 52, y + h - 14, 190, label_style)
+    label_w = 185
+    _, label_h = Paragraph("Scan to view your property findings", label_style).wrap(label_w, 200 * mm)
+    _letter_para(page, "Scan to view your property findings", x + 60, y + h / 2 + label_h / 2, label_w, label_style)
 
     qr_size = h - 24
     page.drawImage(ImageReader(qr_reader), x + 300, y + (h - qr_size) / 2, qr_size, qr_size)
