@@ -196,8 +196,6 @@ export const StaleListingsPartnerships = () => (
       .slp-cta-actions a:last-of-type{color:#fff}
       .slp-cta>small{display:block;margin-top:20px;font-size:13px;color:#cfc7d2}
       .slp-cta>small a{color:#fff;text-decoration:underline}
-      .slp-page footer{display:flex;justify-content:space-between;gap:24px;align-items:center;padding:34px 11%;font-size:13px}
-      .slp-page footer a:last-child{color:#111;text-decoration:none;border:1px solid #ddd;border-radius:8px;padding:10px 14px}
       @media(max-width:900px){
         .slp-header{padding:0 18px}
         .slp-logo-mark{height:34px}
@@ -218,7 +216,6 @@ export const StaleListingsPartnerships = () => (
         .slp-white h2{font-size:28px}
         .slp-cta-actions a{display:block;width:100%;box-sizing:border-box;margin:10px 0 0}
         .slp-cta-actions a:first-of-type{margin-top:0}
-        .slp-page footer{display:grid;text-align:center;justify-items:center}
         .slp-cta{margin:46px 18px}
       }
     `}</style>

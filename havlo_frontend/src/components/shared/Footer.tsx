@@ -188,13 +188,26 @@ const LinkGroup = ({
     <h4 className="font-display text-xl font-black text-white">{title}</h4>
     <div className="flex flex-col gap-8">
       {links.map((link) => (
-        <Link
-          key={link.name}
-          to={link.href}
-          className="font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
-        >
-          {link.name}
-        </Link>
+        link.href === '#' ? (
+          // No real destination yet (e.g. "Press") — a router Link to "#"
+          // resolves relative to whatever page you're currently on rather
+          // than being a harmless no-op, so this renders as plain,
+          // non-navigating text instead of a misleading dead link.
+          <span
+            key={link.name}
+            className="font-body text-base font-medium tracking-[-0.32px] text-white/40 cursor-default"
+          >
+            {link.name}
+          </span>
+        ) : (
+          <Link
+            key={link.name}
+            to={link.href}
+            className="font-body text-base font-medium tracking-[-0.32px] text-white/80 hover:text-white transition-colors"
+          >
+            {link.name}
+          </Link>
+        )
       ))}
     </div>
   </div>
