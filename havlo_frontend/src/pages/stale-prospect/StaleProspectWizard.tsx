@@ -923,6 +923,26 @@ const FullReportStep = ({
   const snapshot = report.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const scores = data.scores || {};
+
+  // The property card is a float (see the layout comment below), so a
+  // plain grid/flex align-items:stretch can't make the executive summary
+  // card match its height anymore — nothing in CSS can size one float's
+  // sibling off the float's own height. Measuring it directly is the only
+  // way to get "own card, same height as the property card at rest" back
+  // while keeping the float's "text flows past it once expanded" behaviour:
+  // min-height only ever acts as a floor, so once Read More grows the text
+  // taller than this, the card simply grows past it exactly as before.
+  const propertyCardRef = useRef<HTMLDivElement>(null);
+  const [propertyCardHeight, setPropertyCardHeight] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = propertyCardRef.current;
+    if (!el) return;
+    const update = () => setPropertyCardHeight(el.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const heroFindings = (data.key_findings || []).filter((f) => f.type === 'issue').slice(0, 2);
   if (heroFindings.length < 2) {
     for (const f of data.key_findings || []) {
@@ -958,7 +978,7 @@ const FullReportStep = ({
             way to get that "narrow beside it, full-width once past it"
             reflow with plain CSS; a grid can't do it since both columns
             are always the same fixed width top to bottom. */}
-        <div className="slw-report-property-card">
+        <div className="slw-report-property-card" ref={propertyCardRef}>
           <div className="slw-report-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
           <div className="slw-report-property-text">
             <h2>{report.property_address}</h2>
@@ -968,7 +988,7 @@ const FullReportStep = ({
             </div>
           </div>
         </div>
-        <div className="slw-report-summary-card">
+        <div className="slw-report-summary-card" style={propertyCardHeight ? { minHeight: propertyCardHeight } : undefined}>
           <b>Executive summary</b>
           <ExpandableText text={data.executive_summary} maxChars={320} />
         </div>
@@ -1875,6 +1895,7 @@ const WizardStyles = () => (
       .slw-pay-btn{max-width:none;margin-top:28px}
 
       .slw-report-property-card{float:none;width:auto;margin-left:0;grid-template-columns:1fr}
+      .slw-report-summary-card{min-height:auto !important}
       .slw-report-image{height:180px;min-height:180px}
       .slw-report-property-card h2{font-size:31px;margin-bottom:28px}
       .slw-score-row{grid-template-columns:1fr}
