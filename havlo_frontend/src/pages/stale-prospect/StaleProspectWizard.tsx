@@ -733,15 +733,14 @@ const AssessmentStep = ({
               </div>
             ))}
           </div>
+          <div className="slw-rating">
+            <span>Excellent</span>
+            <span className="slw-trustpilot-stars" aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, i) => <i key={i}>★</i>)}
+            </span>
+            <b>Based on verified customer feedback</b>
+          </div>
         </div>
-      </div>
-
-      <div className="slw-rating">
-        <span>Excellent</span>
-        <span className="slw-trustpilot-stars" aria-hidden="true">
-          {Array.from({ length: 5 }).map((_, i) => <i key={i}>★</i>)}
-        </span>
-        <b>Based on verified customer feedback</b>
       </div>
 
       <div className="slw-unlock-cta">
@@ -1675,7 +1674,7 @@ const WizardStyles = () => (
     .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:36px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}
     .slw-locked-card svg{flex:none;margin-top:1px}
-    .slw-assess-findings-grid + .slw-rating{margin:36px 0 40px}
+    .slw-locked-grid + .slw-rating{margin:24px 0 0}
 
     .slw-unlock-cta{background:#f5f6f8;border-radius:18px;padding:32px;display:grid;grid-template-columns:1fr 1.08fr;gap:32px;align-items:center}
     .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1.05;margin:0 0 20px;color:#202124}
