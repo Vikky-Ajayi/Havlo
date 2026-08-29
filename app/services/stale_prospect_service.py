@@ -494,10 +494,30 @@ async def expand_report_in_background(prospect_id: str) -> None:
     it runs while the browser is still redirecting/polling, so by the time
     the report page actually loads the expansion has usually already
     finished — and the report GET endpoint itself never blocks on it.
+
+    Five separate call sites in stale_listings.py schedule this same task
+    for the same prospect (checkout confirm, promo unlock, retried "already
+    unlocked" clicks, ...), deliberately, so a slow or failed earlier attempt
+    always gets another chance. But two of those schedulings landing close
+    together raced: both read is_report_expanded() as False before either
+    had committed, so both proceeded to expand. The second one's "existing
+    report" was then whatever the first had already merged in, and the
+    model's fresh addendum on top of that came back substantially restating
+    that already-merged text - the net result was every finding/action
+    description containing the same paragraphs twice. `with_for_update()`
+    below closes that: it takes a row lock for the life of this
+    transaction, so a second concurrent call blocks until the first commits,
+    then re-reads is_report_expanded() as True and returns without expanding
+    again - the same guard, just no longer raceable.
     """
     try:
         async with AsyncSessionLocal() as db:
-            prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+            result = await db.execute(
+                select(StaleListingProspect)
+                .where(StaleListingProspect.id == uuid.UUID(prospect_id))
+                .with_for_update()
+            )
+            prospect = result.scalar_one_or_none()
             if not prospect or prospect.payment_status != "completed":
                 return
             if is_report_expanded(prospect):
