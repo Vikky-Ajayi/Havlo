@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GEO_REGIONS, flagUrl } from '../../lib/geoCountries';
+import { flagUrl } from '../../lib/geoCountries';
+import { ALL_COUNTRY_REGIONS } from '../../lib/allCountries';
 import { COUNTRY_CHANGED_EVENT, experienceRouteFor, getStoredCountry, isUK, setStoredCountry } from '../../lib/geo';
 
-// A flat, searchable list built once from the region directory, plus the
-// name shown for the current selection when it's a real detected country.
-const ALL_COUNTRIES = GEO_REGIONS.flatMap((region) =>
+// Every country (not the smaller curated investment-market list the
+// /countries marketing page shows — see allCountries.ts for why they're
+// separate), flattened once for search.
+const ALL_COUNTRIES = ALL_COUNTRY_REGIONS.flatMap((region) =>
   region.countries.map((country) => ({ ...country, region: region.name })),
 );
 
@@ -55,8 +57,8 @@ export const CountryBadge = () => {
 
   const filteredRegions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return GEO_REGIONS;
-    return GEO_REGIONS.map((region) => ({
+    if (!q) return ALL_COUNTRY_REGIONS;
+    return ALL_COUNTRY_REGIONS.map((region) => ({
       ...region,
       countries: region.countries.filter((c) => c.name.toLowerCase().includes(q)),
     })).filter((region) => region.countries.length > 0);

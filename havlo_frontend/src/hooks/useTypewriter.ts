@@ -14,8 +14,8 @@ interface TypewriterOptions {
  */
 export function useTypewriter(text: string, options: TypewriterOptions = {}): string {
   const {
-    typingSpeedMs = 85,
-    deletingSpeedMs = 45,
+    typingSpeedMs = 125,
+    deletingSpeedMs = 65,
     pauseAfterTypedMs = 1800,
     pauseAfterDeletedMs = 500,
   } = options;
