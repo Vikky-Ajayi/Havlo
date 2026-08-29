@@ -1,14 +1,53 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { detectCountryFromIP, experienceRouteFor, getStoredCountry, setStoredCountry } from '../lib/geo';
 
-const overrideKey = 'havlo-home-experience';
-
+// Root route ("/"). Silently detects the visitor's country (via Vercel's
+// edge geolocation, see lib/geo.ts) and sends them straight to the UK or
+// international side of the site — no more manual "Are you in the UK?"
+// prompt for the common case. That prompt only reappears as a fallback if
+// detection genuinely can't resolve a country (local dev, or the /api/geo
+// function being unreachable), so there's always a way forward.
 export const GeoHome = () => {
   const navigate = useNavigate();
+  const [detectionFailed, setDetectionFailed] = useState(false);
 
-  const choose = (experience: 'uk' | 'global') => {
-    window.localStorage.setItem(overrideKey, experience);
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const stored = getStoredCountry();
+      if (stored) {
+        navigate(experienceRouteFor(stored), { replace: true });
+        return;
+      }
+
+      const detected = await detectCountryFromIP();
+      if (cancelled) return;
+
+      if (detected) {
+        setStoredCountry(detected, 'auto');
+        navigate(experienceRouteFor(detected), { replace: true });
+      } else {
+        setDetectionFailed(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
+
+  const chooseManually = (experience: 'uk' | 'global') => {
+    setStoredCountry(experience === 'uk' ? 'GB' : 'INTL', 'manual');
     navigate(experience === 'uk' ? '/stale-listings' : '/buyabroad/uk', { replace: true });
   };
+
+  if (!detectionFailed) {
+    // Detection is near-instant (one edge request), so this is on screen
+    // for a moment at most — no spinner needed, just a blank frame.
+    return <main className="min-h-screen bg-white" />;
+  }
 
   return (
     <main className="min-h-screen bg-white px-6 py-16 text-center">
@@ -19,17 +58,17 @@ export const GeoHome = () => {
             Are you currently in the UK?
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-black/65">
-            We will show the right starting point based on where you are. You can change this later.
+            We couldn't automatically detect your location. You can change this any time from the country badge at the top of the page.
           </p>
           <div className="mt-9 grid gap-3 sm:grid-cols-2">
             <button
-              onClick={() => choose('uk')}
+              onClick={() => chooseManually('uk')}
               className="rounded-2xl bg-black px-5 py-5 text-base font-black text-white"
             >
               Yes, I am in the UK
             </button>
             <button
-              onClick={() => choose('global')}
+              onClick={() => chooseManually('global')}
               className="rounded-2xl border border-black/15 px-5 py-5 text-base font-black text-black"
             >
               No, I am outside the UK

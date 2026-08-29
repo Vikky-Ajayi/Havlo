@@ -73,6 +73,7 @@ const DashboardCustomOffers = React.lazy(() => import('./pages/DashboardCustomOf
 
 // Shared Components
 import { Navbar } from './components/shared/Navbar';
+import { CountryBadge } from './components/shared/CountryBadge';
 import { Footer } from './components/shared/Footer';
 
 // Modals
@@ -242,13 +243,23 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isStaleListings = pathname.startsWith('/stale-listings');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
+  // The country badge belongs on every public/product page (it's how
+  // people move between the UK and international sides of the site), but
+  // not inside authenticated internal tooling.
+  const showCountryBadge = !isDashboard && !isAdmin;
 
   if (isDashboard || isAdmin || isStaleListings || isCustomOffers || isBuyAbroadUk) {
-    return <main className="flex-grow">{children}</main>;
+    return (
+      <>
+        {showCountryBadge && <CountryBadge />}
+        <main className="flex-grow">{children}</main>
+      </>
+    );
   }
 
   return (
     <div className="flex flex-col min-h-screen">
+      {showCountryBadge && <CountryBadge />}
       <Navbar />
       <main className="flex-grow">
         {children}
