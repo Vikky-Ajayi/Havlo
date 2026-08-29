@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Bath, Bed, Bitcoin, BriefcaseBusiness, CheckCircle, ChevronLeft, ChevronRight, CircleDollarSign, CreditCard, Eye, Heart, Home, Info, Landmark, Lightbulb, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { api, API_BASE } from '../lib/api';
@@ -61,13 +61,57 @@ interface ListingsResponse {
 const fallbackImages = ['/1.png', '/2.png', '/3.png', '/4.png', '/5.png'];
 
 const COUNTRY_SECTIONS = [
-  { key: 'uk', title: 'Properties For Sale in the UK', allTitle: 'All Homes in London' },
+  { key: 'uk', title: 'Properties For Sale in the UK', allTitle: 'All Properties in United Kingdom' },
   { key: 'america', title: 'Properties For Sale in America', allTitle: 'All Homes in America' },
   { key: 'dubai', title: 'Properties For Sale in Dubai', allTitle: 'All Homes in Dubai' },
   { key: 'canada', title: 'Properties For Sale in Canada', allTitle: 'All Homes in Canada' },
 ] as const;
 
 type CountryKey = typeof COUNTRY_SECTIONS[number]['key'];
+
+// Every field here maps to a real, working query param on GET /listings/
+// (see app/routers/listings.py) — nothing decorative.
+interface ListingFilters {
+  country: CountryKey | '';
+  minPrice: string;
+  maxPrice: string;
+  minBeds: string;
+  propertyType: string;
+}
+
+const EMPTY_FILTERS: ListingFilters = { country: '', minPrice: '', maxPrice: '', minBeds: '', propertyType: '' };
+
+const PROPERTY_TYPE_OPTIONS = [
+  { value: '', label: 'Any type' },
+  { value: 'house', label: 'House' },
+  { value: 'flat', label: 'Flat' },
+  { value: 'bungalow', label: 'Bungalow' },
+  { value: 'commercial', label: 'Commercial' },
+];
+
+const BEDROOM_OPTIONS = [
+  { value: '', label: 'Any beds' },
+  { value: '1', label: '1+ beds' },
+  { value: '2', label: '2+ beds' },
+  { value: '3', label: '3+ beds' },
+  { value: '4', label: '4+ beds' },
+  { value: '5', label: '5+ beds' },
+];
+
+function hasActiveFilters(filters: ListingFilters): boolean {
+  return Object.values(filters).some((value) => value !== '');
+}
+
+// Deliberately does not touch `country` — every call site already knows
+// which country(ies) it's fetching (either the fixed row/modal country, or
+// the whole visible-sections list already filtered by filters.country), so
+// setting it again here would just be a confusing second source of truth.
+function appendListingFilterParams(params: URLSearchParams, filters: ListingFilters) {
+  if (filters.minPrice) params.set('min_price', filters.minPrice);
+  if (filters.maxPrice) params.set('max_price', filters.maxPrice);
+  if (filters.minBeds) params.set('min_beds', filters.minBeds);
+  if (filters.propertyType) params.set('property_type', filters.propertyType);
+}
 
 function emptyCountryListings(): Record<CountryKey, Listing[]> {
   return COUNTRY_SECTIONS.reduce((acc, section) => {
@@ -378,6 +422,33 @@ function ImageLightbox({
   );
 }
 
+// Shared line-drawn house glyph — the vector motif behind every loading
+// state on this page, whether that's a single photo still loading (small,
+// muted, gently pulsing) or a whole row/modal of listings still loading
+// (larger, branded purple, drawing itself in on a loop).
+const HOUSE_GLYPH_PATH = 'M10 55 L60 15 L110 55 M20 50 V90 H100 V50 M50 90 V65 H70 V90';
+
+function HouseGlyph({ size = 28, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={Math.round(size * (100 / 120))} viewBox="0 0 120 100" fill="none" className={className} aria-hidden="true">
+      <path d={HOUSE_GLYPH_PATH} stroke="currentColor" strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ListingsLoadingState() {
+  return (
+    <div className="baml-loading-state" role="status" aria-label="Loading listings">
+      <svg width={110} height={92} viewBox="0 0 120 100" fill="none" className="baml-loading-svg">
+        <path d={HOUSE_GLYPH_PATH} stroke="#b20adc" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" className="baml-loading-house" />
+        <circle cx="18" cy="14" r="3" fill="#b20adc" className="baml-loading-dot d1" />
+        <circle cx="102" cy="18" r="4" fill="#b20adc" className="baml-loading-dot d2" />
+        <circle cx="62" cy="4" r="2.5" fill="#b20adc" className="baml-loading-dot d3" />
+      </svg>
+    </div>
+  );
+}
+
 function PropertyCard({
   listing,
   index,
@@ -389,12 +460,20 @@ function PropertyCard({
   saved: boolean;
   onSave: () => void;
 }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
   const title = cleanText(listing.title) || cleanText(listing.address) || 'Property for sale';
   const meta = listingMetaParts(listing);
   return (
     <article className="baml-card">
-      <a href={detailUrl(listing)} className="baml-card-img">
-        <img src={imageFor(listing, index)} alt={title} loading="lazy" />
+      <a href={detailUrl(listing)} className={`baml-card-img${imgLoaded ? '' : ' is-loading'}`}>
+        {!imgLoaded && <HouseGlyph size={26} className="baml-img-placeholder" />}
+        <img
+          src={imageFor(listing, index)}
+          alt={title}
+          loading="lazy"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgLoaded(true)}
+        />
       </a>
       <button className={`baml-heart ${saved ? 'active' : ''}`} onClick={onSave} aria-label={saved ? 'Remove saved home' : 'Save home'}>
         <Heart size={28} fill="currentColor" strokeWidth={1.8} />
@@ -434,7 +513,7 @@ function ListingSection({
         </div>
       </div>
       <div className="baml-row-grid">
-        {loading && <p className="baml-empty">Loading live listings...</p>}
+        {loading && <ListingsLoadingState />}
         {!loading && error && <p className="baml-empty">{error}</p>}
         {!loading && !error && !listings.length && <p className="baml-empty">No live listings available for this location yet.</p>}
         {!loading && !error && listings.slice(0, 5).map((listing, index) => (
@@ -451,6 +530,85 @@ function ListingSection({
   );
 }
 
+function FilterPanel({
+  filters,
+  onChange,
+  onClose,
+}: {
+  filters: ListingFilters;
+  onChange: (next: ListingFilters) => void;
+  onClose: () => void;
+}) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose();
+    };
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [onClose]);
+
+  const set = (patch: Partial<ListingFilters>) => onChange({ ...filters, ...patch });
+
+  return (
+    <div ref={rootRef} className="baml-filter-panel" role="dialog" aria-label="Filter listings">
+      <label className="baml-filter-field">
+        <span>Country</span>
+        <select value={filters.country} onChange={(e) => set({ country: e.target.value as CountryKey | '' })}>
+          <option value="">All countries</option>
+          {COUNTRY_SECTIONS.map((section) => (
+            <option key={section.key} value={section.key}>{countryLabel(section.key)}</option>
+          ))}
+        </select>
+      </label>
+      <div className="baml-filter-split">
+        <label className="baml-filter-field">
+          <span>Min price (£)</span>
+          <input type="number" min={0} inputMode="numeric" value={filters.minPrice} onChange={(e) => set({ minPrice: e.target.value })} placeholder="No min" />
+        </label>
+        <label className="baml-filter-field">
+          <span>Max price (£)</span>
+          <input type="number" min={0} inputMode="numeric" value={filters.maxPrice} onChange={(e) => set({ maxPrice: e.target.value })} placeholder="No max" />
+        </label>
+      </div>
+      <div className="baml-filter-split">
+        <label className="baml-filter-field">
+          <span>Bedrooms</span>
+          <select value={filters.minBeds} onChange={(e) => set({ minBeds: e.target.value })}>
+            {BEDROOM_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="baml-filter-field">
+          <span>Property type</span>
+          <select value={filters.propertyType} onChange={(e) => set({ propertyType: e.target.value })}>
+            {PROPERTY_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="baml-filter-actions">
+        <button type="button" className="baml-filter-clear" onClick={() => onChange(EMPTY_FILTERS)} disabled={!hasActiveFilters(filters)}>
+          Clear all
+        </button>
+        <button type="button" className="baml-filter-apply" onClick={onClose}>
+          Apply filters
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AllHomesModal({
   country,
   favs,
@@ -458,6 +616,7 @@ function AllHomesModal({
   onClose,
   title,
   searchTerm,
+  filters,
 }: {
   country: CountryKey;
   favs: string[];
@@ -465,6 +624,7 @@ function AllHomesModal({
   onClose: () => void;
   title: string;
   searchTerm: string;
+  filters: ListingFilters;
 }) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<ListingsResponse>({ listings: [], page: 1, pages: 1, total: 0 });
@@ -473,7 +633,7 @@ function AllHomesModal({
 
   useEffect(() => {
     setPage(1);
-  }, [country, searchTerm]);
+  }, [country, searchTerm, filters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -482,6 +642,7 @@ function AllHomesModal({
     const params = new URLSearchParams({ country, page: String(page), per_page: '40' });
     const term = searchTerm.trim();
     if (term) params.set('search', term);
+    appendListingFilterParams(params, filters);
       fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
       .then((res) => res.ok ? res.json() : Promise.reject())
       .then((payload: ListingsResponse) => {
@@ -495,7 +656,7 @@ function AllHomesModal({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [country, page, searchTerm]);
+  }, [country, page, searchTerm, filters]);
 
   const pages = Math.max(1, data.pages || 1);
   const pageButtons = Array.from(
@@ -509,7 +670,7 @@ function AllHomesModal({
         <h2>{title}</h2>
         <div className="baml-all-scroll">
           <div className="baml-all-grid">
-            {loading && <p className="baml-empty">Loading live homes...</p>}
+            {loading && <ListingsLoadingState />}
             {error && <p className="baml-error">{error}</p>}
             {!loading && !error && !data.listings.length && <p className="baml-empty">No live listings available for this location yet.</p>}
             {!loading && !error && data.listings.map((listing, index) => (
@@ -814,13 +975,13 @@ function MarketplaceStyles() {
   return (
     <>
     <style>{`
-      .baml-page{min-height:100vh;background:#f3f4f6;color:#111;font-family:Inter,Arial,sans-serif;overflow-x:hidden}.baml-page,.baml-page *{box-sizing:border-box}.baml-header{height:90px;background:#fff;display:flex;align-items:center;padding:0 clamp(18px,5vw,80px);gap:38px;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:20}.baml-logo{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#111;line-height:1;flex:0 0 auto}.baml-logo img{width:136px;height:auto;display:block}.baml-logo span{font-size:16px;margin-top:0;font-weight:400}.baml-nav{display:flex;align-items:center;justify-content:center;gap:45px;flex:1;min-width:0}.baml-nav a{font-size:18px;font-weight:700;color:#222;text-decoration:none;padding:17px 0 11px;border-bottom:4px solid transparent;display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.baml-nav-icon{flex:0 0 auto}.baml-nav-icon.home{color:#111;fill:#e39a53}.baml-nav-icon.bulb{color:#d59b02;fill:#ffe37d}.baml-nav-icon.money{color:#111;fill:#d79a30}.baml-nav a.active{border-color:#111}.baml-consult{border:0;background:transparent;font-weight:800;font-size:16px}.baml-actions{display:flex;align-items:center;gap:14px}.baml-pill{height:48px;min-width:70px;border:0;border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.05);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800}.baml-pill span{background:#b20adc;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}.baml-menu{border:0;background:transparent;display:none}.baml-hero{padding:72px 24px 64px;text-align:center}.baml-hero h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:42px;line-height:1.1;margin:0 0 22px;font-weight:900;text-transform:uppercase}.baml-hero-cursor{display:inline-block;width:3px;margin-left:2px;background:currentColor;animation:baml-cursor-blink 0.85s step-end infinite;vertical-align:-0.08em;height:0.85em}@keyframes baml-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.baml-hero p{max-width:540px;margin:0 auto 42px;color:#6b6b6b;font-size:17px;line-height:1.45}.baml-search{width:min(690px,calc(100% - 48px));height:52px;margin:0 auto;display:grid;grid-template-columns:58px minmax(0,1fr) 52px;border-radius:28px;background:#fff;box-shadow:0 7px 22px rgba(0,0,0,.1);overflow:visible}.baml-search button,.baml-search input{border:0;background:#fff}.baml-search button{display:flex;align-items:center;justify-content:center}.baml-search>button:first-child{border-radius:28px 0 0 28px;border-right:2px solid #f0f0f0}.baml-search input{font-size:12px;padding:0 14px;min-width:0}.baml-search .search{background:#b20adc;color:#fff;border-radius:50%;width:52px;height:52px;align-self:center;justify-self:center;box-shadow:0 4px 12px rgba(178,10,220,.25)}.baml-market{background:#fff;border-radius:26px 26px 0 0;padding:70px clamp(18px,5vw,80px) 90px}.baml-row-section{margin-bottom:78px}.baml-row-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}.baml-row-head h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:28px;font-weight:900;margin:0}.baml-row-head>button,.baml-row-arrows button{border:0;border-radius:50%;background:#f3f4f6;width:35px;height:35px;font-weight:900;font-size:24px;display:inline-flex;align-items:center;justify-content:center}.baml-row-head>button img{width:32px;height:32px;display:block}.baml-row-arrows{margin-left:auto;display:flex;gap:16px}.baml-row-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px}.baml-card{position:relative;min-width:0}.baml-card-img{display:block;aspect-ratio:1.23;border-radius:18px;overflow:hidden;background:#eee}.baml-card-img img{width:100%;height:100%;object-fit:cover;display:block}.baml-heart{position:absolute;top:23px;left:22px;border:0;background:transparent;color:#777;text-shadow:0 1px 8px rgba(255,255,255,.9);line-height:1;padding:0}.baml-heart.active{color:#b20adc}.baml-card-title{display:block;margin:16px 0 7px;color:#111;text-decoration:none;font-size:16px;font-weight:900}.baml-meta{font-size:14px;color:#555;margin:0 0 8px;white-space:nowrap;display:flex;align-items:center;gap:3px;min-width:0}.baml-meta svg{flex:0 0 auto;color:#6b6b6b}.baml-price{font-size:15px;color:#666;margin:0}.baml-cta{width:min(1200px,calc(100% - 48px));margin:25px auto 80px;background:#050505;color:#fff;border-radius:18px;padding:48px 56px;display:flex;align-items:center;justify-content:space-between;gap:30px}.baml-cta h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:31px;line-height:1.05;margin:0 0 18px;font-weight:900}.baml-cta p{margin:0;color:#fff;font-size:15px;max-width:560px;line-height:1.45}.baml-call{background:#fff;color:#111;border-radius:10px;text-decoration:none;font-weight:900;padding:13px 25px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}.baml-call-mark{display:block;flex:0 0 auto}.baml-footer{padding:0 clamp(24px,6vw,90px) 40px;display:flex;align-items:end;justify-content:space-between}.baml-footer p{font-size:17px}.baml-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}.baml-auth{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:22px;padding:24px;position:relative;scrollbar-width:none}.baml-auth::-webkit-scrollbar,.baml-all-homes::-webkit-scrollbar{display:none}.baml-close{position:absolute;right:18px;top:18px;border:0;background:#f1f2f4;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}.baml-auth h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;margin:0 0 32px;font-size:25px;font-weight:900;letter-spacing:-.04em}.baml-auth-copy{font-size:19px;line-height:1.35;color:#666;margin:-15px 0 34px}.baml-auth-copy.strong{font-weight:700;color:#111;font-size:16px}.baml-auth label{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:800;margin-bottom:22px}.baml-auth input{height:50px;border:0;border-radius:12px;background:#f1f2f5;padding:0 16px;font-size:16px}.baml-password{display:flex;background:#f1f2f5;border-radius:12px;overflow:hidden}.baml-password input{flex:1}.baml-password svg{margin:auto 15px}.baml-primary,.baml-secondary{width:100%;height:50px;border-radius:8px;font-size:15px}.baml-primary{border:0;background:#000;color:#fff;font-weight:700;margin-top:18px}.baml-secondary{border:1px solid #e9e9e9;background:#fff;margin-top:12px}.baml-link,.baml-back{border:0;background:transparent;font-weight:800;color:#081735;margin:4px 0 25px;text-align:left}.baml-back{text-align:center;width:100%;font-size:15px;color:#111;display:inline-flex;align-items:center;justify-content:center;gap:6px}.baml-error{color:#b00020;font-weight:700}.baml-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:34px}.baml-role-grid button{height:137px;border:0;border-radius:12px;background:#f1f2f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.baml-role-grid button.active{border:1.5px solid #b20adc;background:#fff}.baml-role-grid strong{font-size:15px}.baml-role-grid small{font-size:14px;color:#666}.baml-otp{display:flex;gap:14px;margin:0 0 28px}.baml-otp input{width:51px;height:49px;text-align:center;font-size:34px;font-weight:900;border:1.5px solid #00c986}.baml-resend{text-align:center;color:#555}.baml-resend button{border:0;background:transparent;color:#06f;font-size:16px}.baml-all-homes{position:relative;background:#fff;border-radius:32px 32px 0 0;align-self:end;width:100%;max-height:calc(100dvh - 90px);overflow:auto;padding:44px clamp(18px,5vw,84px)}.baml-all-homes h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px;margin:0 0 92px;font-weight:900}.baml-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:86px 33px}.baml-pagination{display:flex;justify-content:center;gap:20px;margin-top:78px}.baml-pagination button{width:40px;height:40px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800}.baml-pagination .active{background:#b20adc;color:#fff}.baml-basket-main{padding:70px clamp(18px,6vw,86px)}.baml-basket-main h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px}.baml-basket-layout{display:grid;grid-template-columns:1fr 430px;gap:35px}.baml-basket-item{height:123px;border:1px solid #ddd;border-radius:18px;display:flex;align-items:center;margin-bottom:36px;overflow:hidden}.baml-basket-item img{width:126px;height:100%;object-fit:cover}.baml-basket-info{padding:0 25px;flex:1}.baml-basket-info h3{margin:0 0 8px}.baml-trash{border:0;background:transparent;margin-right:25px}.baml-summary{border:1px solid #ddd;border-radius:20px;padding:22px;box-shadow:0 8px 22px rgba(0,0,0,.06)}.baml-summary-row{display:flex;justify-content:space-between;margin:26px 0;font-size:17px}.baml-total{border-top:1px solid #ddd;padding-top:22px;font-size:22px}.baml-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}.baml-back-link{color:#b20adc;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px}.baml-empty{grid-column:1/-1;padding:60px 0;color:#666}.baml-detail-main{padding:50px clamp(18px,6vw,76px)}.baml-detail-top{display:flex;justify-content:space-between;align-items:center}.baml-save-button{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#111}.baml-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0}.baml-gallery-main{grid-row:span 2}.baml-gallery img{width:100%;height:238px;object-fit:cover}.baml-gallery-main img{height:500px}.baml-gallery-main,.baml-gallery>div{cursor:pointer;overflow:hidden}.baml-gallery-main img,.baml-gallery>div img{transition:transform .2s}.baml-gallery-main:hover img,.baml-gallery>div:hover img{transform:scale(1.03)}.baml-detail-content{display:grid;grid-template-columns:1fr 380px;gap:30px}.baml-cost-card,.baml-cost-table{border:1px solid #ddd;border-radius:20px;padding:20px}.baml-cost-card{box-shadow:0 8px 22px rgba(0,0,0,.08)}.baml-cost-table .tabs{display:grid;grid-template-columns:1fr 1fr;margin:-20px -20px 25px}.baml-cost-table .tabs button{padding:18px;text-align:center;background:#f1f2f5;border:0;border-bottom:2px solid #ccc;font:inherit;font-weight:800;color:#666;cursor:pointer;transition:background .15s,color .15s}.baml-cost-table .tabs button:hover:not(.active){background:#e9eaee;color:#333}.baml-cost-table .tabs button.active{background:#fff;border-bottom-color:#b20adc;color:#111}.baml-mortgage-sub{color:#888;font-size:13px;margin:-6px 0 20px}.baml-mortgage-row{margin-bottom:18px}.baml-mortgage-row label{display:block;font-size:14px;font-weight:700;color:#333;margin-bottom:8px}.baml-slider{width:100%;accent-color:#b20adc;cursor:pointer}.baml-slider-labels{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px}.baml-mortgage-disc{font-size:12px;color:#aaa;margin:16px 0 0;line-height:1.5}.baml-lightbox-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px}.baml-lightbox-close{position:fixed;top:20px;right:20px;background:rgba(255,255,255,.15);color:#fff}.baml-lightbox-close:hover{background:rgba(255,255,255,.3)}.baml-lightbox-stage{position:relative;max-width:min(1100px,92vw);max-height:88vh;display:flex;align-items:center;justify-content:center}.baml-lightbox-stage img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:8px;display:block}.baml-lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}.baml-lightbox-arrow:hover{background:rgba(255,255,255,.3)}.baml-lightbox-prev{left:-8px}.baml-lightbox-next{right:-8px}.baml-lightbox-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(255,255,255,.15);padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700}@media(max-width:640px){.baml-lightbox-arrow{width:40px;height:40px}.baml-lightbox-prev{left:4px}.baml-lightbox-next{right:4px}.baml-lightbox-stage img{max-height:78vh}}.baml-cost-row{display:flex;justify-content:space-between;margin:24px 0;font-size:18px}.purple{color:#b20adc}.baml-sidebar-actions button,.baml-sidebar-actions a{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;text-decoration:none;margin:10px 0;font-weight:800}.baml-sidebar-actions button{width:100%;border:0;background:#000;color:#fff}.baml-sidebar-actions a{border:1px solid #ddd;color:#111}.baml-cost-legend{display:flex;gap:12px;flex-wrap:wrap}.baml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#111;margin-right:4px}.purple-dot{background:#b20adc}.baml-info-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:16px;font-size:13px;margin-top:30px;display:flex;align-items:flex-start;gap:9px}
+      .baml-page{min-height:100vh;background:#f3f4f6;color:#111;font-family:Inter,Arial,sans-serif;overflow-x:hidden}.baml-page,.baml-page *{box-sizing:border-box}.baml-header{height:90px;background:#fff;display:flex;align-items:center;padding:0 clamp(18px,5vw,80px);gap:38px;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:20}.baml-logo{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#111;line-height:1;flex:0 0 auto}.baml-logo img{width:136px;height:auto;display:block}.baml-logo span{font-size:16px;margin-top:0;font-weight:400}.baml-nav{display:flex;align-items:center;justify-content:center;gap:45px;flex:1;min-width:0}.baml-nav a{font-size:18px;font-weight:700;color:#222;text-decoration:none;padding:17px 0 11px;border-bottom:4px solid transparent;display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.baml-nav-icon{flex:0 0 auto}.baml-nav-icon.home{color:#111;fill:#e39a53}.baml-nav-icon.bulb{color:#d59b02;fill:#ffe37d}.baml-nav-icon.money{color:#111;fill:#d79a30}.baml-nav a.active{border-color:#111}.baml-consult{border:0;background:transparent;font-weight:800;font-size:16px}.baml-actions{display:flex;align-items:center;gap:14px}.baml-pill{height:48px;min-width:70px;border:0;border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.05);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800}.baml-pill span{background:#b20adc;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}.baml-menu{border:0;background:transparent;display:none}.baml-hero{padding:72px 24px 64px;text-align:center}.baml-hero h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:42px;line-height:1.1;margin:0 0 22px;font-weight:900;text-transform:uppercase}.baml-hero-cursor{display:inline-block;width:3px;margin-left:2px;background:currentColor;animation:baml-cursor-blink 0.85s step-end infinite;vertical-align:-0.08em;height:0.85em}@keyframes baml-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.baml-hero p{max-width:540px;margin:0 auto 42px;color:#6b6b6b;font-size:17px;line-height:1.45}.baml-search-wrap{position:relative;width:min(690px,calc(100% - 48px));margin:0 auto}.baml-search{width:100%;height:52px;display:grid;grid-template-columns:58px minmax(0,1fr) 52px;border-radius:28px;background:#fff;box-shadow:0 7px 22px rgba(0,0,0,.1);overflow:visible}.baml-search button,.baml-search input{border:0;background:#fff}.baml-search button{display:flex;align-items:center;justify-content:center;cursor:pointer;color:#111}.baml-search>button:first-child{border-radius:28px 0 0 28px;border-right:2px solid #f0f0f0}.baml-search>button:first-child.active{color:#b20adc}.baml-search input{font-size:12px;padding:0 14px;min-width:0}.baml-search .search{background:#b20adc;color:#fff;border-radius:50%;width:52px;height:52px;align-self:center;justify-self:center;box-shadow:0 4px 12px rgba(178,10,220,.25)}.baml-filter-panel{position:absolute;top:calc(100% + 10px);left:0;width:min(360px,100%);background:#fff;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.16);padding:20px;text-align:left;z-index:30;display:flex;flex-direction:column;gap:16px}.baml-filter-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:#444}.baml-filter-field select,.baml-filter-field input{height:44px;border:1px solid #e4e4e4;border-radius:10px;padding:0 12px;font-size:14px;font-weight:600;color:#111;font-family:inherit;background:#fff}.baml-filter-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.baml-filter-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:4px;border-top:1px solid #f0f0f0}.baml-filter-clear{border:0;background:transparent;font-weight:800;color:#666;cursor:pointer;padding:8px 0}.baml-filter-clear:disabled{color:#ccc;cursor:default}.baml-filter-apply{border:0;background:#111;color:#fff;font-weight:800;padding:10px 22px;border-radius:10px;cursor:pointer}.baml-market{background:#fff;border-radius:26px 26px 0 0;padding:70px clamp(18px,5vw,80px) 90px}.baml-row-section{margin-bottom:78px}.baml-row-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}.baml-row-head h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:28px;font-weight:900;margin:0}.baml-row-head>button,.baml-row-arrows button{border:0;border-radius:50%;background:#f3f4f6;width:35px;height:35px;font-weight:900;font-size:24px;display:inline-flex;align-items:center;justify-content:center}.baml-row-head>button img{width:32px;height:32px;display:block}.baml-row-arrows{margin-left:auto;display:flex;gap:16px}.baml-row-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px}.baml-card{position:relative;min-width:0}.baml-card-img{display:block;aspect-ratio:1.23;border-radius:18px;overflow:hidden;background:#eee}.baml-card-img img{width:100%;height:100%;object-fit:cover;display:block}.baml-heart{position:absolute;top:23px;left:22px;border:0;background:transparent;color:#777;text-shadow:0 1px 8px rgba(255,255,255,.9);line-height:1;padding:0}.baml-heart.active{color:#b20adc}.baml-card-title{display:block;margin:16px 0 7px;color:#111;text-decoration:none;font-size:16px;font-weight:900}.baml-meta{font-size:14px;color:#555;margin:0 0 8px;white-space:nowrap;display:flex;align-items:center;gap:3px;min-width:0}.baml-meta svg{flex:0 0 auto;color:#6b6b6b}.baml-price{font-size:15px;color:#666;margin:0}.baml-cta{width:min(1200px,calc(100% - 48px));margin:25px auto 80px;background:#050505;color:#fff;border-radius:18px;padding:48px 56px;display:flex;align-items:center;justify-content:space-between;gap:30px}.baml-cta h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:31px;line-height:1.05;margin:0 0 18px;font-weight:900}.baml-cta p{margin:0;color:#fff;font-size:15px;max-width:560px;line-height:1.45}.baml-call{background:#fff;color:#111;border-radius:10px;text-decoration:none;font-weight:900;padding:13px 25px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}.baml-call-mark{display:block;flex:0 0 auto}.baml-footer{padding:0 clamp(24px,6vw,90px) 40px;display:flex;align-items:end;justify-content:space-between}.baml-footer p{font-size:17px}.baml-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}.baml-auth{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:22px;padding:24px;position:relative;scrollbar-width:none}.baml-auth::-webkit-scrollbar,.baml-all-homes::-webkit-scrollbar{display:none}.baml-close{position:absolute;right:18px;top:18px;border:0;background:#f1f2f4;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}.baml-auth h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;margin:0 0 32px;font-size:25px;font-weight:900;letter-spacing:-.04em}.baml-auth-copy{font-size:19px;line-height:1.35;color:#666;margin:-15px 0 34px}.baml-auth-copy.strong{font-weight:700;color:#111;font-size:16px}.baml-auth label{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:800;margin-bottom:22px}.baml-auth input{height:50px;border:0;border-radius:12px;background:#f1f2f5;padding:0 16px;font-size:16px}.baml-password{display:flex;background:#f1f2f5;border-radius:12px;overflow:hidden}.baml-password input{flex:1}.baml-password svg{margin:auto 15px}.baml-primary,.baml-secondary{width:100%;height:50px;border-radius:8px;font-size:15px}.baml-primary{border:0;background:#000;color:#fff;font-weight:700;margin-top:18px}.baml-secondary{border:1px solid #e9e9e9;background:#fff;margin-top:12px}.baml-link,.baml-back{border:0;background:transparent;font-weight:800;color:#081735;margin:4px 0 25px;text-align:left}.baml-back{text-align:center;width:100%;font-size:15px;color:#111;display:inline-flex;align-items:center;justify-content:center;gap:6px}.baml-error{color:#b00020;font-weight:700}.baml-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:34px}.baml-role-grid button{height:137px;border:0;border-radius:12px;background:#f1f2f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.baml-role-grid button.active{border:1.5px solid #b20adc;background:#fff}.baml-role-grid strong{font-size:15px}.baml-role-grid small{font-size:14px;color:#666}.baml-otp{display:flex;gap:14px;margin:0 0 28px}.baml-otp input{width:51px;height:49px;text-align:center;font-size:34px;font-weight:900;border:1.5px solid #00c986}.baml-resend{text-align:center;color:#555}.baml-resend button{border:0;background:transparent;color:#06f;font-size:16px}.baml-all-homes{position:relative;background:#fff;border-radius:32px 32px 0 0;align-self:end;width:100%;max-height:calc(100dvh - 90px);overflow:auto;padding:44px clamp(18px,5vw,84px)}.baml-all-homes h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px;margin:0 0 92px;font-weight:900}.baml-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:86px 33px}.baml-pagination{display:flex;justify-content:center;gap:20px;margin-top:78px}.baml-pagination button{width:40px;height:40px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800}.baml-pagination .active{background:#b20adc;color:#fff}.baml-basket-main{padding:70px clamp(18px,6vw,86px)}.baml-basket-main h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px}.baml-basket-layout{display:grid;grid-template-columns:1fr 430px;gap:35px}.baml-basket-item{height:123px;border:1px solid #ddd;border-radius:18px;display:flex;align-items:center;margin-bottom:36px;overflow:hidden}.baml-basket-item img{width:126px;height:100%;object-fit:cover}.baml-basket-info{padding:0 25px;flex:1}.baml-basket-info h3{margin:0 0 8px}.baml-trash{border:0;background:transparent;margin-right:25px}.baml-summary{border:1px solid #ddd;border-radius:20px;padding:22px;box-shadow:0 8px 22px rgba(0,0,0,.06)}.baml-summary-row{display:flex;justify-content:space-between;margin:26px 0;font-size:17px}.baml-total{border-top:1px solid #ddd;padding-top:22px;font-size:22px}.baml-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}.baml-back-link{color:#b20adc;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px}.baml-empty{grid-column:1/-1;padding:60px 0;color:#666}.baml-loading-state{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:56px 0}.baml-loading-house{stroke-dasharray:340;stroke-dashoffset:340;animation:baml-loading-draw 2.6s ease-in-out infinite}.baml-loading-dot{animation:baml-loading-float 1.8s ease-in-out infinite;transform-origin:center}.baml-loading-dot.d2{animation-delay:.3s}.baml-loading-dot.d3{animation-delay:.6s}@keyframes baml-loading-draw{0%{stroke-dashoffset:340;opacity:.35}55%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:-340;opacity:.35}}@keyframes baml-loading-float{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}}.baml-card-img{position:relative;display:flex;align-items:center;justify-content:center}.baml-card-img.is-loading{background:linear-gradient(90deg,#ececec 25%,#f6f6f6 37%,#ececec 63%);background-size:400% 100%;animation:baml-shimmer 1.5s ease infinite}.baml-img-placeholder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#c3c3cb;animation:baml-glyph-pulse 1.5s ease-in-out infinite}.baml-card-img img{opacity:1;transition:opacity .25s ease}.baml-card-img.is-loading img{opacity:0}@keyframes baml-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}@keyframes baml-glyph-pulse{0%,100%{opacity:.35}50%{opacity:.8}}@media(prefers-reduced-motion:reduce){.baml-loading-house,.baml-loading-dot,.baml-card-img.is-loading,.baml-img-placeholder{animation:none}.baml-loading-house{stroke-dashoffset:0;opacity:1}}.baml-detail-main{padding:50px clamp(18px,6vw,76px)}.baml-detail-top{display:flex;justify-content:space-between;align-items:center}.baml-save-button{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#111}.baml-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0}.baml-gallery-main{grid-row:span 2}.baml-gallery img{width:100%;height:238px;object-fit:cover}.baml-gallery-main img{height:500px}.baml-gallery-main,.baml-gallery>div{cursor:pointer;overflow:hidden}.baml-gallery-main img,.baml-gallery>div img{transition:transform .2s}.baml-gallery-main:hover img,.baml-gallery>div:hover img{transform:scale(1.03)}.baml-detail-content{display:grid;grid-template-columns:1fr 380px;gap:30px}.baml-cost-card,.baml-cost-table{border:1px solid #ddd;border-radius:20px;padding:20px}.baml-cost-card{box-shadow:0 8px 22px rgba(0,0,0,.08)}.baml-cost-table .tabs{display:grid;grid-template-columns:1fr 1fr;margin:-20px -20px 25px}.baml-cost-table .tabs button{padding:18px;text-align:center;background:#f1f2f5;border:0;border-bottom:2px solid #ccc;font:inherit;font-weight:800;color:#666;cursor:pointer;transition:background .15s,color .15s}.baml-cost-table .tabs button:hover:not(.active){background:#e9eaee;color:#333}.baml-cost-table .tabs button.active{background:#fff;border-bottom-color:#b20adc;color:#111}.baml-mortgage-sub{color:#888;font-size:13px;margin:-6px 0 20px}.baml-mortgage-row{margin-bottom:18px}.baml-mortgage-row label{display:block;font-size:14px;font-weight:700;color:#333;margin-bottom:8px}.baml-slider{width:100%;accent-color:#b20adc;cursor:pointer}.baml-slider-labels{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px}.baml-mortgage-disc{font-size:12px;color:#aaa;margin:16px 0 0;line-height:1.5}.baml-lightbox-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px}.baml-lightbox-close{position:fixed;top:20px;right:20px;background:rgba(255,255,255,.15);color:#fff}.baml-lightbox-close:hover{background:rgba(255,255,255,.3)}.baml-lightbox-stage{position:relative;max-width:min(1100px,92vw);max-height:88vh;display:flex;align-items:center;justify-content:center}.baml-lightbox-stage img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:8px;display:block}.baml-lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}.baml-lightbox-arrow:hover{background:rgba(255,255,255,.3)}.baml-lightbox-prev{left:-8px}.baml-lightbox-next{right:-8px}.baml-lightbox-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(255,255,255,.15);padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700}@media(max-width:640px){.baml-lightbox-arrow{width:40px;height:40px}.baml-lightbox-prev{left:4px}.baml-lightbox-next{right:4px}.baml-lightbox-stage img{max-height:78vh}}.baml-cost-row{display:flex;justify-content:space-between;margin:24px 0;font-size:18px}.purple{color:#b20adc}.baml-sidebar-actions button,.baml-sidebar-actions a{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;text-decoration:none;margin:10px 0;font-weight:800}.baml-sidebar-actions button{width:100%;border:0;background:#000;color:#fff}.baml-sidebar-actions a{border:1px solid #ddd;color:#111}.baml-cost-legend{display:flex;gap:12px;flex-wrap:wrap}.baml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#111;margin-right:4px}.purple-dot{background:#b20adc}.baml-info-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:16px;font-size:13px;margin-top:30px;display:flex;align-items:flex-start;gap:9px}
       .baml-detail-main h1,.baml-detail-copy h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-weight:900;letter-spacing:-.04em}.baml-detail-main h1{font-size:32px;margin:26px 0 0}.baml-detail-copy h2{font-size:24px;margin:0 0 14px}.baml-save-button{border:0;background:transparent;font-size:16px;font-weight:800}.baml-detail-meta{font-size:15px;color:#666;border-bottom:1px solid #e4e4e4;padding-bottom:20px}.baml-description{font-size:21px;line-height:1.15;margin:20px 0 26px}.baml-cost-card small{color:#777;font-weight:900}.baml-cost-card h2{font-size:34px;margin:8px 0 10px}.baml-progress{height:5px;background:#111;border-radius:999px;position:relative;margin:8px 0 6px}.baml-progress span{position:absolute;right:0;top:0;height:5px;width:22%;background:#b20adc;border-radius:999px}.baml-total strong{font-size:34px}
       .baml-row-arrows button{display:inline-flex;align-items:center;justify-content:center}
       .baml-homes-overlay{align-items:flex-start;background:rgba(0,0,0,.48);padding:0;padding-top:90px;overflow:auto}.baml-homes-overlay .baml-all-homes{align-self:flex-start;width:100%;min-height:calc(100dvh - 90px);max-height:none;border-radius:34px 34px 0 0;padding:42px clamp(54px,5.6vw,88px) 80px;background:#fff;overflow:visible}.baml-homes-overlay .baml-close{right:clamp(42px,5vw,76px);top:40px}.baml-homes-overlay .baml-all-homes h2{font-size:32px;line-height:1.1;margin:0 0 112px}.baml-homes-overlay .baml-all-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:92px 32px}.baml-homes-overlay .baml-card-img{border-radius:18px}.baml-homes-overlay .baml-card-title{font-size:16px;margin-top:16px}.baml-homes-overlay .baml-pagination{justify-content:center;gap:20px;margin-top:90px}.baml-homes-overlay .baml-pagination button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;font-size:15px}
       @media(max-width:1200px){.baml-header{gap:24px}.baml-nav{gap:28px}.baml-row-grid{grid-template-columns:repeat(4,1fr);gap:28px}.baml-all-grid{grid-template-columns:repeat(4,1fr);gap:58px 28px}.baml-detail-content{grid-template-columns:minmax(0,1fr) 340px}.baml-gallery-main img{height:420px}.baml-gallery img{height:205px}.baml-basket-layout{grid-template-columns:minmax(0,1fr) 380px}}
       @media(max-width:1024px){.baml-row-grid{grid-template-columns:repeat(3,1fr)}.baml-all-grid{grid-template-columns:repeat(3,1fr)}.baml-detail-content,.baml-basket-layout{grid-template-columns:1fr}.baml-cost-card,.baml-summary{max-width:520px}.baml-nav a{font-size:16px}.baml-consult{font-size:15px}.baml-hero{padding-top:54px}.baml-market{padding-inline:32px}}
-      @media(max-width:900px){.baml-header{height:auto;min-height:80px;padding:14px 16px;flex-wrap:wrap;gap:16px}.baml-logo img{width:105px}.baml-logo span{font-size:13px;margin-top:0}.baml-nav{order:2;width:100%;justify-content:flex-start;padding:8px 0 0;gap:24px;overflow-x:auto;scrollbar-width:none}.baml-nav::-webkit-scrollbar{display:none}.baml-nav a{font-size:17px;white-space:nowrap}.baml-nav-icon{width:26px;height:26px}.baml-consult{display:none}.baml-menu{display:block}.baml-pill{min-width:74px;height:48px}.baml-hero{padding:36px 16px 24px}.baml-hero h1{font-size:30px}.baml-hero p{font-size:17px}.baml-market{padding:35px 16px 55px;border-radius:18px 18px 0 0}.baml-row-head{margin-bottom:22px}.baml-row-head h2{font-size:21px}.baml-row-arrows{display:none}.baml-row-grid{display:flex;overflow-x:auto;gap:18px;margin-right:-16px;padding-right:16px;scrollbar-width:none}.baml-row-grid::-webkit-scrollbar{display:none}.baml-card{width:164px;flex:0 0 164px}.baml-card-title{font-size:15px}.baml-meta,.baml-price{font-size:13px}.baml-cta{width:calc(100% - 32px);display:block;padding:30px 16px;border-radius:18px;margin:20px auto 55px}.baml-cta h2{font-size:25px}.baml-call{display:flex;justify-content:center;margin-top:34px}.baml-footer{display:block;text-align:center;padding-bottom:38px}.baml-footer .baml-logo img{width:140px;margin:auto}.baml-auth{padding:18px 16px}.baml-auth h2{font-size:24px}.baml-auth-copy{font-size:20px}.baml-all-homes{max-height:calc(100dvh - 90px);padding:34px 16px}.baml-all-homes h2{font-size:20px;margin-bottom:26px}.baml-all-grid{grid-template-columns:repeat(2,1fr);gap:34px 16px}.baml-all-grid .baml-card{width:auto;flex:auto}.baml-pagination{gap:8px;margin-top:42px;overflow-x:auto;justify-content:flex-start;padding-bottom:4px}.baml-basket-main{padding:28px 16px}.baml-basket-layout,.baml-detail-content{display:block}.baml-basket-item{height:80px;margin-bottom:12px}.baml-basket-item img{width:80px}.baml-basket-info{padding:0 10px;min-width:0}.baml-basket-info h3,.baml-basket-info p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.baml-summary{margin-top:35px;max-width:none}.baml-detail-main{padding:24px 16px}.baml-detail-top{margin-top:16px;align-items:flex-start;gap:12px}.baml-detail-main h1{font-size:20px}.baml-gallery{display:block;margin-left:-16px;margin-right:-16px}.baml-gallery img,.baml-gallery-main img{height:min(520px,72vh);border-radius:0}.baml-gallery>div:not(.baml-gallery-main){display:none}.baml-detail-content{margin-top:-48px;position:relative;z-index:2}.baml-detail-copy{background:#fff;border-radius:16px 16px 0 0;padding:16px}.baml-detail-copy h2{font-size:17px}.baml-detail-meta{line-height:1.55}.baml-description{font-size:15px;line-height:1.25}.baml-cost-card{margin-top:20px;max-width:none}.baml-cost-row{font-size:16px}.baml-search{height:56px;width:calc(100% - 32px);grid-template-columns:56px minmax(0,1fr) 56px}.baml-search .search{width:56px;height:56px}.baml-search input{font-size:13px;min-width:0}.baml-otp{gap:9px}.baml-otp input{width:48px}}
+      @media(max-width:900px){.baml-header{height:auto;min-height:80px;padding:14px 16px;flex-wrap:wrap;gap:16px}.baml-logo img{width:105px}.baml-logo span{font-size:13px;margin-top:0}.baml-nav{order:2;width:100%;justify-content:flex-start;padding:8px 0 0;gap:24px;overflow-x:auto;scrollbar-width:none}.baml-nav::-webkit-scrollbar{display:none}.baml-nav a{font-size:17px;white-space:nowrap}.baml-nav-icon{width:26px;height:26px}.baml-consult{display:none}.baml-menu{display:block}.baml-pill{min-width:74px;height:48px}.baml-hero{padding:36px 16px 24px}.baml-hero h1{font-size:30px}.baml-hero p{font-size:17px}.baml-market{padding:35px 16px 55px;border-radius:18px 18px 0 0}.baml-row-head{margin-bottom:22px}.baml-row-head h2{font-size:21px}.baml-row-arrows{display:none}.baml-row-grid{display:flex;overflow-x:auto;gap:18px;margin-right:-16px;padding-right:16px;scrollbar-width:none}.baml-row-grid::-webkit-scrollbar{display:none}.baml-card{width:164px;flex:0 0 164px}.baml-card-title{font-size:15px}.baml-meta,.baml-price{font-size:13px}.baml-cta{width:calc(100% - 32px);display:block;padding:30px 16px;border-radius:18px;margin:20px auto 55px}.baml-cta h2{font-size:25px}.baml-call{display:flex;justify-content:center;margin-top:34px}.baml-footer{display:block;text-align:center;padding-bottom:38px}.baml-footer .baml-logo img{width:140px;margin:auto}.baml-auth{padding:18px 16px}.baml-auth h2{font-size:24px}.baml-auth-copy{font-size:20px}.baml-all-homes{max-height:calc(100dvh - 90px);padding:34px 16px}.baml-all-homes h2{font-size:20px;margin-bottom:26px}.baml-all-grid{grid-template-columns:repeat(2,1fr);gap:34px 16px}.baml-all-grid .baml-card{width:auto;flex:auto}.baml-pagination{gap:8px;margin-top:42px;overflow-x:auto;justify-content:flex-start;padding-bottom:4px}.baml-basket-main{padding:28px 16px}.baml-basket-layout,.baml-detail-content{display:block}.baml-basket-item{height:80px;margin-bottom:12px}.baml-basket-item img{width:80px}.baml-basket-info{padding:0 10px;min-width:0}.baml-basket-info h3,.baml-basket-info p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.baml-summary{margin-top:35px;max-width:none}.baml-detail-main{padding:24px 16px}.baml-detail-top{margin-top:16px;align-items:flex-start;gap:12px}.baml-detail-main h1{font-size:20px}.baml-gallery{display:block;margin-left:-16px;margin-right:-16px}.baml-gallery img,.baml-gallery-main img{height:min(520px,72vh);border-radius:0}.baml-gallery>div:not(.baml-gallery-main){display:none}.baml-detail-content{margin-top:-48px;position:relative;z-index:2}.baml-detail-copy{background:#fff;border-radius:16px 16px 0 0;padding:16px}.baml-detail-copy h2{font-size:17px}.baml-detail-meta{line-height:1.55}.baml-description{font-size:15px;line-height:1.25}.baml-cost-card{margin-top:20px;max-width:none}.baml-cost-row{font-size:16px}.baml-search-wrap{width:calc(100% - 32px)}.baml-search{height:56px;grid-template-columns:56px minmax(0,1fr) 56px}.baml-search .search{width:56px;height:56px}.baml-search input{font-size:13px;min-width:0}.baml-otp{gap:9px}.baml-otp input{width:48px}}
       @media(max-width:900px){.baml-homes-overlay{padding-top:90px}.baml-homes-overlay .baml-all-homes{min-height:calc(100dvh - 90px);padding:34px 16px 34px;border-radius:24px 24px 0 0;overflow:visible}.baml-homes-overlay .baml-close{top:32px;right:18px}.baml-homes-overlay .baml-all-homes h2{font-size:20px;margin:0 48px 28px 0}.baml-homes-overlay .baml-all-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:34px 16px}.baml-homes-overlay .baml-all-grid .baml-card{width:auto;flex:auto}.baml-homes-overlay .baml-card-img{border-radius:14px}.baml-homes-overlay .baml-card-title{font-size:15px;margin:12px 0 6px}.baml-homes-overlay .baml-meta,.baml-homes-overlay .baml-price{font-size:13px}.baml-homes-overlay .baml-pagination{justify-content:flex-start;gap:8px;margin-top:36px;overflow-x:auto;padding-bottom:4px}.baml-homes-overlay .baml-pagination button{width:38px;height:38px;flex:0 0 38px}}
       @media(max-width:700px){.baml-logo img{width:82px}.baml-logo span{font-size:11px;font-weight:600;margin-top:-2px}}
       @media(max-width:520px){.baml-page{width:100%;max-width:100vw}.baml-header{align-items:center}.baml-actions{margin-left:auto;gap:10px}.baml-pill{min-width:56px}.baml-menu svg{width:26px;height:26px}.baml-nav{gap:20px}.baml-nav a{font-size:18px}.baml-hero h1{font-size:28px;line-height:1.12}.baml-hero p{font-size:17px;max-width:340px}.baml-search{grid-template-columns:54px minmax(0,1fr) 54px}.baml-search .search{width:54px;height:54px}.baml-search input{padding:0 10px;font-size:12px}.baml-market{padding-inline:16px}.baml-row-section{margin-bottom:48px}.baml-card{width:163px;flex-basis:163px}.baml-card-img{border-radius:14px}.baml-heart{top:14px;left:14px;font-size:26px}.baml-all-homes{border-radius:24px 24px 0 0}.baml-all-grid{gap:30px 16px}.baml-all-grid .baml-card{min-width:0}.baml-auth{width:calc(100vw - 16px);border-radius:20px}.baml-role-grid{gap:12px}.baml-role-grid button{height:136px}.baml-otp{justify-content:space-between;gap:6px}.baml-otp input{width:46px;height:48px}.baml-basket-item{height:82px;border-radius:10px}.baml-trash{margin-right:10px}.baml-summary{padding:16px}.baml-summary-row{font-size:16px;gap:12px}.baml-total strong{font-size:30px}.baml-note{font-size:13px}.baml-gallery img,.baml-gallery-main img{height:420px}.baml-cost-table{margin-left:-16px;margin-right:-16px;border-left:0;border-right:0;border-radius:0}.baml-cost-row{font-size:15px;gap:14px}.baml-cost-row strong{text-align:right}.baml-cta{margin-bottom:44px}.baml-footer p{font-size:15px}}
@@ -853,7 +1014,13 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [allOpen, setAllOpen] = useState<{ title: string; country: CountryKey } | null>(null);
+  const [filters, setFilters] = useState<ListingFilters>(EMPTY_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
   const navigate = useNavigate();
+
+  const visibleSections = filters.country
+    ? COUNTRY_SECTIONS.filter((section) => section.key === filters.country)
+    : COUNTRY_SECTIONS;
 
   useEffect(() => {
     if (!allOpen) return;
@@ -875,7 +1042,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
     setLoadingByCountry(emptyCountryFlags(true));
     setListingErrors(emptyCountryMessages());
 
-    COUNTRY_SECTIONS.forEach((section) => {
+    visibleSections.forEach((section) => {
       const controller = new AbortController();
       controllers.push(controller);
       const params = new URLSearchParams({
@@ -884,6 +1051,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
         include_total: 'false',
       });
       if (term) params.set('search', term);
+      appendListingFilterParams(params, filters);
 
       fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
         .then((res) => res.ok ? res.json() : Promise.reject())
@@ -910,7 +1078,9 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
     return () => {
       controllers.forEach((controller) => controller.abort());
     };
-  }, [queryTerm]);
+    // visibleSections is derived from filters.country, already listed below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryTerm, filters]);
 
   const visibleListingsByCountry = useMemo(() => {
     const next = emptyCountryListings();
@@ -948,14 +1118,26 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
           </span>
         </h1>
         <p>We provide end-to-end advisory and guidance, from search to sale, wherever you&apos;re buying.</p>
-        <div className="baml-search">
-          <button aria-label="Filter"><SlidersHorizontal size={22} /></button>
-          <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search by Property title, address, city" />
-          <button className="search" aria-label="Search"><Search size={24} /></button>
+        <div className="baml-search-wrap">
+          <div className="baml-search">
+            <button
+              aria-label="Filter"
+              aria-expanded={filterOpen}
+              className={hasActiveFilters(filters) ? 'active' : ''}
+              onClick={() => setFilterOpen((v) => !v)}
+            >
+              <SlidersHorizontal size={22} />
+            </button>
+            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search by Property title, address, city" />
+            <button className="search" aria-label="Search" onClick={() => setQueryTerm(searchTerm.trim())}><Search size={24} /></button>
+          </div>
+          {filterOpen && (
+            <FilterPanel filters={filters} onChange={setFilters} onClose={() => setFilterOpen(false)} />
+          )}
         </div>
       </section>
       <main className="baml-market">
-        {COUNTRY_SECTIONS.map((section) => (
+        {visibleSections.map((section) => (
           <ListingSection
             key={section.key}
             title={section.title}
@@ -970,7 +1152,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
       </main>
       <FooterCta />
       {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
-      {allOpen && <AllHomesModal title={allOpen.title} country={allOpen.country} searchTerm={queryTerm} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
+      {allOpen && <AllHomesModal title={allOpen.title} country={allOpen.country} searchTerm={queryTerm} filters={filters} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
     </div>
   );
 };
