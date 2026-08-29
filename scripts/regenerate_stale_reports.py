@@ -34,6 +34,23 @@ import os
 import sys
 from datetime import datetime, timezone
 
+# The moment this bulk-fix effort started. Every one of the 51 qualifying
+# prospects had a report generated well before this (weeks-old letter_sent_at
+# dates from the original discovery run) — so "updated_at >= this cutoff"
+# reliably means "already redone with the fixed prompt", letting the script
+# be re-run day after day (Groq's daily token cap means one run rarely
+# finishes all 51) and pick up only what's left, with no separate state file
+# to keep in sync.
+_REGEN_CUTOFF = datetime(2026, 8, 29, 12, 0, 0, tzinfo=timezone.utc)
+
+# Groq's account-level daily token cap (not the per-request one) means every
+# property after some point in a run will keep failing the same way. Once
+# this many CONSECUTIVE properties fail with a message indicating a rate/
+# quota limit, stop the whole run instead of burning through the rest with
+# pointless retries — the reports API already tried this in production
+# and would have quietly saved generic fallback content instead of failing.
+_MAX_CONSECUTIVE_QUOTA_FAILURES = 2
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Manual .env loader (quote-stripping) so this runs standalone like the
@@ -72,7 +89,24 @@ async def find_qualifying_prospects(session):
         )
 
     qualifying = [r for r in rows if matches_current_criteria(r) or r.payment_status == "completed"]
-    return qualifying
+
+    def already_regenerated(r) -> bool:
+        return bool(r.updated_at) and r.updated_at >= _REGEN_CUTOFF
+
+    return [r for r in qualifying if not already_regenerated(r)]
+
+
+# Exact title from _DEFAULT_REPORT / _DEFAULT_REPORT_PUBLIC in groq_service.py
+# — generate_stale_listing_report() catches its own Groq failures internally
+# and returns this generic dict instead of raising, so a 429/quota failure
+# never surfaces as an exception here. Detecting it explicitly is the only
+# way to avoid silently saving and emailing the exact boilerplate this whole
+# effort exists to get rid of.
+_FALLBACK_MARKER_TITLE = "Low viewing conversion rate"
+
+
+def is_fallback_report(report: dict) -> bool:
+    return any(f.get("title") == _FALLBACK_MARKER_TITLE for f in (report.get("key_findings") or []))
 
 
 async def regenerate_one(db, prospect, *, live: bool, output_dir: str) -> dict:
@@ -98,6 +132,13 @@ async def regenerate_one(db, prospect, *, live: bool, output_dir: str) -> dict:
         listing_duration_days=prospect.listing_duration_days,
         expand_report=True,  # full two-pass quality for this one-off fix, unlike the bulk-discovery job
     )
+    if is_fallback_report(report):
+        # generate_stale_listing_report() swallowed a real failure (e.g. a
+        # Groq quota/rate-limit error) and returned its generic fallback
+        # dict instead of raising. Raise here so the caller's retry/failure
+        # bookkeeping treats this property as not-yet-done rather than
+        # saving and emailing the exact boilerplate this fix removes.
+        raise RuntimeError("generate_prospect_report returned the generic fallback report (Groq call likely failed) — not saving or emailing it.")
     preview = build_preview(report, snapshot, prospect.property_address)
 
     prospect.report_json = _json.dumps(report, ensure_ascii=False)
@@ -139,35 +180,86 @@ async def main():
     parser.add_argument("--live", action="store_true", help="Persist changes and email ADMIN_NOTIFY_EMAIL. Default is a dry run.")
     parser.add_argument("--limit", type=int, default=0, help="Only process the first N qualifying prospects (0 = no limit).")
     parser.add_argument("--property-code", type=str, default="", help="Only process this one property_code.")
+    parser.add_argument("--skip", type=int, default=0, help="Skip the first N qualifying prospects (for resuming after a partial run).")
     args = parser.parse_args()
 
     from app.db.database import AsyncSessionLocal
 
-    async with AsyncSessionLocal() as session:
-        qualifying = await find_qualifying_prospects(session)
+    # The initial listing query has itself hit the same transient connection
+    # drop the per-property loop retries around (seen live: a Windows-side
+    # WinError 121 network blip) — retry it too instead of letting one bad
+    # moment abort the whole script before anything even starts.
+    qualifying = None
+    for attempt in (1, 2, 3):
+        try:
+            async with AsyncSessionLocal() as session:
+                qualifying = await find_qualifying_prospects(session)
+            break
+        except Exception as exc:
+            print(f"Listing qualifying prospects failed (attempt {attempt}): {exc}")
+            if attempt == 3:
+                raise
+            await asyncio.sleep(3)
 
     if args.property_code:
         qualifying = [r for r in qualifying if r.property_code == args.property_code]
+    if args.skip:
+        qualifying = qualifying[args.skip:]
     if args.limit:
         qualifying = qualifying[: args.limit]
 
     print(f"{'LIVE' if args.live else 'DRY RUN'}: {len(qualifying)} prospect(s) to process\n")
 
+    def _looks_like_quota_error(exc: Exception) -> bool:
+        text = str(exc).lower()
+        return any(marker in text for marker in ("rate_limit_exceeded", "tokens per day", "tpd", "429", "fallback report"))
+
     results = []
+    consecutive_quota_failures = 0
     for i, row in enumerate(qualifying, start=1):
-        async with AsyncSessionLocal() as db:
-            prospect = await db.get(type(row), row.id)
-            print(f"[{i}/{len(qualifying)}] {prospect.property_code} — {prospect.property_address}")
+        # Capture these from `row` (loaded by the initial query, outside any
+        # per-iteration session) rather than the fresh `prospect` object
+        # below — if that session's connection dies mid-transaction (seen
+        # live: a transient WinError 121 network drop), `prospect`'s
+        # attributes are no longer safe to touch and a second crash trying
+        # to log the failure took down the whole batch instead of just
+        # skipping that one property.
+        code, address = row.property_code, row.property_address
+
+        last_exc: Exception | None = None
+        for attempt in (1, 2):
             try:
-                result = await regenerate_one(db, prospect, live=args.live, output_dir="scratchpad_report/regen_output")
-                print(f"    score {result['old_overall_score']} -> {result['new_overall_score']}, "
-                      f"{result['key_findings_count']} findings, {result['action_plan_count']} actions, "
-                      f"emailed={result['emailed']}")
-                results.append(result)
+                async with AsyncSessionLocal() as db:
+                    prospect = await db.get(type(row), row.id)
+                    print(f"[{i}/{len(qualifying)}] {code} — {address}" + (f" (retry {attempt})" if attempt > 1 else ""))
+                    result = await regenerate_one(db, prospect, live=args.live, output_dir="scratchpad_report/regen_output")
+                    print(f"    score {result['old_overall_score']} -> {result['new_overall_score']}, "
+                          f"{result['key_findings_count']} findings, {result['action_plan_count']} actions, "
+                          f"emailed={result['emailed']}")
+                    results.append(result)
+                last_exc = None
+                break
             except Exception as exc:
-                print(f"    FAILED: {exc}")
-                await db.rollback()
-                results.append({"property_code": prospect.property_code, "error": str(exc)})
+                last_exc = exc
+                print(f"    FAILED (attempt {attempt}): {exc}")
+                if attempt == 2:
+                    results.append({"property_code": code, "address": address, "error": str(exc)})
+                else:
+                    await asyncio.sleep(3)
+
+        if last_exc is not None and _looks_like_quota_error(last_exc):
+            consecutive_quota_failures += 1
+            if consecutive_quota_failures >= _MAX_CONSECUTIVE_QUOTA_FAILURES:
+                remaining = len(qualifying) - i
+                print(
+                    f"\nStopping early: {consecutive_quota_failures} properties in a row failed with what looks "
+                    f"like a Groq quota/rate-limit error. {remaining} still unprocessed — re-run this same "
+                    f"command later (or tomorrow, once the daily cap resets) to pick up where this left off; "
+                    f"already-completed prospects are skipped automatically."
+                )
+                break
+        else:
+            consecutive_quota_failures = 0
 
     summary_path = f"scratchpad_report/regen_summary_{'live' if args.live else 'dryrun'}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
     os.makedirs(os.path.dirname(summary_path), exist_ok=True)
