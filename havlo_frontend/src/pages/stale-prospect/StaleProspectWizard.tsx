@@ -498,6 +498,34 @@ const ScoreBar = ({ label, value }: { label: string; value: number }) => {
 // shown clamped by default with a "Read more" toggle — nothing is ever lost,
 // the page just doesn't open looking like a wall of text.
 
+// Re-chunks long text into short, readable paragraphs for display. Two
+// problems this solves at once:
+// - executive_summary genuinely has \n\n breaks in the data, but each one
+//   is still a dense 4-6 sentence block — real, but not fine-grained
+//   enough to read comfortably.
+// - evidence/impact/recommend (derived by splitIntoThree below for any
+//   report older than that schema) have NO breaks at all: splitIntoThree
+//   joins each third of the sentences with a single space, so pre-line
+//   has nothing to render as a break and the whole thing looks like one
+//   wall of text regardless of the white-space CSS.
+// Treating any existing blank line as a hard boundary (never merging two
+// authored paragraphs into one) and then re-splitting every paragraph
+// down to at most `perParagraph` sentences fixes both: real paragraph
+// intent is preserved, and anything longer just gets broken up further.
+function reflowParagraphs(text: string, perParagraph = 2): string {
+  const clean = (text || '').trim();
+  if (!clean) return '';
+  const paragraphs = clean.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const out: string[] = [];
+  for (const paragraph of paragraphs.length ? paragraphs : [clean]) {
+    const sentences = paragraph.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).filter(Boolean);
+    for (let i = 0; i < sentences.length; i += perParagraph) {
+      out.push(sentences.slice(i, i + perParagraph).join(' '));
+    }
+  }
+  return out.join('\n\n');
+}
+
 const ExpandableText = ({
   text,
   maxChars = 220,
@@ -529,8 +557,9 @@ const ExpandableText = ({
       window.removeEventListener('afterprint', onAfterPrint);
     };
   }, []);
-  const clean = (text || '').trim();
-  if (!clean) return null;
+  const raw = (text || '').trim();
+  if (!raw) return null;
+  const clean = reflowParagraphs(raw);
   const isLong = clean.length > maxChars;
   const truncated = isLong ? clean.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : clean;
   const shown = expanded || forcePrint ? clean : truncated;
@@ -922,10 +951,13 @@ const FullReportStep = ({
       </div>
 
       <div className="slw-report-summary-row">
-        <div className="slw-report-summary-card">
-          <b>Executive summary</b>
-          <ExpandableText text={data.executive_summary} maxChars={320} />
-        </div>
+        {/* Property card is floated and comes first in source order so the
+            executive summary text below wraps around it at the top and,
+            once the text runs taller than the image/price block, keeps
+            going at the row's full width underneath — a float is the only
+            way to get that "narrow beside it, full-width once past it"
+            reflow with plain CSS; a grid can't do it since both columns
+            are always the same fixed width top to bottom. */}
         <div className="slw-report-property-card">
           <div className="slw-report-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
           <div className="slw-report-property-text">
@@ -935,6 +967,10 @@ const FullReportStep = ({
               <div><span>Days on Market</span><b>{report.listing_duration_days ?? '—'} days</b></div>
             </div>
           </div>
+        </div>
+        <div className="slw-report-summary-card">
+          <b>Executive summary</b>
+          <ExpandableText text={data.executive_summary} maxChars={320} />
         </div>
       </div>
 
@@ -1066,7 +1102,7 @@ const RecommendationModal = ({
             <h3>{i + 1}) {action.title}
               {action.priority && <span className="slw-modal-priority"> &middot; {action.priority}</span>}
             </h3>
-            {action.description && <p style={{ whiteSpace: 'pre-line' }}>{action.description}</p>}
+            {action.description && <p style={{ whiteSpace: 'pre-line' }}>{reflowParagraphs(action.description)}</p>}
             {action.why_it_matters && <p><i>Why it matters: {action.why_it_matters}</i></p>}
             {(action.bullets || []).length > 0 && (
               <ul className="slw-modal-bullets">
@@ -1641,11 +1677,17 @@ const WizardStyles = () => (
     .slw-report-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
     .slw-report h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0;color:#202124}
     .slw-pdf-btn{width:auto;padding:12px 20px}
-    .slw-report-summary-row{display:grid;grid-template-columns:.74fr 2fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px;margin-bottom:36px}
+    /* Not a grid: .slw-report-property-card floats right so the executive
+       summary text (a normal flow block, no float/BFC of its own) wraps
+       narrow beside it and then continues at the row's full width once it
+       runs past the float's bottom edge. overflow:auto here only makes
+       this container's own height include its floated child - it doesn't
+       touch how .slw-report-summary-card wraps, that's a plain block. */
+    .slw-report-summary-row{background:#f5f6f8;border-radius:18px;padding:14px;margin-bottom:36px;overflow:auto}
     .slw-report-summary-card,.slw-report-property-card{background:#fff;border-radius:14px;padding:24px}
     .slw-report-summary-card b{display:block;font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;line-height:1;margin-bottom:22px;color:#202124}
     .slw-report-summary-card p{color:#555;line-height:1.6;margin:0;font-size:14.5px}
-    .slw-report-property-card{display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:start;padding:12px 28px 12px 12px}
+    .slw-report-property-card{float:right;width:66%;margin-left:14px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:start;padding:12px 28px 12px 12px}
     .slw-report-image{border-radius:10px;align-self:stretch;background-size:cover;background-position:center;background-color:#e5e7eb;min-height:260px;max-height:460px}
     .slw-report-property-text{align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;min-height:100%}
     .slw-report-property-card h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:40px;line-height:1;margin:0;color:#202124}
@@ -1832,8 +1874,7 @@ const WizardStyles = () => (
       .slw-payment-summary h2{font-size:31px;margin-bottom:32px}
       .slw-pay-btn{max-width:none;margin-top:28px}
 
-      .slw-report-summary-row{grid-template-columns:1fr}
-      .slw-report-property-card{grid-template-columns:1fr}
+      .slw-report-property-card{float:none;width:auto;margin-left:0;grid-template-columns:1fr}
       .slw-report-image{height:180px;min-height:180px}
       .slw-report-property-card h2{font-size:31px;margin-bottom:28px}
       .slw-score-row{grid-template-columns:1fr}
