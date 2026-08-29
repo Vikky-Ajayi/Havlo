@@ -457,8 +457,8 @@ const SaleabilityGauge = ({ score, size = 190 }: { score: number; size?: number 
         <line
           x1={cx}
           y1={cy}
-          x2={cx + r * 0.3 * Math.cos((angle * Math.PI) / 180)}
-          y2={cy - r * 0.3 * Math.sin((angle * Math.PI) / 180)}
+          x2={cx + r * 0.48 * Math.cos((angle * Math.PI) / 180)}
+          y2={cy - r * 0.48 * Math.sin((angle * Math.PI) / 180)}
           stroke="#111"
           strokeWidth="2.5"
           strokeLinecap="round"
@@ -1653,7 +1653,7 @@ const WizardStyles = () => (
     .slw-assess-gauge-card b{margin-top:6px;font-size:16px}
     .slw-assess-gauge-card p{color:#667085;font-size:13px;line-height:1.45;margin:8px 0 0;max-width:250px}
     .slw-gauge{display:flex;flex-direction:column;align-items:center;position:relative}
-    .slw-gauge-score{margin-top:-32px;font-size:15px;color:#666}
+    .slw-gauge-score{margin-top:8px;font-size:15px;color:#666}
     .slw-gauge-score b{font-size:30px;color:#111}
 
     .slw-assess-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1;margin:0 0 14px;color:#202124}
