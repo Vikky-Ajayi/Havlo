@@ -33,14 +33,19 @@ export const Footer: React.FC = () => {
     }
   };
 
-  const serviceLinks = [
-    { name: 'Elite Property Introduction', href: '/elite-property' },
-    { name: 'Sell Faster', href: '/sell-your-property' },
+  const sellLinks = [
     { name: 'Stale Listings', href: '/stale-listings' },
-    { name: 'Property Sale Audit', href: '/property-audit' },
+    { name: 'Sell Faster (Havlo Relaunch™)', href: '/sell-your-property' },
+  ];
+
+  const buyLinks = [
     { name: 'Buy Property Abroad', href: '/buy-property-abroad' },
-    { name: 'Property Matching', href: '/property-matching' },
-    { name: 'International Buyer Network', href: '/buyer-network' },
+    { name: 'Custom Offers', href: '/custom-offers' },
+  ];
+
+  const partnerLinks = [
+    { name: 'Estate Agents', href: '/stale-listings/agents' },
+    { name: 'Partner with Havlo', href: '/stale-listings/partnerships' },
   ];
 
   const whoWeAreLinks = [
@@ -135,12 +140,12 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-10 lg:gap-24 text-left">
-            <LinkGroup title="Services" links={serviceLinks} />
-            <div className="grid grid-cols-2 gap-10 lg:gap-24 lg:contents">
-              <LinkGroup title="Who we are" links={whoWeAreLinks} />
-              <LinkGroup title="Legal" links={legalLinks} />
-            </div>
+          <div className="grid grid-cols-2 lg:flex lg:flex-row gap-10 lg:gap-16 text-left">
+            <LinkGroup title="Sell" links={sellLinks} />
+            <LinkGroup title="Buy" links={buyLinks} />
+            <LinkGroup title="Partners" links={partnerLinks} />
+            <LinkGroup title="Who we are" links={whoWeAreLinks} />
+            <LinkGroup title="Legal" links={legalLinks} />
           </div>
         </div>
 
