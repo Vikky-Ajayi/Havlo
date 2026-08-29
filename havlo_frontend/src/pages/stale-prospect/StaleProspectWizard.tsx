@@ -412,7 +412,7 @@ const DetailsStep = ({
 
 // ── Shared: saleability gauge ──────────────────────────────────────────────
 
-const SaleabilityGauge = ({ score, size = 190 }: { score: number; size?: number }) => {
+const SaleabilityGauge = ({ score, size = 247 }: { score: number; size?: number }) => {
   const angle = 180 - (Math.min(100, Math.max(0, score)) / 100) * 180;
   const r = size / 2 - 14;
   const cx = size / 2;
@@ -1807,6 +1807,11 @@ const WizardStyles = () => (
     .slw-modal-bullets{margin:0 0 12px;padding-left:20px}
     .slw-modal-bullets li{margin-bottom:6px}
 
+    /* @page can't nest inside @media print (a page-context rule, not a
+       media-context one) - reasonable, consistent page margins instead of
+       whatever the browser's own print default is, for every printed page. */
+    @page{margin:15mm 12mm}
+
     @media print{
       /* The desktop grid layouts below (summary/property, score, why-not-
          selling, competition/actions, 30-day plan) are all designed for a
@@ -1825,8 +1830,9 @@ const WizardStyles = () => (
       *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important}
       .slw-noprint{display:none !important}
       .slw-pdf-btn{display:none !important}
+      .slw-actions-see-all{display:none !important}
       .slw-page{background:#fff}
-      .slw-shell{padding:0 24px}
+      .slw-shell{padding:0}
 
       .slw-report-summary-row,.slw-report-property-card,.slw-score-row,
       .slw-why-not-selling,.slw-report-two-col{grid-template-columns:1fr !important}
@@ -1850,15 +1856,34 @@ const WizardStyles = () => (
       .slw-print-recommendation{display:block !important}
       .slw-print-recommendation .slw-modal-body{border:none;padding:0;margin:0;width:auto;max-width:none}
 
-      /* Keep each card intact across a page break instead of splitting it
-         top-half-on-one-page, bottom-half-on-the-next. */
-      .slw-report-summary-card,.slw-report-property-card,.slw-score-gauge-card,
-      .slw-score-bars-card,.slw-why-card,.slw-competition-card,.slw-actions-card,
-      .slw-week-card,.slw-action-row,.slw-competitor-row,.slw-recommendation-callout,
-      .slw-modal-action{
+      /* Every ExpandableText force-expands for print (see that component),
+         so executive summary and evidence/impact/recommend can legitimately
+         run to several paragraphs - same for each recommendation's full
+         description below. break-inside:avoid on a card whose content can
+         be genuinely longer than one page is self-defeating: the browser
+         can't honour "never split this" for something taller than a page,
+         so it was clipping the overflow instead of paginating it, which is
+         the exact "executive summary text is being cut off" bug. Only cards
+         with reliably bounded content (a photo+address, a gauge, a score
+         bar list, a single short comparable/action line, a week's theme)
+         keep break-inside:avoid; anything that force-expands is left to
+         paginate normally. */
+      .slw-report-property-card,.slw-score-gauge-card,.slw-score-bars-card,
+      .slw-competition-card,.slw-actions-card,.slw-week-card,.slw-action-row,
+      .slw-competitor-row,.slw-recommendation-callout{
         break-inside:avoid;page-break-inside:avoid
       }
       .slw-section-heading,.slw-report h1{break-after:avoid;page-break-after:avoid}
+
+      /* One major section per page instead of one long continuous scroll -
+         this is the actual difference between "a formatted report" and
+         "a printout of the webpage": Saleability Score, Why your property
+         may not be selling, the 30-day plan and the full recommendations
+         each start clean on their own page. Executive summary/property
+         snapshot stays with the page 1 title since together they're short
+         and read as one intro, not a section of their own. */
+      .slw-section-heading{break-before:page;page-break-before:always}
+      .slw-report-head,.slw-report-summary-row{break-before:avoid;page-break-before:avoid}
     }
 
     @media (max-width: 900px){
