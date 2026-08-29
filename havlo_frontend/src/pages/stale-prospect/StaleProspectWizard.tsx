@@ -1087,15 +1087,60 @@ const FullReportStep = ({
         </>
       )}
 
-      <div className="slw-recommendation-callout">
+      {/* On screen this is just a callout with a button that opens the modal
+          below — meaningless once printed (a button can't be clicked on
+          paper, and the modal is never in the DOM unless it's actually
+          open), which is exactly why the printed/downloaded report never
+          contained the recommendations at all. slw-noprint hides this;
+          .slw-print-recommendation right after it is the opposite - hidden
+          on screen, shown only in print - and renders the same full detail
+          the modal does, so the PDF actually contains it. */}
+      <div className="slw-recommendation-callout slw-noprint">
         <b>Havlo Stale Listing Recommendation</b>
         <button type="button" className="slw-btn-black" onClick={onOpenRecommendation}>View full recommendation</button>
+      </div>
+      <div className="slw-print-recommendation">
+        <h2 className="slw-section-heading">Havlo Stale Listing Recommendation</h2>
+        <div className="slw-modal-body">
+          <RecommendationContent contactName={report.contact_name || ''} actions={data.action_plan || []} />
+        </div>
       </div>
     </section>
   );
 };
 
 // ── Recommendation modal ────────────────────────────────────────────────────
+
+const RecommendationContent = ({ contactName, actions }: { contactName: string; actions: ReportAction[] }) => (
+  <>
+    <p>Dear {contactName || '(name)'},</p>
+    <p>Following our assessment of your property&rsquo;s current market position, here is the complete set of recommended actions in priority order, along with why each one matters and how to execute it:</p>
+
+    {actions.map((action, i) => (
+      <div className="slw-modal-action" key={i}>
+        <h3>{i + 1}) {action.title}
+          {action.priority && <span className="slw-modal-priority"> &middot; {action.priority}</span>}
+        </h3>
+        {action.description && <p style={{ whiteSpace: 'pre-line' }}>{reflowParagraphs(action.description)}</p>}
+        {action.why_it_matters && <p><i>Why it matters: {action.why_it_matters}</i></p>}
+        {(action.bullets || []).length > 0 && (
+          <ul className="slw-modal-bullets">
+            {action.bullets!.map((bullet, bi) => <li key={bi}>{bullet}</li>)}
+          </ul>
+        )}
+      </div>
+    ))}
+
+    <h3>OUR ADVISORY VIEW</h3>
+    <p>We recommend working through these actions in the order shown, starting with the highest-priority items, and reviewing the result of each before moving to the next.<br />
+    Your existing agent remains fully in control of the sale &mdash; these recommendations are designed to support their work, not replace it.</p>
+
+    <h3>Prepared &amp; reviewed by</h3>
+    <p className="slw-modal-team">Havlo Sales Advisory Team</p>
+    <p>Property Intelligence &bull; Sales Strategy &bull; Buyer Generation</p>
+    <p className="slw-modal-disclaimer">This recommendation is strategic guidance based on the information available to Havlo at the time of assessment. Individual strategies should be evaluated against the property&rsquo;s circumstances and current market conditions. Results will vary and no particular strategy guarantees a sale.</p>
+  </>
+);
 
 const RecommendationModal = ({
   contactName,
@@ -1114,32 +1159,7 @@ const RecommendationModal = ({
       </div>
       <div className="slw-modal-scroll">
       <div className="slw-modal-body">
-        <p>Dear {contactName || '(name)'},</p>
-        <p>Following our assessment of your property&rsquo;s current market position, here is the complete set of recommended actions in priority order, along with why each one matters and how to execute it:</p>
-
-        {actions.map((action, i) => (
-          <div className="slw-modal-action" key={i}>
-            <h3>{i + 1}) {action.title}
-              {action.priority && <span className="slw-modal-priority"> &middot; {action.priority}</span>}
-            </h3>
-            {action.description && <p style={{ whiteSpace: 'pre-line' }}>{reflowParagraphs(action.description)}</p>}
-            {action.why_it_matters && <p><i>Why it matters: {action.why_it_matters}</i></p>}
-            {(action.bullets || []).length > 0 && (
-              <ul className="slw-modal-bullets">
-                {action.bullets!.map((bullet, bi) => <li key={bi}>{bullet}</li>)}
-              </ul>
-            )}
-          </div>
-        ))}
-
-        <h3>OUR ADVISORY VIEW</h3>
-        <p>We recommend working through these actions in the order shown, starting with the highest-priority items, and reviewing the result of each before moving to the next.<br />
-        Your existing agent remains fully in control of the sale &mdash; these recommendations are designed to support their work, not replace it.</p>
-
-        <h3>Prepared &amp; reviewed by</h3>
-        <p className="slw-modal-team">Havlo Sales Advisory Team</p>
-        <p>Property Intelligence &bull; Sales Strategy &bull; Buyer Generation</p>
-        <p className="slw-modal-disclaimer">This recommendation is strategic guidance based on the information available to Havlo at the time of assessment. Individual strategies should be evaluated against the property&rsquo;s circumstances and current market conditions. Results will vary and no particular strategy guarantees a sale.</p>
+        <RecommendationContent contactName={contactName} actions={actions} />
       </div>
       </div>
     </div>
@@ -1765,6 +1785,7 @@ const WizardStyles = () => (
     .slw-recommendation-callout{display:flex;justify-content:space-between;align-items:center;background:#fff;border:14px solid #f5f6f8;border-radius:18px;padding:24px 28px;margin-top:42px}
     .slw-recommendation-callout b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1}
     .slw-recommendation-callout .slw-btn-black{width:auto;padding:14px 22px}
+    .slw-print-recommendation{display:none}
 
     /* Recommendation modal */
     .slw-modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:flex;align-items:flex-start;justify-content:center;z-index:100}
@@ -1810,12 +1831,31 @@ const WizardStyles = () => (
       .slw-report-summary-row,.slw-report-property-card,.slw-score-row,
       .slw-why-not-selling,.slw-report-two-col{grid-template-columns:1fr !important}
       .slw-thirty-day-grid{grid-template-columns:1fr 1fr !important}
+      /* The executive summary/property card float-wrap (screen only) is a
+         nice magazine effect at 1440px but print pages are much narrower -
+         same reasoning as the mobile breakpoint stacking it, so just reuse
+         that: float off, full width, stacked. The min-height that matches
+         the property card's on-screen pixel height is also meaningless
+         once the page width (and so the card's actual height) changes for
+         print - drop it here for the same reason the mobile override does. */
+      .slw-report-property-card{float:none !important;width:auto !important;margin-left:0 !important}
+      .slw-report-summary-card{min-height:auto !important}
+
+      /* Full recommendations only ever exist in the DOM while the modal is
+         open - printing the underlying report page never had them at all.
+         slw-noprint above already removes the dead "View full
+         recommendation" button; this is its opposite, hidden on screen and
+         shown only here, with the modal's own content component so the
+         printed report actually contains the full detail. */
+      .slw-print-recommendation{display:block !important}
+      .slw-print-recommendation .slw-modal-body{border:none;padding:0;margin:0;width:auto;max-width:none}
 
       /* Keep each card intact across a page break instead of splitting it
          top-half-on-one-page, bottom-half-on-the-next. */
       .slw-report-summary-card,.slw-report-property-card,.slw-score-gauge-card,
       .slw-score-bars-card,.slw-why-card,.slw-competition-card,.slw-actions-card,
-      .slw-week-card,.slw-action-row,.slw-competitor-row,.slw-recommendation-callout{
+      .slw-week-card,.slw-action-row,.slw-competitor-row,.slw-recommendation-callout,
+      .slw-modal-action{
         break-inside:avoid;page-break-inside:avoid
       }
       .slw-section-heading,.slw-report h1{break-after:avoid;page-break-after:avoid}
