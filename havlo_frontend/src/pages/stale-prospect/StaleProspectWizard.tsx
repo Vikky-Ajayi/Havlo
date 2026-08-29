@@ -512,16 +512,33 @@ const ExpandableText = ({
   className?: string;
 }) => {
   const [expanded, setExpanded] = useState(false);
+  // "Read more" clamping only makes sense on screen — the truncated string
+  // is all the DOM ever contains when collapsed, so printing/downloading a
+  // PDF while collapsed would permanently lose that text from the page (no
+  // amount of print CSS can bring back text that was never rendered). Force
+  // every instance open for the duration of the print, and hide the button
+  // itself since there's nothing to click on paper.
+  const [forcePrint, setForcePrint] = useState(false);
+  useEffect(() => {
+    const onBeforePrint = () => setForcePrint(true);
+    const onAfterPrint = () => setForcePrint(false);
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+  }, []);
   const clean = (text || '').trim();
   if (!clean) return null;
   const isLong = clean.length > maxChars;
   const truncated = isLong ? clean.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : clean;
-  const shown = expanded ? clean : truncated;
+  const shown = expanded || forcePrint ? clean : truncated;
   return (
     <Tag className={className}>
       {shown}
-      {isLong && allowExpand && (
-        <button type="button" className="slw-read-more" onClick={() => setExpanded((v) => !v)}>
+      {isLong && allowExpand && !forcePrint && (
+        <button type="button" className="slw-read-more slw-noprint" onClick={() => setExpanded((v) => !v)}>
           {expanded ? 'Show less' : 'Read more'}
         </button>
       )}
@@ -1682,9 +1699,38 @@ const WizardStyles = () => (
     .slw-modal-disclaimer{color:#999;font-size:12.5px;margin-top:16px}
 
     @media print{
+      /* The desktop grid layouts below (summary/property, score, why-not-
+         selling, competition/actions, 30-day plan) are all designed for a
+         1440px-wide screen. A browser's print engine renders that same CSS
+         at a portrait page's much narrower content width (~180mm) instead
+         of relaying it out for print, so every one of those grids just gets
+         squeezed down to unreadably narrow columns - which is what actually
+         produces "clustered, not well aligned" text, not a font/spacing
+         problem. Reusing the existing @media(max-width:900px) single-column
+         overrides here (rather than duplicating separate print-specific
+         values) fixes that directly.
+         Backgrounds are also off by default in most browsers' print dialogs
+         ("background graphics" unchecked) - forcing print-color-adjust
+         keeps every card's background so cards stay visually separated on
+         the page instead of running into each other. */
+      *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important}
       .slw-noprint{display:none !important}
+      .slw-pdf-btn{display:none !important}
       .slw-page{background:#fff}
       .slw-shell{padding:0 24px}
+
+      .slw-report-summary-row,.slw-report-property-card,.slw-score-row,
+      .slw-why-not-selling,.slw-report-two-col{grid-template-columns:1fr !important}
+      .slw-thirty-day-grid{grid-template-columns:1fr 1fr !important}
+
+      /* Keep each card intact across a page break instead of splitting it
+         top-half-on-one-page, bottom-half-on-the-next. */
+      .slw-report-summary-card,.slw-report-property-card,.slw-score-gauge-card,
+      .slw-score-bars-card,.slw-why-card,.slw-competition-card,.slw-actions-card,
+      .slw-week-card,.slw-action-row,.slw-competitor-row,.slw-recommendation-callout{
+        break-inside:avoid;page-break-inside:avoid
+      }
+      .slw-section-heading,.slw-report h1{break-after:avoid;page-break-after:avoid}
     }
 
     @media (max-width: 900px){
