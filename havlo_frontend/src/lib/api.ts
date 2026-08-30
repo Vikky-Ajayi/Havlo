@@ -1078,6 +1078,19 @@ export const api = {
       timeout: 30000,
     }),
 
+  staleListingsBackfillPostcodes: (token: string) =>
+    request<{
+      total: number;
+      updated: number;
+      outcode_only: number;
+      failed: number;
+      failures: { property_code: string; rightmove_url: string; reason: string }[];
+    }>('/stale-listings/admin/prospects/backfill-postcodes', {
+      method: 'POST',
+      token,
+      timeout: 90000,
+    }),
+
   customOffersScrape: (payload: { listing_url: string }) =>
     request<CustomOffersScrapeResponse>('/custom-offers/scrape', {
       method: 'POST',

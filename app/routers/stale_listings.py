@@ -1005,6 +1005,83 @@ async def get_stale_prospect_discovery_run(
     return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
 
 
+@admin_router.post("/admin/prospects/backfill-postcodes")
+async def backfill_stale_prospect_postcodes(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=500, ge=1, le=2000),
+) -> dict:
+    """Re-scrape each postcode-less prospect's Rightmove listing to fill in
+    its postcode. One-off backfill for prospects discovered before the
+    postcode column existed (Rightmove's displayAddress never carries the
+    full postcode; the detail-page PAGE_MODEL does, via separate outcode/
+    incode fields — see _combine_postcode in listing_scraper.py) — safe to
+    re-run any time, it only ever touches rows still missing one.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+
+    from app.services.listing_scraper import scrape_single_listing
+
+    result = await db.execute(
+        select(StaleListingProspect)
+        .where(StaleListingProspect.postcode.is_(None))
+        .order_by(StaleListingProspect.created_at.asc())
+        .limit(limit)
+    )
+    prospects = list(result.scalars().all())
+    if not prospects:
+        return {"total": 0, "updated": 0, "outcode_only": 0, "failed": 0, "failures": []}
+
+    semaphore = asyncio.Semaphore(5)
+    failures: list[dict] = []
+    updated = 0
+    outcode_only = 0
+
+    async def _backfill_one(prospect: StaleListingProspect) -> None:
+        nonlocal updated, outcode_only
+        async with semaphore:
+            try:
+                scraped = await scrape_single_listing(prospect.rightmove_url)
+                postcode = (scraped.get("postcode") or "").strip()
+                if not postcode:
+                    failures.append({
+                        "property_code": prospect.property_code,
+                        "rightmove_url": prospect.rightmove_url,
+                        "reason": "no_postcode_in_listing"
+                        + (" (listing may be blocked/removed)" if scraped.get("blocked") else ""),
+                    })
+                    return
+                prospect.postcode = postcode
+                updated += 1
+                if " " not in postcode:
+                    outcode_only += 1
+                from app.services import google_sheets
+                await asyncio.to_thread(
+                    google_sheets.update_stale_listing_postcode,
+                    rightmove_id=prospect.rightmove_id or "",
+                    listing_url=prospect.rightmove_url,
+                    postcode=postcode,
+                )
+            except Exception as exc:
+                failures.append({
+                    "property_code": prospect.property_code,
+                    "rightmove_url": prospect.rightmove_url,
+                    "reason": str(exc)[:200],
+                })
+
+    await asyncio.gather(*(_backfill_one(p) for p in prospects))
+    await db.commit()
+
+    return {
+        "total": len(prospects),
+        "updated": updated,
+        "outcode_only": outcode_only,
+        "failed": len(failures),
+        "failures": failures,
+    }
+
+
 @admin_router.get("/admin/prospects/email-diagnostics")
 async def stale_prospect_email_diagnostics(
     current_user: User = Depends(get_current_user),

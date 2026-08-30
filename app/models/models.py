@@ -490,6 +490,13 @@ class StaleListingProspect(Base):
     property_code: Mapped[str] = mapped_column(String(4), nullable=False, index=True)
     qr_token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     property_address: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Rightmove's displayAddress never includes the full postcode (only the
+    # outcode, if that) — this is combined from the address object's
+    # separate outcode/incode fields at scrape time (see _combine_postcode
+    # in listing_scraper.py). Nullable: every prospect discovered before
+    # this column existed has none, and a small number of listings withhold
+    # incode entirely so even a fresh scrape may only yield an outcode.
+    postcode: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     rightmove_url: Mapped[str] = mapped_column(Text, nullable=False)
     rightmove_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     asking_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

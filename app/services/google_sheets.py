@@ -86,7 +86,7 @@ SHEET_TABS: dict[str, list[str]] = {
     ],
     "Stale Listing Addresses": [
         "Captured At", "Rightmove ID", "Property Code", "Property Address",
-        "City", "Asking Price", "Listed Date", "Days On Market",
+        "Postcode", "City", "Asking Price", "Listed Date", "Days On Market",
         "Property Type", "Bedrooms", "Bathrooms", "Listing URL",
         "Discovery Run ID", "Source Status",
     ],
@@ -246,22 +246,30 @@ def record_stale_listing_address(listing_data: dict[str, Any]) -> None:
         listed_date = listing_data.get("listed_date")
         if hasattr(listed_date, "isoformat"):
             listed_date = listed_date.isoformat()
-        row = [
-            datetime.utcnow().isoformat(),
-            rightmove_id,
-            listing_data.get("property_code", ""),
-            listing_data.get("property_address") or listing_data.get("address", ""),
-            listing_data.get("city", ""),
-            listing_data.get("asking_price", ""),
-            listed_date or "",
-            listing_data.get("listing_duration_days") or listing_data.get("days_on_market", ""),
-            listing_data.get("property_type", ""),
-            listing_data.get("bedrooms", ""),
-            listing_data.get("bathrooms", ""),
-            listing_url,
-            listing_data.get("discovery_run_id", ""),
-            listing_data.get("source_status", "stale_180_days_plus"),
-        ]
+        by_header = {
+            "Captured At": datetime.utcnow().isoformat(),
+            "Rightmove ID": rightmove_id,
+            "Property Code": listing_data.get("property_code", ""),
+            "Property Address": listing_data.get("property_address") or listing_data.get("address", ""),
+            "Postcode": listing_data.get("postcode", ""),
+            "City": listing_data.get("city", ""),
+            "Asking Price": listing_data.get("asking_price", ""),
+            "Listed Date": listed_date or "",
+            "Days On Market": listing_data.get("listing_duration_days") or listing_data.get("days_on_market", ""),
+            "Property Type": listing_data.get("property_type", ""),
+            "Bedrooms": listing_data.get("bedrooms", ""),
+            "Bathrooms": listing_data.get("bathrooms", ""),
+            "Listing URL": listing_url,
+            "Discovery Run ID": listing_data.get("discovery_run_id", ""),
+            "Source Status": listing_data.get("source_status", "stale_180_days_plus"),
+        }
+        # Built from the sheet's actual current header row, not the
+        # SHEET_TABS constant — a column added to that constant (like
+        # Postcode) doesn't retroactively exist in a sheet created before
+        # the change, and appending a row with more values than the sheet
+        # has header columns would silently shift every later column over
+        # by one for that row.
+        row = [by_header.get(header, "") for header in headers]
         ws.append_row(row, value_input_option="USER_ENTERED")
         logger.info("Recorded stale listing address in Google Sheets: %s", listing_url or rightmove_id)
     except Exception as exc:
@@ -320,6 +328,61 @@ def update_stale_listing_property_code(
     except Exception as exc:
         logger.error(
             "Failed to backfill stale listing property code: [%s] %r",
+            type(exc).__name__,
+            exc,
+        )
+
+
+def update_stale_listing_postcode(
+    *, rightmove_id: str = "", listing_url: str = "", postcode: str
+) -> None:
+    """Same backfill pattern as update_stale_listing_property_code, for the
+    Postcode column added after this sheet already had rows in it.
+
+    A sheet created before this change won't have a "Postcode" header at
+    all — that's a manual one-time add in Sheets (insert a column, name it
+    "Postcode" anywhere in the header row; record_stale_listing_address
+    and this function both match by header name, not position). Until then
+    this is a no-op rather than a crash.
+    """
+    if not is_configured() or not postcode:
+        return
+    rightmove_id = str(rightmove_id or "").strip()
+    listing_url = str(listing_url or "").strip()
+    if not rightmove_id and not listing_url:
+        return
+    try:
+        sheet = _get_spreadsheet()
+        ws = sheet.worksheet("Stale Listing Addresses")
+        values = ws.get_all_values()
+        if not values:
+            return
+        headers = values[0]
+        try:
+            id_index = headers.index("Rightmove ID")
+            url_index = headers.index("Listing URL")
+            postcode_index = headers.index("Postcode")
+        except ValueError:
+            logger.debug(
+                "Stale Listing Addresses tab has no Postcode header yet; skipping postcode backfill."
+            )
+            return
+        for row_num, existing in enumerate(values[1:], start=2):
+            existing_id = existing[id_index].strip() if id_index < len(existing) else ""
+            existing_url = existing[url_index].strip() if url_index < len(existing) else ""
+            if (rightmove_id and existing_id == rightmove_id) or (
+                listing_url and existing_url == listing_url
+            ):
+                ws.update_cell(row_num, postcode_index + 1, postcode)
+                logger.info("Backfilled postcode %s in Stale Listing Addresses.", postcode)
+                return
+        logger.debug(
+            "No Stale Listing Addresses row found to backfill postcode for %s",
+            rightmove_id or listing_url,
+        )
+    except Exception as exc:
+        logger.error(
+            "Failed to backfill stale listing postcode: [%s] %r",
             type(exc).__name__,
             exc,
         )

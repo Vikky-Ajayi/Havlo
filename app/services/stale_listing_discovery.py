@@ -727,6 +727,7 @@ async def _finalize_candidate(
             {
                 "rightmove_id": candidate.rightmove_id,
                 "property_address": address,
+                "postcode": snapshot.get("postcode") or "",
                 "city": candidate.city,
                 "asking_price": price,
                 "listed_date": listed_date,

@@ -183,6 +183,7 @@ def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
     return {
         "title": scraped.get("title") or scraped.get("address") or "",
         "address": scraped.get("address") or scraped.get("title") or "",
+        "postcode": scraped.get("postcode") or "",
         "price": scraped.get("price") or "",
         "image": scraped.get("image") or (images[0] if images else ""),
         "images": images,
@@ -280,6 +281,7 @@ async def create_prospect_from_listing_snapshot(
         property_code=property_code,
         qr_token_hash=hash_access_token(token),
         property_address=property_address,
+        postcode=listing_snapshot.get("postcode") or None,
         rightmove_url=rightmove_url,
         rightmove_id=listing_snapshot.get("rightmove_id") or None,
         asking_price=float(asking_price),

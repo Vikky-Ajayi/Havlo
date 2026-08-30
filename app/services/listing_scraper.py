@@ -107,6 +107,21 @@ def _clean(s: Any, maxlen: int = 500) -> str:
     return cleaned[:maxlen]
 
 
+def _combine_postcode(outcode: Any, incode: Any) -> str:
+    """Join Rightmove's separate outcode/incode fields into one UK postcode.
+
+    incode is sometimes withheld for privacy on a small number of listings
+    (rare, but not never) — an outcode alone (e.g. "M21") is still useful
+    for a mail house doing a partial-postcode lookup, so it's returned on
+    its own rather than discarded.
+    """
+    outcode = _clean(outcode, 10).upper()
+    incode = _clean(incode, 10).upper()
+    if outcode and incode:
+        return f"{outcode} {incode}"
+    return outcode
+
+
 def _fmt_price(amount: Any, currency: str = "GBP") -> str:
     if amount is None:
         return ""
@@ -252,7 +267,7 @@ def _normalize_rightmove_url(url: str) -> str:
 
 def _empty_listing(platform: str, url: str = "") -> dict:
     return {
-        "title": "", "address": "", "price": "", "description": "",
+        "title": "", "address": "", "postcode": "", "price": "", "description": "",
         "url": url, "images": [], "image": "", "bedrooms": "",
         "bathrooms": "", "property_type": "", "listed_date": "",
         "features": [], "floor_area": "", "platform": platform,
@@ -880,9 +895,18 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
 
         # ── Address ──────────────────────────────────────────────────────────
         addr_str = ""
+        postcode = ""
         addr_schema = r(prop_schema.get("address"))
         if isinstance(addr_schema, dict):
             addr_str = _clean(r(addr_schema.get("displayAddress")) or "")
+            # Rightmove's public listing page never prints the full postcode
+            # anywhere in the visible page copy — displayAddress only ever
+            # shows the outcode (e.g. "Grange Road, Chorlton, M21") — but the
+            # PAGE_MODEL address object underneath it carries outcode AND
+            # incode as separate fields regardless, since they drive the map
+            # pin. Combining them recovers the full postcode we otherwise
+            # have no source for at all, and need for physical letter mail.
+            postcode = _combine_postcode(r(addr_schema.get("outcode")), r(addr_schema.get("incode")))
 
         # ── Price ─────────────────────────────────────────────────────────────
         price_str = ""
@@ -958,6 +982,7 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
         return {
             "title": addr_str,
             "address": addr_str,
+            "postcode": postcode,
             "price": price_str,
             "description": description,
             "url": "",  # filled in by caller
@@ -1025,6 +1050,7 @@ async def scrape_single_listing(url: str) -> dict:
                 price_str = price_obj.get("primaryPrice") or _fmt_price(price_obj.get("amount"), price_obj.get("currencyCode", "GBP"))
                 addr = (prop.get("address") or {})
                 addr_str = _clean(addr.get("displayAddress") or prop.get("displayAddress") or "")
+                postcode = _combine_postcode(addr.get("outcode"), addr.get("incode"))
                 listing_history = prop.get("listingHistory") or {}
                 raw_date = listing_history.get("listingDate") or ""
                 # Same price-reduction signal as the v2 decoder above, from
@@ -1037,6 +1063,7 @@ async def scrape_single_listing(url: str) -> dict:
                     result = {
                         "title": addr_str,
                         "address": addr_str,
+                        "postcode": postcode,
                         "price": price_str,
                         "description": _clean((prop.get("text") or {}).get("description") or prop.get("summary") or "", 800),
                         "url": url,

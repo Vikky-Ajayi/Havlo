@@ -374,6 +374,8 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
   const [discoveryMaxPages, setDiscoveryMaxPages] = useState(2);
   const [emailTesting, setEmailTesting] = useState(false);
   const [emailStatus, setEmailStatus] = useState('');
+  const [postcodeBackfilling, setPostcodeBackfilling] = useState(false);
+  const [postcodeStatus, setPostcodeStatus] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -720,6 +722,27 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
     }
   };
 
+  const handleBackfillPostcodes = async () => {
+    if (!token) return;
+    setPostcodeBackfilling(true);
+    setPostcodeStatus('');
+    try {
+      const result = await api.staleListingsBackfillPostcodes(token);
+      if (result.total === 0) {
+        setPostcodeStatus('Every prospect already has a postcode — nothing to do.');
+      } else {
+        const parts = [`${result.updated} of ${result.total} updated`];
+        if (result.outcode_only > 0) parts.push(`${result.outcode_only} outcode-only (no exact incode on the listing)`);
+        if (result.failed > 0) parts.push(`${result.failed} failed`);
+        setPostcodeStatus(parts.join(', ') + '.');
+      }
+    } catch (e) {
+      setPostcodeStatus(e instanceof Error ? e.message : 'Postcode backfill failed.');
+    } finally {
+      setPostcodeBackfilling(false);
+    }
+  };
+
   const runDate = (value?: string | null) => value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
   return (
@@ -769,7 +792,11 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
               <button onClick={handleTestAdminEmail} disabled={emailTesting} style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #D8B4FE', background: '#FAF5FF', color: '#7C3AED', fontWeight: 700, fontSize: 12, cursor: emailTesting ? 'not-allowed' : 'pointer' }}>
                 {emailTesting ? 'Testing...' : 'Test admin email'}
               </button>
+              <button onClick={handleBackfillPostcodes} disabled={postcodeBackfilling} title="Re-scrapes every prospect currently missing a postcode and fills it in — needed to actually address the physical letters." style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontWeight: 700, fontSize: 12, cursor: postcodeBackfilling ? 'not-allowed' : 'pointer' }}>
+                {postcodeBackfilling ? 'Backfilling postcodes...' : 'Backfill postcodes'}
+              </button>
             </div>
+            {postcodeStatus && <p style={{ margin: '10px 0 0', color: postcodeStatus.includes('failed') && !postcodeStatus.includes('0 failed') ? '#991B1B' : '#065F46', fontSize: 12, fontWeight: 700 }}>{postcodeStatus}</p>}
             <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.8fr 0.7fr 0.7fr auto', gap: 10, alignItems: 'end' }}>
               <div>
                 <label style={labelStyle}>Locations</label>
