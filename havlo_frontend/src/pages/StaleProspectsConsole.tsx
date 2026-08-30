@@ -180,10 +180,20 @@ export const StaleProspectsConsole = () => {
   // background scroll while either modal is open removes the trigger for
   // that entirely (the modal's own content still scrolls normally, since
   // that's a separate, nested scroll container).
+  //
+  // Both body AND documentElement need the lock — confirmed live that
+  // body-only (the pattern Navbar.tsx's mobile menu already uses) still
+  // let window.scrollY move on this page: <html>, not <body>, is the
+  // actual scrolling element in standards mode, so body alone doesn't
+  // stop it.
   const anyModalOpen = !!selectedId || showManual;
   useEffect(() => {
+    document.documentElement.style.overflow = anyModalOpen ? 'hidden' : '';
     document.body.style.overflow = anyModalOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+    };
   }, [anyModalOpen]);
 
   const submitManual = async () => {
