@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -73,7 +73,12 @@ def build_unsubscribe_url(prospect_id: UUID) -> str:
 
 
 async def run_abandonment_email_cycle() -> dict:
-    now = datetime.utcnow()
+    # contact_details_submitted_at is DateTime(timezone=True) — comes back
+    # from the DB tz-aware. datetime.utcnow() is naive, so subtracting it
+    # from that column raised "can't subtract offset-naive and
+    # offset-aware datetimes" on every single cycle (this loop has been
+    # crash-looping since it shipped; no abandonment email has gone out).
+    now = datetime.now(timezone.utc)
     sent = 0
     skipped_already_sent = 0
 

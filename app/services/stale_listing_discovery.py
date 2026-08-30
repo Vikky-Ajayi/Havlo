@@ -498,6 +498,60 @@ async def _save_discovery_cursors(cursors: dict[str, int]) -> None:
         pass
 
 
+_LOCATION_ROTATION_KEY = "stale_listing_discovery_location_rotation"
+
+
+async def _load_location_rotation_offset() -> int:
+    """Where in KNOWN_LOCATIONS this cycle's scan should start.
+
+    Every cycle used to call asyncio.gather over KNOWN_LOCATIONS in its
+    fixed list order with only STALE_LISTINGS_LOCATION_CONCURRENCY (6)
+    running at once. asyncio.Semaphore hands its permits out in roughly
+    the order coroutines first ask for one, so the same first 6 locations
+    (the front of the "Original 40" section) grabbed every permit before
+    location #7 ever got a turn — and by the time a permit freed up, the
+    shared max_candidates budget for the cycle was usually already spent,
+    so location #7 onward returned instantly having scanned nothing, cursor
+    unchanged. Effectively only ~6 of the 107 locations were ever scanned,
+    forever, regardless of how correct the other 101 locations' IDs were.
+    Persisting a rotation offset and starting each cycle's scan from a
+    different point in the list (advanced by location_concurrency per
+    cycle, wrapping around) is what actually gives every location a turn
+    at the front of the queue over time.
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                text("SELECT value_json FROM scraper_kv_state WHERE key = :key"),
+                {"key": _LOCATION_ROTATION_KEY},
+            )
+            row = result.first()
+            if row and row[0]:
+                return int(json.loads(row[0]))
+    except Exception as exc:
+        logger.debug("Could not load stale-listing location rotation offset from DB: %s", exc)
+    return 0
+
+
+async def _save_location_rotation_offset(offset: int) -> None:
+    try:
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                text(
+                    """
+                    INSERT INTO scraper_kv_state (key, value_json, updated_at)
+                    VALUES (:key, :value, now())
+                    ON CONFLICT (key) DO UPDATE
+                        SET value_json = EXCLUDED.value_json, updated_at = now()
+                    """
+                ),
+                {"key": _LOCATION_ROTATION_KEY, "value": json.dumps(offset)},
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.debug("Could not persist stale-listing location rotation offset to DB: %s", exc)
+
+
 def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
     try:
         results = json.loads(run.result_json or "{}")
@@ -958,6 +1012,17 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
     # silently skip pages that were never actually mined for real prospects.
     cursors = await _load_discovery_cursors() if not params.dry_run else {}
 
+    # Rotate the scan order so every location gets a turn at the front of
+    # the queue over time, not just whichever ones happen to be first in
+    # KNOWN_LOCATIONS — see _load_location_rotation_offset's docstring.
+    # Only for the real, unfiltered automated sweep: an admin explicitly
+    # requesting specific location_names wants exactly that list, and a dry
+    # run must not perturb the real rotation any more than it does cursors.
+    rotate = not params.dry_run and not params.location_names
+    rotation_offset = (await _load_location_rotation_offset()) % len(locations) if rotate else 0
+    if rotation_offset:
+        locations = locations[rotation_offset:] + locations[:rotation_offset]
+
     try:
         async with httpx.AsyncClient() as client:
             # return_exceptions=True is deliberate defense-in-depth on top of
@@ -985,6 +1050,15 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
                 _, next_page = outcome
                 cursors[location_id] = next_page
             await _save_discovery_cursors(cursors)
+
+        if rotate:
+            # Advance by location_concurrency: roughly how many locations
+            # actually got a meaningful turn at the front of the queue this
+            # cycle. A full rotation through all ~107 locations then takes
+            # about location_count / location_concurrency cycles.
+            await _save_location_rotation_offset(
+                (rotation_offset + location_concurrency) % len(locations)
+            )
 
         async with state.lock:
             state.dirty = True
