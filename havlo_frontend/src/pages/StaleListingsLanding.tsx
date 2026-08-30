@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { Footer } from '../components/shared/Footer';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { CountryBadge } from '../components/shared/CountryBadge';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
 import { parsePropertyInput } from '../lib/propertyInput';
 import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
@@ -1152,6 +1153,7 @@ export function StaleListingsLanding() {
                 </button>
               )}
             </div>
+            <CountryBadge variant="inline" />
           </div>
 
           {/* Hamburger (mobile/tablet) */}

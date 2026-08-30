@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const isLikelyUrl = (value: string) => {
@@ -295,6 +296,12 @@ export function StaleListingsAgents() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+        }
+
+        .sla-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 24px;
         }
 
         .sla-logo {
@@ -1633,20 +1640,23 @@ export function StaleListingsAgents() {
           <a href="/stale-listings/agents" aria-label="Stale Listings agents home">
             <StaleListingsLogo className="sla-logo" />
           </a>
-          <nav className="sla-nav" aria-label="Stale Listings agents navigation">
-            <a href="#how-it-works">How it works</a>
-            <a href="#faq">Faq</a>
-            <a href="#pricing">Pricing</a>
-          </nav>
-          <button
-            type="button"
-            className="sla-menu-button"
-            aria-label="Open navigation menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span />
-          </button>
+          <div className="sla-header-actions">
+            <nav className="sla-nav" aria-label="Stale Listings agents navigation">
+              <a href="#how-it-works">How it works</a>
+              <a href="#faq">Faq</a>
+              <a href="#pricing">Pricing</a>
+            </nav>
+            <CountryBadge variant="inline" />
+            <button
+              type="button"
+              className="sla-menu-button"
+              aria-label="Open navigation menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span />
+            </button>
+          </div>
         </div>
         <nav className={`sla-mobile-menu${menuOpen ? ' is-open' : ''}`} aria-label="Mobile navigation">
           <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>

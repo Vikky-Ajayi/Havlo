@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 
 const pressLogos = [
   { alt: 'The Times', src: '/press-logos/the-times.svg' },
@@ -46,8 +47,11 @@ export const StaleListingsPartnerships = () => (
   <div className="slp-page">
     <header className="slp-header">
       <Link className="slp-logo" to="/stale-listings"><StaleListingsLogo className="slp-logo-mark" /></Link>
-      <nav><a href="#work">Who we work with</a><a href="#white">White-label</a><a href="#how">How it works</a><a className="dark" href="mailto:partnerships@heyhavlo.com">Make an Enquiry</a><a href="mailto:partnerships@heyhavlo.com">Book a Demo</a></nav>
-      <button aria-label="Open navigation menu">☰</button>
+      <div className="slp-header-actions">
+        <nav><a href="#work">Who we work with</a><a href="#white">White-label</a><a href="#how">How it works</a><a className="dark" href="mailto:partnerships@heyhavlo.com">Make an Enquiry</a><a href="mailto:partnerships@heyhavlo.com">Book a Demo</a></nav>
+        <CountryBadge variant="inline" />
+        <button aria-label="Open navigation menu">☰</button>
+      </div>
     </header>
 
     <section className="slp-hero">
@@ -130,6 +134,7 @@ export const StaleListingsPartnerships = () => (
       @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
       .slp-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#0b0b0b;background:#fff}
       .slp-header{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 11%;border-bottom:1px solid #eee}
+      .slp-header-actions{display:flex;align-items:center;gap:20px}
       .slp-logo{display:inline-flex;align-items:center;text-decoration:none}
       .slp-logo-mark{height:50px;width:auto;display:block}
       .slp-footer-logo{height:42px;width:auto;display:block}

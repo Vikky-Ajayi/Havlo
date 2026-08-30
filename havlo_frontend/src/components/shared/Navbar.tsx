@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { CountryBadge } from './CountryBadge';
 import { useModal } from '../../hooks/useModal';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
@@ -134,6 +135,8 @@ export const Navbar: React.FC = () => {
             ))}
           </div>
 
+          <CountryBadge variant="inline" />
+
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-6">
               {user ? (
@@ -176,7 +179,8 @@ export const Navbar: React.FC = () => {
           </div>
         </nav>
 
-        <div className="flex items-center gap-3 lg:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
+          <CountryBadge variant="inline" />
           <button
             className="flex p-3"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

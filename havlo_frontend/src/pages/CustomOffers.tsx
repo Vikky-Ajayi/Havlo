@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { api } from '../lib/api';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
 import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
 import { parsePropertyInput } from '../lib/propertyInput';
@@ -3020,6 +3021,7 @@ export const CustomOffers: React.FC = () => {
                 </button>
               )}
             </div>
+            <CountryBadge variant="inline" />
           </div>
 
           <button

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { API_BASE } from '../lib/api';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 
 type Step = 'form' | 'submitting' | 'success';
 type FormStage = 1 | 2 | 3 | 4;
@@ -386,7 +387,10 @@ export function BuyAbroadUkApply() {
           <span>Buy Abroad</span>
         </a>
         <div className="bua-header-spacer" />
-        <a href="/buyabroad/uk" className="bua-header-back">← Back to Buy Abroad</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <CountryBadge variant="inline" />
+          <a href="/buyabroad/uk" className="bua-header-back">← Back to Buy Abroad</a>
+        </div>
       </header>
 
       <div className="bua-body">

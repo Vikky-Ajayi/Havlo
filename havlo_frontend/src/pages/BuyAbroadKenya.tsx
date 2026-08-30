@@ -5,6 +5,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { AutoScrollReviews } from '../components/shared/AutoScrollReviews';
 import { TrustpilotStars } from '../components/ui/TrustpilotStars';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 
 type EligibilityStep = 'eligibility' | 'timeline' | 'details' | 'fit' | 'not-fit';
 
@@ -324,8 +325,11 @@ export const BuyAbroadKenya: React.FC = () => {
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>
-        <button className="buk-header-cta" type="button" onClick={openConsultation}>Get Free Consultation</button>
-        <button className="buk-menu" type="button" aria-label="Open menu">☰</button>
+        <div className="buk-header-actions">
+          <CountryBadge variant="inline" />
+          <button className="buk-header-cta" type="button" onClick={openConsultation}>Get Free Consultation</button>
+          <button className="buk-menu" type="button" aria-label="Open menu">☰</button>
+        </div>
       </header>
 
       <main>
@@ -533,6 +537,7 @@ export const BuyAbroadKenya: React.FC = () => {
         .buk-page::-webkit-scrollbar, .buk-page *::-webkit-scrollbar { width: 0; height: 0; display: none; }
         .buk-inner { width: min(100% - 200px, 1240px); margin: 0 auto; }
         .buk-header { height: 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(100px, calc((100vw - 1240px) / 2)); background: #fff; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 30; }
+        .buk-header-actions { display: flex; align-items: center; gap: 16px; }
         .buk-logo { display: inline-flex; flex-direction: column; align-items: center; text-decoration: none; color: #111; line-height: 1; }
         .buk-logo img { width: 136px; height: auto; display: block; }
         .buk-logo span { margin-top: 0; font-size: 16px; font-weight: 400; }

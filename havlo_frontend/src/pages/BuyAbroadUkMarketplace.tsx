@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useTypewriter } from '../hooks/useTypewriter';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 
 const HERO_COUNTRIES = ['UK', 'Canada', 'Dubai', 'United States'];
 
@@ -340,6 +341,7 @@ function Header({
       </nav>
       <button className="baml-consult" onClick={onAuth}>Get Free Consultation</button>
       <div className="baml-actions">
+        <CountryBadge variant="inline" />
         <button className="baml-pill" onClick={onAuth} aria-label="Saved homes"><Heart size={21} /><span>{favCount}</span></button>
         <button className="baml-pill" onClick={onBasket} aria-label="Basket"><ShoppingBasket size={20} /><span>{basketCount}</span></button>
         <button className="baml-menu" aria-label="Open menu"><Menu size={29} /></button>

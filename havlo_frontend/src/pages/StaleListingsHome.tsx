@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
+import { CountryBadge } from '../components/shared/CountryBadge';
 import { useTypewriter } from '../hooks/useTypewriter';
 
 const pressLogos = [
@@ -116,19 +117,22 @@ const Header = () => (
     <Link to="/stale-listings" className="slh-logo" aria-label="Stale Listings by Havlo">
       <StaleListingsLogo className="slh-logo-mark" />
     </Link>
-    <nav className="slh-nav">
-      <a href="#how">How it works</a>
-      <a href="#methodology">Methodology</a>
-      <Link to="/stale-listings/partnerships">Partnerships</Link>
-      <a href="#reviews">Reviews</a>
-      <Link className="slh-nav-btn slh-nav-btn--dark" to="/stale-listings/agents">Agents</Link>
-      <Link className="slh-nav-btn" to="/stale-listings/seller">Sellers</Link>
-    </nav>
-    <button className="slh-menu" aria-label="Open navigation menu">
-      <span />
-      <span />
-      <span />
-    </button>
+    <div className="slh-header-actions">
+      <nav className="slh-nav">
+        <a href="#how">How it works</a>
+        <a href="#methodology">Methodology</a>
+        <Link to="/stale-listings/partnerships">Partnerships</Link>
+        <a href="#reviews">Reviews</a>
+        <Link className="slh-nav-btn slh-nav-btn--dark" to="/stale-listings/agents">Agents</Link>
+        <Link className="slh-nav-btn" to="/stale-listings/seller">Sellers</Link>
+      </nav>
+      <CountryBadge variant="inline" />
+      <button className="slh-menu" aria-label="Open navigation menu">
+        <span />
+        <span />
+        <span />
+      </button>
+    </div>
   </header>
 );
 
@@ -264,6 +268,7 @@ export const StaleListingsHome = () => {
         .slh-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#090909;background:#fff}
         .slh-problem-copy small,.slh-method>.slh-section-head>small,.slh-platforms>div>small,.slh-reviews>small{font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:20px;line-height:110%;letter-spacing:-0.05em}
         .slh-header{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 11%;border-bottom:1px solid #eee;background:#fff}
+        .slh-header-actions{display:flex;align-items:center;gap:20px}
         .slh-logo{display:inline-flex;align-items:center;color:#222;text-decoration:none}
         .slh-logo-mark{height:50px;width:auto;display:block}
         .slh-nav{display:flex;align-items:center;gap:34px;font-family:'Inter',sans-serif;font-weight:500;font-size:16px;line-height:150%;letter-spacing:-.02em;text-align:center}

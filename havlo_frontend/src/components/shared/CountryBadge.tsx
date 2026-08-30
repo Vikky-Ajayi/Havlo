@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { flagUrl } from '../../lib/geoCountries';
 import { ALL_COUNTRY_REGIONS } from '../../lib/allCountries';
-import { COUNTRY_CHANGED_EVENT, experienceRouteFor, getStoredCountry, isUK, setStoredCountry } from '../../lib/geo';
+import {
+  COUNTRY_CHANGED_EVENT,
+  detectCountryFromIP,
+  experienceRouteFor,
+  getStoredCountry,
+  isUK,
+  setStoredCountry,
+} from '../../lib/geo';
 
 // Every country (not the smaller curated investment-market list the
 // /countries marketing page shows — see allCountries.ts for why they're
@@ -17,12 +24,22 @@ function countryNameForIso(iso: string | null): string | null {
   return match ? match.name : null;
 }
 
-// Global country switcher: a small pill (flag + chevron) fixed to the top
-// of every page, matching the Figma reference. Clicking opens a dropdown
-// of countries grouped by region; picking one updates the badge's flag
-// and — if it moves you between the UK and international sides of the
-// site — redirects to that experience's entry point.
-export const CountryBadge = () => {
+// Module-level guard so that however many CountryBadge instances are on
+// screen (only one normally, but StrictMode double-mounts in dev), an
+// unresolved visitor only triggers one /api/geo call, not one per badge.
+let inFlightDetection: Promise<string | null> | null = null;
+
+// Global country switcher: a pill (flag + chevron) meant to sit inline in
+// a page's own header/navbar — see `variant`. Clicking opens a dropdown of
+// countries grouped by region; picking one updates the badge's flag and —
+// if it moves you between the UK and international sides of the site —
+// redirects to that experience's entry point.
+//
+// If no country is stored yet (a visitor who landed on some page other
+// than "/", where GeoHome normally does this), the badge resolves one
+// itself via IP geolocation on mount, so the flag is never left to a
+// manual choice just because the badge happened to mount first.
+export const CountryBadge = ({ variant = 'floating' }: { variant?: 'floating' | 'inline' }) => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -30,10 +47,19 @@ export const CountryBadge = () => {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setCurrentIso(getStoredCountry());
-    // Catches GeoHome's auto-detected country landing after this badge has
-    // already mounted and read the (then-empty) stored value — see the
-    // comment on setStoredCountry in lib/geo.ts.
+    const stored = getStoredCountry();
+    setCurrentIso(stored);
+    if (!stored) {
+      inFlightDetection ??= detectCountryFromIP();
+      inFlightDetection.then((detected) => {
+        // Another badge instance (or GeoHome) may have set a value while
+        // this call was in flight — don't clobber it with a stale result.
+        if (detected && !getStoredCountry()) setStoredCountry(detected, 'auto');
+      });
+    }
+    // Catches GeoHome's (or another badge instance's) auto-detected country
+    // landing after this badge has already mounted and read the (then-empty)
+    // stored value — see the comment on setStoredCountry in lib/geo.ts.
     const onCountryChanged = (e: Event) => setCurrentIso((e as CustomEvent<string>).detail);
     window.addEventListener(COUNTRY_CHANGED_EVENT, onCountryChanged);
     return () => window.removeEventListener(COUNTRY_CHANGED_EVENT, onCountryChanged);
@@ -80,7 +106,10 @@ export const CountryBadge = () => {
   };
 
   return (
-    <div ref={rootRef} className="fixed top-4 right-4 z-[70] sm:top-5 sm:right-5">
+    <div
+      ref={rootRef}
+      className={variant === 'inline' ? 'relative shrink-0' : 'fixed top-4 right-4 z-[70] sm:top-5 sm:right-5'}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -107,7 +136,7 @@ export const CountryBadge = () => {
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 mt-2 w-[300px] max-h-[70vh] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.18)] flex flex-col"
+          className="absolute right-0 z-[70] mt-2 w-[300px] max-h-[70vh] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_24px_60px_rgba(0,0,0,0.18)] flex flex-col"
         >
           <div className="p-3 border-b border-black/5">
             <input

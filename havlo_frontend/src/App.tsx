@@ -235,6 +235,32 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Pages outside the shared Navbar (each product has its own bespoke page
+// header) that now embed <CountryBadge variant="inline" /> directly in
+// that header. The Layout-level floating badge below is only a fallback
+// for everything else under the same route prefixes — mid-funnel/checkout
+// screens (e.g. /stale-listings/prospect, /custom-offers/plan) that have
+// no persistent header of their own to embed into.
+const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
+  '/stale-listings',
+  '/stale-listings/seller',
+  '/stale-listings/agents',
+  '/stale-listings/partnerships',
+  '/buyabroad/uk',
+  '/buyabroad/uk/agents',
+  '/buyabroad/uk/listings',
+  '/buyabroad/uk/basket',
+  '/buyabroad/uk/consultation',
+  '/buyabroad/uk/apply',
+  '/buyabroad/ghana',
+  '/buyabroad/southafrica',
+  '/buyabroad/kenya',
+  '/buyabroad/egypt',
+  '/custom-offers',
+]);
+const hasEmbeddedCountryBadge = (pathname: string) =>
+  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/uk/listings/');
+
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname } = useLocation();
   const isOnboarding = pathname.startsWith('/get-started');
@@ -245,8 +271,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
   // people move between the UK and international sides of the site), but
-  // not inside authenticated internal tooling.
-  const showCountryBadge = !isDashboard && !isAdmin;
+  // not inside authenticated internal tooling. Most pages now embed it
+  // directly in their own header/navbar (see EMBEDDED_COUNTRY_BADGE_PATHS
+  // and the shared Navbar) — this floating fallback only covers pages
+  // with no persistent header of their own.
+  const showCountryBadge = !isDashboard && !isAdmin && !hasEmbeddedCountryBadge(pathname);
 
   if (isDashboard || isAdmin || isStaleListings || isCustomOffers || isBuyAbroadUk) {
     return (
@@ -259,7 +288,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      {showCountryBadge && <CountryBadge />}
       <Navbar />
       <main className="flex-grow">
         {children}
