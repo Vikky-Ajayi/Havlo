@@ -34,7 +34,17 @@ async def run_direct_stale_listing_cycle() -> dict:
     # small page window therefore contains almost entirely new listings and
     # cannot reach the 180-day inventory. Search a broad, bounded window while
     # the discovery service handles detail requests concurrently.
-    batch_candidates = max(1200, target * 40)
+    #
+    # Floor raised 1200->4000: live cycle logs after the >=500k/houses-only
+    # criteria (commit 7980352) show an eligible rate of roughly 0.1-0.3%
+    # (e.g. 4 eligible out of 1218 scanned, 0 out of 1228 in the next cycle).
+    # Almost every scanned candidate is rejected at the cheap preliminary
+    # filter, before any detail fetch — a 1228-candidate, zero-eligible cycle
+    # took ~3 minutes end to end. There's clear headroom to scan several
+    # times more candidates per cycle without a proportionally longer cycle,
+    # which — at this eligible rate — is the most direct lever left for
+    # volume without loosening the price/property-type criteria itself.
+    batch_candidates = max(4000, target * 40)
     batch_pages = max(25, (batch_candidates + 23) // 24)
     result = await run_automatic_discovery_once(
         target_emails=remaining_target,
