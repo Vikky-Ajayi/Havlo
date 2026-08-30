@@ -8,9 +8,10 @@ import random
 import string
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path as FilePath
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1130,6 +1131,29 @@ async def set_console_prospect_treated(
     await db.commit()
     await db.refresh(prospect)
     return _console_list_item(prospect)
+
+
+@public_router.get("/prospects-console/prospects/{prospect_id}/letter.pdf")
+async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depends(get_db)) -> FileResponse:
+    """Serves the already-generated letter PDF off disk. There was
+    previously no way to reach this file over HTTP at all — every prior
+    delivery path (send_prospect_letter_to_admin) reads it straight off
+    disk into an email attachment, so prospect.letter_pdf_path has only
+    ever been an absolute filesystem path, never a URL."""
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect or not prospect.letter_pdf_path:
+        raise HTTPException(status_code=404, detail="No letter PDF has been generated for this prospect yet.")
+    path = FilePath(prospect.letter_pdf_path)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="The letter PDF file is missing on the server — try saving the report again to regenerate it.")
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=f"Havlo-letter-{prospect.property_code}.pdf",
+    )
 
 
 @admin_router.post(

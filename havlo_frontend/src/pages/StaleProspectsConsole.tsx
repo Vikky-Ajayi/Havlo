@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
 import type { StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
 
 // ── Report edit shape ───────────────────────────────────────────────────────
@@ -117,12 +117,14 @@ export const StaleProspectsConsole = () => {
   const [editForm, setEditForm] = useState<ReportEdit | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
 
   const openDetail = async (id: string) => {
     setSelectedId(id);
     setDetail(null);
     setEditForm(null);
     setSaveMsg('');
+    setViewMode('preview');
     setDetailLoading(true);
     try {
       const d = await api.staleProspectsConsoleGet(id);
@@ -265,6 +267,41 @@ export const StaleProspectsConsole = () => {
         .spc-scores-grid{display:grid;grid-template-columns:repeat(${isMobile ? 2 : 4},1fr);gap:10px}
         .spc-score-field label{font-size:11px}
         .spc-loading{padding:80px 0;text-align:center;color:#8A8F98;font-size:14px}
+        .spc-tabs{display:flex;gap:6px;border-bottom:1px solid #EEF0F3;margin:16px 0 18px}
+        .spc-tabs button{border:0;background:transparent;padding:10px 4px;margin-right:18px;font-size:13.5px;font-weight:800;color:#9AA0AA;cursor:pointer;border-bottom:2px solid transparent}
+        .spc-tabs button.active{color:#111;border-bottom-color:#111}
+        .spc-preview-head{display:flex;gap:16px;align-items:center;padding-bottom:18px;border-bottom:1px solid #EEF0F3;margin-bottom:18px}
+        .spc-preview-head img{width:96px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0}
+        .spc-preview-head h3{font-family:"Plus Jakarta Sans",sans-serif;font-size:17px;margin:0 0 4px}
+        .spc-preview-head p{margin:0;color:#6B7280;font-size:12.5px}
+        .spc-preview-score{margin-left:auto;text-align:center;flex-shrink:0}
+        .spc-preview-score b{display:block;font-family:"Plus Jakarta Sans",sans-serif;font-size:26px;font-weight:800}
+        .spc-preview-score span{color:#9AA0AA;font-size:11px;font-weight:700}
+        .spc-preview-section{margin-bottom:26px}
+        .spc-preview-section h4{font-family:"Plus Jakarta Sans",sans-serif;font-size:14.5px;font-weight:800;margin:0 0 10px}
+        .spc-preview-section p{font-size:13.5px;line-height:1.6;color:#333;margin:0 0 8px;white-space:pre-line}
+        .spc-preview-empty{color:#9AA0AA;font-style:italic}
+        .spc-preview-scores{display:grid;gap:10px}
+        .spc-preview-score-bar{display:grid;grid-template-columns:100px 1fr 30px;align-items:center;gap:10px;font-size:12px;text-transform:capitalize;color:#555}
+        .spc-preview-score-bar .track{height:8px;border-radius:999px;background:#F0F1F3;overflow:hidden}
+        .spc-preview-score-bar .fill{height:100%;background:#7C3AED;border-radius:999px}
+        .spc-preview-score-bar b{text-align:right;color:#111}
+        .spc-preview-card{border:1px solid #EEF0F3;border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#FAFAFB}
+        .spc-preview-card b{font-size:13.5px;display:block;margin-bottom:4px}
+        .spc-preview-card p{margin:0}
+        .spc-priority-tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;margin-right:4px}
+        .spc-priority-tag.p-urgent{background:#FEE2E2;color:#B91C1C}
+        .spc-priority-tag.p-high{background:#FEF3C7;color:#92400E}
+        .spc-priority-tag.p-medium{background:#ECFDF5;color:#047857}
+        .spc-preview-table{width:100%;border-collapse:collapse;font-size:12.5px}
+        .spc-preview-table th{text-align:left;color:#9AA0AA;font-size:11px;text-transform:uppercase;padding:0 8px 8px 0}
+        .spc-preview-table td{padding:8px 8px 8px 0;border-top:1px solid #EEF0F3}
+        @media print{
+          body *{visibility:hidden}
+          #spc-print-target,#spc-print-target *{visibility:visible}
+          #spc-print-target{position:absolute;top:0;left:0;width:100%;padding:24px}
+          .spc-preview-head img{display:block}
+        }
       `}</style>
 
       <div className="spc-shell">
@@ -350,74 +387,168 @@ export const StaleProspectsConsole = () => {
                 <p className="sub">{detail.postcode || 'No postcode'} · {detail.city || 'Unknown location'} · {money(detail.asking_price)} · {detail.listing_duration_days ?? '?'} days on market</p>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
                   <a className="spc-link" href={detail.rightmove_url} target="_blank" rel="noreferrer">View on Rightmove →</a>
-                  {detail.letter_pdf_path && <a className="spc-link" href={detail.letter_pdf_path} target="_blank" rel="noreferrer">Download letter PDF →</a>}
+                  {detail.letter_pdf_path && (
+                    <a className="spc-link" href={`${API_BASE}/stale-listings/prospects-console/prospects/${detail.prospect_id}/letter.pdf`} target="_blank" rel="noreferrer">
+                      Download letter PDF →
+                    </a>
+                  )}
                   <button className="spc-btn spc-btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => toggleTreated(detail.prospect_id, !detail.treated_at)}>
                     {detail.treated_at ? 'Marked treated — undo' : 'Mark as treated'}
                   </button>
                 </div>
                 {detail.is_edited && <p style={{ fontSize: 12, color: '#7C3AED', fontWeight: 700, margin: '0 0 10px' }}>This report has been edited from the original AI output.</p>}
 
-                <div className="spc-field">
-                  <label>Executive summary</label>
-                  <textarea value={editForm.executive_summary} onChange={e => setEditForm({ ...editForm, executive_summary: e.target.value })} />
+                <div className="spc-tabs">
+                  <button className={viewMode === 'preview' ? 'active' : ''} onClick={() => setViewMode('preview')}>Preview full report</button>
+                  <button className={viewMode === 'edit' ? 'active' : ''} onClick={() => setViewMode('edit')}>Edit report</button>
                 </div>
 
-                <div className="spc-section-title">Scores</div>
-                <div className="spc-scores-grid">
-                  <div className="spc-field spc-score-field"><label>Overall</label><input type="number" min={0} max={100} value={editForm.overall_score} onChange={e => setEditForm({ ...editForm, overall_score: Number(e.target.value) })} /></div>
-                  {(Object.keys(editForm.scores) as (keyof ReportEdit['scores'])[]).map(key => (
-                    <div className="spc-field spc-score-field" key={key}><label>{key}</label><input type="number" min={0} max={100} value={editForm.scores[key]} onChange={e => setEditForm({ ...editForm, scores: { ...editForm.scores, [key]: Number(e.target.value) } })} /></div>
-                  ))}
-                </div>
-
-                <div className="spc-section-title">Key findings ({editForm.key_findings.length})</div>
-                {editForm.key_findings.map((f, i) => (
-                  <div className="spc-repeat-item" key={i}>
-                    <div className="spc-repeat-item-head"><b>Finding {i + 1}</b><button className="spc-remove" onClick={() => setEditForm({ ...editForm, key_findings: editForm.key_findings.filter((_, idx) => idx !== i) })}>Remove</button></div>
-                    <div className="spc-field"><label>Title</label><input value={f.title} onChange={e => { const next = [...editForm.key_findings]; next[i] = { ...f, title: e.target.value }; setEditForm({ ...editForm, key_findings: next }); }} /></div>
-                    <div className="spc-field"><label>Description</label><textarea value={f.description} onChange={e => { const next = [...editForm.key_findings]; next[i] = { ...f, description: e.target.value }; setEditForm({ ...editForm, key_findings: next }); }} /></div>
-                  </div>
-                ))}
-                <button className="spc-add" onClick={() => setEditForm({ ...editForm, key_findings: [...editForm.key_findings, { title: '', description: '', type: 'issue' }] })}>+ Add finding</button>
-
-                <div className="spc-section-title">Action plan ({editForm.action_plan.length})</div>
-                {editForm.action_plan.map((a, i) => (
-                  <div className="spc-repeat-item" key={i}>
-                    <div className="spc-repeat-item-head"><b>Action {i + 1}</b><button className="spc-remove" onClick={() => setEditForm({ ...editForm, action_plan: editForm.action_plan.filter((_, idx) => idx !== i) })}>Remove</button></div>
-                    <div className="spc-row2">
-                      <div className="spc-field"><label>Priority</label>
-                        <select value={a.priority} onChange={e => { const next = [...editForm.action_plan]; next[i] = { ...a, priority: e.target.value }; setEditForm({ ...editForm, action_plan: next }); }}>
-                          <option>URGENT</option><option>HIGH</option><option>MEDIUM</option>
-                        </select>
+                {viewMode === 'preview' ? (
+                  <>
+                    <div style={{ margin: '4px 0 14px' }}>
+                      <button className="spc-btn spc-btn-ghost" onClick={() => window.print()}>🖨 Print / save full report as PDF</button>
+                    </div>
+                    <div id="spc-print-target">
+                      <div className="spc-preview-head">
+                        {detail.image_url && <img src={detail.image_url} alt="" />}
+                        <div>
+                          <h3>{detail.property_address}</h3>
+                          <p>{detail.postcode} · {detail.city} · {money(detail.asking_price)} · {detail.bedrooms ?? '?'} bed {detail.property_type || ''} · {detail.listing_duration_days ?? '?'} days on market</p>
+                        </div>
+                        <div className="spc-preview-score">
+                          <b>{editForm.overall_score}</b><span>/ 100</span>
+                        </div>
                       </div>
-                      <div className="spc-field"><label>Title</label><input value={a.title} onChange={e => { const next = [...editForm.action_plan]; next[i] = { ...a, title: e.target.value }; setEditForm({ ...editForm, action_plan: next }); }} /></div>
+
+                      <div className="spc-preview-section">
+                        <h4>Executive summary</h4>
+                        <p>{editForm.executive_summary || '—'}</p>
+                      </div>
+
+                      <div className="spc-preview-section">
+                        <h4>Scores</h4>
+                        <div className="spc-preview-scores">
+                          {(Object.keys(editForm.scores) as (keyof ReportEdit['scores'])[]).map(key => (
+                            <div key={key} className="spc-preview-score-bar">
+                              <span>{key}</span>
+                              <div className="track"><div className="fill" style={{ width: `${editForm.scores[key]}%` }} /></div>
+                              <b>{editForm.scores[key]}</b>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="spc-preview-section">
+                        <h4>Key findings</h4>
+                        {editForm.key_findings.length === 0 && <p className="spc-preview-empty">No findings.</p>}
+                        {editForm.key_findings.map((f, i) => (
+                          <div className="spc-preview-card" key={i}>
+                            <b>{i + 1}. {f.title || 'Untitled finding'}</b>
+                            <p>{f.description}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="spc-preview-section">
+                        <h4>Action plan</h4>
+                        {editForm.action_plan.length === 0 && <p className="spc-preview-empty">No actions.</p>}
+                        {editForm.action_plan.map((a, i) => (
+                          <div className="spc-preview-card" key={i}>
+                            <b>{i + 1}. <span className={`spc-priority-tag p-${a.priority.toLowerCase()}`}>{a.priority}</span> {a.title || 'Untitled action'}</b>
+                            <p>{a.description}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="spc-preview-section">
+                        <h4>Pricing recommendation</h4>
+                        <p><b>{editForm.pricing_recommendation || '—'}</b></p>
+                        <p>{editForm.pricing_recommendation_detail}</p>
+                      </div>
+
+                      {editForm.comparable_sales.length > 0 && (
+                        <div className="spc-preview-section">
+                          <h4>Comparable sales</h4>
+                          <table className="spc-preview-table">
+                            <thead><tr><th>Address</th><th>Type</th><th>Beds</th><th>Sold / asking</th></tr></thead>
+                            <tbody>
+                              {editForm.comparable_sales.map((c, i) => (
+                                <tr key={i}><td>{c.address}</td><td>{c.property_type}</td><td>{c.beds}</td><td>{c.sold_asking}</td></tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                    <div className="spc-field"><label>Description</label><textarea value={a.description} onChange={e => { const next = [...editForm.action_plan]; next[i] = { ...a, description: e.target.value }; setEditForm({ ...editForm, action_plan: next }); }} /></div>
-                  </div>
-                ))}
-                <button className="spc-add" onClick={() => setEditForm({ ...editForm, action_plan: [...editForm.action_plan, { priority: 'MEDIUM', title: '', description: '', bullets: [] }] })}>+ Add action</button>
-
-                <div className="spc-section-title">Pricing</div>
-                <div className="spc-field"><label>Recommendation (headline)</label><input value={editForm.pricing_recommendation} onChange={e => setEditForm({ ...editForm, pricing_recommendation: e.target.value })} /></div>
-                <div className="spc-field"><label>Recommendation (detail)</label><textarea value={editForm.pricing_recommendation_detail} onChange={e => setEditForm({ ...editForm, pricing_recommendation_detail: e.target.value })} /></div>
-
-                <div className="spc-section-title">Comparable sales ({editForm.comparable_sales.length})</div>
-                {editForm.comparable_sales.map((c, i) => (
-                  <div className="spc-repeat-item" key={i}>
-                    <div className="spc-repeat-item-head"><b>Comparable {i + 1}</b><button className="spc-remove" onClick={() => setEditForm({ ...editForm, comparable_sales: editForm.comparable_sales.filter((_, idx) => idx !== i) })}>Remove</button></div>
-                    <div className="spc-row2">
-                      <div className="spc-field"><label>Address</label><input value={c.address} onChange={e => { const next = [...editForm.comparable_sales]; next[i] = { ...c, address: e.target.value }; setEditForm({ ...editForm, comparable_sales: next }); }} /></div>
-                      <div className="spc-field"><label>Sold / asking</label><input value={c.sold_asking} onChange={e => { const next = [...editForm.comparable_sales]; next[i] = { ...c, sold_asking: e.target.value }; setEditForm({ ...editForm, comparable_sales: next }); }} /></div>
+                    <div className="spc-save-bar">
+                      <button className="spc-btn spc-btn-ghost" onClick={closeDetail}>Close</button>
                     </div>
-                  </div>
-                ))}
-                <button className="spc-add" onClick={() => setEditForm({ ...editForm, comparable_sales: [...editForm.comparable_sales, { address: '', beds: '', property_type: '', sold_asking: '' }] })}>+ Add comparable</button>
+                  </>
+                ) : (
+                  <>
+                    <div className="spc-field">
+                      <label>Executive summary</label>
+                      <textarea value={editForm.executive_summary} onChange={e => setEditForm({ ...editForm, executive_summary: e.target.value })} />
+                    </div>
 
-                <div className="spc-save-bar">
-                  {saveMsg && <span className="spc-save-msg">{saveMsg}</span>}
-                  <button className="spc-btn spc-btn-ghost" onClick={closeDetail}>Close</button>
-                  <button className="spc-btn spc-btn-primary" disabled={saving} onClick={saveEdit}>{saving ? 'Saving...' : 'Save & regenerate letter'}</button>
-                </div>
+                    <div className="spc-section-title">Scores</div>
+                    <div className="spc-scores-grid">
+                      <div className="spc-field spc-score-field"><label>Overall</label><input type="number" min={0} max={100} value={editForm.overall_score} onChange={e => setEditForm({ ...editForm, overall_score: Number(e.target.value) })} /></div>
+                      {(Object.keys(editForm.scores) as (keyof ReportEdit['scores'])[]).map(key => (
+                        <div className="spc-field spc-score-field" key={key}><label>{key}</label><input type="number" min={0} max={100} value={editForm.scores[key]} onChange={e => setEditForm({ ...editForm, scores: { ...editForm.scores, [key]: Number(e.target.value) } })} /></div>
+                      ))}
+                    </div>
+
+                    <div className="spc-section-title">Key findings ({editForm.key_findings.length})</div>
+                    {editForm.key_findings.map((f, i) => (
+                      <div className="spc-repeat-item" key={i}>
+                        <div className="spc-repeat-item-head"><b>Finding {i + 1}</b><button className="spc-remove" onClick={() => setEditForm({ ...editForm, key_findings: editForm.key_findings.filter((_, idx) => idx !== i) })}>Remove</button></div>
+                        <div className="spc-field"><label>Title</label><input value={f.title} onChange={e => { const next = [...editForm.key_findings]; next[i] = { ...f, title: e.target.value }; setEditForm({ ...editForm, key_findings: next }); }} /></div>
+                        <div className="spc-field"><label>Description</label><textarea value={f.description} onChange={e => { const next = [...editForm.key_findings]; next[i] = { ...f, description: e.target.value }; setEditForm({ ...editForm, key_findings: next }); }} /></div>
+                      </div>
+                    ))}
+                    <button className="spc-add" onClick={() => setEditForm({ ...editForm, key_findings: [...editForm.key_findings, { title: '', description: '', type: 'issue' }] })}>+ Add finding</button>
+
+                    <div className="spc-section-title">Action plan ({editForm.action_plan.length})</div>
+                    {editForm.action_plan.map((a, i) => (
+                      <div className="spc-repeat-item" key={i}>
+                        <div className="spc-repeat-item-head"><b>Action {i + 1}</b><button className="spc-remove" onClick={() => setEditForm({ ...editForm, action_plan: editForm.action_plan.filter((_, idx) => idx !== i) })}>Remove</button></div>
+                        <div className="spc-row2">
+                          <div className="spc-field"><label>Priority</label>
+                            <select value={a.priority} onChange={e => { const next = [...editForm.action_plan]; next[i] = { ...a, priority: e.target.value }; setEditForm({ ...editForm, action_plan: next }); }}>
+                              <option>URGENT</option><option>HIGH</option><option>MEDIUM</option>
+                            </select>
+                          </div>
+                          <div className="spc-field"><label>Title</label><input value={a.title} onChange={e => { const next = [...editForm.action_plan]; next[i] = { ...a, title: e.target.value }; setEditForm({ ...editForm, action_plan: next }); }} /></div>
+                        </div>
+                        <div className="spc-field"><label>Description</label><textarea value={a.description} onChange={e => { const next = [...editForm.action_plan]; next[i] = { ...a, description: e.target.value }; setEditForm({ ...editForm, action_plan: next }); }} /></div>
+                      </div>
+                    ))}
+                    <button className="spc-add" onClick={() => setEditForm({ ...editForm, action_plan: [...editForm.action_plan, { priority: 'MEDIUM', title: '', description: '', bullets: [] }] })}>+ Add action</button>
+
+                    <div className="spc-section-title">Pricing</div>
+                    <div className="spc-field"><label>Recommendation (headline)</label><input value={editForm.pricing_recommendation} onChange={e => setEditForm({ ...editForm, pricing_recommendation: e.target.value })} /></div>
+                    <div className="spc-field"><label>Recommendation (detail)</label><textarea value={editForm.pricing_recommendation_detail} onChange={e => setEditForm({ ...editForm, pricing_recommendation_detail: e.target.value })} /></div>
+
+                    <div className="spc-section-title">Comparable sales ({editForm.comparable_sales.length})</div>
+                    {editForm.comparable_sales.map((c, i) => (
+                      <div className="spc-repeat-item" key={i}>
+                        <div className="spc-repeat-item-head"><b>Comparable {i + 1}</b><button className="spc-remove" onClick={() => setEditForm({ ...editForm, comparable_sales: editForm.comparable_sales.filter((_, idx) => idx !== i) })}>Remove</button></div>
+                        <div className="spc-row2">
+                          <div className="spc-field"><label>Address</label><input value={c.address} onChange={e => { const next = [...editForm.comparable_sales]; next[i] = { ...c, address: e.target.value }; setEditForm({ ...editForm, comparable_sales: next }); }} /></div>
+                          <div className="spc-field"><label>Sold / asking</label><input value={c.sold_asking} onChange={e => { const next = [...editForm.comparable_sales]; next[i] = { ...c, sold_asking: e.target.value }; setEditForm({ ...editForm, comparable_sales: next }); }} /></div>
+                        </div>
+                      </div>
+                    ))}
+                    <button className="spc-add" onClick={() => setEditForm({ ...editForm, comparable_sales: [...editForm.comparable_sales, { address: '', beds: '', property_type: '', sold_asking: '' }] })}>+ Add comparable</button>
+
+                    <div className="spc-save-bar">
+                      {saveMsg && <span className="spc-save-msg">{saveMsg}</span>}
+                      <button className="spc-btn spc-btn-ghost" onClick={closeDetail}>Close</button>
+                      <button className="spc-btn spc-btn-primary" disabled={saving} onClick={saveEdit}>{saving ? 'Saving...' : 'Save & regenerate letter'}</button>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -434,7 +565,8 @@ export const StaleProspectsConsole = () => {
             {manualSuccess ? (
               <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 12, padding: 16 }}>
                 <p style={{ margin: '0 0 8px', fontWeight: 800, color: '#047857' }}>Created — property code {manualSuccess.property_code}</p>
-                <a className="spc-link" href={manualSuccess.preview_url} target="_blank" rel="noreferrer">Open report preview →</a>
+                <a className="spc-link" href={manualSuccess.preview_url} target="_blank" rel="noreferrer">Open QR landing page →</a>
+                <p style={{ fontSize: 12, color: '#8A8F98', margin: '8px 0 0' }}>That's the same page a scanned letter opens — it walks through confirm/payment like a real recipient would. Use "Preview full report" on the property card for the report/letter content itself.</p>
                 <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
                   <button className="spc-btn spc-btn-ghost" onClick={() => setManualSuccess(null)}>Add another</button>
                   <button className="spc-btn spc-btn-primary" onClick={closeManual}>Done</button>
