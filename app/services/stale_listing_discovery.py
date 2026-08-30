@@ -7,7 +7,7 @@ import logging
 import os
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -603,6 +603,7 @@ class _DiscoveryState:
     lock: asyncio.Lock
     detail_sem: asyncio.Semaphore
     finalize_sem: asyncio.Semaphore
+    sheets_sem: asyncio.Semaphore
     processed: int = 0
     candidates_seen: int = 0
     eligible_count: int = 0
@@ -612,6 +613,10 @@ class _DiscoveryState:
     emails_sent: int = 0
     target_reached: bool = False
     dirty: bool = False
+    # Google Sheets bookkeeping (record row + backfill property code) is
+    # fired off finalize_sem's critical path — see _sync_prospect_to_sheets
+    # — so the run must wait for these before it reports "completed".
+    background_tasks: list[asyncio.Task] = field(default_factory=list)
 
 
 async def _flush_run_progress(state: _DiscoveryState) -> None:
@@ -646,6 +651,42 @@ async def _record_skip(state: _DiscoveryState, candidate: Candidate, *, reason: 
             **extra,
         })
         state.dirty = True
+
+
+async def _sync_prospect_to_sheets(
+    state: _DiscoveryState,
+    record_payload: dict[str, Any],
+    property_code_future: "asyncio.Future[str | None]",
+) -> None:
+    """Record a qualifying address in Google Sheets, then backfill its
+    property code once the prospect row exists — off finalize_sem's
+    critical path.
+
+    Each of those two calls is a full-sheet read plus a write, and under
+    Sheets rate limiting (now retried with backoff — see
+    google_sheets._with_retry) a single call can take several seconds.
+    Previously both were awaited directly inside _finalize_candidate,
+    which meant every one of finalize_sem's few concurrent slots (default
+    4) sat blocked on Sheets I/O instead of moving on to the next
+    candidate — the actual ceiling on how many prospects one 15-minute
+    discovery cycle could finish. This runs under its own, wider
+    semaphore instead, so Sheets latency no longer throttles prospect
+    creation. record_stale_listing_address/update_stale_listing_property_code
+    already catch every exception internally, so nothing here needs a
+    try/except of its own.
+    """
+    async with state.sheets_sem:
+        await asyncio.to_thread(google_sheets.record_stale_listing_address, record_payload)
+    property_code = await property_code_future
+    if not property_code:
+        return
+    async with state.sheets_sem:
+        await asyncio.to_thread(
+            google_sheets.update_stale_listing_property_code,
+            rightmove_id=record_payload.get("rightmove_id") or "",
+            listing_url=record_payload.get("listing_url") or "",
+            property_code=property_code,
+        )
 
 
 async def _finalize_candidate(
@@ -720,25 +761,37 @@ async def _finalize_candidate(
                 return
 
         # Keep a separate address register for every qualifying 180-day-plus
-        # listing, even before report/email processing completes. This and
-        # everything below runs without the lock held.
-        await asyncio.to_thread(
-            google_sheets.record_stale_listing_address,
-            {
-                "rightmove_id": candidate.rightmove_id,
-                "property_address": address,
-                "postcode": snapshot.get("postcode") or "",
-                "city": candidate.city,
-                "asking_price": price,
-                "listed_date": listed_date,
-                "listing_duration_days": duration_days,
-                "property_type": snapshot.get("property_type") or candidate.property_type,
-                "bedrooms": snapshot.get("bedrooms") or candidate.bedrooms or "",
-                "bathrooms": snapshot.get("bathrooms") or candidate.bathrooms or "",
-                "listing_url": candidate.url,
-                "discovery_run_id": str(state.run_uuid),
-            },
+        # listing, even before report/email processing completes. Fired as
+        # a detached task (own semaphore, not finalize_sem) rather than
+        # awaited here — a full-sheet read+write is several seconds even
+        # without rate-limit retries, and awaiting it in-line meant this
+        # candidate held one of only finalize_sem's few concurrent slots
+        # for that whole time. property_code_future lets the trailing
+        # property-code backfill still wait for this candidate's own
+        # prospect row (created below) without blocking finalize_sem either.
+        property_code_future: "asyncio.Future[str | None]" = asyncio.get_running_loop().create_future()
+        sync_task = asyncio.create_task(
+            _sync_prospect_to_sheets(
+                state,
+                {
+                    "rightmove_id": candidate.rightmove_id,
+                    "property_address": address,
+                    "postcode": snapshot.get("postcode") or "",
+                    "city": candidate.city,
+                    "asking_price": price,
+                    "listed_date": listed_date,
+                    "listing_duration_days": duration_days,
+                    "property_type": snapshot.get("property_type") or candidate.property_type,
+                    "bedrooms": snapshot.get("bedrooms") or candidate.bedrooms or "",
+                    "bathrooms": snapshot.get("bathrooms") or candidate.bathrooms or "",
+                    "listing_url": candidate.url,
+                    "discovery_run_id": str(state.run_uuid),
+                },
+                property_code_future,
+            )
         )
+        async with state.lock:
+            state.background_tasks.append(sync_task)
 
         try:
             async with AsyncSessionLocal() as db:
@@ -778,15 +831,13 @@ async def _finalize_candidate(
                     "email_sent": email_sent,
                 }
 
-            # The earlier record_stale_listing_address call ran before this
-            # prospect (and its property code) existed, so that row's Property
-            # Code column was left blank. Fill it in now that the code exists.
-            await asyncio.to_thread(
-                google_sheets.update_stale_listing_property_code,
-                rightmove_id=candidate.rightmove_id,
-                listing_url=candidate.url,
-                property_code=prospect.property_code,
-            )
+            # The Sheets row-record task fired above ran before this prospect
+            # (and its property code) existed, so that row's Property Code
+            # column was left blank. Resolving this future lets that task's
+            # own backfill step fill it in now that the code exists, without
+            # this candidate waiting on another Sheets round trip itself.
+            if not property_code_future.done():
+                property_code_future.set_result(prospect.property_code)
             async with state.lock:
                 state.created_count += 1
                 if email_sent:
@@ -798,6 +849,8 @@ async def _finalize_candidate(
                 await _flush_run_progress(state)
         except Exception as exc:
             logger.exception("Failed to process stale prospect %s", candidate.url)
+            if not property_code_future.done():
+                property_code_future.set_result(None)
             async with state.lock:
                 state.failed_count += 1
                 state.results["failed"].append({
@@ -1001,10 +1054,21 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
         params=params,
         results=results,
         lock=asyncio.Lock(),
-        detail_sem=asyncio.Semaphore(max(2, min(32, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 10)))),
-        finalize_sem=asyncio.Semaphore(max(1, min(12, _env_int("STALE_LISTINGS_FINALIZE_CONCURRENCY", 4)))),
+        # finalize_sem raised from 4: it now mainly gates DB write + PDF
+        # render + one admin email, since Sheets I/O (the slowest, least
+        # predictable part under rate limiting) moved to its own sheets_sem
+        # below instead of sharing this one. detail_sem is left only
+        # slightly up from 10 — it hits Rightmove directly with no proxy
+        # (see scraper_base.scraper_http_client), so pushing that one hard
+        # risks IP-level blocking, a far worse outcome than the current
+        # shortfall.
+        detail_sem=asyncio.Semaphore(max(2, min(32, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 12)))),
+        finalize_sem=asyncio.Semaphore(max(1, min(12, _env_int("STALE_LISTINGS_FINALIZE_CONCURRENCY", 6)))),
+        sheets_sem=asyncio.Semaphore(max(2, min(16, _env_int("STALE_LISTINGS_SHEETS_CONCURRENCY", 6)))),
     )
-    location_concurrency = max(1, min(20, _env_int("STALE_LISTINGS_LOCATION_CONCURRENCY", 6)))
+    # Raised from 6: same Rightmove-blocking caution as detail_sem above,
+    # kept to a modest bump rather than the full 20 cap.
+    location_concurrency = max(1, min(20, _env_int("STALE_LISTINGS_LOCATION_CONCURRENCY", 8)))
     location_sem = asyncio.Semaphore(location_concurrency)
     locations = _locations_for_request(params.location_names)
 
@@ -1060,6 +1124,26 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
             await _save_location_rotation_offset(
                 (rotation_offset + location_concurrency) % len(locations)
             )
+
+        # These are the detached Sheets sync tasks from _finalize_candidate —
+        # not on finalize_sem's critical path, but the run shouldn't report
+        # "completed" while a chunk of it is still writing to the sheet.
+        # Bounded wait: they're best-effort (record_stale_listing_address/
+        # update_stale_listing_property_code already swallow their own
+        # errors), and the reconciliation sync tool covers anything that's
+        # still in flight when this deadline hits.
+        if state.background_tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*state.background_tasks, return_exceptions=True),
+                    timeout=120.0,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Discovery run %s: %d Sheets sync task(s) still running after 120s "
+                    "— leaving them to finish in the background.",
+                    run_id, len(state.background_tasks),
+                )
 
         async with state.lock:
             state.dirty = True

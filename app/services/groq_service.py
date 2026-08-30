@@ -4,13 +4,49 @@ from __future__ import annotations
 from copy import deepcopy
 import logging
 import re
-from typing import Any, Optional
+import time
+from typing import Any, Callable, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
 # Keep the model in one shared constant because all report generators use the
 # same production model.
 GROQ_MODEL = "openai/gpt-oss-120b"
+
+_T = TypeVar("_T")
+
+
+def _with_groq_retry(fn: Callable[[], _T], *, retries: int = 3, base_delay: float = 1.0) -> _T:
+    """Retry a synchronous Groq call on rate-limit/transient-server errors,
+    with exponential backoff.
+
+    Every prospect the automated stale-listing discovery loop finds pays
+    for exactly one first-pass report call here (see generate_stale_listing_
+    report's expand_report=False path) — with no retry, a single Groq 429
+    (very plausible: this call runs at up to finalize_sem concurrent
+    candidates, currently 6, per 15-minute discovery cycle, with no backoff
+    of its own) permanently lost that candidate as a "failed" prospect for
+    the cycle, the same class of silent-drop bug _with_retry fixed for
+    Google Sheets writes.
+    """
+    import groq
+
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            return fn()
+        except (groq.RateLimitError, groq.InternalServerError, groq.APIConnectionError, groq.APITimeoutError) as exc:
+            last_exc = exc
+            if attempt == retries - 1:
+                raise
+            delay = base_delay * (2**attempt)
+            logger.warning(
+                "Groq API error (%s) — retrying in %.1fs (attempt %d/%d)",
+                type(exc).__name__, delay, attempt + 1, retries,
+            )
+            time.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
 
 # Fixed, non-AI-generated advisory items appended to every stale-listing
 # report's action_plan, after whatever property-specific items the model
@@ -1423,7 +1459,7 @@ Return this exact shape:
                 if str(a.get("title") or "").strip().lower() not in _standing_titles_pre
             ]
         else:
-            raw = await _aio.to_thread(_call_groq)
+            raw = await _aio.to_thread(_with_groq_retry, _call_groq)
             parsed = _extract_json(raw)
         # Ensure backward-compat defaults for new / optional fields
         parsed.setdefault("days_on_market", None)
