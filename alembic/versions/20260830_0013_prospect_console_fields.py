@@ -35,13 +35,36 @@ def upgrade() -> None:
         "CREATE INDEX IF NOT EXISTS ix_stale_listing_prospects_city "
         "ON stale_listing_prospects (city)"
     )
+    # Per-row exception handling rather than one bulk UPDATE: every prospect's
+    # listing_snapshot_json has always been written by json.dumps() in
+    # Python, so it should always cast to jsonb cleanly — but if even one
+    # legacy/edge-case row doesn't, a single bulk UPDATE's ::jsonb cast
+    # failing on that one row aborts the entire statement (and since this
+    # runs as part of `alembic upgrade head && uvicorn ...` at deploy time,
+    # that means the whole app fails to start). Looping with a per-row
+    # EXCEPTION WHEN OTHERS means one bad row is skipped, not fatal.
     op.execute(
         """
-        UPDATE stale_listing_prospects
-        SET city = NULLIF(listing_snapshot_json::jsonb ->> 'city', '')
-        WHERE city IS NULL
-          AND listing_snapshot_json IS NOT NULL
-          AND listing_snapshot_json != ''
+        DO $$
+        DECLARE
+            r RECORD;
+        BEGIN
+            FOR r IN
+                SELECT id, listing_snapshot_json
+                FROM stale_listing_prospects
+                WHERE city IS NULL
+                  AND listing_snapshot_json IS NOT NULL
+                  AND listing_snapshot_json != ''
+            LOOP
+                BEGIN
+                    UPDATE stale_listing_prospects
+                    SET city = NULLIF(r.listing_snapshot_json::jsonb ->> 'city', '')
+                    WHERE id = r.id;
+                EXCEPTION WHEN OTHERS THEN
+                    NULL;
+                END;
+            END LOOP;
+        END $$;
         """
     )
 
