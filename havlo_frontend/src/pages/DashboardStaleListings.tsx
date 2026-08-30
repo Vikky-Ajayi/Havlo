@@ -329,7 +329,7 @@ const ReportPreviewPanel: React.FC<{
             <h4 style={{ margin: 0, fontFamily: '"Plus Jakarta Sans", sans-serif', fontWeight: 800, fontSize: 16 }}>{action.title || `Action ${idx + 1}`}</h4>
           </div>
           <PreviewCopy text={action.description} />
-          {action.bullets.length > 0 && (
+          {(action.bullets || []).length > 0 && (
             <ul style={{ margin: '10px 0 0 18px', padding: 0, display: 'grid', gap: 6 }}>
               {action.bullets.filter(Boolean).map((bullet, bulletIdx) => (
                 <li key={`${bulletIdx}-${bullet.slice(0, 16)}`} style={{ color: '#333333', fontSize: 13, lineHeight: 1.7 }}>{bullet}</li>

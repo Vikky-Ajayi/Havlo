@@ -30,7 +30,10 @@ interface ReportData {
   days_on_market?: number | null;
   scores: { photos: number; pricing: number; description: number; positioning: number };
   key_findings: { title: string; description: string; type: string; icon?: string }[];
-  action_plan: { priority: string; title: string; description: string; bullets: string[] }[];
+  // priority/bullets are optional: the standing advisory items every report's
+  // action_plan ends with (see STANDING_ADVISORY_ACTIONS in groq_service.py)
+  // are plain narrative items with neither field set.
+  action_plan: { priority?: string; title: string; description: string; bullets?: string[] }[];
   comparable_sales: ComparableSale[];
   pricing_recommendation: string;
   pricing_recommendation_detail: string;
@@ -1900,20 +1903,24 @@ export function StaleListingsReport() {
                       <h2>Prioritised Action Plan</h2>
                       <div className="slr-action-list">
                         {report.action_plan.map((item, index) => {
-                          const accent = PRIORITY_ACCENTS[item.priority] || PRIORITY_ACCENTS.MEDIUM;
+                          const accent = item.priority ? (PRIORITY_ACCENTS[item.priority] || PRIORITY_ACCENTS.MEDIUM) : null;
                           return (
                             <div key={`${item.title}-${index}`} className="slr-action-item">
                               <div className="slr-action-index">{index + 1}</div>
                               <div className="slr-action-copy">
                                 <h3>
-                                  <span className="slr-action-priority" style={{ color: accent.color }}>{item.priority}</span>
-                                  <span>—</span>
+                                  {accent ? (
+                                    <>
+                                      <span className="slr-action-priority" style={{ color: accent.color }}>{item.priority}</span>
+                                      <span>—</span>
+                                    </>
+                                  ) : null}
                                   <span>{item.title}</span>
                                 </h3>
                                 <ReadableLongForm text={item.description} className="slr-readable-copy" />
-                                {item.bullets.length > 0 ? (
+                                {(item.bullets || []).length > 0 ? (
                                   <ul>
-                                    {item.bullets.map((bullet, bulletIndex) => (
+                                    {item.bullets!.map((bullet, bulletIndex) => (
                                       <li key={`${bulletIndex}-${bullet}`}>{bullet}</li>
                                     ))}
                                   </ul>
@@ -2089,20 +2096,24 @@ export function StaleListingsReport() {
                       <h2 className="slr-pdf-section-title">Prioritised Action Plan</h2>
                       <div className="slr-pdf-action-list">
                         {report.action_plan.map((item, index) => {
-                          const accent = PRIORITY_ACCENTS[item.priority] || PRIORITY_ACCENTS.MEDIUM;
+                          const accent = item.priority ? (PRIORITY_ACCENTS[item.priority] || PRIORITY_ACCENTS.MEDIUM) : null;
                           return (
                             <article key={`pdf-action-${item.title}-${index}`} className="slr-pdf-action-card">
                               <div className="slr-pdf-action-index">{index + 1}</div>
                               <div className="slr-pdf-action-body">
                                 <div className="slr-pdf-action-head">
-                                  <span className="slr-pdf-action-priority" style={{ color: accent.color }}>{item.priority}</span>
-                                  <span className="slr-pdf-action-divider">—</span>
+                                  {accent ? (
+                                    <>
+                                      <span className="slr-pdf-action-priority" style={{ color: accent.color }}>{item.priority}</span>
+                                      <span className="slr-pdf-action-divider">—</span>
+                                    </>
+                                  ) : null}
                                   <span className="slr-pdf-action-title">{item.title}</span>
                                 </div>
                                 <ReadableLongForm text={item.description} className="slr-pdf-action-readable" />
-                                {item.bullets.length > 0 ? (
+                                {(item.bullets || []).length > 0 ? (
                                   <ul className="slr-pdf-action-bullets">
-                                    {item.bullets.map((bullet, bulletIndex) => (
+                                    {item.bullets!.map((bullet, bulletIndex) => (
                                       <li key={`pdf-action-bullet-${index}-${bulletIndex}`}>{bullet}</li>
                                     ))}
                                   </ul>

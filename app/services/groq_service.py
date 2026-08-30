@@ -12,6 +12,69 @@ logger = logging.getLogger(__name__)
 # same production model.
 GROQ_MODEL = "openai/gpt-oss-120b"
 
+# Fixed, non-AI-generated advisory items appended to every stale-listing
+# report's action_plan, after whatever property-specific items the model
+# generated. Unlike the rest of action_plan, this content never varies
+# between reports or reruns — it's universal advice (plus the Sell Faster /
+# Havlo Relaunch cross-sell in #2) that should never depend on the model
+# choosing to include it. No priority/why_it_matters/bullets on purpose:
+# RecommendationContent (StaleProspectWizard.tsx) only renders those fields
+# when present, and these are meant to read as plain narrative paragraphs.
+STANDING_ADVISORY_ACTIONS: list[dict[str, Any]] = [
+    {
+        "title": "Neighbourhood Buyer Outreach",
+        "description": (
+            "Your property's next buyer may already live nearby — or have a reason to want to.\n\n"
+            "Neighbouring households are an often-overlooked source of potential buyers. A neighbour may "
+            "have family members, adult children, friends or colleagues who would like to live closer, or "
+            "they may personally be considering purchasing a larger, smaller or additional property within "
+            "the area.\n\n"
+            "Some Havlo clients have used targeted neighbourhood outreach to generate buyer interest within "
+            "weeks, including from people who were not actively searching for a property.\n\n"
+            "We recommend asking your agent to create a dedicated property flyer or letter and distribute it "
+            "to carefully selected surrounding households. Rather than simply announcing that the property is "
+            "for sale, the communication should clearly present the opportunity and encourage neighbours to "
+            "share it with anyone they know who may want to live nearby.\n\n"
+            "This creates a direct route to potential buyers who may never have encountered the property "
+            "through Rightmove, Zoopla or other portals."
+        ),
+    },
+    {
+        "title": "Havlo Premium Digital Buyer Acquisition",
+        "description": (
+            "You may also wish to explore Sell Faster (Havlo Relaunch™) — Havlo's property-intelligence-led "
+            "digital buyer acquisition programme, designed to work alongside your existing estate agent.\n\n"
+            "Using insights from your property's market position, Havlo identifies relevant buyer audiences "
+            "and develops precision-targeted Meta campaigns designed to reach potential buyers based on "
+            "factors such as location, lifestyle, interests and potential buyer profile.\n\n"
+            "Rather than relying solely on buyers actively searching property portals, Sell Faster (Havlo "
+            "Relaunch™) adds an additional route to market by taking the property directly to potential "
+            "buyers who may not yet be searching.\n\n"
+            "Your estate agent remains your agent. Havlo's role is to provide additional property intelligence "
+            "and buyer reach to support the existing sales process."
+        ),
+    },
+    {
+        "title": "Explore Alternative Buyer Profiles",
+        "description": (
+            "Ask your agent to consider buyer groups beyond the traditional owner-occupier, including private "
+            "investors, landlords, relocation buyers and second-home purchasers.\n\n"
+            "For example, a buyer may see greater value in purchasing the property as a rental investment "
+            "rather than occupying it themselves."
+        ),
+    },
+    {
+        "title": "Reposition the Opportunity",
+        "description": (
+            "Consider whether the property's strongest proposition is being communicated effectively.\n\n"
+            "This could include its investment potential, rental opportunity, location, lifestyle appeal or "
+            "suitability for a particular type of buyer.\n\n"
+            "Sometimes the challenge is not simply finding more buyers, it is reaching the right buyers with "
+            "the right proposition."
+        ),
+    },
+]
+
 
 def _get_client():
     from groq import Groq
@@ -540,7 +603,21 @@ async def generate_stale_listing_report(
             finding["impact"] = _ensure_sentence(impact)
             finding["recommend"] = _ensure_sentence(recommend)
 
-        actions = normalised.get("action_plan") or []
+        # Strip any standing advisory items already present (an "unlock the
+        # full report" call re-normalises a base_report that was already
+        # through this function once, so its action_plan already has them
+        # appended) before anything below touches this list — otherwise the
+        # AI-oriented loop right below would run _expand_action_copy on their
+        # fixed wording and tack on a priority/why_it_matters/bullets that
+        # shouldn't be there, and the expansion pass further down would burn
+        # a Groq call trying to write "new angle" addenda for them. The
+        # canonical copies are appended back, untouched, at the end of this
+        # function — see STANDING_ADVISORY_ACTIONS below.
+        _standing_titles = {item["title"].lower() for item in STANDING_ADVISORY_ACTIONS}
+        actions = [
+            a for a in (normalised.get("action_plan") or [])
+            if _clean_scalar(a.get("title")).lower() not in _standing_titles
+        ]
         for action in actions:
             action["priority"] = (_clean_scalar(action.get("priority")) or "HIGH").upper()
             action["title"] = _clean_scalar(action.get("title")) or "Immediate corrective action"
@@ -565,6 +642,20 @@ async def generate_stale_listing_report(
                 )
             action["why_it_matters"] = _ensure_sentence(why_it_matters)
 
+        # thirty_day_plan's fallback week-titles come from the model's own
+        # action_plan titles only — computed before the standing items below
+        # are appended, so a generic advisory title never leaks into a week
+        # theme meant to summarise this property's specific action plan.
+        action_titles = [a.get("title", "") for a in actions if _clean_scalar(a.get("title"))]
+        normalised["thirty_day_plan"] = _normalise_thirty_day_plan(normalised.get("thirty_day_plan"), action_titles)
+
+        # Standing advisory items (see STANDING_ADVISORY_ACTIONS) are appended
+        # after the model's own property-specific action_plan, not run through
+        # the normalisation loop above — that loop's defaulting/expansion is
+        # meant for AI-generated content and would overwrite this fixed
+        # wording. Numbering in the UI continues from the model's items.
+        normalised["action_plan"] = actions + deepcopy(STANDING_ADVISORY_ACTIONS)
+
         comparable_sales = []
         for sale in normalised.get("comparable_sales", []):
             comparable_sales.append(
@@ -578,8 +669,6 @@ async def generate_stale_listing_report(
             )
         normalised["comparable_sales"] = comparable_sales
         normalised["active_competition"] = _normalise_active_competition(normalised.get("active_competition"), price_anchor)
-        action_titles = [a.get("title", "") for a in actions if _clean_scalar(a.get("title"))]
-        normalised["thirty_day_plan"] = _normalise_thirty_day_plan(normalised.get("thirty_day_plan"), action_titles)
         return normalised
 
     # ── Plan-specific prompts ────────────────────────────────────────────────────
@@ -1322,6 +1411,17 @@ Return this exact shape:
             # here would make the preview and the unlocked report disagree.
             parsed = deepcopy(base_report)
             parsed.pop("_expanded", None)
+            # base_report may already carry the standing advisory items
+            # (appended by a prior pass through _normalise_report_output) —
+            # drop them here too so the expansion call below never spends a
+            # Groq addendum trying to add a "new angle" to fixed universal
+            # copy. _normalise_report_output re-appends the canonical set
+            # unconditionally at the end, so nothing is lost.
+            _standing_titles_pre = {item["title"].lower() for item in STANDING_ADVISORY_ACTIONS}
+            parsed["action_plan"] = [
+                a for a in (parsed.get("action_plan") or [])
+                if str(a.get("title") or "").strip().lower() not in _standing_titles_pre
+            ]
         else:
             raw = await _aio.to_thread(_call_groq)
             parsed = _extract_json(raw)
