@@ -125,6 +125,24 @@ async def regenerate_one(db, prospect, *, live: bool, output_dir: str) -> dict:
     snapshot = _json.loads(prospect.listing_snapshot_json) if prospect.listing_snapshot_json else {}
     old_report = _json.loads(prospect.report_json) if prospect.report_json else {}
 
+    # Re-scrape the live listing instead of reusing the stored snapshot (which
+    # may be weeks old) — picks up genuine changes since discovery, including
+    # the price_reduced signal from Rightmove's own listingHistory (see
+    # listing_scraper.py) that the stored snapshot predates. Falls back to
+    # the stored snapshot if the listing is unreachable/blocked, rather than
+    # failing the whole regeneration over a transient scrape issue.
+    try:
+        from app.services.listing_scraper import scrape_single_listing
+        from app.services.stale_prospect_service import snapshot_from_scrape
+
+        scraped = await scrape_single_listing(prospect.rightmove_url)
+        if scraped and not scraped.get("blocked"):
+            fresh_snapshot = snapshot_from_scrape(scraped, prospect.rightmove_url)
+            if fresh_snapshot.get("address") or fresh_snapshot.get("price"):
+                snapshot = fresh_snapshot
+    except Exception as exc:
+        print(f"    Live re-scrape failed, using stored snapshot instead: {exc}")
+
     report = await generate_prospect_report(
         property_address=prospect.property_address,
         rightmove_url=prospect.rightmove_url,
@@ -143,6 +161,12 @@ async def regenerate_one(db, prospect, *, live: bool, output_dir: str) -> dict:
 
     prospect.report_json = _json.dumps(report, ensure_ascii=False)
     prospect.preview_json = _json.dumps(preview, ensure_ascii=False)
+    # Keep the stored snapshot in sync with whatever snapshot the report and
+    # PDF above were actually built from — generate_letter_pdf() reads
+    # prospect.listing_snapshot_json directly, so leaving the old one in
+    # place here would make the letter show stale data (e.g. "Nil" price
+    # changes) even when the re-scrape above found a fresher answer.
+    prospect.listing_snapshot_json = _json.dumps(snapshot, ensure_ascii=False)
 
     token = create_access_token()
     public_base_url = get_settings().FRONTEND_URL or "https://www.heyhavlo.com"

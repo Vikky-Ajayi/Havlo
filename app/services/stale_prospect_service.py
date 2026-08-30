@@ -193,6 +193,7 @@ def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
         "description": scraped.get("description") or "",
         "listed_date": scraped.get("listed_date") or "",
         "features": scraped.get("features") if isinstance(scraped.get("features"), list) else [],
+        "price_reduced": bool(scraped.get("price_reduced")),
     }
 
 
@@ -852,11 +853,7 @@ def _letter_draw_footer(page, width: float, extra_note: str) -> None:
     legal_top = 22 + h_legal
     note_top = legal_top + 3 + h_note
     havlo_top = note_top + 24
-    divider_y = havlo_top + 8
 
-    page.setStrokeColor(colors.HexColor("#DDDDDD"))
-    page.setLineWidth(0.6)
-    page.line(_LETTER_MARGIN, divider_y, width - _LETTER_MARGIN, divider_y)
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica-Bold", 9.5)
     page.drawString(_LETTER_MARGIN, havlo_top, "Havlo")
@@ -1031,23 +1028,23 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y = _letter_para(page, "Havlo specialises in analysing properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 8
     y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(prospect.property_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 14
+    y -= 24
 
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica-Bold", 11)
     page.drawString(M, y, "WHAT WE FOUND")
-    y -= 18
+    y -= 10
     y = _letter_para(page, "Our initial assessment has identified <b>several areas worth your attention,</b> including potential opportunities around:", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 14
 
     y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Buyer Appeal"], 2, row_h=26)
     y -= 6
     y = _letter_para(page, "We've summarised some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 16
+    y -= 24
 
     page.setFont("Helvetica-Bold", 11)
     page.drawString(M, y, "YOUR FULL ASSESSMENT")
-    y -= 18
+    y -= 10
     y = _letter_para(page, "Your complete property assessment contains our detailed analysis and recommendations.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 4
     _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
@@ -1086,11 +1083,11 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.drawString(tx, y - 26, "Prepared specifically for this property")
     addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
     _letter_para(page, _letter_esc(prospect.property_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
-    y -= card_h + 20
+    y -= card_h + 12
 
     page.setFont("Helvetica-Bold", 11)
     page.drawString(M, y, "PROPERTY AT A GLANCE")
-    y -= 36
+    y -= 24
 
     days = prospect.listing_duration_days
     months = max(1, round(days / 30)) if days else 0
@@ -1098,20 +1095,21 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     stats = [
         (_letter_icon_coins, "Current asking price", _letter_fmt_gbp(prospect.asking_price)),
         (_letter_icon_hourglass, "Time on market", f"{months} months" if months else "—"),
-        # No price-history tracking exists for cold-outreach discovery
-        # (the q4_price_reduction seller-survey answer this would otherwise
-        # come from never runs here — has_seller_survey=False) — show "—"
-        # rather than fabricate a number, same rule the report prompt
-        # itself enforces for cold outreach.
-        (_letter_icon_trending_up, "Price changes", "—"),
+        # Real signal from Rightmove's own listingHistory (see
+        # listing_scraper.py's price_reduced detection) when the snapshot
+        # was scraped after that field existed. Snapshots taken before this
+        # change won't have the key at all — bool(None) is False, so those
+        # correctly show "Nil" rather than a fabricated number, same rule
+        # the report prompt itself enforces for cold outreach.
+        (_letter_icon_trending_up, "Price changes", "Reduced" if snapshot.get("price_reduced") else "Nil"),
         (_letter_icon_people, "Competing properties", str(competing_count)),
     ]
     _letter_draw_stat_row(page, M, y, width - 2 * M, stats)
-    y -= 62
+    y -= 70
 
     page.setFont("Helvetica-Bold", 11)
     page.drawString(M, y, "OUR INITIAL FINDINGS")
-    y -= 14
+    y -= 8
 
     price_label, price_dir, price_status, price_color = _letter_price_position(prospect.asking_price, comparable_sales)
     comp_score = scores.get("competition", 50)
@@ -1132,19 +1130,19 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         ("Listing Presentation", pres_status, pres_color, pres_score, pres_label, "Opportunities identified to improve how the property is presented to buyers."),
     ]
     _letter_draw_gauge_row(page, M, y, width - 2 * M, gauge_cards)
-    y -= 178 + 16
+    y -= 178 + 4
 
     page.setFont("Helvetica-Bold", 11)
     page.drawString(M, y, "WHAT'S IN THE FULL ASSESSMENT?")
-    y -= 16
+    y -= 10
     y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
     y -= 4
 
     y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 12
+    y -= 8
 
     _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
-    y -= qr_h + 22
+    y -= qr_h + 14
 
     bottom_stats = [
         ("61%", "Of assessed stale listings sold within 9 weeks"),
@@ -1159,10 +1157,15 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     for i, (num, label) in enumerate(bottom_stats):
         cx = M + col_w * i + col_w / 2
         page.setFillColor(_LETTER_INK)
-        page.setFont("Helvetica-Bold", 16)
-        page.drawCentredString(cx, y - 24, num)
-        stat_style = ParagraphStyle("LetterBottomStat", fontName="Helvetica", fontSize=7.4, leading=9.6, textColor=_LETTER_MUTED, alignment=1)
-        _letter_para(page, label, cx - col_w / 2 + 8, y - 37, col_w - 16, stat_style)
+        # Metrics number spec: 13.87px/regular/0 letter-spacing/CAP_HEIGHT
+        # leading-trim — Helvetica-Bold kept as the closest built-in stand-in
+        # since Millik isn't an embedded font here.
+        page.setFont("Helvetica-Bold", 13.87)
+        page.drawCentredString(cx, y - 22, num)
+        # Small-text spec: Inter/Medium/10px/130% line-height — Helvetica
+        # kept as the closest built-in stand-in since Inter isn't embedded.
+        stat_style = ParagraphStyle("LetterBottomStat", fontName="Helvetica", fontSize=10, leading=13, textColor=_LETTER_MUTED, alignment=1)
+        _letter_para(page, label, cx - col_w / 2 + 8, y - 38, col_w - 16, stat_style)
 
     page.save()
     return os.path.abspath(pdf_path)

@@ -931,6 +931,7 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
 
         # ── Listed / reduced date ─────────────────────────────────────────────
         listed_date = ""
+        price_reduced = False
         hist_schema = r(prop_schema.get("listingHistory"))
         if isinstance(hist_schema, dict):
             for k in ("listingDate", "dateFirstListed", "addedOrReduced",
@@ -942,6 +943,16 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
                         listed_date = _parse_iso_date(raw_str)
                     else:
                         listed_date = _clean(raw_str)
+                    break
+            # Independent of which field supplied listed_date above — Rightmove's
+            # own listingHistory is the only place a genuine price-reduction
+            # signal exists ("Reduced on DD/MM/YYYY" in addedOrReduced, or a
+            # matching listingUpdateReason). Check both fields explicitly
+            # rather than fabricating a value when this data isn't available.
+            for k in ("addedOrReduced", "listingUpdateReason"):
+                raw = r(hist_schema.get(k))
+                if raw and "reduc" in str(raw).lower():
+                    price_reduced = True
                     break
 
         return {
@@ -956,6 +967,7 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
             "bathrooms": bathrooms,
             "property_type": property_type,
             "listed_date": listed_date,
+            "price_reduced": price_reduced,
             "features": features,
             "floor_area": "",
             "platform": "rightmove",
@@ -1013,7 +1025,14 @@ async def scrape_single_listing(url: str) -> dict:
                 price_str = price_obj.get("primaryPrice") or _fmt_price(price_obj.get("amount"), price_obj.get("currencyCode", "GBP"))
                 addr = (prop.get("address") or {})
                 addr_str = _clean(addr.get("displayAddress") or prop.get("displayAddress") or "")
-                raw_date = (prop.get("listingHistory") or {}).get("listingDate") or ""
+                listing_history = prop.get("listingHistory") or {}
+                raw_date = listing_history.get("listingDate") or ""
+                # Same price-reduction signal as the v2 decoder above, from
+                # the same listingHistory object in this older flat schema.
+                price_reduced = any(
+                    "reduc" in str(listing_history.get(k) or "").lower()
+                    for k in ("addedOrReduced", "listingUpdateReason")
+                )
                 if addr_str or price_str or images:
                     result = {
                         "title": addr_str,
@@ -1027,6 +1046,7 @@ async def scrape_single_listing(url: str) -> dict:
                         "bathrooms": str(prop.get("bathrooms") or ""),
                         "property_type": _clean(prop.get("propertySubType") or prop.get("propertyType") or ""),
                         "listed_date": _parse_iso_date(raw_date) if raw_date else "",
+                        "price_reduced": price_reduced,
                         "features": [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10],
                         "floor_area": "",
                         "platform": "rightmove",
