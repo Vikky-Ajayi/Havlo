@@ -1094,7 +1094,17 @@ async def update_console_prospect_report(
         # this is for.
         new_token = create_access_token()
         prospect.qr_token_hash = hash_access_token(new_token)
-        letter_path = generate_letter_pdf(prospect, new_token, _frontend_base_url())
+        # generate_letter_pdf is synchronous (ReportLab drawing plus a
+        # blocking httpx.get for the listing photo) — running it directly
+        # in this async endpoint blocks the whole worker's event loop for
+        # as long as it takes. to_thread hands it to a worker thread
+        # instead; wait_for is a hard backstop so a genuinely stuck photo
+        # fetch (its own 5s timeout notwithstanding) can never hang this
+        # request indefinitely — it just skips the letter this time.
+        letter_path = await asyncio.wait_for(
+            asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
+            timeout=20.0,
+        )
         prospect.letter_pdf_path = letter_path
     except Exception as exc:
         logger.warning("Letter regeneration failed for prospect %s after report edit: %s", prospect_id, exc)
@@ -1162,13 +1172,19 @@ async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depen
         try:
             new_token = create_access_token()
             prospect.qr_token_hash = hash_access_token(new_token)
-            prospect.letter_pdf_path = generate_letter_pdf(prospect, new_token, _frontend_base_url())
+            # See the comment on the same call in update_console_prospect_report —
+            # synchronous, must not run directly on the event loop, and
+            # hard-capped so a stuck photo fetch can't hang this request.
+            prospect.letter_pdf_path = await asyncio.wait_for(
+                asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
+                timeout=20.0,
+            )
             await db.commit()
             await db.refresh(prospect)
             path = FilePath(prospect.letter_pdf_path)
         except Exception as exc:
             logger.warning("On-demand letter regeneration failed for prospect %s: %s", prospect_id, exc)
-            raise HTTPException(status_code=500, detail="Could not generate the letter PDF.") from exc
+            raise HTTPException(status_code=500, detail="Could not generate the letter PDF — try again in a moment.") from exc
 
     return FileResponse(
         path,
