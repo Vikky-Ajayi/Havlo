@@ -550,6 +550,14 @@ _LETTER_RED = colors.HexColor("#DE2921") if not _PDF_LIBS_IMPORT_ERROR else None
 _LETTER_ORANGE = colors.HexColor("#B14F0A") if not _PDF_LIBS_IMPORT_ERROR else None
 _LETTER_TRUST_GREEN = colors.HexColor("#00B67A") if not _PDF_LIBS_IMPORT_ERROR else None
 _LETTER_LOGO_PATH = Path("havlo_frontend/Havlo Black Transparent.png")
+# One fixed QR code shared by every prospect letter, replacing a unique
+# per-prospect QR encoding that prospect's own magic-link token. The wizard
+# landing page already has a "Enter Property ID" step that works with no
+# token or code in the URL at all (StaleProspectWizard.tsx), so a single
+# static QR pointing at the plain landing page — with the Property ID typed
+# in manually, which the letter already prints right next to the code — is
+# a fully supported flow, not a new one.
+_LETTER_STATIC_QR_PATH = Path("havlo_frontend/public/stale-listing-qr.png")
 
 if not _PDF_LIBS_IMPORT_ERROR:
     _LETTER_BODY_STYLE = ParagraphStyle("LetterBody", fontName="Helvetica", fontSize=10, leading=14.5, textColor=_LETTER_INK)
@@ -980,13 +988,15 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     output_dir = Path("generated") / "stale-prospect-letters"
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = output_dir / f"stale-listing-{prospect.property_code}.pdf"
-    # Query-string form (not a path segment) so scanning the QR auto-resumes
-    # the homeowner straight past "Enter Property ID" on the new wizard
-    # landing page — but the Property ID is now also printed visibly below,
-    # since the whole premise of that landing page is "enter the Property ID
-    # shown in your Havlo letter", and a token-only QR code never showed one.
-    preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect?token={token}"
-    qr_reader = _letter_make_qr(preview_url)
+    if _LETTER_STATIC_QR_PATH.is_file():
+        qr_reader: BytesIO | str = str(_LETTER_STATIC_QR_PATH)
+    else:
+        # Fallback only — should not normally trigger. Same per-prospect
+        # dynamic QR this replaced, kept so a missing/moved static asset
+        # degrades to a working letter instead of a hard failure.
+        logger.warning("Static QR asset missing at %s — falling back to a per-prospect dynamic QR.", _LETTER_STATIC_QR_PATH)
+        preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect?token={token}"
+        qr_reader = _letter_make_qr(preview_url)
 
     report = _safe_json(prospect.report_json)
     snapshot = _safe_json(prospect.listing_snapshot_json)
