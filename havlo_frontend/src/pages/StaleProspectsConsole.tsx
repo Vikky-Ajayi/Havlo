@@ -173,6 +173,19 @@ export const StaleProspectsConsole = () => {
   const [manualError, setManualError] = useState('');
   const [manualSuccess, setManualSuccess] = useState<{ property_code: string; preview_url: string } | null>(null);
 
+  // Without this, the modal (position: fixed) "bobs" on mobile: touching
+  // the semi-transparent backdrop scrolls the page underneath, which on
+  // iOS Safari toggles the address bar and recalculates vh on every
+  // scroll tick — the fixed overlay visibly jumps as a result. Locking
+  // background scroll while either modal is open removes the trigger for
+  // that entirely (the modal's own content still scrolls normally, since
+  // that's a separate, nested scroll container).
+  const anyModalOpen = !!selectedId || showManual;
+  useEffect(() => {
+    document.body.style.overflow = anyModalOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [anyModalOpen]);
+
   const submitManual = async () => {
     setManualError('');
     if (!manualForm.rightmove_url.trim() || !manualForm.street.trim() || !manualForm.city.trim() || !manualForm.postcode.trim()) {
@@ -244,8 +257,8 @@ export const StaleProspectsConsole = () => {
         .spc-card-actions button.view{background:#111;color:#fff;border-color:#111}
         .spc-card-actions button.treated-on{background:#ECFDF5;border-color:#A7F3D0;color:#047857}
         .spc-empty{background:#fff;border:1px dashed #D8DAE0;border-radius:16px;padding:60px 20px;text-align:center;color:#8A8F98;font-size:14px}
-        .spc-overlay{position:fixed;inset:0;background:rgba(17,17,17,.5);z-index:200;display:flex;align-items:${isMobile ? 'flex-end' : 'center'};justify-content:center;padding:${isMobile ? '0' : '24px'}}
-        .spc-modal{background:#fff;width:100%;max-width:900px;max-height:${isMobile ? '92vh' : '88vh'};overflow:auto;border-radius:${isMobile ? '20px 20px 0 0' : '20px'};padding:${isMobile ? '20px' : '32px'};position:relative}
+        .spc-overlay{position:fixed;inset:0;background:rgba(17,17,17,.5);z-index:200;display:flex;align-items:${isMobile ? 'flex-end' : 'center'};justify-content:center;padding:${isMobile ? '0' : '24px'};overscroll-behavior:contain}
+        .spc-modal{background:#fff;width:100%;max-width:900px;max-height:${isMobile ? '92vh' : '88vh'};max-height:${isMobile ? '92svh' : '88svh'};overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-radius:${isMobile ? '20px 20px 0 0' : '20px'};padding:${isMobile ? '20px' : '32px'};position:relative}
         .spc-modal-sm{max-width:560px}
         .spc-close{position:sticky;top:0;float:right;border:0;background:#F4F4F5;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;color:#444;z-index:2}
         .spc-modal h2{font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;font-size:20px;margin:0 0 4px}
