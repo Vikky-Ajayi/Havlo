@@ -1170,6 +1170,18 @@ export const api = {
       timeout: 90000,
     }),
 
+  staleListingsSyncToSheets: (token: string) =>
+    request<{
+      checked: number;
+      added: number;
+      already_present: number;
+      error: string | null;
+    }>('/stale-listings/admin/prospects/sync-to-sheets', {
+      method: 'POST',
+      token,
+      timeout: 90000,
+    }),
+
   customOffersScrape: (payload: { listing_url: string }) =>
     request<CustomOffersScrapeResponse>('/custom-offers/scrape', {
       method: 'POST',

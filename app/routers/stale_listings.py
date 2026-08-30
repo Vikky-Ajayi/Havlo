@@ -1356,6 +1356,56 @@ async def backfill_stale_prospect_postcodes(
     }
 
 
+@admin_router.post("/admin/prospects/sync-to-sheets")
+async def sync_stale_prospects_to_sheets(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Reconcile the Stale Listing Addresses Google Sheet against every
+    prospect in the database, adding any rows the sheet is missing.
+
+    record_stale_listing_address() writes one row per prospect at discovery
+    time and is best-effort (a Sheets outage must never break discovery) —
+    under sustained rate limiting from concurrent discovery cycles, some of
+    those single-row writes can be silently dropped, so the sheet's row
+    count can fall behind the database's. This reads the sheet once,
+    figures out which prospects are missing (matched by Rightmove ID or
+    listing URL, same as the live write path), and adds them in a few
+    batched writes. Safe to re-run any time — already-present rows are
+    left untouched.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+
+    from app.services import google_sheets
+
+    result = await db.execute(select(StaleListingProspect))
+    prospects = list(result.scalars().all())
+
+    listing_dicts = [
+        {
+            "rightmove_id": p.rightmove_id or "",
+            "listing_url": p.rightmove_url,
+            "property_code": p.property_code,
+            "property_address": p.property_address,
+            "postcode": p.postcode or "",
+            "city": p.city or "",
+            "asking_price": p.asking_price,
+            "listed_date": p.listed_date,
+            "listing_duration_days": p.listing_duration_days,
+            "property_type": p.property_type,
+            "bedrooms": p.bedrooms,
+            "bathrooms": p.bathrooms,
+            "discovery_run_id": str(p.discovery_run_id) if p.discovery_run_id else "",
+            "source_status": p.source_status or ("manual_console" if p.is_manual else "stale_180_days_plus"),
+        }
+        for p in prospects
+    ]
+
+    sync_result = await asyncio.to_thread(google_sheets.sync_all_stale_listing_addresses, listing_dicts)
+    return sync_result
+
+
 @admin_router.get("/admin/prospects/email-diagnostics")
 async def stale_prospect_email_diagnostics(
     current_user: User = Depends(get_current_user),

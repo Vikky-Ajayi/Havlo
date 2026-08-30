@@ -2,9 +2,10 @@
 import json
 import logging
 import os
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 import gspread
 from google.oauth2.service_account import Credentials
@@ -12,6 +13,43 @@ from google.oauth2.service_account import Credentials
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
+
+
+def _with_retry(fn: Callable[[], _T], *, retries: int = 3, base_delay: float = 1.5) -> _T:
+    """Retry a Sheets API call on rate-limit (429) or transient server
+    errors, with exponential backoff.
+
+    Every new stale-listing prospect costs a full-sheet read (to check
+    for a duplicate) plus a write, and discovery finalises several
+    candidates concurrently (STALE_LISTINGS_FINALIZE_CONCURRENCY) — easy
+    to brush against Google's per-minute quota in a burst, especially now
+    that a fuller location rotation means more prospects land per cycle.
+    The previous behaviour was to give up after the first failure and
+    silently drop that row from the sheet — this is the actual, live-
+    diagnosed reason the sheet's row count fell behind the prospect
+    count in the database (which never loses a row: this retry only
+    protects the Sheets write, a database-backed prospect always exists
+    regardless of whether this ever succeeds).
+    """
+    last_exc: Exception | None = None
+    for attempt in range(retries):
+        try:
+            return fn()
+        except gspread.exceptions.APIError as exc:
+            last_exc = exc
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status not in (429, 500, 502, 503) or attempt == retries - 1:
+                raise
+            delay = base_delay * (2**attempt)
+            logger.warning(
+                "Google Sheets API error (status=%s) — retrying in %.1fs (attempt %d/%d)",
+                status, delay, attempt + 1, retries,
+            )
+            time.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -224,7 +262,7 @@ def record_stale_listing_address(listing_data: dict[str, Any]) -> None:
     try:
         sheet = _get_spreadsheet()
         ws = sheet.worksheet("Stale Listing Addresses")
-        values = ws.get_all_values()
+        values = _with_retry(ws.get_all_values)
         headers = values[0] if values else SHEET_TABS["Stale Listing Addresses"]
         try:
             id_index = headers.index("Rightmove ID")
@@ -270,7 +308,7 @@ def record_stale_listing_address(listing_data: dict[str, Any]) -> None:
         # has header columns would silently shift every later column over
         # by one for that row.
         row = [by_header.get(header, "") for header in headers]
-        ws.append_row(row, value_input_option="USER_ENTERED")
+        _with_retry(lambda: ws.append_row(row, value_input_option="USER_ENTERED"))
         logger.info("Recorded stale listing address in Google Sheets: %s", listing_url or rightmove_id)
     except Exception as exc:
         logger.error(
@@ -301,7 +339,7 @@ def update_stale_listing_property_code(
     try:
         sheet = _get_spreadsheet()
         ws = sheet.worksheet("Stale Listing Addresses")
-        values = ws.get_all_values()
+        values = _with_retry(ws.get_all_values)
         if not values:
             return
         headers = values[0]
@@ -318,7 +356,7 @@ def update_stale_listing_property_code(
             if (rightmove_id and existing_id == rightmove_id) or (
                 listing_url and existing_url == listing_url
             ):
-                ws.update_cell(row_num, code_index + 1, property_code)
+                _with_retry(lambda: ws.update_cell(row_num, code_index + 1, property_code))
                 logger.info("Backfilled property code %s in Stale Listing Addresses.", property_code)
                 return
         logger.debug(
@@ -354,7 +392,7 @@ def update_stale_listing_postcode(
     try:
         sheet = _get_spreadsheet()
         ws = sheet.worksheet("Stale Listing Addresses")
-        values = ws.get_all_values()
+        values = _with_retry(ws.get_all_values)
         if not values:
             return
         headers = values[0]
@@ -373,7 +411,7 @@ def update_stale_listing_postcode(
             if (rightmove_id and existing_id == rightmove_id) or (
                 listing_url and existing_url == listing_url
             ):
-                ws.update_cell(row_num, postcode_index + 1, postcode)
+                _with_retry(lambda: ws.update_cell(row_num, postcode_index + 1, postcode))
                 logger.info("Backfilled postcode %s in Stale Listing Addresses.", postcode)
                 return
         logger.debug(
@@ -386,6 +424,101 @@ def update_stale_listing_postcode(
             type(exc).__name__,
             exc,
         )
+
+
+def sync_all_stale_listing_addresses(prospects: list[dict[str, Any]]) -> dict[str, Any]:
+    """Reconcile the Stale Listing Addresses sheet against every prospect
+    currently in the database, adding any rows that are missing.
+
+    record_stale_listing_address() is called once per prospect at discovery
+    time and is deliberately best-effort (a Sheets outage must never break
+    discovery) — under sustained rate limiting from a burst of concurrent
+    calls, some of those single-row writes can be silently dropped, so the
+    sheet can fall behind the database over time. This does the same
+    dedup-by-Rightmove-ID-or-URL matching, but reads the sheet once and
+    batches every missing row into one (or a few, if there are many) writes,
+    instead of paying a full-sheet read for every single prospect the way
+    calling record_stale_listing_address() in a loop would.
+    """
+    if not is_configured():
+        return {"checked": len(prospects), "added": 0, "already_present": len(prospects), "error": None}
+    try:
+        sheet = _get_spreadsheet()
+        ws = sheet.worksheet("Stale Listing Addresses")
+        values = _with_retry(ws.get_all_values)
+        headers = values[0] if values else SHEET_TABS["Stale Listing Addresses"]
+        try:
+            id_index = headers.index("Rightmove ID")
+            url_index = headers.index("Listing URL")
+        except ValueError:
+            logger.error("Stale Listing Addresses tab has unexpected headers; skipping sync.")
+            return {"checked": len(prospects), "added": 0, "already_present": 0, "error": "unexpected_headers"}
+
+        existing_ids: set[str] = set()
+        existing_urls: set[str] = set()
+        for existing in values[1:]:
+            existing_id = existing[id_index].strip() if id_index < len(existing) else ""
+            existing_url = existing[url_index].strip() if url_index < len(existing) else ""
+            if existing_id:
+                existing_ids.add(existing_id)
+            if existing_url:
+                existing_urls.add(existing_url)
+
+        rows_to_add: list[list[str]] = []
+        already_present = 0
+        for listing_data in prospects:
+            rightmove_id = str(listing_data.get("rightmove_id") or "").strip()
+            listing_url = str(listing_data.get("listing_url") or listing_data.get("url") or "").strip()
+            if (rightmove_id and rightmove_id in existing_ids) or (
+                listing_url and listing_url in existing_urls
+            ):
+                already_present += 1
+                continue
+
+            listed_date = listing_data.get("listed_date")
+            if hasattr(listed_date, "isoformat"):
+                listed_date = listed_date.isoformat()
+            by_header = {
+                "Captured At": datetime.utcnow().isoformat(),
+                "Rightmove ID": rightmove_id,
+                "Property Code": listing_data.get("property_code", ""),
+                "Property Address": listing_data.get("property_address") or listing_data.get("address", ""),
+                "Postcode": listing_data.get("postcode", ""),
+                "City": listing_data.get("city", ""),
+                "Asking Price": listing_data.get("asking_price", ""),
+                "Listed Date": listed_date or "",
+                "Days On Market": listing_data.get("listing_duration_days") or listing_data.get("days_on_market", ""),
+                "Property Type": listing_data.get("property_type", ""),
+                "Bedrooms": listing_data.get("bedrooms", ""),
+                "Bathrooms": listing_data.get("bathrooms", ""),
+                "Listing URL": listing_url,
+                "Discovery Run ID": listing_data.get("discovery_run_id", ""),
+                "Source Status": listing_data.get("source_status", "stale_180_days_plus"),
+            }
+            rows_to_add.append([str(by_header.get(h, "")) for h in headers])
+            # Guard against duplicate rows within this same batch (e.g. two
+            # prospects that somehow share a Rightmove ID).
+            if rightmove_id:
+                existing_ids.add(rightmove_id)
+            if listing_url:
+                existing_urls.add(listing_url)
+
+        if rows_to_add:
+            chunk_size = 200
+            for i in range(0, len(rows_to_add), chunk_size):
+                chunk = rows_to_add[i : i + chunk_size]
+                _with_retry(lambda c=chunk: ws.append_rows(c, value_input_option="USER_ENTERED"))
+                if i + chunk_size < len(rows_to_add):
+                    time.sleep(1.5)
+
+        logger.info(
+            "Stale Listing Addresses sync: %d checked, %d added, %d already present.",
+            len(prospects), len(rows_to_add), already_present,
+        )
+        return {"checked": len(prospects), "added": len(rows_to_add), "already_present": already_present, "error": None}
+    except Exception as exc:
+        logger.error("Failed to sync stale listing addresses: [%s] %r", type(exc).__name__, exc)
+        return {"checked": len(prospects), "added": 0, "already_present": 0, "error": str(exc)}
 
 
 def append_test_row(tab_name: str = "Registrations") -> None:

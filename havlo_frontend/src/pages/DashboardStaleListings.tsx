@@ -376,6 +376,8 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
   const [emailStatus, setEmailStatus] = useState('');
   const [postcodeBackfilling, setPostcodeBackfilling] = useState(false);
   const [postcodeStatus, setPostcodeStatus] = useState('');
+  const [sheetsSyncing, setSheetsSyncing] = useState(false);
+  const [sheetsSyncStatus, setSheetsSyncStatus] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -743,6 +745,26 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
     }
   };
 
+  const handleSyncToSheets = async () => {
+    if (!token) return;
+    setSheetsSyncing(true);
+    setSheetsSyncStatus('');
+    try {
+      const result = await api.staleListingsSyncToSheets(token);
+      if (result.error) {
+        setSheetsSyncStatus(`Sync failed: ${result.error}`);
+      } else if (result.added === 0) {
+        setSheetsSyncStatus(`Sheet already up to date — all ${result.checked} prospects were already present.`);
+      } else {
+        setSheetsSyncStatus(`Added ${result.added} missing row${result.added === 1 ? '' : 's'} to the sheet (${result.already_present} of ${result.checked} were already present).`);
+      }
+    } catch (e) {
+      setSheetsSyncStatus(e instanceof Error ? e.message : 'Sheets sync failed.');
+    } finally {
+      setSheetsSyncing(false);
+    }
+  };
+
   const runDate = (value?: string | null) => value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
   return (
@@ -795,8 +817,12 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
               <button onClick={handleBackfillPostcodes} disabled={postcodeBackfilling} title="Re-scrapes every prospect currently missing a postcode and fills it in — needed to actually address the physical letters." style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #BBF7D0', background: '#F0FDF4', color: '#15803D', fontWeight: 700, fontSize: 12, cursor: postcodeBackfilling ? 'not-allowed' : 'pointer' }}>
                 {postcodeBackfilling ? 'Backfilling postcodes...' : 'Backfill postcodes'}
               </button>
+              <button onClick={handleSyncToSheets} disabled={sheetsSyncing} title="Adds any prospect missing from the Stale Listing Addresses Google Sheet — catches rows that were silently dropped by Sheets rate limits during discovery. Safe to re-run any time." style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', fontWeight: 700, fontSize: 12, cursor: sheetsSyncing ? 'not-allowed' : 'pointer' }}>
+                {sheetsSyncing ? 'Syncing to Sheets...' : 'Sync to Google Sheets'}
+              </button>
             </div>
             {postcodeStatus && <p style={{ margin: '10px 0 0', color: postcodeStatus.includes('failed') && !postcodeStatus.includes('0 failed') ? '#991B1B' : '#065F46', fontSize: 12, fontWeight: 700 }}>{postcodeStatus}</p>}
+            {sheetsSyncStatus && <p style={{ margin: '10px 0 0', color: sheetsSyncStatus.includes('failed') ? '#991B1B' : '#1D4ED8', fontSize: 12, fontWeight: 700 }}>{sheetsSyncStatus}</p>}
             <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.8fr 0.7fr 0.7fr auto', gap: 10, alignItems: 'end' }}>
               <div>
                 <label style={labelStyle}>Locations</label>
