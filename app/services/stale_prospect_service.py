@@ -264,6 +264,8 @@ async def create_prospect_from_listing_snapshot(
     listed_date: datetime | None = None,
     discovery_run_id: Any | None = None,
     expand_report: bool = True,
+    city: str | None = None,
+    is_manual: bool = False,
 ) -> tuple[StaleListingProspect, str, str]:
     """Create a fully processed prospect, report, preview and letter PDF."""
     token = create_access_token()
@@ -282,6 +284,8 @@ async def create_prospect_from_listing_snapshot(
         qr_token_hash=hash_access_token(token),
         property_address=property_address,
         postcode=listing_snapshot.get("postcode") or None,
+        city=city or listing_snapshot.get("city") or None,
+        is_manual=is_manual,
         rightmove_url=rightmove_url,
         rightmove_id=listing_snapshot.get("rightmove_id") or None,
         asking_price=float(asking_price),
@@ -403,6 +407,14 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     }
 
 
+def current_report_json(prospect: StaleListingProspect) -> str | None:
+    """The report actually in effect for this prospect: an ops-console edit
+    (agent_edited_report_json) always wins over the original AI output
+    (report_json) once one exists — same precedence as
+    StaleListingAssessment.agent_edited_report_json elsewhere."""
+    return prospect.agent_edited_report_json or prospect.report_json
+
+
 def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
     return {
         "prospect_id": str(prospect.id),
@@ -413,7 +425,7 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "listing_duration_days": prospect.listing_duration_days,
         "contact_name": prospect.contact_name,
         "listing_snapshot": _safe_json(prospect.listing_snapshot_json),
-        "report_data": _safe_json(prospect.report_json),
+        "report_data": _safe_json(current_report_json(prospect)),
         "payment_status": prospect.payment_status,
     }
 
@@ -997,7 +1009,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         preview_url = f"{public_base_url.rstrip('/')}/stale-listings/prospect?token={token}"
         qr_reader = _letter_make_qr(preview_url)
 
-    report = _safe_json(prospect.report_json)
+    report = _safe_json(current_report_json(prospect))
     snapshot = _safe_json(prospect.listing_snapshot_json)
     scores = report.get("scores") or {}
     active_competition = report.get("active_competition") or []

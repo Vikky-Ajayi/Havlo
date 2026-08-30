@@ -53,6 +53,42 @@ export interface StaleProspectDiscoveryRun {
   created_at?: string | null;
 }
 
+export interface StaleProspectConsoleListItem {
+  prospect_id: string;
+  property_code: string;
+  property_address: string;
+  postcode?: string | null;
+  city?: string | null;
+  rightmove_url: string;
+  asking_price?: number | null;
+  listing_duration_days?: number | null;
+  property_type?: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  image_url?: string | null;
+  processing_status: string;
+  payment_status: string;
+  is_manual: boolean;
+  treated_at?: string | null;
+  created_at: string;
+}
+
+export interface StaleProspectConsoleDetail extends StaleProspectConsoleListItem {
+  listing_snapshot: Record<string, unknown>;
+  report_data: Record<string, unknown>;
+  is_edited: boolean;
+  letter_pdf_path?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+}
+
+export interface StaleProspectConsoleListResponse {
+  items: StaleProspectConsoleListItem[];
+  total: number;
+  cities: string[];
+}
+
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
 export function buildWsUrl(path: string): string {
   const base = API_BASE.startsWith('http')
@@ -1077,6 +1113,49 @@ export const api = {
       token,
       timeout: 30000,
     }),
+
+  // Prospects console — deliberately unauthenticated (no token), see the
+  // page itself (StaleProspectsConsole.tsx) for why.
+  staleProspectsConsoleList: (params: { city?: string; treated?: boolean; q?: string; limit?: number; offset?: number } = {}) => {
+    const queryParams: Record<string, string> = {};
+    if (params.city) queryParams.city = params.city;
+    if (params.treated !== undefined) queryParams.treated = String(params.treated);
+    if (params.q) queryParams.q = params.q;
+    if (params.limit !== undefined) queryParams.limit = String(params.limit);
+    if (params.offset !== undefined) queryParams.offset = String(params.offset);
+    return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
+  },
+
+  staleProspectsConsoleGet: (prospectId: string) =>
+    request<StaleProspectConsoleDetail>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}`),
+
+  staleProspectsConsoleUpdateReport: (prospectId: string, reportData: Record<string, unknown>) =>
+    request<StaleProspectConsoleDetail>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}/report`, {
+      method: 'PATCH',
+      body: { report_data: reportData },
+      timeout: 30000,
+    }),
+
+  staleProspectsConsoleSetTreated: (prospectId: string, treated: boolean) =>
+    request<StaleProspectConsoleListItem>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}/treated`, {
+      method: 'PATCH',
+      body: { treated },
+    }),
+
+  staleProspectsConsoleCreateManual: (payload: {
+    rightmove_url: string;
+    building_name_or_number?: string;
+    street: string;
+    city: string;
+    postcode: string;
+    county?: string;
+    listing_duration_days?: number;
+    asking_price?: number;
+  }) =>
+    request<{ prospect_id: string; property_code: string; qr_url: string; preview_url: string; letter_pdf_path?: string | null; email_sent: boolean }>(
+      '/stale-listings/prospects-console/prospects/manual',
+      { method: 'POST', body: payload, timeout: 30000 }
+    ),
 
   staleListingsBackfillPostcodes: (token: string) =>
     request<{

@@ -62,6 +62,7 @@ const StaleListingsPlan = React.lazy(() => import('./pages/StaleListingsPlan').t
 const StaleListingsComplete = React.lazy(() => import('./pages/StaleListingsComplete').then(m => ({ default: m.StaleListingsComplete })));
 const StaleListingsReport = React.lazy(() => import('./pages/StaleListingsReport').then(m => ({ default: m.StaleListingsReport })));
 const DashboardStaleListings = React.lazy(() => import('./pages/DashboardStaleListings').then(m => ({ default: m.DashboardStaleListings })));
+const StaleProspectsConsole = React.lazy(() => import('./pages/StaleProspectsConsole').then(m => ({ default: m.StaleProspectsConsole })));
 const CustomOffers = React.lazy(() => import('./pages/CustomOffers').then(m => ({ default: m.CustomOffers })));
 const CustomOffersAccess = React.lazy(() => import('./pages/CustomOffersAccess').then(m => ({ default: m.CustomOffersAccess })));
 const CustomOffersPortal = React.lazy(() => import('./pages/CustomOffersPortal').then(m => ({ default: m.CustomOffersPortal })));
@@ -379,6 +380,8 @@ export default function App() {
               <Route path="/stale-listings/report/:reference" element={<StaleListingsReport />} />
               <Route path="/dashboard/stale-listings" element={<AdminRoute><DashboardStaleListings /></AdminRoute>} />
               <Route path="/stale-listings/review-dashboard" element={<DashboardStaleListings reviewMode />} />
+              {/* Deliberately unauthenticated — see StaleProspectsConsole.tsx */}
+              <Route path="/dashboard/stale-prospects" element={<StaleProspectsConsole />} />
               <Route path="/dashboard/custom-offers" element={<AdminRoute><DashboardCustomOffers /></AdminRoute>} />
             </Routes>
           </Suspense>

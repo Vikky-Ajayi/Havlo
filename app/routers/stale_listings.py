@@ -7,11 +7,11 @@ import logging
 import random
 import string
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from fastapi.responses import HTMLResponse
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -26,6 +26,11 @@ from app.schemas.schemas import (
     StaleProspectCheckoutResponse,
     StaleProspectConfirmRequest,
     StaleProspectConfirmResponse,
+    StaleProspectConsoleDetail,
+    StaleProspectConsoleEditRequest,
+    StaleProspectConsoleListItem,
+    StaleProspectConsoleListResponse,
+    StaleProspectConsoleTreatedRequest,
     StaleProspectDetailsRequest,
     StaleProspectDetailsResponse,
     StaleProspectDiscoveryRunRequest,
@@ -47,12 +52,14 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services.stale_prospect_service import (
+    create_access_token,
     create_prospect_from_listing_snapshot,
+    current_report_json,
     expand_report_in_background,
     extract_price,
+    generate_letter_pdf,
     hash_access_token,
     is_report_expanded,
-    is_specific_address,
     normalize_property_code,
     parse_listed_date,
     serialize_preview,
@@ -846,16 +853,20 @@ async def get_stale_prospect_report(
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 
-@admin_router.post("/admin/prospects/from-url", response_model=StaleProspectAdminCreateResponse)
-async def create_stale_prospect_from_url(
+@public_router.post("/prospects-console/prospects/manual", response_model=StaleProspectAdminCreateResponse)
+async def create_stale_prospect_manually(
     payload: StaleProspectAdminCreateRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectAdminCreateResponse:
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin access required.")
+    """Ops console manual-create: for a listing that meets every automated
+    discovery criterion except having a scrapeable postal-quality address
+    (see is_specific_address). The admin supplies the real address by hand,
+    in parts, so it's trusted outright rather than re-validated the way an
+    auto-scraped displayAddress would be.
 
+    Deliberately unauthenticated — see the ops console page itself for why.
+    """
     existing = await db.execute(
         select(StaleListingProspect).where(StaleListingProspect.rightmove_url == str(payload.rightmove_url))
     )
@@ -869,7 +880,20 @@ async def create_stale_prospect_from_url(
         scraped = {}
 
     snapshot = snapshot_from_scrape(scraped, str(payload.rightmove_url))
-    address = (payload.property_address or snapshot.get("address") or snapshot.get("title") or "").strip()
+    address_parts = [
+        payload.building_name_or_number.strip() if payload.building_name_or_number else "",
+        payload.street.strip(),
+        payload.city.strip(),
+        payload.county.strip() if payload.county else "",
+        payload.postcode.strip().upper(),
+    ]
+    address = ", ".join(part for part in address_parts if part)
+    # The manually-typed address is authoritative and always specific enough
+    # by construction (street + city + postcode are all required fields) —
+    # is_specific_address exists to catch a vague *scraped* displayAddress,
+    # not to second-guess an admin who just typed the real thing in.
+    snapshot["postcode"] = payload.postcode.strip().upper()
+
     price = payload.asking_price if payload.asking_price is not None else extract_price(snapshot.get("price"))
     if price is None or price < 500000:
         raise HTTPException(status_code=400, detail="Prospect must be a residential sale listing above GBP 500,000.")
@@ -880,8 +904,6 @@ async def create_stale_prospect_from_url(
         )
     if int(payload.listing_duration_days or 0) < 180:
         raise HTTPException(status_code=400, detail="Prospect must have been listed for at least 6 months.")
-    if not is_specific_address(address):
-        raise HTTPException(status_code=400, detail="Prospect address is not specific enough for a personalised letter.")
 
     listed_date = parse_listed_date(snapshot.get("listed_date"))
     prospect, token, letter_path = await create_prospect_from_listing_snapshot(
@@ -892,10 +914,37 @@ async def create_stale_prospect_from_url(
         asking_price=float(price),
         listing_duration_days=int(payload.listing_duration_days),
         listed_date=listed_date,
+        city=payload.city.strip(),
+        is_manual=True,
     )
     preview_url = f"{_frontend_base_url()}/stale-listings/prospect/{token}"
     await db.commit()
     await db.refresh(prospect)
+
+    # The automated discovery pipeline records every qualifying candidate to
+    # the "Stale Listing Addresses" sheet (the physical-mail source list) as
+    # soon as it's found — a manually-created prospect skips discovery
+    # entirely, so it never got that row. Add it now, with the property
+    # code already known, so it doesn't need the separate backfill call
+    # discovery's version relies on.
+    background_tasks.add_task(
+        google_sheets.record_stale_listing_address,
+        {
+            "rightmove_id": snapshot.get("rightmove_id"),
+            "property_code": prospect.property_code,
+            "property_address": address,
+            "postcode": prospect.postcode or "",
+            "city": prospect.city or "",
+            "asking_price": price,
+            "listed_date": listed_date,
+            "listing_duration_days": payload.listing_duration_days,
+            "property_type": snapshot.get("property_type"),
+            "bedrooms": snapshot.get("bedrooms") or "",
+            "bathrooms": snapshot.get("bathrooms") or "",
+            "listing_url": str(payload.rightmove_url),
+            "source_status": "manual_console",
+        },
+    )
 
     admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
     email_sent = False
@@ -917,6 +966,170 @@ async def create_stale_prospect_from_url(
         letter_pdf_path=letter_path,
         email_sent=email_sent,
     )
+
+
+def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleListItem:
+    snapshot = json.loads(prospect.listing_snapshot_json or "{}")
+    images = snapshot.get("images") if isinstance(snapshot.get("images"), list) else []
+    image_url = snapshot.get("image") or (images[0] if images else None)
+    return StaleProspectConsoleListItem(
+        prospect_id=str(prospect.id),
+        property_code=prospect.property_code,
+        property_address=prospect.property_address,
+        postcode=prospect.postcode,
+        city=prospect.city,
+        rightmove_url=prospect.rightmove_url,
+        asking_price=prospect.asking_price,
+        listing_duration_days=prospect.listing_duration_days,
+        property_type=prospect.property_type,
+        bedrooms=prospect.bedrooms,
+        bathrooms=prospect.bathrooms,
+        image_url=image_url,
+        processing_status=prospect.processing_status,
+        payment_status=prospect.payment_status,
+        is_manual=prospect.is_manual,
+        treated_at=prospect.treated_at.isoformat() if prospect.treated_at else None,
+        created_at=prospect.created_at.isoformat(),
+    )
+
+
+@public_router.get("/prospects-console/prospects", response_model=StaleProspectConsoleListResponse)
+async def list_console_prospects(
+    db: AsyncSession = Depends(get_db),
+    city: str | None = Query(default=None),
+    treated: bool | None = Query(default=None),
+    q: str | None = Query(default=None, description="Search property address or property code"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> StaleProspectConsoleListResponse:
+    filters = []
+    if city:
+        filters.append(StaleListingProspect.city == city)
+    if treated is True:
+        filters.append(StaleListingProspect.treated_at.is_not(None))
+    elif treated is False:
+        filters.append(StaleListingProspect.treated_at.is_(None))
+    if q:
+        like = f"%{q.strip()}%"
+        filters.append(
+            or_(
+                StaleListingProspect.property_address.ilike(like),
+                StaleListingProspect.property_code.ilike(like),
+                StaleListingProspect.postcode.ilike(like),
+            )
+        )
+
+    count_result = await db.execute(
+        select(func.count()).select_from(StaleListingProspect).where(*filters)
+    )
+    total = int(count_result.scalar() or 0)
+
+    result = await db.execute(
+        select(StaleListingProspect)
+        .where(*filters)
+        .order_by(StaleListingProspect.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    items = [_console_list_item(p) for p in result.scalars().all()]
+
+    cities_result = await db.execute(
+        select(StaleListingProspect.city)
+        .where(StaleListingProspect.city.is_not(None))
+        .distinct()
+        .order_by(StaleListingProspect.city.asc())
+    )
+    cities = [c for (c,) in cities_result.all() if c]
+
+    return StaleProspectConsoleListResponse(items=items, total=total, cities=cities)
+
+
+@public_router.get("/prospects-console/prospects/{prospect_id}", response_model=StaleProspectConsoleDetail)
+async def get_console_prospect(prospect_id: str, db: AsyncSession = Depends(get_db)) -> StaleProspectConsoleDetail:
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+
+    base = _console_list_item(prospect)
+    return StaleProspectConsoleDetail(
+        **base.model_dump(),
+        listing_snapshot=json.loads(prospect.listing_snapshot_json or "{}"),
+        report_data=json.loads(current_report_json(prospect) or "{}"),
+        is_edited=bool(prospect.agent_edited_report_json),
+        letter_pdf_path=prospect.letter_pdf_path,
+        contact_name=prospect.contact_name,
+        contact_email=prospect.contact_email,
+        contact_phone=prospect.contact_phone,
+    )
+
+
+@public_router.patch("/prospects-console/prospects/{prospect_id}/report", response_model=StaleProspectConsoleDetail)
+async def update_console_prospect_report(
+    prospect_id: str,
+    payload: StaleProspectConsoleEditRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectConsoleDetail:
+    """Saves an edit as agent_edited_report_json (report_json, the original
+    AI output, is never overwritten) and regenerates the letter PDF from the
+    edited data — see current_report_json for the read-side precedence."""
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+
+    prospect.agent_edited_report_json = json.dumps(payload.report_data, ensure_ascii=False)
+    try:
+        # generate_letter_pdf needs the raw QR token, not its stored hash —
+        # the raw token is only ever returned once, at creation, and never
+        # persisted (standard hash-only storage). Regenerating the letter
+        # after an edit means issuing a fresh one; the old QR code (if
+        # already printed/sent) stops working once this replaces the
+        # stored hash, which is fine for the pre-send edit-and-fix case
+        # this is for.
+        new_token = create_access_token()
+        prospect.qr_token_hash = hash_access_token(new_token)
+        letter_path = generate_letter_pdf(prospect, new_token, _frontend_base_url())
+        prospect.letter_pdf_path = letter_path
+    except Exception as exc:
+        logger.warning("Letter regeneration failed for prospect %s after report edit: %s", prospect_id, exc)
+    await db.commit()
+    await db.refresh(prospect)
+
+    base = _console_list_item(prospect)
+    return StaleProspectConsoleDetail(
+        **base.model_dump(),
+        listing_snapshot=json.loads(prospect.listing_snapshot_json or "{}"),
+        report_data=json.loads(current_report_json(prospect) or "{}"),
+        is_edited=bool(prospect.agent_edited_report_json),
+        letter_pdf_path=prospect.letter_pdf_path,
+        contact_name=prospect.contact_name,
+        contact_email=prospect.contact_email,
+        contact_phone=prospect.contact_phone,
+    )
+
+
+@public_router.patch("/prospects-console/prospects/{prospect_id}/treated", response_model=StaleProspectConsoleListItem)
+async def set_console_prospect_treated(
+    prospect_id: str,
+    payload: StaleProspectConsoleTreatedRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectConsoleListItem:
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+
+    prospect.treated_at = datetime.now(timezone.utc) if payload.treated else None
+    await db.commit()
+    await db.refresh(prospect)
+    return _console_list_item(prospect)
 
 
 @admin_router.post(

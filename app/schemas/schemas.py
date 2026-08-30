@@ -566,8 +566,18 @@ class StaleProspectDetailsRequest(BaseModel):
 
 
 class StaleProspectAdminCreateRequest(BaseModel):
+    """Manual-create flow (ops console): for a listing that meets every
+    automated criterion except having a scrapeable postal-quality address.
+    The admin supplies the real address by hand, in parts, so it's composed
+    into a full property_address string server-side and never depends on
+    what Rightmove's own displayAddress happened to include.
+    """
     rightmove_url: str = Field(..., min_length=8, max_length=2000)
-    property_address: Optional[str] = Field(None, max_length=500)
+    building_name_or_number: Optional[str] = Field(None, max_length=200)
+    street: str = Field(..., min_length=2, max_length=200)
+    city: str = Field(..., min_length=2, max_length=100)
+    postcode: str = Field(..., min_length=5, max_length=10)
+    county: Optional[str] = Field(None, max_length=100)
     listing_duration_days: int = Field(180, ge=180)
     asking_price: Optional[float] = Field(None, ge=500000)
 
@@ -638,6 +648,50 @@ class StaleProspectAdminCreateResponse(BaseModel):
     preview_url: str
     letter_pdf_path: Optional[str] = None
     email_sent: bool = False
+
+
+class StaleProspectConsoleListItem(BaseModel):
+    prospect_id: str
+    property_code: str
+    property_address: str
+    postcode: Optional[str] = None
+    city: Optional[str] = None
+    rightmove_url: str
+    asking_price: Optional[float] = None
+    listing_duration_days: Optional[int] = None
+    property_type: Optional[str] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    image_url: Optional[str] = None
+    processing_status: str
+    payment_status: str
+    is_manual: bool = False
+    treated_at: Optional[str] = None
+    created_at: str
+
+
+class StaleProspectConsoleListResponse(BaseModel):
+    items: list[StaleProspectConsoleListItem]
+    total: int
+    cities: list[str] = Field(default_factory=list)
+
+
+class StaleProspectConsoleDetail(StaleProspectConsoleListItem):
+    listing_snapshot: dict = Field(default_factory=dict)
+    report_data: dict = Field(default_factory=dict)
+    is_edited: bool = False
+    letter_pdf_path: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+
+
+class StaleProspectConsoleEditRequest(BaseModel):
+    report_data: dict
+
+
+class StaleProspectConsoleTreatedRequest(BaseModel):
+    treated: bool
 
 
 class StaleProspectDiscoveryRunRequest(BaseModel):

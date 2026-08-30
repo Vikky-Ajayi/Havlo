@@ -537,6 +537,26 @@ class StaleListingProspect(Base):
     # Set when the prospect clicks "unsubscribe" on a drip email. Checked
     # before every send; permanently stops the sequence once set.
     unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # City this prospect's location filter belongs to (matches candidate.city
+    # from discovery, or the ops console's manual-create form). Populated
+    # going forward; existing rows are backfilled from listing_snapshot_json
+    # in the migration that added this column. Denormalised out of the JSON
+    # snapshot purely so the ops console can filter/index on it directly.
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    # Presence (not a bool) so "when" is free: ops console lets an admin mark
+    # a prospect as dealt with. Purely a status flag for now — doesn't affect
+    # discovery, duplicate-detection, or Sheets export.
+    treated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Same override pattern as StaleListingAssessment.agent_edited_report_json
+    # — an admin's edit in the ops console takes precedence over report_json
+    # (the AI-generated version) without destroying the original, and the
+    # letter PDF is regenerated from whichever of the two is current.
+    agent_edited_report_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # True for a prospect created by an admin typing in a Rightmove URL +
+    # address by hand (the ops console's manual-create flow — for listings
+    # that meet every automated criterion except having a scrapeable
+    # postal-quality address) rather than found by automated discovery.
+    is_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
