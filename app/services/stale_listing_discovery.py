@@ -1054,21 +1054,27 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
         params=params,
         results=results,
         lock=asyncio.Lock(),
-        # finalize_sem raised from 4: it now mainly gates DB write + PDF
-        # render + one admin email, since Sheets I/O (the slowest, least
-        # predictable part under rate limiting) moved to its own sheets_sem
-        # below instead of sharing this one. detail_sem is left only
-        # slightly up from 10 — it hits Rightmove directly with no proxy
-        # (see scraper_base.scraper_http_client), so pushing that one hard
-        # risks IP-level blocking, a far worse outcome than the current
-        # shortfall.
-        detail_sem=asyncio.Semaphore(max(2, min(32, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 12)))),
-        finalize_sem=asyncio.Semaphore(max(1, min(12, _env_int("STALE_LISTINGS_FINALIZE_CONCURRENCY", 6)))),
+        # detail_sem/finalize_sem/location_concurrency (below) were bumped
+        # up earlier today (10->12, 4->6, 6->8) on the reasoning that Sheets
+        # I/O moving off finalize_sem's critical path freed up headroom.
+        # Reverted back to their original values: raising location_concurrency
+        # and finalize_sem both raise how many _run_location/_finalize_candidate
+        # coroutines have their own `async with AsyncSessionLocal() as db:`
+        # session open at once — confirmed live that the higher settings
+        # correlate with the public, unauthenticated prospects-console list
+        # endpoint hanging 24-35s (sometimes timing out outright) for real
+        # users, consistent with Supabase's pgbouncer backend pool (shared
+        # across all 4 uvicorn workers, see db/database.py's docstring)
+        # queueing under the extra concurrent connection demand. The
+        # confirmed dominant throughput bottleneck is the ~0.1-0.3% eligible
+        # rate at the >=500k/houses-only criteria (see the candidate-budget
+        # commit), not this concurrency — not worth degrading the live
+        # console for.
+        detail_sem=asyncio.Semaphore(max(2, min(32, _env_int("STALE_LISTINGS_DETAIL_CONCURRENCY", 10)))),
+        finalize_sem=asyncio.Semaphore(max(1, min(12, _env_int("STALE_LISTINGS_FINALIZE_CONCURRENCY", 4)))),
         sheets_sem=asyncio.Semaphore(max(2, min(16, _env_int("STALE_LISTINGS_SHEETS_CONCURRENCY", 6)))),
     )
-    # Raised from 6: same Rightmove-blocking caution as detail_sem above,
-    # kept to a modest bump rather than the full 20 cap.
-    location_concurrency = max(1, min(20, _env_int("STALE_LISTINGS_LOCATION_CONCURRENCY", 8)))
+    location_concurrency = max(1, min(20, _env_int("STALE_LISTINGS_LOCATION_CONCURRENCY", 6)))
     location_sem = asyncio.Semaphore(location_concurrency)
     locations = _locations_for_request(params.location_names)
 
