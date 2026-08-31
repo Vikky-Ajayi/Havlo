@@ -181,18 +181,43 @@ export const StaleProspectsConsole = () => {
   // that entirely (the modal's own content still scrolls normally, since
   // that's a separate, nested scroll container).
   //
-  // Both body AND documentElement need the lock — confirmed live that
-  // body-only (the pattern Navbar.tsx's mobile menu already uses) still
-  // let window.scrollY move on this page: <html>, not <body>, is the
-  // actual scrolling element in standards mode, so body alone doesn't
-  // stop it.
+  // overflow:hidden on documentElement+body (the first thing tried here)
+  // is not enough on real iOS Safari, even though it looked sufficient
+  // under this Browser tool's mobile emulation — that emulation is
+  // Chromium/Android, and iOS Safari has a well-known separate quirk: a
+  // touch-drag on the body can still trigger its rubber-band scroll under
+  // overflow:hidden. This page has ~290 prospect cards in the DOM behind
+  // the modal (not virtualized), so there's plenty of scrollable height
+  // for that to be visible. The robust fix for that specific iOS bug is
+  // pinning the body with position:fixed at its current scroll offset,
+  // then restoring both on close.
   const anyModalOpen = !!selectedId || showManual;
   useEffect(() => {
-    document.documentElement.style.overflow = anyModalOpen ? 'hidden' : '';
-    document.body.style.overflow = anyModalOpen ? 'hidden' : '';
+    if (!anyModalOpen) return;
+    const scrollY = window.scrollY;
+    const { body } = document;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      htmlOverflow: document.documentElement.style.overflow,
+    };
+    document.documentElement.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
     return () => {
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
+      document.documentElement.style.overflow = prev.htmlOverflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.left = prev.left;
+      body.style.right = prev.right;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
     };
   }, [anyModalOpen]);
 
