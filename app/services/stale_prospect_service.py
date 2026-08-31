@@ -68,6 +68,26 @@ if not _PDF_LIBS_IMPORT_ERROR:
     except Exception:
         logger.warning("Inter-Regular.ttf not found/registrable — falling back to Helvetica for letter labels.", exc_info=True)
 
+# Millik (commercial, Zealab Fonts Division — licensed copy provided
+# directly by the business, not a download) for the letter's bottom-stat
+# numbers ("61%", "87%", etc.), per design spec: Millik/Regular(400)/
+# 13.87px/0 letter-spacing. Millik-Regular-source.otf is the licensed file
+# as supplied; reportlab's TTFont can't load PostScript/CFF-outline
+# OpenType fonts at all ("postscript outlines are not supported"), so
+# Millik-Regular.ttf is a TrueType-outline conversion of that same file
+# (fontTools/otf2ttf — a standard, lossless-for-rendering-purposes glyph
+# format conversion, not a different or re-licensed font). Falls back to
+# Helvetica-Bold if the asset is ever missing, rather than failing letter
+# generation.
+_LETTER_METRIC_FONT = "Helvetica-Bold"
+if not _PDF_LIBS_IMPORT_ERROR:
+    try:
+        _millik_path = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "Millik-Regular.ttf"
+        pdfmetrics.registerFont(TTFont("Millik-Regular", str(_millik_path)))
+        _LETTER_METRIC_FONT = "Millik-Regular"
+    except Exception:
+        logger.warning("Millik-Regular.ttf not found/registrable — falling back to Helvetica-Bold for letter metrics.", exc_info=True)
+
 
 def create_access_token() -> str:
     return secrets.token_urlsafe(32)
@@ -1255,13 +1275,9 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         cx = M + col_w * i + col_w / 2
         page.setFillColor(_LETTER_INK)
         # Metrics number spec: Millik/Regular(400)/13.87px/0 letter-spacing/
-        # CAP_HEIGHT leading-trim. Millik itself is a commercial font (Zealab
-        # Fonts Division) — its free download is personal-use-only, not
-        # licensed for a real customer-facing document, so Helvetica-Bold
-        # stays as the stand-in until a licensed Millik file is available.
-        # Size/spacing already match the spec (0 letter-spacing needs no
-        # tracking call).
-        page.setFont("Helvetica-Bold", 13.87)
+        # CAP_HEIGHT leading-trim — real Millik (see _LETTER_METRIC_FONT
+        # above), 0 letter-spacing needs no tracking call.
+        page.setFont(_LETTER_METRIC_FONT, 13.87)
         page.drawCentredString(cx, y - 22, num)
         # Small-text spec: Inter/Regular(400)/8.55px/105% line-height/
         # -0.43px letter-spacing. Real Inter (OFL-licensed, same font used
