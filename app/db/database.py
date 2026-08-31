@@ -70,10 +70,17 @@ if DATABASE_URL:
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
-        # NOTE: peak DB connections = pool_size + max_overflow per process.
-        # Supabase pool size raised to 40 — headroom for scraper + API concurrency.
-        pool_size=10,
-        max_overflow=15,
+        # NOTE: peak DB connections = pool_size + max_overflow per process,
+        # and this runs as 4 uvicorn workers (Procfile) — each with its own
+        # separate engine/pool. The previous 10+15=25 per worker meant up to
+        # 100 possible connections against Supabase's pooler, which turned
+        # out to hard-cap session-mode connections at 40 total ("FATAL: max
+        # clients reached in session mode - max clients are limited to
+        # pool_size: 40" — hit directly while testing the DB migration).
+        # 6+3=9 per worker x 4 workers = 36 max, leaving headroom under that
+        # ceiling for Supabase's own overhead.
+        pool_size=6,
+        max_overflow=3,
         pool_pre_ping=True,
         # Recycle connections every 30 min instead of 5. With 5-min recycle the
         # pool routinely cycled to empty during low-traffic windows, so the
