@@ -42,11 +42,31 @@ try:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.lib.utils import ImageReader
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Paragraph
     from reportlab.pdfgen import canvas as rl_canvas
     _PDF_LIBS_IMPORT_ERROR: ImportError | None = None
 except ImportError as _pdf_libs_exc:  # pragma: no cover - depends on deployment image
     _PDF_LIBS_IMPORT_ERROR = _pdf_libs_exc
+
+# Real Inter (OFL-licensed, same font already used site-wide — see
+# havlo_frontend/src/index.css) embedded for the letter's bottom-stat row,
+# per design spec: Inter/Regular/8.55px/105% line-height/-0.43px tracking.
+# Instantiated to a static Regular (wght=400, opsz=14) weight from Google's
+# variable-font source with fontTools, since reportlab's TTFont registration
+# doesn't reliably resolve a specific weight out of a variable font. Falls
+# back to Helvetica (no letter-spacing, since that fallback path is drawn
+# with the plain Paragraph API — see _letter_para) if the asset is ever
+# missing from a deployment image, rather than failing letter generation.
+_LETTER_LABEL_FONT = "Helvetica"
+if not _PDF_LIBS_IMPORT_ERROR:
+    try:
+        _inter_path = Path(__file__).resolve().parent.parent / "assets" / "fonts" / "Inter-Regular.ttf"
+        pdfmetrics.registerFont(TTFont("Inter-Regular", str(_inter_path)))
+        _LETTER_LABEL_FONT = "Inter-Regular"
+    except Exception:
+        logger.warning("Inter-Regular.ttf not found/registrable — falling back to Helvetica for letter labels.", exc_info=True)
 
 
 def create_access_token() -> str:
@@ -603,6 +623,55 @@ def _letter_para(page, text: str, x: float, y: float, w: float, style: "Paragrap
     return y - h
 
 
+def _letter_draw_centered_tracked_text(
+    page, text: str, cx: float, y_top: float, max_w: float,
+    *, font: str, size: float, leading: float, char_space: float, color,
+) -> float:
+    """Word-wrap and draw centre-aligned text with true character tracking.
+
+    reportlab 4.2.5's Paragraph markup has no letter-spacing/tracking
+    attribute (its <span> tag only accepts font/size/color) — confirmed by
+    testing against the exact pinned version, not just whatever's newest.
+    setCharSpace does exist, but only on the low-level PDFTextObject from
+    canvas.beginText(), not on Canvas itself. This does its own greedy word
+    wrap (accounting for char_space in each line's measured width, which
+    stringWidth alone doesn't) so tracked text can still span multiple
+    lines, then draws each line through beginText/setCharSpace/textOut so
+    the tracking is a real PDF character-spacing operator, not simulated.
+    Returns the y just below the last line drawn.
+    """
+    def tracked_width(s: str) -> float:
+        w = page.stringWidth(s, font, size)
+        if len(s) > 1:
+            w += char_space * (len(s) - 1)
+        return w
+
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if current and tracked_width(candidate) > max_w:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+
+    y = y_top
+    page.setFillColor(color)
+    for line in lines:
+        y -= leading
+        t = page.beginText(cx - tracked_width(line) / 2, y)
+        t.setFont(font, size)
+        t.setFillColor(color)
+        t.setCharSpace(char_space)
+        t.textOut(line)
+        page.drawText(t)
+    return y
+
+
 def _letter_draw_checkmark(page, cx: float, cy: float, r: float = 6.5) -> None:
     page.setFillColor(_LETTER_ACCENT)
     page.circle(cx, cy, r, stroke=0, fill=1)
@@ -1147,15 +1216,17 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # 4pt was too tight: drawString's y is the text baseline, and an 11pt
     # bold heading's ascent puts its glyph tops within a couple of points
     # of the gauge cards' rounded-rect bottom edge at that gap — reading as
-    # the heading touching the card row above it. Raised to 12 here, and
-    # clawed back by trimming the paragraph/QR gaps below (8->4, 14->10)
-    # so this page's total consumed height is unchanged — the last bottom-
-    # stat column ("of Havlo recommendations implemented...", the longest
-    # label) already wraps to enough lines to run past the page's bottom
-    # margin at the original height budget; this must not make that worse.
-    # That overflow is real and pre-existing, independent of this change —
-    # flagged separately rather than fixed here since narrowing it means
-    # either shortening marketing copy or shrinking that row's type.
+    # the heading touching the card row above it. Raised to 12.
+    #
+    # This used to have to be clawed back from the paragraph/QR gaps below
+    # to hold the page's total height steady, because the longest bottom-
+    # stat label ("of Havlo recommendations implemented...") was wrapping
+    # past the page's bottom margin at 10pt/13-leading Helvetica. Switching
+    # that row to the actual design-spec font (real Inter at 8.55pt/105%
+    # line-height, see _letter_draw_centered_tracked_text) wraps it into
+    # fewer, narrower lines and clears the margin with ~17pt to spare even
+    # without that claw-back, so the paragraph/QR gaps below are back to
+    # their original 8/14.
     y -= 178 + 12
 
     page.setFont("Helvetica-Bold", 11)
@@ -1165,10 +1236,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y -= 4
 
     y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 4
+    y -= 8
 
     _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
-    y -= qr_h + 10
+    y -= qr_h + 14
 
     bottom_stats = [
         ("61%", "Of assessed stale listings sold within 9 weeks"),
@@ -1183,15 +1254,24 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     for i, (num, label) in enumerate(bottom_stats):
         cx = M + col_w * i + col_w / 2
         page.setFillColor(_LETTER_INK)
-        # Metrics number spec: 13.87px/regular/0 letter-spacing/CAP_HEIGHT
-        # leading-trim — Helvetica-Bold kept as the closest built-in stand-in
-        # since Millik isn't an embedded font here.
+        # Metrics number spec: Millik/Regular(400)/13.87px/0 letter-spacing/
+        # CAP_HEIGHT leading-trim. Millik itself is a commercial font (Zealab
+        # Fonts Division) — its free download is personal-use-only, not
+        # licensed for a real customer-facing document, so Helvetica-Bold
+        # stays as the stand-in until a licensed Millik file is available.
+        # Size/spacing already match the spec (0 letter-spacing needs no
+        # tracking call).
         page.setFont("Helvetica-Bold", 13.87)
         page.drawCentredString(cx, y - 22, num)
-        # Small-text spec: Inter/Medium/10px/130% line-height — Helvetica
-        # kept as the closest built-in stand-in since Inter isn't embedded.
-        stat_style = ParagraphStyle("LetterBottomStat", fontName="Helvetica", fontSize=10, leading=13, textColor=_LETTER_MUTED, alignment=1)
-        _letter_para(page, label, cx - col_w / 2 + 8, y - 38, col_w - 16, stat_style)
+        # Small-text spec: Inter/Regular(400)/8.55px/105% line-height/
+        # -0.43px letter-spacing. Real Inter (OFL-licensed, same font used
+        # site-wide) via _letter_draw_centered_tracked_text — reportlab's
+        # Paragraph API can't do the tracking, see that function's docstring.
+        _letter_draw_centered_tracked_text(
+            page, label, cx, y - 30, col_w - 16,
+            font=_LETTER_LABEL_FONT, size=8.55, leading=8.55 * 1.05,
+            char_space=-0.43, color=_LETTER_MUTED,
+        )
 
     page.save()
     return os.path.abspath(pdf_path)
