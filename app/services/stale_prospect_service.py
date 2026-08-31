@@ -1144,7 +1144,19 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         ("Listing Presentation", pres_status, pres_color, pres_score, pres_label, "Opportunities identified to improve how the property is presented to buyers."),
     ]
     _letter_draw_gauge_row(page, M, y, width - 2 * M, gauge_cards)
-    y -= 178 + 4
+    # 4pt was too tight: drawString's y is the text baseline, and an 11pt
+    # bold heading's ascent puts its glyph tops within a couple of points
+    # of the gauge cards' rounded-rect bottom edge at that gap — reading as
+    # the heading touching the card row above it. Raised to 12 here, and
+    # clawed back by trimming the paragraph/QR gaps below (8->4, 14->10)
+    # so this page's total consumed height is unchanged — the last bottom-
+    # stat column ("of Havlo recommendations implemented...", the longest
+    # label) already wraps to enough lines to run past the page's bottom
+    # margin at the original height budget; this must not make that worse.
+    # That overflow is real and pre-existing, independent of this change —
+    # flagged separately rather than fixed here since narrowing it means
+    # either shortening marketing copy or shrinking that row's type.
+    y -= 178 + 12
 
     page.setFont("Helvetica-Bold", 11)
     page.drawString(M, y, "WHAT'S IN THE FULL ASSESSMENT?")
@@ -1153,10 +1165,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y -= 4
 
     y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 8
+    y -= 4
 
     _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
-    y -= qr_h + 14
+    y -= qr_h + 10
 
     bottom_stats = [
         ("61%", "Of assessed stale listings sold within 9 weeks"),
