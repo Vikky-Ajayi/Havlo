@@ -2479,9 +2479,9 @@ _STALE_PREMIUM_PRICE_HTML = '<strong style="color:#111111;">£1,499.99</strong>'
 def _stale_post_purchase_stage_content(stage: int, *, price_html: str, price_text: str) -> dict:
     if stage == 1:
         return {
-            "subject": "Your Assessment Is Ready",
-            "heading": "Your Assessment Is Ready",
-            "cta_label": "View my assessment",
+            "subject": "Your Property Assessment Report Is Ready",
+            "heading": "Your Property Assessment Report Is Ready",
+            "cta_label": "View My Property Assessment",
             "cta_kind": "report",
             "content_html": (
                 _stale_abandonment_paragraph(
