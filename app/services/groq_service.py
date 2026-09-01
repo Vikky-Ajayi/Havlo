@@ -87,7 +87,9 @@ STANDING_ADVISORY_ACTIONS: list[dict[str, Any]] = [
             "Relaunch™) adds an additional route to market by taking the property directly to potential "
             "buyers who may not yet be searching.\n\n"
             "Your estate agent remains your agent. Havlo's role is to provide additional property intelligence "
-            "and buyer reach to support the existing sales process."
+            "and buyer reach to support the existing sales process.\n\n"
+            "If this sounds like it could help, let us know and we'll talk you through how it works for your "
+            "property — or you can find out more at heyhavlo.com/sell-your-property."
         ),
     },
     {

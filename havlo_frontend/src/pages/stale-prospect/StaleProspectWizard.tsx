@@ -910,7 +910,7 @@ const SuccessStep = ({
     </svg>
     <h1>Your full assessment is ready</h1>
     <p>Your complete Havlo Property Assessment for {prospect.property_address} has been unlocked.</p>
-    <button type="button" className="slw-btn-black" onClick={onViewReport}>View My full Assessment</button>
+    <button type="button" className="slw-btn-black" onClick={onViewReport}>View My Property Assessment Report</button>
     <button type="button" className="slw-btn-outline" onClick={onDownloadPdf}>Download PDF Report</button>
   </section>
 );
