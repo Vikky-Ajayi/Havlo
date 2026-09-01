@@ -42,11 +42,62 @@ try:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.lib.utils import ImageReader
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import Paragraph
     from reportlab.pdfgen import canvas as rl_canvas
     _PDF_LIBS_IMPORT_ERROR: ImportError | None = None
 except ImportError as _pdf_libs_exc:  # pragma: no cover - depends on deployment image
     _PDF_LIBS_IMPORT_ERROR = _pdf_libs_exc
+
+# Real brand fonts for the letter, embedded rather than approximated with
+# built-in PDF fonts (Helvetica/Helvetica-Bold). Each registration is
+# independently guarded — a missing/broken font asset falls back to the
+# closest built-in rather than failing letter generation entirely.
+#
+# Inter (Regular/Bold/ExtraBold): OFL-licensed, the same font already used
+# site-wide (see havlo_frontend/src/index.css). Instantiated to static
+# weights from Google's variable-font source with fontTools, since
+# reportlab's TTFont can't target a specific weight inside a variable font
+# directly. IMPORTANT: fontTools' instancer pins the glyph outlines for the
+# requested weight correctly but does NOT update the font's internal name
+# table to match (confirmed directly — three static instances pinned to
+# wght=400/700/800 all still self-reported as "Inter Regular" / PostScript
+# name "Inter-Regular"). reportlab keys off that internal identity, so
+# without renaming each instance's name table (nameID 1/2/4/6/16/17) before
+# registering, all three render as the same (regular) weight regardless of
+# which reportlab font name is used to draw with — confirmed by rendering
+# and visually comparing all three side by side before and after the fix.
+#
+# Millik (Regular): commercial (Zealab Fonts Division) — licensed copy
+# supplied directly by the business, not downloaded from an arbitrary
+# source; verified via its embedded name-table metadata before use.
+# reportlab's TTFont refuses PostScript/CFF-outline OpenType fonts outright
+# ("postscript outlines are not supported") — Millik-Regular.ttf is a
+# TrueType-outline conversion of the licensed .otf via fontTools/otf2ttf
+# (a glyph-format conversion, not a different or re-licensed font);
+# Millik-Regular-source.otf is kept as the licensed file exactly as supplied.
+_LETTER_FONT_REGULAR = "Helvetica"
+_LETTER_FONT_BOLD = "Helvetica-Bold"
+_LETTER_FONT_EXTRABOLD = "Helvetica-Bold"  # Helvetica has no ExtraBold weight
+_LETTER_FONT_METRIC = "Helvetica-Bold"
+
+if not _PDF_LIBS_IMPORT_ERROR:
+    _fonts_dir = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+    for _pdf_name, _file_name, _fallback_attr in (
+        ("Inter-Regular", "Inter-Regular.ttf", "_LETTER_FONT_REGULAR"),
+        ("Inter-Bold", "Inter-Bold.ttf", "_LETTER_FONT_BOLD"),
+        ("Inter-ExtraBold", "Inter-ExtraBold.ttf", "_LETTER_FONT_EXTRABOLD"),
+        ("Millik-Regular", "Millik-Regular.ttf", "_LETTER_FONT_METRIC"),
+    ):
+        try:
+            pdfmetrics.registerFont(TTFont(_pdf_name, str(_fonts_dir / _file_name)))
+            globals()[_fallback_attr] = _pdf_name
+        except Exception:
+            logger.warning(
+                "%s not found/registrable — falling back to %s for the letter.",
+                _file_name, globals()[_fallback_attr], exc_info=True,
+            )
 
 
 def create_access_token() -> str:
@@ -603,6 +654,68 @@ def _letter_para(page, text: str, x: float, y: float, w: float, style: "Paragrap
     return y - h
 
 
+def _letter_draw_tracked_text(
+    page, text: str, x: float, y: float, *, font: str, size: float,
+    char_space: float, color, align: str = "left",
+    max_w: float | None = None, leading: float | None = None,
+) -> float:
+    """Draw text with true character tracking (letter-spacing).
+
+    reportlab 4.2.5's Paragraph markup has no tracking attribute (its
+    <span> tag only accepts font/size/color — confirmed by testing against
+    the exact pinned version, not just whatever's newest). setCharSpace
+    does exist, but only on the low-level PDFTextObject from
+    canvas.beginText(), not on Canvas itself.
+
+    With max_w given, does its own greedy word-wrap first (accounting for
+    char_space in each line's measured width, which stringWidth alone
+    doesn't) so tracked text can still span multiple lines; without it,
+    draws text as a single line. align controls how each line is
+    positioned relative to x ("left", "center", or "right"). Returns the y
+    just below the last line drawn (== y when there's only one line).
+    """
+    def tracked_width(s: str) -> float:
+        w = page.stringWidth(s, font, size)
+        if len(s) > 1:
+            w += char_space * (len(s) - 1)
+        return w
+
+    if max_w is None:
+        lines = [text]
+    else:
+        words = text.split()
+        lines = []
+        current = ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if current and tracked_width(candidate) > max_w:
+                lines.append(current)
+                current = word
+            else:
+                current = candidate
+        if current:
+            lines.append(current)
+
+    cur_y = y
+    for i, line in enumerate(lines):
+        if i > 0:
+            cur_y -= leading
+        w = tracked_width(line)
+        if align == "center":
+            line_x = x - w / 2
+        elif align == "right":
+            line_x = x - w
+        else:
+            line_x = x
+        t = page.beginText(line_x, cur_y)
+        t.setFont(font, size)
+        t.setFillColor(color)
+        t.setCharSpace(char_space)
+        t.textOut(line)
+        page.drawText(t)
+    return cur_y
+
+
 def _letter_draw_checkmark(page, cx: float, cy: float, r: float = 6.5) -> None:
     page.setFillColor(_LETTER_ACCENT)
     page.circle(cx, cy, r, stroke=0, fill=1)
@@ -1054,8 +1167,14 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y -= 24
 
     page.setFillColor(_LETTER_INK)
-    page.setFont("Helvetica-Bold", 11)
-    page.drawString(M, y, "WHAT WE FOUND")
+    # Same section-heading spec as page 2's headings (Inter Bold 10px/-3%)
+    # — applied here too for consistency across the two pages, since this
+    # is the same kind of section header, not literally one of the three
+    # named in the spec request.
+    _letter_draw_tracked_text(
+        page, "WHAT WE FOUND", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
     y -= 10
     y = _letter_para(page, "Our initial assessment has identified <b>several areas worth your attention,</b> including potential opportunities around:", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 14
@@ -1065,8 +1184,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y = _letter_para(page, "We've summarised some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 24
 
-    page.setFont("Helvetica-Bold", 11)
-    page.drawString(M, y, "YOUR FULL ASSESSMENT")
+    _letter_draw_tracked_text(
+        page, "YOUR FULL ASSESSMENT", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
     y -= 10
     y = _letter_para(page, "Your complete property assessment contains our detailed analysis and recommendations.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 4
@@ -1082,9 +1203,11 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # ── Page 2 ──
     _letter_draw_header(page, width, height)
     y = height - 128
-    page.setFillColor(_LETTER_INK)
-    page.setFont("Helvetica-Bold", 14)
-    page.drawString(M, y, "Property Performance Snapshot")
+    # Spec: Inter/ExtraBold(800)/14px/110% line-height/-3% letter-spacing.
+    _letter_draw_tracked_text(
+        page, "Property Performance Snapshot", M, y,
+        font=_LETTER_FONT_EXTRABOLD, size=14, char_space=14 * -0.03, color=_LETTER_INK,
+    )
     y -= 22
 
     card_h = 70
@@ -1107,8 +1230,13 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     _letter_para(page, _letter_esc(prospect.property_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
     y -= card_h + 12
 
-    page.setFont("Helvetica-Bold", 10)
-    page.drawString(M, y, "PROPERTY AT A GLANCE")
+    # Spec: Inter/Bold(700)/10px/150% line-height/-3% letter-spacing/
+    # CAP_HEIGHT leading-trim — same spec as OUR INITIAL FINDINGS and
+    # WHAT'S IN THE FULL ASSESSMENT? below.
+    _letter_draw_tracked_text(
+        page, "PROPERTY AT A GLANCE", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
     y -= 24
 
     days = prospect.listing_duration_days
@@ -1129,8 +1257,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     _letter_draw_stat_row(page, M, y, width - 2 * M, stats)
     y -= 70
 
-    page.setFont("Helvetica-Bold", 10)
-    page.drawString(M, y, "OUR INITIAL FINDINGS")
+    _letter_draw_tracked_text(
+        page, "OUR INITIAL FINDINGS", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
     y -= 8
 
     price_label, price_dir, price_status, price_color = _letter_price_position(prospect.asking_price, comparable_sales)
@@ -1168,8 +1298,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     _gauge_card_h = 160.2
     y -= _gauge_card_h + 12
 
-    page.setFont("Helvetica-Bold", 10)
-    page.drawString(M, y, "WHAT'S IN THE FULL ASSESSMENT?")
+    _letter_draw_tracked_text(
+        page, "WHAT'S IN THE FULL ASSESSMENT?", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
     y -= 10
     y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
     y -= 4
@@ -1192,16 +1324,20 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     col_w = (width - 2 * M) / 4
     for i, (num, label) in enumerate(bottom_stats):
         cx = M + col_w * i + col_w / 2
-        page.setFillColor(_LETTER_INK)
-        # Metrics number spec: 13.87px/regular/0 letter-spacing/CAP_HEIGHT
-        # leading-trim — Helvetica-Bold kept as the closest built-in stand-in
-        # since Millik isn't an embedded font here.
-        page.setFont("Helvetica-Bold", 13.87)
-        page.drawCentredString(cx, y - 22, num)
-        # Small-text spec: Inter/Medium/10px/130% line-height — Helvetica
-        # kept as the closest built-in stand-in since Inter isn't embedded.
-        stat_style = ParagraphStyle("LetterBottomStat", fontName="Helvetica", fontSize=10, leading=13, textColor=_LETTER_MUTED, alignment=1)
-        _letter_para(page, label, cx - col_w / 2 + 8, y - 38, col_w - 16, stat_style)
+        # Metrics number spec: Millik/Regular(400)/13.87px/0 letter-spacing/
+        # CAP_HEIGHT leading-trim.
+        _letter_draw_tracked_text(
+            page, num, cx, y - 22,
+            font=_LETTER_FONT_METRIC, size=13.87, char_space=0, color=_LETTER_INK,
+            align="center",
+        )
+        # Small-text spec: Inter/Regular(400)/8.55px/105% line-height/
+        # -0.43px letter-spacing.
+        _letter_draw_tracked_text(
+            page, label, cx, y - 30,
+            font=_LETTER_FONT_REGULAR, size=8.55, char_space=-0.43, color=_LETTER_MUTED,
+            align="center", max_w=col_w - 16, leading=8.55 * 1.05,
+        )
 
     page.save()
     return os.path.abspath(pdf_path)
