@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
-import { StaleListingsLogo } from '../../components/shared/StaleListingsLogo';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
 import {
   confirmProspectProperty,
@@ -63,7 +62,7 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="slw-header">
-      <a href="/stale-listings" className="slw-logo-link"><StaleListingsLogo className="slw-logo-mark" /></a>
+      <a href="/stale-listings" className="slw-logo-link"><img src="/stale-listings-prospect-logo.png" alt="Havlo StaleListings" className="slw-logo-mark" /></a>
       <nav className="slw-nav slw-noprint">
         <a href="/stale-listings">How it works</a>
         <a href="/stale-listings">Faq</a>
