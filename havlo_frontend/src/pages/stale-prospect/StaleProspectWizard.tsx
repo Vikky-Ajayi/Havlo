@@ -752,7 +752,7 @@ const AssessmentStep = ({
               <span>Full report &middot; one-time payment</span>
               <b>{formatGbp(price, { maximumFractionDigits: 2 })}</b>
             </div>
-            <button type="button" className="slw-btn-white" onClick={onUnlock}>Unlock my full Assessment</button>
+            <button type="button" className="slw-btn-white" onClick={onUnlock}>Unlock My Property Assessment</button>
           </div>
         </div>
         <div className="slw-unlock-cta-includes">
