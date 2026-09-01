@@ -1182,6 +1182,18 @@ export const api = {
       timeout: 90000,
     }),
 
+  staleListingsRegenerateLetters: (token: string) =>
+    request<{
+      total: number;
+      regenerated: number;
+      failed: number;
+      failures: { property_code: string; reason: string }[];
+    }>('/stale-listings/admin/prospects/regenerate-letters', {
+      method: 'POST',
+      token,
+      timeout: 180000,
+    }),
+
   customOffersScrape: (payload: { listing_url: string }) =>
     request<CustomOffersScrapeResponse>('/custom-offers/scrape', {
       method: 'POST',

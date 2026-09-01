@@ -1406,6 +1406,66 @@ async def sync_stale_prospects_to_sheets(
     return sync_result
 
 
+@admin_router.post("/admin/prospects/regenerate-letters")
+async def regenerate_all_stale_prospect_letters(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(default=2000, ge=1, le=5000),
+) -> dict:
+    """Regenerate every prospect's letter PDF against current drawing code
+    (fonts/spacing/layout) — a one-off catch-up after a design change,
+    rather than waiting for each one to self-heal lazily on next download.
+
+    Explicit, deliberate action rather than something to run casually:
+    regenerating mints a fresh QR access token per prospect (the raw token
+    is never persisted, only its hash — see generate_letter_pdf's other
+    call sites — so there is no way to regenerate a PDF while keeping its
+    existing QR code valid). That invalidates the QR code on any physical
+    letter already mailed with the old one. Confirmed with the business
+    before wiring this up that nothing has been mailed yet.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+
+    result = await db.execute(
+        select(StaleListingProspect).order_by(StaleListingProspect.created_at.asc()).limit(limit)
+    )
+    prospects = list(result.scalars().all())
+    if not prospects:
+        return {"total": 0, "regenerated": 0, "failed": 0, "failures": []}
+
+    semaphore = asyncio.Semaphore(5)
+    failures: list[dict] = []
+    regenerated = 0
+
+    async def _regenerate_one(prospect: StaleListingProspect) -> None:
+        nonlocal regenerated
+        async with semaphore:
+            try:
+                new_token = create_access_token()
+                prospect.qr_token_hash = hash_access_token(new_token)
+                prospect.letter_pdf_path = await asyncio.wait_for(
+                    asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
+                    timeout=20.0,
+                )
+                regenerated += 1
+            except Exception as exc:
+                failures.append({
+                    "property_code": prospect.property_code,
+                    "reason": str(exc)[:200],
+                })
+
+    await asyncio.gather(*(_regenerate_one(p) for p in prospects))
+    await db.commit()
+
+    return {
+        "total": len(prospects),
+        "regenerated": regenerated,
+        "failed": len(failures),
+        "failures": failures,
+    }
+
+
 @admin_router.get("/admin/prospects/email-diagnostics")
 async def stale_prospect_email_diagnostics(
     current_user: User = Depends(get_current_user),

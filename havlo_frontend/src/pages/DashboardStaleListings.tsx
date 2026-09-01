@@ -378,6 +378,8 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
   const [postcodeStatus, setPostcodeStatus] = useState('');
   const [sheetsSyncing, setSheetsSyncing] = useState(false);
   const [sheetsSyncStatus, setSheetsSyncStatus] = useState('');
+  const [lettersRegenerating, setLettersRegenerating] = useState(false);
+  const [lettersRegenerateStatus, setLettersRegenerateStatus] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -765,6 +767,23 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
     }
   };
 
+  const handleRegenerateLetters = async () => {
+    if (!token) return;
+    if (!window.confirm('Regenerate every prospect\'s letter PDF? This mints a fresh QR code per prospect, invalidating any that have already been printed/mailed with the old one.')) return;
+    setLettersRegenerating(true);
+    setLettersRegenerateStatus('');
+    try {
+      const result = await api.staleListingsRegenerateLetters(token);
+      const parts = [`${result.regenerated} of ${result.total} regenerated`];
+      if (result.failed > 0) parts.push(`${result.failed} failed`);
+      setLettersRegenerateStatus(parts.join(', ') + '.');
+    } catch (e) {
+      setLettersRegenerateStatus(e instanceof Error ? e.message : 'Letter regeneration failed.');
+    } finally {
+      setLettersRegenerating(false);
+    }
+  };
+
   const runDate = (value?: string | null) => value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
   return (
@@ -820,9 +839,13 @@ export function DashboardStaleListings({ reviewMode = false }: { reviewMode?: bo
               <button onClick={handleSyncToSheets} disabled={sheetsSyncing} title="Adds any prospect missing from the Stale Listing Addresses Google Sheet — catches rows that were silently dropped by Sheets rate limits during discovery. Safe to re-run any time." style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#1D4ED8', fontWeight: 700, fontSize: 12, cursor: sheetsSyncing ? 'not-allowed' : 'pointer' }}>
                 {sheetsSyncing ? 'Syncing to Sheets...' : 'Sync to Google Sheets'}
               </button>
+              <button onClick={handleRegenerateLetters} disabled={lettersRegenerating} title="Regenerates every prospect's letter PDF against the current design/fonts. Mints a fresh QR code per prospect — only safe to run before anything's been physically mailed." style={{ padding: '9px 14px', borderRadius: 8, border: '1px solid #FDE68A', background: '#FFFBEB', color: '#92400E', fontWeight: 700, fontSize: 12, cursor: lettersRegenerating ? 'not-allowed' : 'pointer' }}>
+                {lettersRegenerating ? 'Regenerating letters...' : 'Regenerate all letters'}
+              </button>
             </div>
             {postcodeStatus && <p style={{ margin: '10px 0 0', color: postcodeStatus.includes('failed') && !postcodeStatus.includes('0 failed') ? '#991B1B' : '#065F46', fontSize: 12, fontWeight: 700 }}>{postcodeStatus}</p>}
             {sheetsSyncStatus && <p style={{ margin: '10px 0 0', color: sheetsSyncStatus.includes('failed') ? '#991B1B' : '#1D4ED8', fontSize: 12, fontWeight: 700 }}>{sheetsSyncStatus}</p>}
+            {lettersRegenerateStatus && <p style={{ margin: '10px 0 0', color: lettersRegenerateStatus.includes('failed') && !lettersRegenerateStatus.includes('0 failed') ? '#991B1B' : '#92400E', fontSize: 12, fontWeight: 700 }}>{lettersRegenerateStatus}</p>}
             <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1.8fr 0.7fr 0.7fr auto', gap: 10, alignItems: 'end' }}>
               <div>
                 <label style={labelStyle}>Locations</label>
