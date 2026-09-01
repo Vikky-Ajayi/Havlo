@@ -911,7 +911,14 @@ def _letter_draw_stat_row(page, x, y, w, stats) -> None:
             page.line(x + col_w * i, y - 48, x + col_w * i, y + 14)
 
 
-def _letter_draw_gauge_row(page, x, y_top, w, cards, card_h=178) -> None:
+def _letter_draw_gauge_row(page, x, y_top, w, cards, card_h=160.2) -> None:
+    # card_h is 178 * 0.9 (10% shorter, per design feedback) — every
+    # VERTICAL offset below is scaled by the same ratio so the internal
+    # layout (title/status/divider/gauge/label/description) stays
+    # proportionally identical to the original 178pt design instead of
+    # bunching up in a shorter box. Horizontal measurements (insets, line
+    # extents, paragraph width) are untouched since only height changed.
+    scale = card_h / 178
     gap = 14
     n = len(cards)
     card_w = (w - gap * (n - 1)) / n
@@ -923,25 +930,25 @@ def _letter_draw_gauge_row(page, x, y_top, w, cards, card_h=178) -> None:
 
         page.setFillColor(_LETTER_INK)
         page.setFont("Helvetica-Bold", 10.5)
-        page.drawCentredString(cx0 + card_w / 2, cy0 + card_h - 22, title)
+        page.drawCentredString(cx0 + card_w / 2, cy0 + card_h - 22 * scale, title)
         page.setFillColor(status_color)
         page.setFont("Helvetica-Bold", 8.6)
-        page.drawCentredString(cx0 + card_w / 2, cy0 + card_h - 35, status_text)
+        page.drawCentredString(cx0 + card_w / 2, cy0 + card_h - 35 * scale, status_text)
         page.setStrokeColor(colors.HexColor("#E2E2E5"))
         page.setLineWidth(0.75)
-        page.line(cx0 + 14, cy0 + card_h - 43, cx0 + card_w - 14, cy0 + card_h - 43)
+        page.line(cx0 + 14, cy0 + card_h - 43 * scale, cx0 + card_w - 14, cy0 + card_h - 43 * scale)
 
         # 6pt lower than before (was card_h - 92) — the arc's top point sits
         # at gauge_cy + radius, which was only 4pt below the divider line
         # above it; this opens that up to a clearer ~10pt gap.
-        gauge_cy = cy0 + card_h - 98
-        _letter_draw_gauge(page, cx0 + card_w / 2, gauge_cy, 45, score, status_color)
+        gauge_cy = cy0 + card_h - 98 * scale
+        _letter_draw_gauge(page, cx0 + card_w / 2, gauge_cy, 45 * scale, score, status_color)
 
         page.setFillColor(_LETTER_INK)
         page.setFont("Helvetica-Bold", 10.5)
-        page.drawCentredString(cx0 + card_w / 2, cy0 + 48, result_label)
+        page.drawCentredString(cx0 + card_w / 2, cy0 + 48 * scale, result_label)
         desc_style = ParagraphStyle("LetterGaugeDesc", fontName="Helvetica", fontSize=8.1, leading=11.2, textColor=_LETTER_MUTED, alignment=1)
-        _letter_para(page, desc_html, cx0 + 12, cy0 + 36, card_w - 24, desc_style)
+        _letter_para(page, desc_html, cx0 + 12, cy0 + 36 * scale, card_w - 24, desc_style)
 
 
 def _letter_parse_money(text: Any) -> float | None:
@@ -1028,9 +1035,11 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica", 10.5)
     address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
+    address_line_h = 14.5
+    address_x = M + 6 * address_line_h  # moved right by 6 line-spacings, per design feedback
     for line in ["Regarding your property for sale"] + address_lines[:5]:
-        page.drawString(M, y, line)
-        y -= 14.5
+        page.drawString(address_x, y, line)
+        y -= address_line_h
     y -= 22
 
     headline_style = ParagraphStyle("LetterHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=_LETTER_ACCENT)
@@ -1074,14 +1083,13 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     _letter_draw_header(page, width, height)
     y = height - 128
     page.setFillColor(_LETTER_INK)
-    page.setFont("Helvetica-Bold", 17)
+    page.setFont("Helvetica-Bold", 14)
     page.drawString(M, y, "Property Performance Snapshot")
-    y -= 26
+    y -= 22
 
     card_h = 70
     page.setFillColor(colors.white)
-    page.setStrokeColor(_LETTER_CARD_BORDER)
-    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=1, fill=1)
+    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=0, fill=1)
     photo_w = 96
     if photo_reader is not None:
         try:
@@ -1099,7 +1107,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     _letter_para(page, _letter_esc(prospect.property_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
     y -= card_h + 12
 
-    page.setFont("Helvetica-Bold", 11)
+    page.setFont("Helvetica-Bold", 10)
     page.drawString(M, y, "PROPERTY AT A GLANCE")
     y -= 24
 
@@ -1121,7 +1129,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     _letter_draw_stat_row(page, M, y, width - 2 * M, stats)
     y -= 70
 
-    page.setFont("Helvetica-Bold", 11)
+    page.setFont("Helvetica-Bold", 10)
     page.drawString(M, y, "OUR INITIAL FINDINGS")
     y -= 8
 
@@ -1153,12 +1161,14 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # stat column ("of Havlo recommendations implemented...", the longest
     # label) already wraps to enough lines to run past the page's bottom
     # margin at the original height budget; this must not make that worse.
-    # That overflow is real and pre-existing, independent of this change —
-    # flagged separately rather than fixed here since narrowing it means
-    # either shortening marketing copy or shrinking that row's type.
-    y -= 178 + 12
+    # Gauge cards are now 160.2pt tall (178 * 0.9, per design feedback) —
+    # this must track that or the row below opens up an unwanted gap where
+    # the taller card used to be. The 17.8pt reclaimed here also helps the
+    # bottom-of-page overflow noted above.
+    _gauge_card_h = 160.2
+    y -= _gauge_card_h + 12
 
-    page.setFont("Helvetica-Bold", 11)
+    page.setFont("Helvetica-Bold", 10)
     page.drawString(M, y, "WHAT'S IN THE FULL ASSESSMENT?")
     y -= 10
     y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
