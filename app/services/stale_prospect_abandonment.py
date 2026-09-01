@@ -18,6 +18,12 @@ send.
 Per product decision, this only applies to prospects whose contact_details_
 submitted_at is set after this feature shipped — no backfill of prospects
 who already had contact details before then.
+
+Alongside the email ladder, a single SMS nudge goes out 24h after the same
+"Your Details" anchor (see run_abandonment_sms_cycle / ABANDONMENT_SMS_DELAY
+below) — one send, not a 12-stage sequence, tracked by its own
+abandonment_sms_sent_at column rather than the StaleProspectAbandonmentEmail
+table above.
 """
 from __future__ import annotations
 
@@ -31,7 +37,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectAbandonmentEmail
-from app.services import email_service
+from app.services import email_service, twilio_service
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_service import unsubscribe_token
 from app.config import get_settings
@@ -178,4 +184,100 @@ async def start_abandonment_email_loop() -> None:
         run_abandonment_email_cycle,
         interval_hours=5 / 60,
         initial_delay_seconds=30,
+    )
+
+
+# One-time SMS nudge, 24h after "Your Details" without paying — separate
+# from the 12-stage email ladder above (own idempotency column,
+# abandonment_sms_sent_at, own channel). Links via ?code={property_code}
+# rather than a token — the same param the manual "Enter Property ID" entry
+# already uses (StaleProspectWizard.tsx reads token OR code) — deliberately
+# NOT reissuing a fresh access token the way the letter-resend paths do,
+# since that would invalidate the QR code on any physical letter already
+# mailed to this prospect. property_code carries no less exposure than a
+# reissued token would (both are already shown/printed to the prospect).
+ABANDONMENT_SMS_DELAY = timedelta(hours=24)
+_SMS_POLL_LIMIT = 500
+_MAX_SMS_SENDS_PER_CYCLE = 100
+
+
+async def run_abandonment_sms_cycle() -> dict:
+    now = datetime.now(timezone.utc)
+    sent = 0
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(StaleListingProspect)
+            .where(
+                StaleListingProspect.contact_details_submitted_at.is_not(None),
+                StaleListingProspect.payment_status != "completed",
+                StaleListingProspect.unsubscribed_at.is_(None),
+                StaleListingProspect.abandonment_sms_sent_at.is_(None),
+                StaleListingProspect.contact_phone.is_not(None),
+            )
+            .order_by(StaleListingProspect.contact_details_submitted_at.asc())
+            .limit(_SMS_POLL_LIMIT)
+        )
+        candidates = list(result.scalars().all())
+        if not candidates:
+            return {"candidates": 0, "sent": 0}
+
+    due = [
+        p for p in candidates
+        if now - p.contact_details_submitted_at >= ABANDONMENT_SMS_DELAY
+    ][:_MAX_SMS_SENDS_PER_CYCLE]
+
+    base_url = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        base_url = "https://www.heyhavlo.com"
+
+    for prospect in due:
+        e164 = twilio_service.normalize_to_e164(prospect.contact_phone or "")
+        preview_url = f"{base_url}/stale-listings/prospect?code={prospect.property_code}"
+
+        if not e164:
+            delivered = False
+            skip_reason = f"unusable phone number: {prospect.contact_phone!r}"
+        else:
+            try:
+                delivered = await asyncio.to_thread(
+                    twilio_service.send_stale_prospect_abandonment_sms,
+                    e164,
+                    preview_url,
+                )
+            except Exception:
+                logger.exception("Abandonment SMS send raised for prospect=%s", prospect.id)
+                continue
+            skip_reason = "Twilio unconfigured or rejected the message" if not delivered else ""
+
+        async with AsyncSessionLocal() as db:
+            fresh = await db.get(StaleListingProspect, prospect.id)
+            if not fresh or fresh.abandonment_sms_sent_at is not None:
+                continue  # already handled by a concurrent cycle
+            if delivered:
+                fresh.abandonment_sms_sent_at = now
+                sent += 1
+            elif not e164:
+                # An unusable number will never become usable on its own —
+                # mark as handled now so this prospect isn't re-checked
+                # forever, unlike a real Twilio failure (see below).
+                fresh.abandonment_sms_sent_at = now
+                fresh.last_error = f"Abandonment SMS skipped — {skip_reason}"
+            else:
+                # Leave abandonment_sms_sent_at unset so a genuine Twilio
+                # failure retries next cycle, same as the email cycle above.
+                fresh.last_error = f"Abandonment SMS not delivered — {skip_reason}"
+            await db.commit()
+
+    return {"candidates": len(candidates), "due": len(due), "sent": sent}
+
+
+async def start_abandonment_sms_loop() -> None:
+    """Started once from app startup (see app/main.py), alongside the email
+    loop. Same 5-minute polling cadence."""
+    await run_scraper_loop(
+        "stale-prospect-abandonment-sms",
+        run_abandonment_sms_cycle,
+        interval_hours=5 / 60,
+        initial_delay_seconds=45,
     )

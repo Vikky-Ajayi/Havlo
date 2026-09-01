@@ -537,6 +537,10 @@ class StaleListingProspect(Base):
     # Set when the prospect clicks "unsubscribe" on a drip email. Checked
     # before every send; permanently stops the sequence once set.
     unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set once the one-time 24h abandonment SMS has been sent (see
+    # stale_prospect_abandonment.run_abandonment_sms_cycle) — the idempotency
+    # guard for that single send, separate from the 12-stage email sequence.
+    abandonment_sms_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # City this prospect's location filter belongs to (matches candidate.city
     # from discovery, or the ops console's manual-create form). Populated
     # going forward; existing rows are backfilled from listing_snapshot_json

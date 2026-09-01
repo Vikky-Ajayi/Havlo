@@ -362,7 +362,8 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS last_error TEXT,
                             ADD COLUMN IF NOT EXISTS discovered_at TIMESTAMPTZ,
                             ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ,
-                            ADD COLUMN IF NOT EXISTS letter_sent_at TIMESTAMPTZ;
+                            ADD COLUMN IF NOT EXISTS letter_sent_at TIMESTAMPTZ,
+                            ADD COLUMN IF NOT EXISTS abandonment_sms_sent_at TIMESTAMPTZ;
                     """))
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_stale_listing_discovery_runs_status "
@@ -616,6 +617,19 @@ async def startup() -> None:
         logger.info("Stale-prospect abandonment email loop scheduled.")
     elif HAS_DATABASE:
         logger.info("Stale-prospect abandonment emails disabled by ENABLE_STALE_PROSPECT_ABANDONMENT_EMAILS.")
+
+    # One-time SMS nudge (24h after "Your Details" without paying) — new and
+    # unverified against the real Twilio account, so this defaults OFF
+    # (unlike the email drip above) until confirmed working and approved to
+    # go live for real prospects. Set ENABLE_STALE_PROSPECT_ABANDONMENT_SMS=true
+    # once ready.
+    if HAS_DATABASE and _env_enabled("ENABLE_STALE_PROSPECT_ABANDONMENT_SMS", False):
+        from app.services.stale_prospect_abandonment import start_abandonment_sms_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_abandonment_sms_loop()))
+        logger.info("Stale-prospect abandonment SMS loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Stale-prospect abandonment SMS disabled (ENABLE_STALE_PROSPECT_ABANDONMENT_SMS not set).")
 
     # ── Post-purchase nurture / upsell email drip ("phase two") ───────────
     # Twelve emails (immediately .. day 56) for prospects who completed
