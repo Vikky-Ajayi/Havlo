@@ -1167,8 +1167,18 @@ async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depen
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found.")
 
+    # The date printed on the letter locks in on the *first* real download
+    # and never changes after — see the column comment on
+    # letter_first_downloaded_at. If this is that first download, a cached
+    # file on disk (e.g. from prospect creation, before anyone downloaded
+    # it) was drawn before this date existed and must be redrawn now,
+    # even though it isn't otherwise missing.
+    first_download = prospect.letter_first_downloaded_at is None
+    if first_download:
+        prospect.letter_first_downloaded_at = datetime.now(timezone.utc)
+
     path = FilePath(prospect.letter_pdf_path) if prospect.letter_pdf_path else None
-    if not path or not path.is_file():
+    if not path or not path.is_file() or first_download:
         try:
             new_token = create_access_token()
             prospect.qr_token_hash = hash_access_token(new_token)

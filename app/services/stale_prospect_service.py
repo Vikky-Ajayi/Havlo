@@ -1149,7 +1149,16 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFont("Helvetica", 10.5)
     address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
     address_line_h = 14.5
-    address_x = M + 6 * address_line_h  # moved right by 6 line-spacings, per design feedback
+    address_x = M  # flush with the left margin, per design feedback (previously offset right)
+    # Dateline: the date this specific letter was first downloaded from the
+    # prospects console (see download_console_letter_pdf) — set once and
+    # never updated on a later re-download, so it stays accurate even
+    # though the PDF file itself may be regenerated again after that (e.g.
+    # Railway's ephemeral filesystem losing the cached copy between
+    # deploys). Blank until the letter has actually been downloaded once.
+    if prospect.letter_first_downloaded_at:
+        page.drawString(address_x, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
+        y -= address_line_h + 8
     for line in ["Regarding your property for sale"] + address_lines[:5]:
         page.drawString(address_x, y, line)
         y -= address_line_h
@@ -1212,7 +1221,9 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     card_h = 70
     page.setFillColor(colors.white)
-    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=0, fill=1)
+    page.setStrokeColor(_LETTER_CARD_BORDER)
+    page.setLineWidth(1)
+    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=1, fill=1)
     photo_w = 96
     if photo_reader is not None:
         try:

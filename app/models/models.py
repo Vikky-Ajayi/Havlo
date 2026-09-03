@@ -561,6 +561,15 @@ class StaleListingProspect(Base):
     # that meet every automated criterion except having a scrapeable
     # postal-quality address) rather than found by automated discovery.
     is_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Anchor timestamp for the printed date on the letter PDF itself — set
+    # once, the first time an admin actually downloads the letter from the
+    # prospects console (download_console_letter_pdf), and never reset
+    # after. Deliberately not "whenever the PDF is (re)generated": the file
+    # is regenerated on demand (Railway's filesystem is ephemeral — see
+    # that endpoint's docstring), and a fresh QR token is minted whenever
+    # that happens, so re-stamping "today" on every re-download would
+    # silently invalidate a QR code already printed and mailed out.
+    letter_first_downloaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
