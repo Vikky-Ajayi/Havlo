@@ -953,8 +953,9 @@ def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str
     _letter_icon_scan_badge(page, x + 30, y + h / 2, 17)
     label_style = ParagraphStyle("LetterScanLabel", fontName="Helvetica-Bold", fontSize=13.5, leading=16, textColor=_LETTER_INK)
     label_w = 185
-    _, label_h = Paragraph("Scan to view your property findings", label_style).wrap(label_w, 200 * mm)
-    _letter_para(page, "Scan to view your property findings", x + 60, y + h / 2 + label_h / 2, label_w, label_style)
+    scan_label = "<u>Scan to view your property findings or visit heyhavlo.com/check</u>"
+    _, label_h = Paragraph(scan_label, label_style).wrap(label_w, 200 * mm)
+    _letter_para(page, scan_label, x + 60, y + h / 2 + label_h / 2, label_w, label_style)
 
     qr_size = h - 24
     page.drawImage(ImageReader(qr_reader), x + 300, y + (h - qr_size) / 2, qr_size, qr_size)
@@ -1149,7 +1150,12 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFont("Helvetica", 10.5)
     address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
     address_line_h = 14.5
-    address_x = M  # flush with the left margin, per design feedback (previously offset right)
+    # A couple of spaces in from the margin — not flush with the body text
+    # below it (that read as visually mis-aligned/floating), but not the
+    # old 6-line-spacing offset either (that was too far right). Measured
+    # as two actual space-widths at this font/size rather than a guessed
+    # constant, per design feedback.
+    address_x = M + 2 * page.stringWidth(" ", "Helvetica", 10.5)
     # Dateline: the date this specific letter was first downloaded from the
     # prospects console (see download_console_letter_pdf) — set once and
     # never updated on a later re-download, so it stays accurate even

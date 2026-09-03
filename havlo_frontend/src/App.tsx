@@ -371,6 +371,12 @@ export default function App() {
               <Route path="/stale-listings/prospect/complete" element={<StaleProspectWizard />} />
               <Route path="/stale-listings/prospect/report" element={<StaleProspectWizard />} />
               <Route path="/stale-listings/prospect" element={<StaleProspectWizard />} />
+              {/* Short alias for the letter's printed fallback URL
+                  ("heyhavlo.com/check") — added alongside /stale-listings/prospect,
+                  not replacing it: the printed letter's static QR image already
+                  encodes the old path, and that's a fixed pre-supplied asset,
+                  not something regenerated per deploy, so it must keep working. */}
+              <Route path="/check" element={<StaleProspectWizard />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
               <Route path="/stale-listings/review-access" element={<StaleListingsReviewAccess />} />
               <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />
