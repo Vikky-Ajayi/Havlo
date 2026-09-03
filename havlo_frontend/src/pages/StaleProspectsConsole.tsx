@@ -451,7 +451,13 @@ export const StaleProspectsConsole = () => {
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
                   <a className="spc-link" href={detail.rightmove_url} target="_blank" rel="noreferrer">View on Rightmove →</a>
                   {detail.letter_pdf_path && (
-                    <a className="spc-link" href={`${API_BASE}/stale-listings/prospects-console/prospects/${detail.prospect_id}/letter.pdf`} target="_blank" rel="noreferrer">
+                    // Cache-bust with a fresh value on every render of a new
+                    // `detail` (i.e. after a save/regenerate) — without it,
+                    // this being the exact same URL as before let the browser
+                    // (target="_blank" tab-reuse especially) show the
+                    // pre-edit PDF instead of re-fetching, even with the
+                    // server's own no-store header.
+                    <a className="spc-link" href={`${API_BASE}/stale-listings/prospects-console/prospects/${detail.prospect_id}/letter.pdf?v=${Date.now()}`} target="_blank" rel="noreferrer">
                       Download letter PDF →
                     </a>
                   )}

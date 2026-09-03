@@ -134,9 +134,11 @@ def prospect_unlock_price(asking_price: float | None) -> float:
     """
     price = float(asking_price or 0)
     if price >= 1_000_000:
-        return 999.99
-    if price >= 500_000:
         return 499.99
+    if price > 700_000:
+        return 399.99
+    if price >= 500_000:
+        return 299.99
     return 149.99
 
 
@@ -629,11 +631,12 @@ if not _PDF_LIBS_IMPORT_ERROR:
     _LETTER_BODY_STYLE = ParagraphStyle("LetterBody", fontName="Helvetica", fontSize=10, leading=14.5, textColor=_LETTER_INK)
     _LETTER_LEGAL_TEXT = (
         "Havlo Ltd, registered in England and Wales (Company No. 15369975). Office: 2nd Floor, Berkeley Square, "
-        "London, England, W1J 6BD. Havlo provides property marketing intelligence to help sellers understand and "
-        "improve the performance of their property listings. We identified your property using publicly available "
-        "listing information. You have the right to opt out of future marketing communications from us at any time. "
-        "To opt out, email <a href=\"mailto:hello@heyhavlo.com\">hello@heyhavlo.com</a> and we will remove your address "
-        "from our marketing records."
+        "London, England, W1J 6BD. Telephone: 0333 339 0423. Email: "
+        "<a href=\"mailto:hello@heyhavlo.com\">hello@heyhavlo.com</a>. Havlo provides property marketing intelligence "
+        "to help sellers understand and improve the performance of their property listings. We identified your "
+        "property using publicly available listing information. You have the right to opt out of future marketing "
+        "communications from us at any time. To opt out, "
+        "<a href=\"mailto:hello@heyhavlo.com\">email us</a> and we will remove your address from our marketing records."
     )
     _LETTER_STYLE_LEGAL = ParagraphStyle("LetterLegal", fontName="Helvetica-Oblique", fontSize=6.8, leading=9.4, textColor=_LETTER_MUTED, alignment=1)
     _LETTER_STYLE_NOTE = ParagraphStyle("LetterNote", fontName="Helvetica-Oblique", fontSize=7.6, leading=10.2, textColor=_LETTER_MUTED, alignment=1)
@@ -984,7 +987,7 @@ def _letter_draw_footer(page, width: float, extra_note: str) -> None:
 
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica-Bold", 9.5)
-    page.drawString(_LETTER_MARGIN, havlo_top, "Havlo")
+    page.drawString(_LETTER_MARGIN, havlo_top, "HAVLO")
     page.setFont("Helvetica-Oblique", 8.5)
     page.drawString(_LETTER_MARGIN, havlo_top - 11, "Property Advisory")
 

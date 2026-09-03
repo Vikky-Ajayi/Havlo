@@ -175,8 +175,9 @@ export function stepperIndexFor(step: WizardStep): number {
 // price before the checkout call returns it authoritatively.
 export function unlockPrice(askingPrice?: number | null): number {
   const price = askingPrice || 0;
-  if (price >= 1_000_000) return 999.99;
-  if (price >= 500_000) return 499.99;
+  if (price >= 1_000_000) return 499.99;
+  if (price > 700_000) return 399.99;
+  if (price >= 500_000) return 299.99;
   return 149.99;
 }
 

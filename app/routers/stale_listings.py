@@ -98,8 +98,9 @@ SL_PACKAGES: dict[str, dict] = {
 def _stale_prospect_checkout_amount(asking_price: float | None) -> float:
     """Full-report checkout price for a letter prospect, tiered by asking price.
 
-    - >= GBP 1,000,000: GBP 999.99
-    - GBP 500,000 - 999,999.99: GBP 499.99
+    - >= GBP 1,000,000: GBP 499.99
+    - GBP 700,001 - 999,999.99: GBP 399.99
+    - GBP 500,000 - 700,000: GBP 299.99
     - below GBP 500,000: the original flat listing_recovery_assessment price.
       Automated discovery no longer scrapes anything under GBP 500,000 (see
       DiscoveryParams.min_price), so this only applies to prospects created
@@ -108,9 +109,11 @@ def _stale_prospect_checkout_amount(asking_price: float | None) -> float:
     """
     price = float(asking_price or 0)
     if price >= 1_000_000:
-        return 999.99
-    if price >= 500_000:
         return 499.99
+    if price > 700_000:
+        return 399.99
+    if price >= 500_000:
+        return 299.99
     return float(SL_PACKAGES["listing_recovery_assessment"]["amount"])
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
@@ -1200,6 +1203,13 @@ async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depen
         path,
         media_type="application/pdf",
         filename=f"Havlo-letter-{prospect.property_code}.pdf",
+        # Without this, browsers (and target="_blank" tab-reuse in
+        # particular) can serve a cached copy of this same stable URL
+        # instead of re-fetching — confirmed live: after an admin edits
+        # the report and the letter is genuinely regenerated on disk, the
+        # console kept showing the pre-edit PDF because the browser never
+        # asked the server for it again.
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
     )
 
 
