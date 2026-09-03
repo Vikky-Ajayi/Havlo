@@ -89,6 +89,30 @@ export interface StaleProspectConsoleListResponse {
   cities: string[];
 }
 
+export interface StaleProspectAbandonedItem {
+  prospect_id: string;
+  property_code: string;
+  property_address: string;
+  postcode?: string | null;
+  city?: string | null;
+  asking_price?: number | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  payment_status: string;
+  property_confirmed_at?: string | null;
+  contact_details_submitted_at?: string | null;
+  abandonment_emails_sent: number;
+  abandonment_sms_sent_at?: string | null;
+  unsubscribed_at?: string | null;
+  treated_at?: string | null;
+}
+
+export interface StaleProspectAbandonedResponse {
+  items: StaleProspectAbandonedItem[];
+  total: number;
+}
+
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
 export function buildWsUrl(path: string): string {
   const base = API_BASE.startsWith('http')
@@ -1124,6 +1148,15 @@ export const api = {
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
+  },
+
+  staleProspectsConsoleListAbandoned: (params: { includeUnsubscribed?: boolean; q?: string; limit?: number; offset?: number } = {}) => {
+    const queryParams: Record<string, string> = {};
+    if (params.includeUnsubscribed !== undefined) queryParams.include_unsubscribed = String(params.includeUnsubscribed);
+    if (params.q) queryParams.q = params.q;
+    if (params.limit !== undefined) queryParams.limit = String(params.limit);
+    if (params.offset !== undefined) queryParams.offset = String(params.offset);
+    return request<StaleProspectAbandonedResponse>('/stale-listings/prospects-console/abandoned', { queryParams });
   },
 
   staleProspectsConsoleGet: (prospectId: string) =>

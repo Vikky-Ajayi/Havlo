@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, API_BASE } from '../lib/api';
-import type { StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
+import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
 
 // ── Report edit shape ───────────────────────────────────────────────────────
 // Mirrors the same subset DashboardStaleListings.tsx already edits for
@@ -109,6 +109,43 @@ export const StaleProspectsConsole = () => {
     const t = setTimeout(loadList, search ? 350 : 0);
     return () => clearTimeout(t);
   }, [loadList, search]);
+
+  // ── Tab: "Prospects" (above) vs "Follow-up" (entered a code, submitted
+  // contact details, never checked out — the worklist for manual/paper
+  // follow-up letters) ────────────────────────────────────────────────────
+  const [tab, setTab] = useState<'prospects' | 'abandoned'>('prospects');
+  const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
+  const [abandonedTotal, setAbandonedTotal] = useState(0);
+  const [abandonedLoading, setAbandonedLoading] = useState(false);
+  const [abandonedError, setAbandonedError] = useState('');
+  const [abandonedSearch, setAbandonedSearch] = useState('');
+  const [includeUnsubscribed, setIncludeUnsubscribed] = useState(false);
+
+  const loadAbandoned = useCallback(async () => {
+    setAbandonedLoading(true);
+    setAbandonedError('');
+    try {
+      const res = await api.staleProspectsConsoleListAbandoned({
+        includeUnsubscribed,
+        q: abandonedSearch.trim() || undefined,
+        limit: 100,
+      });
+      setAbandonedItems(res.items);
+      setAbandonedTotal(res.total);
+    } catch (e) {
+      setAbandonedError(e instanceof Error ? e.message : 'Could not load follow-up list.');
+    } finally {
+      setAbandonedLoading(false);
+    }
+  }, [includeUnsubscribed, abandonedSearch]);
+
+  useEffect(() => {
+    if (tab !== 'abandoned') return;
+    const t = setTimeout(loadAbandoned, abandonedSearch ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [tab, loadAbandoned, abandonedSearch]);
+
+  const fmtDate = (v?: string | null) => v ? new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   // ── Detail / edit ──────────────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -374,16 +411,35 @@ export const StaleProspectsConsole = () => {
             <p className="spc-subtitle">Every property the automated Rightmove discovery has found (plus anything added by hand below) — browse, edit the report and letter, mark properties as dealt with, and add near-misses manually.</p>
           </div>
           <div className="spc-header-actions">
-            <button className="spc-btn spc-btn-ghost" onClick={loadList}>Refresh</button>
-            <button className="spc-btn spc-btn-primary" onClick={() => setShowManual(true)}>+ Add manually</button>
+            <button className="spc-btn spc-btn-ghost" onClick={tab === 'prospects' ? loadList : loadAbandoned}>Refresh</button>
+            {tab === 'prospects' && <button className="spc-btn spc-btn-primary" onClick={() => setShowManual(true)}>+ Add manually</button>}
           </div>
         </div>
 
+        <div style={{ display: 'flex', gap: 8, marginBottom: 18, borderBottom: '1px solid #E5E7EB' }}>
+          <button
+            onClick={() => setTab('prospects')}
+            style={{ padding: '10px 4px', marginRight: 20, background: 'none', border: 'none', borderBottom: tab === 'prospects' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'prospects' ? '#111111' : '#888', cursor: 'pointer' }}
+          >
+            Prospects
+          </button>
+          <button
+            onClick={() => setTab('abandoned')}
+            style={{ padding: '10px 4px', background: 'none', border: 'none', borderBottom: tab === 'abandoned' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'abandoned' ? '#111111' : '#888', cursor: 'pointer' }}
+          >
+            Follow-up (entered code, didn't check out)
+          </button>
+        </div>
+
+        {tab === 'prospects' && (
         <div className="spc-stats">
           <div className="spc-stat"><b>{total}</b><span>{treatedFilter === 'all' ? 'total' : treatedFilter}</span></div>
           <div className="spc-stat"><b>{cities.length}</b><span>Locations</span></div>
         </div>
+        )}
 
+        {tab === 'prospects' && (
+        <>
         <div className="spc-filters">
           <select className="spc-select" value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
             <option value="">All locations</option>
@@ -435,6 +491,71 @@ export const StaleProspectsConsole = () => {
               );
             })}
           </div>
+        )}
+        </>
+        )}
+
+        {tab === 'abandoned' && (
+          <>
+            <div className="spc-stats">
+              <div className="spc-stat"><b>{abandonedTotal}</b><span>to follow up</span></div>
+            </div>
+            <div className="spc-filters">
+              <input className="spc-input" placeholder="Search address, property code, contact name or email..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#555' }}>
+                <input type="checkbox" checked={includeUnsubscribed} onChange={e => setIncludeUnsubscribed(e.target.checked)} />
+                Include unsubscribed
+              </label>
+            </div>
+
+            {abandonedError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{abandonedError}</p>}
+
+            {abandonedLoading ? (
+              <div className="spc-loading">Loading follow-up list...</div>
+            ) : abandonedItems.length === 0 ? (
+              <div className="spc-empty">Nobody matches — everyone who submitted their details either checked out or hasn't been left behind.</div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
+                      {['Property', 'Contact', 'Price', 'Confirmed', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status'].map(h => (
+                        <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {abandonedItems.map(item => (
+                      <tr key={item.prospect_id} style={{ borderBottom: '1px solid #F0F0F0' }}>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div style={{ fontWeight: 600 }}>{item.property_address}</div>
+                          <div style={{ color: '#888', fontSize: 12 }}>{item.property_code}{item.postcode ? ` · ${item.postcode}` : ''}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div>{item.contact_name || '—'}</div>
+                          {item.contact_email && <div><a href={`mailto:${item.contact_email}`} className="spc-link" style={{ fontSize: 12 }}>{item.contact_email}</a></div>}
+                          {item.contact_phone && <div style={{ color: '#888', fontSize: 12 }}>{item.contact_phone}</div>}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{money(item.asking_price)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.property_confirmed_at)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.contact_details_submitted_at)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{item.payment_status}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          {item.abandonment_emails_sent} email{item.abandonment_emails_sent === 1 ? '' : 's'}
+                          {item.abandonment_sms_sent_at && ', 1 SMS'}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          {item.unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed</span>
+                            : item.treated_at ? <span style={{ color: '#15803D', fontWeight: 700 }}>Treated</span>
+                            : <span style={{ color: '#92400E', fontWeight: 700 }}>Open</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
 

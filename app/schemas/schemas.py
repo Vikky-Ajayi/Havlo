@@ -686,6 +686,33 @@ class StaleProspectConsoleDetail(StaleProspectConsoleListItem):
     contact_phone: Optional[str] = None
 
 
+class StaleProspectAbandonedItem(BaseModel):
+    """One prospect who entered a property code and showed real intent
+    (submitted contact details) but never completed checkout — for the
+    follow-up-letters worklist."""
+    prospect_id: str
+    property_code: str
+    property_address: str
+    postcode: Optional[str] = None
+    city: Optional[str] = None
+    asking_price: Optional[float] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    payment_status: str
+    property_confirmed_at: Optional[str] = None
+    contact_details_submitted_at: Optional[str] = None
+    abandonment_emails_sent: int = 0
+    abandonment_sms_sent_at: Optional[str] = None
+    unsubscribed_at: Optional[str] = None
+    treated_at: Optional[str] = None
+
+
+class StaleProspectAbandonedResponse(BaseModel):
+    items: list[StaleProspectAbandonedItem]
+    total: int
+
+
 class StaleProspectConsoleEditRequest(BaseModel):
     report_data: dict
 

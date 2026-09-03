@@ -18,9 +18,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
-from app.models.models import StaleListingAssessment, StaleListingDiscoveryRun, StaleListingProspect, User
+from app.models.models import (
+    StaleListingAssessment,
+    StaleListingDiscoveryRun,
+    StaleListingProspect,
+    StaleProspectAbandonmentEmail,
+    User,
+)
 from app.schemas.schemas import (
     AgencyPricingRequest,
+    StaleProspectAbandonedItem,
+    StaleProspectAbandonedResponse,
     StaleProspectAdminCreateRequest,
     StaleProspectAdminCreateResponse,
     StaleProspectCheckoutRequest,
@@ -1046,6 +1054,79 @@ async def list_console_prospects(
     cities = [c for (c,) in cities_result.all() if c]
 
     return StaleProspectConsoleListResponse(items=items, total=total, cities=cities)
+
+
+@public_router.get("/prospects-console/abandoned", response_model=StaleProspectAbandonedResponse)
+async def list_abandoned_prospects(
+    db: AsyncSession = Depends(get_db),
+    include_unsubscribed: bool = Query(default=False),
+    q: str | None = Query(default=None, description="Search property address, property code, contact name, or contact email"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> StaleProspectAbandonedResponse:
+    """Prospects who entered a property code and submitted contact
+    details (real intent, not just a random code guess) but never
+    completed checkout — the worklist for manual/paper follow-up.
+    Excludes anyone who's unsubscribed unless include_unsubscribed is
+    set, since they've explicitly opted out of further contact."""
+    filters = [
+        StaleListingProspect.contact_details_submitted_at.is_not(None),
+        StaleListingProspect.payment_status != "completed",
+    ]
+    if not include_unsubscribed:
+        filters.append(StaleListingProspect.unsubscribed_at.is_(None))
+    if q:
+        like = f"%{q.strip()}%"
+        filters.append(
+            or_(
+                StaleListingProspect.property_address.ilike(like),
+                StaleListingProspect.property_code.ilike(like),
+                StaleListingProspect.contact_name.ilike(like),
+                StaleListingProspect.contact_email.ilike(like),
+            )
+        )
+
+    count_result = await db.execute(
+        select(func.count()).select_from(StaleListingProspect).where(*filters)
+    )
+    total = int(count_result.scalar() or 0)
+
+    emails_sent_count = (
+        select(func.count())
+        .select_from(StaleProspectAbandonmentEmail)
+        .where(StaleProspectAbandonmentEmail.prospect_id == StaleListingProspect.id)
+        .correlate(StaleListingProspect)
+        .scalar_subquery()
+    )
+    result = await db.execute(
+        select(StaleListingProspect, emails_sent_count)
+        .where(*filters)
+        .order_by(StaleListingProspect.contact_details_submitted_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    items = [
+        StaleProspectAbandonedItem(
+            prospect_id=str(p.id),
+            property_code=p.property_code,
+            property_address=p.property_address,
+            postcode=p.postcode,
+            city=p.city,
+            asking_price=p.asking_price,
+            contact_name=p.contact_name,
+            contact_email=p.contact_email,
+            contact_phone=p.contact_phone,
+            payment_status=p.payment_status,
+            property_confirmed_at=p.property_confirmed_at.isoformat() if p.property_confirmed_at else None,
+            contact_details_submitted_at=p.contact_details_submitted_at.isoformat() if p.contact_details_submitted_at else None,
+            abandonment_emails_sent=emails_sent,
+            abandonment_sms_sent_at=p.abandonment_sms_sent_at.isoformat() if p.abandonment_sms_sent_at else None,
+            unsubscribed_at=p.unsubscribed_at.isoformat() if p.unsubscribed_at else None,
+            treated_at=p.treated_at.isoformat() if p.treated_at else None,
+        )
+        for p, emails_sent in result.all()
+    ]
+    return StaleProspectAbandonedResponse(items=items, total=total)
 
 
 @public_router.get("/prospects-console/prospects/{prospect_id}", response_model=StaleProspectConsoleDetail)
