@@ -954,11 +954,46 @@ def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str
     _letter_para(page, "Scan the QR code, then enter this code to access your assessment.", id_x + 10, y + 30, id_box_w - 20, small)
 
     _letter_icon_scan_badge(page, x + 30, y + h / 2, 17)
-    label_style = ParagraphStyle("LetterScanLabel", fontName="Helvetica-Bold", fontSize=13.5, leading=16, textColor=_LETTER_INK)
+    # Spec: Inter/500/14px/120% line-height/-2% letter-spacing/CAP_HEIGHT
+    # leading-trim, not underlined. No Inter Medium (500) static instance is
+    # registered — only Regular/Bold/ExtraBold (see the font-registration
+    # block above) — and the spec's own "font-style: Bold" field points at
+    # the one we do have, so this uses _LETTER_FONT_BOLD rather than
+    # building a fourth static weight for one label. Needs real character
+    # tracking (the -2% letter-spacing) and no underline, so it's drawn
+    # with _letter_draw_tracked_text instead of a ParagraphStyle/<u>
+    # Paragraph like before — reportlab's Paragraph markup has no tracking
+    # attribute (see that helper's docstring).
     label_w = 185
-    scan_label = "<u>Scan to view your property findings or visit heyhavlo.com/check</u>"
-    _, label_h = Paragraph(scan_label, label_style).wrap(label_w, 200 * mm)
-    _letter_para(page, scan_label, x + 60, y + h / 2 + label_h / 2, label_w, label_style)
+    label_size = 14
+    label_leading = label_size * 1.2
+    label_char_space = label_size * -0.02
+    scan_label = "Scan to view your property findings or visit heyhavlo.com/check"
+    _label_words = scan_label.split()
+    _label_lines: list[str] = []
+    _label_current = ""
+    for _word in _label_words:
+        _candidate = f"{_label_current} {_word}".strip()
+        _cw = page.stringWidth(_candidate, _LETTER_FONT_BOLD, label_size) + label_char_space * max(len(_candidate) - 1, 0)
+        if _label_current and _cw > label_w:
+            _label_lines.append(_label_current)
+            _label_current = _word
+        else:
+            _label_current = _candidate
+    if _label_current:
+        _label_lines.append(_label_current)
+    # CAP_HEIGHT leading-trim means the block's visual bounds run from the
+    # first line's cap-height top to the last line's baseline, with no
+    # extra leading padding above/below — so centering uses cap-height
+    # (~0.72 of font size for Inter) rather than the font's full leading.
+    _label_cap_h = label_size * 0.72
+    _label_block_h = (len(_label_lines) - 1) * label_leading + _label_cap_h
+    _label_first_baseline = y + h / 2 + _label_block_h / 2 - _label_cap_h
+    _letter_draw_tracked_text(
+        page, scan_label, x + 60, _label_first_baseline,
+        font=_LETTER_FONT_BOLD, size=label_size, char_space=label_char_space, color=_LETTER_INK,
+        max_w=label_w, leading=label_leading,
+    )
 
     qr_size = h - 24
     page.drawImage(ImageReader(qr_reader), x + 300, y + (h - qr_size) / 2, qr_size, qr_size)
@@ -1153,21 +1188,24 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFont("Helvetica", 10.5)
     address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
     address_line_h = 14.5
-    # A couple of spaces in from the margin — not flush with the body text
-    # below it (that read as visually mis-aligned/floating), but not the
-    # old 6-line-spacing offset either (that was too far right). Measured
-    # as two actual space-widths at this font/size rather than a guessed
-    # constant, per design feedback.
-    address_x = M + 2 * page.stringWidth(" ", "Helvetica", 10.5)
+    # In from the margin — not flush with the body text below it (that read
+    # as visually mis-aligned/floating). Measured in actual space-widths at
+    # this font/size rather than a guessed constant: 2 per the original
+    # design feedback, +3 more (5 total) per a later round of feedback
+    # moving it further right.
+    address_x = M + 5 * page.stringWidth(" ", "Helvetica", 10.5)
     # Dateline: the date this specific letter was first downloaded from the
     # prospects console (see download_console_letter_pdf) — set once and
     # never updated on a later re-download, so it stays accurate even
     # though the PDF file itself may be regenerated again after that (e.g.
     # Railway's ephemeral filesystem losing the cached copy between
     # deploys). Blank until the letter has actually been downloaded once.
+    # Right-aligned at the top-right of the page, level with the first
+    # address line, rather than stacked above the address block on the
+    # left — a conventional letter layout (recipient address left, date
+    # right), per design feedback.
     if prospect.letter_first_downloaded_at:
-        page.drawString(address_x, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
-        y -= address_line_h + 8
+        page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
     for line in ["Regarding your property for sale"] + address_lines[:5]:
         page.drawString(address_x, y, line)
         y -= address_line_h
