@@ -1613,7 +1613,7 @@ const WizardStyles = () => (
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
-    .slw-hero-image{height:560px;border-radius:0;margin:8px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
+    .slw-hero-image{height:560px;border-radius:0;margin:-110px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
     .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
     /* background-size:cover on this specific image/container combo left
        ~zero vertical surplus (the image's own aspect ratio is close to
@@ -1954,7 +1954,7 @@ const WizardStyles = () => (
       .slw-stats span{font-size:11px}
       .slw-rating{justify-content:center;text-align:center;flex-wrap:wrap;margin:16px 0 0;font-size:13px;gap:6px}
       .slw-rating b{flex-basis:100%;font-size:13px;text-align:center}
-      .slw-hero-image{margin:8px -14px 0;height:440px}
+      .slw-hero-image{margin:-140px -14px 0;height:440px}
       .slw-hero-image::before{height:130px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%)}
       .slw-hero-image::after{background-position:center 35%;background-size:auto 140%}
       .slw-value-section{padding:32px 2px 36px}
