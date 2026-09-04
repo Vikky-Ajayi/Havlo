@@ -1613,10 +1613,10 @@ const WizardStyles = () => (
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
-    .slw-hero-image{height:560px;border-radius:0;margin:40px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
+    .slw-hero-image{height:560px;border-radius:0;margin:8px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
     .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
     .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -204px / cover no-repeat;z-index:1}
-    .slw-hero-stats-card{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);z-index:3;width:min(760px,90%);background:rgba(255,255,255,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border-radius:20px;padding:32px 40px;box-shadow:0 24px 64px rgba(17,17,17,.18)}
+    .slw-hero-stats-card{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);z-index:3;width:min(760px,90%);background:rgba(255,255,255,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border-radius:20px;padding:32px 40px;box-shadow:0 24px 64px rgba(17,17,17,.18)}
 
     .slw-value-section{padding:72px 4px 64px}
     .slw-value-section h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:600;font-size:48px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 80px;color:#202124}
@@ -1938,13 +1938,13 @@ const WizardStyles = () => (
       .slw-discover-grid{grid-template-columns:1fr;column-gap:0;row-gap:14px;max-width:none}
       .slw-discover-grid li{justify-content:flex-start;text-align:left}
       .slw-discover-full{justify-content:flex-start}
-      .slw-hero-stats-card{width:calc(100% - 28px);bottom:20px;border-radius:14px;padding:20px 16px}
+      .slw-hero-stats-card{width:calc(100% - 28px);top:62%;border-radius:14px;padding:20px 16px}
       .slw-stats{gap:0;justify-content:space-between}
       .slw-stats b{font-size:22px}
       .slw-stats span{font-size:11px}
       .slw-rating{justify-content:flex-start;flex-wrap:wrap;text-align:left;margin:16px 0 0;font-size:13px;gap:6px}
       .slw-rating b{flex-basis:100%;font-size:13px}
-      .slw-hero-image{margin:24px -14px 0;height:440px}
+      .slw-hero-image{margin:8px -14px 0;height:440px}
       .slw-hero-image::before{height:130px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%)}
       .slw-hero-image::after{background-position:center -57px;background-size:cover}
       .slw-value-section{padding:32px 2px 36px}
