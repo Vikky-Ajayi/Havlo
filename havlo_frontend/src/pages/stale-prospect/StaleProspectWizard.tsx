@@ -1616,7 +1616,7 @@ const WizardStyles = () => (
     .slw-hero-image{height:560px;border-radius:0;margin:40px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
     .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
     .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -204px / cover no-repeat;z-index:1}
-    .slw-hero-stats-card{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);z-index:3;width:min(760px,90%);background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-radius:20px;padding:32px 40px;box-shadow:0 24px 64px rgba(17,17,17,.18)}
+    .slw-hero-stats-card{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);z-index:3;width:min(760px,90%);background:rgba(255,255,255,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border-radius:20px;padding:32px 40px;box-shadow:0 24px 64px rgba(17,17,17,.18)}
 
     .slw-value-section{padding:72px 4px 64px}
     .slw-value-section h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:600;font-size:48px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 80px;color:#202124}
