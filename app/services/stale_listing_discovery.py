@@ -276,10 +276,23 @@ async def _fetch_search_page(
         f"{_BASE}/property-for-sale/find.html"
         f"?searchType=SALE"
         f"&locationIdentifier={location_id}"
-        # Oldest first is essential here.  The normal Rightmove default is
-        # newest-first, which means a small page window never reaches the
-        # listings this job is intended to find.
-        f"&sortType=6"
+        # Oldest first is essential here — a small page window otherwise
+        # never reaches the 180-day-plus listings this job exists to find.
+        # sortType=6 is "Newest Listed", not oldest — confirmed directly
+        # from Rightmove's own sort <select> (options: 2=Highest Price,
+        # 1=Lowest Price, 6=Newest Listed, 10=Oldest Listed). The previous
+        # value here was backwards from what its own comment claimed,
+        # which is why ~99.9% of candidates were coming back too recent
+        # (skip reason "not_stale_enough") across essentially every run.
+        f"&sortType=10"
+        # Restrict to the three property subtypes TARGET_PROPERTY_TYPES
+        # actually wants, server-side, instead of paying for detail
+        # fetches on flats/bungalows/etc. only to discard them locally —
+        # confirmed via Rightmove's own filter UI, which produces exactly
+        # this param. is_target_property_type() below still re-checks
+        # this (defense in depth against Rightmove returning something
+        # outside the requested types), so it's not load-bearing alone.
+        f"&propertyTypes=detached%2Csemi-detached%2Cterraced"
         f"&numberOfPropertiesPerPage={PAGE_SIZE}"
         f"&index={index}"
         f"&minPrice={min_price}"
