@@ -1191,9 +1191,9 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # In from the margin — not flush with the body text below it (that read
     # as visually mis-aligned/floating). Measured in actual space-widths at
     # this font/size rather than a guessed constant: 2 per the original
-    # design feedback, +3 more (5 total) per a later round of feedback
-    # moving it further right.
-    address_x = M + 5 * page.stringWidth(" ", "Helvetica", 10.5)
+    # design feedback, then 5, then 7 total per later rounds of feedback
+    # moving it further right each time.
+    address_x = M + 7 * page.stringWidth(" ", "Helvetica", 10.5)
     # Dateline: the date this specific letter was first downloaded from the
     # prospects console (see download_console_letter_pdf) — set once and
     # never updated on a later re-download, so it stays accurate even
