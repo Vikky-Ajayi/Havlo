@@ -67,6 +67,19 @@ if DATABASE_URL:
         connect_args["statement_cache_size"] = 0
         connect_args["prepared_statement_cache_size"] = 0
 
+    # Confirmed live, repeatedly: nothing here ever bounded how long a
+    # single query can run. Starlette doesn't cancel an in-flight request
+    # handler just because the HTTP client disconnected, so a slow query
+    # (e.g. /listings/cities, /listings/stats under load) that outlives
+    # its client keeps running against the DB indefinitely — observed
+    # sessions still "active" *hours* later, each pinning a pool
+    # connection that never comes back, until the whole pool is
+    # effectively gone. asyncpg's command_timeout cancels any single
+    # query that runs past this, independent of whether anyone's still
+    # listening for the result — the fix belongs at the driver level
+    # since no per-endpoint code here ever checks for client disconnect.
+    connect_args["command_timeout"] = 30
+
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
