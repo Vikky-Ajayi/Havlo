@@ -572,6 +572,16 @@ async def startup() -> None:
             return False
         return default
 
+    # Initialized unconditionally — every block below (marketplace scrapers,
+    # stale-listing discovery, abandonment/post-purchase email loops) appends
+    # its background task to this same list regardless of which of the
+    # *other* ENABLE_* flags are on. Previously this list only existed if
+    # ENABLE_MARKETPLACE_SCRAPERS was true, so turning marketplace scrapers
+    # off while leaving e.g. ENABLE_STALE_LISTING_DISCOVERY on crashed
+    # startup with AttributeError/KeyError on app.state.scraper_tasks —
+    # confirmed live, crash-looping the whole app.
+    app.state.scraper_tasks = []
+
     if HAS_DATABASE and _env_enabled("ENABLE_MARKETPLACE_SCRAPERS", True):
         scraper_specs = [
             ("Rightmove", "DISABLE_RIGHTMOVE_SCRAPER", "app.services.rightmove_scraper"),
@@ -582,7 +592,6 @@ async def startup() -> None:
             # existed but was never scheduled here.
             ("Realtor.ca", "DISABLE_REALTOR_CA_SCRAPER", "app.services.realtor_ca_scraper"),
         ]
-        app.state.scraper_tasks = []
         import importlib
         for scraper_name, disable_env, module_name in scraper_specs:
             if _env_enabled(disable_env, False):
