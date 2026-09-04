@@ -1615,7 +1615,17 @@ const WizardStyles = () => (
 
     .slw-hero-image{height:560px;border-radius:0;margin:8px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
     .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
-    .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -204px / cover no-repeat;z-index:1}
+    /* background-size:cover on this specific image/container combo left
+       ~zero vertical surplus (the image's own aspect ratio is close to
+       the container's once scaled to cover), so the earlier fixed-pixel
+       offset (-204px, from "move the image up 40%") pushed past the
+       actual scaled image entirely — the container's own #fff fallback
+       showed through at the bottom, which read as "the card isn't on
+       the image". auto 140% forces real surplus height so any
+       background-position-y percentage is always safe, regardless of
+       viewport width, instead of a pixel value that can silently run
+       out of image. */
+    .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center 35% / auto 140% no-repeat;z-index:1}
     .slw-hero-stats-card{position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);z-index:3;width:min(760px,90%);background:rgba(255,255,255,.62);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);border-radius:20px;padding:32px 40px;box-shadow:0 24px 64px rgba(17,17,17,.18)}
 
     .slw-value-section{padding:72px 4px 64px}
@@ -1946,7 +1956,7 @@ const WizardStyles = () => (
       .slw-rating b{flex-basis:100%;font-size:13px}
       .slw-hero-image{margin:8px -14px 0;height:440px}
       .slw-hero-image::before{height:130px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%)}
-      .slw-hero-image::after{background-position:center -57px;background-size:cover}
+      .slw-hero-image::after{background-position:center 35%;background-size:auto 140%}
       .slw-value-section{padding:32px 2px 36px}
       .slw-value-grid{grid-template-columns:1fr;gap:54px}
       .slw-value-grid svg{margin-bottom:58px}
