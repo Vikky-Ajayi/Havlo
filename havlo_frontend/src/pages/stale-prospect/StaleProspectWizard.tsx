@@ -1594,7 +1594,7 @@ const WizardStyles = () => (
     .slw-id-input{display:flex;align-items:center;gap:18px;background:#eef0f2;border-radius:12px;padding:16px 18px;color:#111}
     .slw-id-input input{border:none;background:none;outline:none;font-size:16px;flex:1;color:#111;font-family:inherit}
     .slw-id-input input::placeholder{color:#9aa0a6}
-    .slw-id-hint{display:flex;align-items:center;justify-content:center;gap:8px;color:#334155;font-size:13px;margin:10px 0 0}
+    .slw-id-hint{display:flex;align-items:center;justify-content:center;gap:8px;color:#334155;font-size:13px;margin:10px 0 0;white-space:nowrap}
     .slw-info-dot{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#A409D2;color:#fff;font-size:11px;font-style:italic;font-weight:700;flex:none}
     .slw-id-submit{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;padding:0;border:0}
     .slw-error{color:#c02626;font-size:14px;margin:10px 0 0}
@@ -1933,7 +1933,7 @@ const WizardStyles = () => (
       .slw-hero-copy{font-size:15px;line-height:1.45;margin-top:20px}
       .slw-id-form{margin-top:26px}
       .slw-id-input{border-radius:10px;padding:14px 16px}
-      .slw-id-hint{justify-content:flex-start;text-align:left;align-items:flex-start;line-height:1.35}
+      .slw-id-hint{justify-content:flex-start;text-align:left;align-items:flex-start;line-height:1.35;white-space:normal}
       .slw-discover-title{font-size:16px;margin:28px 0 14px;text-align:left}
       .slw-discover-grid{grid-template-columns:1fr;column-gap:0;row-gap:14px;max-width:none}
       .slw-discover-grid li{justify-content:flex-start;text-align:left}
