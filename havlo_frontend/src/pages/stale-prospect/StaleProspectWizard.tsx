@@ -139,6 +139,12 @@ const Stepper = ({ step }: { step: WizardStep }) => {
 
 const Spinner = () => <div className="slw-spinner" />;
 
+const CheckIconGreen = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M15 5L7 13L3.5 9.5" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // ── Step: Landing (Enter Property ID) ──────────────────────────────────────
 
 const LandingStep = ({
@@ -166,14 +172,12 @@ const LandingStep = ({
     <>
       <section className="slw-hero">
         <h1>
-          Don&rsquo;t Let Your Home
-          <br />
-          Sit <span className="slw-accent">on the Market</span>
+          Your Property Has Been Analysed. See{' '}
+          <span className="slw-accent">What Could Be Holding</span> Back Its Sale
         </h1>
         <p className="slw-hero-copy">
-          Havlo has analysed your property and identified factors that may be affecting its
-          ability to sell. Enter the Property ID shown in your Havlo letter to view your
-          assessment.
+          We analysed your property&rsquo;s market positioning, listing presentation and buyer
+          appeal to identify potential barriers to sale — and the changes that could help.
         </p>
         <form className="slw-id-form" onSubmit={handleSubmit}>
           <label className="slw-id-input">
@@ -191,27 +195,38 @@ const LandingStep = ({
             />
           </label>
           <p className="slw-id-hint">
-            <span className="slw-info-dot">i</span> Your Property ID can be found on the letter you received from Havlo.
+            <span className="slw-info-dot">i</span> Your code is unique to your property and can be found on the letter you received from Havlo.
           </p>
           {error && <p className="slw-error">{error}</p>}
           <button type="submit" className="slw-btn-black slw-id-submit" disabled={loading} aria-label="Find my property">
             {loading ? 'Searching…' : 'Find My Property'}
           </button>
         </form>
-        <div className="slw-stats">
-          <div><b>10K+</b><span>Listings<br />Analyzed</span></div>
-          <div><b>91K+</b><span>Seller<br />Recommendations</span></div>
-          <div><b>300+</b><span>Market Signals<br />Analyzed</span></div>
-        </div>
-        <div className="slw-rating">
-          <span>Excellent</span>
-          <span className="slw-trustpilot-stars" aria-hidden="true">
-            {Array.from({ length: 5 }).map((_, i) => <i key={i}>★</i>)}
-          </span>
-          <b>Based on verified customer feedback</b>
-        </div>
+        <h2 className="slw-discover-title">What you&rsquo;ll discover</h2>
+        <ul className="slw-discover-grid">
+          <li><CheckIconGreen /> What&rsquo;s weakening your buyer appeal</li>
+          <li><CheckIconGreen /> How you compare to competing listings</li>
+          <li><CheckIconGreen /> Why it may have remained unsold</li>
+          <li><CheckIconGreen /> Changes that could improve its chances</li>
+          <li className="slw-discover-full"><CheckIconGreen /> A practical 30-day action plan</li>
+        </ul>
       </section>
-      <div className="slw-hero-image" />
+      <div className="slw-hero-image">
+        <div className="slw-hero-stats-card">
+          <div className="slw-stats">
+            <div><b>10K+</b><span>Listings<br />Analyzed</span></div>
+            <div><b>91K+</b><span>Seller<br />Recommendations</span></div>
+            <div><b>300+</b><span>Market Signals<br />Analyzed</span></div>
+          </div>
+          <div className="slw-rating">
+            <span>Excellent</span>
+            <span className="slw-trustpilot-stars" aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, i) => <i key={i}>★</i>)}
+            </span>
+            <b>Based on verified customer feedback</b>
+          </div>
+        </div>
+      </div>
       <section className="slw-value-section">
         <h2>
           Homes that sit too long lose
@@ -1584,7 +1599,13 @@ const WizardStyles = () => (
     .slw-id-submit{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;padding:0;border:0}
     .slw-error{color:#c02626;font-size:14px;margin:10px 0 0}
 
-    .slw-stats{display:flex;justify-content:center;gap:64px;margin:24px 0 0}
+    .slw-discover-title{font-family:'Inter',sans-serif;font-weight:700;font-size:18px;letter-spacing:-0.02em;text-align:center;color:#202124;margin:36px 0 18px}
+    .slw-discover-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:48px;row-gap:16px;list-style:none;padding:0;margin:0 auto;max-width:600px}
+    .slw-discover-grid li{display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Inter',sans-serif;font-size:14.5px;font-weight:500;color:#202124;text-align:left}
+    .slw-discover-grid li svg{flex:none}
+    .slw-discover-full{grid-column:1 / -1;justify-content:center}
+
+    .slw-stats{display:flex;justify-content:center;gap:64px;margin:0}
     .slw-stats b{font-family:'Righteous',cursive;font-weight:400;font-size:32px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;display:block;color:#202124}
     .slw-stats span{color:#334155;font-size:13px;line-height:1.55}
     .slw-rating{display:flex;align-items:center;justify-content:center;gap:10px;margin:20px 0 0;font-size:14px;font-weight:700}
@@ -1592,9 +1613,10 @@ const WizardStyles = () => (
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
-    .slw-hero-image{height:510px;border-radius:0;margin:-118px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
-    .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:240px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.96) 26%,rgba(255,255,255,.66) 58%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
+    .slw-hero-image{height:560px;border-radius:0;margin:40px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
+    .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
     .slw-hero-image::after{content:"";position:absolute;inset:0;background:url('/stale-listings/hero-house.png') center -146px / cover no-repeat;z-index:1}
+    .slw-hero-stats-card{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);z-index:3;width:min(760px,90%);background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-radius:20px;padding:32px 40px;box-shadow:0 24px 64px rgba(17,17,17,.18)}
 
     .slw-value-section{padding:72px 4px 64px}
     .slw-value-section h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:600;font-size:48px;line-height:120%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 80px;color:#202124}
@@ -1912,13 +1934,18 @@ const WizardStyles = () => (
       .slw-id-form{margin-top:26px}
       .slw-id-input{border-radius:10px;padding:14px 16px}
       .slw-id-hint{justify-content:flex-start;text-align:left;align-items:flex-start;line-height:1.35}
-      .slw-stats{gap:0;justify-content:space-between;margin-top:30px}
-      .slw-stats b{font-size:27px}
-      .slw-stats span{font-size:12px}
-      .slw-rating{justify-content:flex-start;flex-wrap:wrap;text-align:left;margin:26px 0 0;font-size:18px;gap:8px}
-      .slw-rating b{flex-basis:100%}
-      .slw-hero-image{margin:-70px -14px 0;height:380px}
-      .slw-hero-image::before{height:150px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.94) 26%,rgba(255,255,255,.58) 62%,rgba(255,255,255,0) 100%)}
+      .slw-discover-title{font-size:16px;margin:28px 0 14px;text-align:left}
+      .slw-discover-grid{grid-template-columns:1fr;column-gap:0;row-gap:14px;max-width:none}
+      .slw-discover-grid li{justify-content:flex-start;text-align:left}
+      .slw-discover-full{justify-content:flex-start}
+      .slw-hero-stats-card{width:calc(100% - 28px);bottom:20px;border-radius:14px;padding:20px 16px}
+      .slw-stats{gap:0;justify-content:space-between}
+      .slw-stats b{font-size:22px}
+      .slw-stats span{font-size:11px}
+      .slw-rating{justify-content:flex-start;flex-wrap:wrap;text-align:left;margin:16px 0 0;font-size:13px;gap:6px}
+      .slw-rating b{flex-basis:100%;font-size:13px}
+      .slw-hero-image{margin:24px -14px 0;height:440px}
+      .slw-hero-image::before{height:130px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%)}
       .slw-hero-image::after{background-position:center -57px;background-size:cover}
       .slw-value-section{padding:32px 2px 36px}
       .slw-value-grid{grid-template-columns:1fr;gap:54px}
