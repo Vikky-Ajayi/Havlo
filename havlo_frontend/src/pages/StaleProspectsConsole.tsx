@@ -427,7 +427,7 @@ export const StaleProspectsConsole = () => {
             onClick={() => setTab('abandoned')}
             style={{ padding: '10px 4px', background: 'none', border: 'none', borderBottom: tab === 'abandoned' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'abandoned' ? '#111111' : '#888', cursor: 'pointer' }}
           >
-            Follow-up (entered code, didn't check out)
+            Follow Up
           </button>
         </div>
 
