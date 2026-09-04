@@ -1949,11 +1949,11 @@ const WizardStyles = () => (
       .slw-discover-grid li{justify-content:flex-start;text-align:left}
       .slw-discover-full{justify-content:flex-start}
       .slw-hero-stats-card{width:calc(100% - 28px);top:62%;border-radius:14px;padding:20px 16px}
-      .slw-stats{gap:0;justify-content:space-between}
+      .slw-stats{gap:16px;justify-content:center;flex-wrap:wrap}
       .slw-stats b{font-size:22px}
       .slw-stats span{font-size:11px}
-      .slw-rating{justify-content:flex-start;flex-wrap:wrap;text-align:left;margin:16px 0 0;font-size:13px;gap:6px}
-      .slw-rating b{flex-basis:100%;font-size:13px}
+      .slw-rating{justify-content:center;text-align:center;flex-wrap:wrap;margin:16px 0 0;font-size:13px;gap:6px}
+      .slw-rating b{flex-basis:100%;font-size:13px;text-align:center}
       .slw-hero-image{margin:8px -14px 0;height:440px}
       .slw-hero-image::before{height:130px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%)}
       .slw-hero-image::after{background-position:center 35%;background-size:auto 140%}
