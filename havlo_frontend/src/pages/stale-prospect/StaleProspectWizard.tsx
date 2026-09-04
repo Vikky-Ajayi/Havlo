@@ -1613,7 +1613,7 @@ const WizardStyles = () => (
     .slw-trustpilot-stars{display:inline-flex;gap:3px}
     .slw-trustpilot-stars i{background:#00b67a;color:#fff;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;border-radius:3px}
 
-    .slw-hero-image{height:560px;border-radius:0;margin:-110px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
+    .slw-hero-image{height:560px;border-radius:0;margin:-130px calc(50% - 50vw) 0;background:#fff;position:relative;overflow:hidden;z-index:1}
     .slw-hero-image::before{content:"";position:absolute;left:0;right:0;top:0;height:180px;background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.9) 30%,rgba(255,255,255,.4) 65%,rgba(255,255,255,0) 100%);z-index:2;pointer-events:none}
     /* background-size:cover on this specific image/container combo left
        ~zero vertical surplus (the image's own aspect ratio is close to
