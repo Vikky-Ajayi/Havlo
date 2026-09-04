@@ -267,7 +267,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const isOnboarding = pathname.startsWith('/get-started');
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin = pathname.startsWith('/admin');
-  const isStaleListings = pathname.startsWith('/stale-listings');
+  // /check is the short alias for /stale-listings/prospect (same
+  // StaleProspectWizard component, same bespoke header/no-footer
+  // treatment) — it doesn't start with /stale-listings itself, so it
+  // needs to be named here explicitly or it falls through to the default
+  // branch below and gets the global marketing Navbar + Footer wrapped
+  // around it, which is not what its own page header/layout expects.
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check';
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
