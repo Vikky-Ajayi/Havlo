@@ -811,7 +811,7 @@ const PaymentStep = ({
   loading: boolean;
   error: string;
 }) => {
-  const [method, setMethod] = useState<'card' | 'bank_transfer' | 'promo'>('card');
+  const [method, setMethod] = useState<'card' | 'promo'>('card');
   const [promoCode, setPromoCode] = useState('');
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
@@ -819,7 +819,6 @@ const PaymentStep = ({
 
   const handlePayClick = () => {
     if (method === 'card') onPayCard();
-    else if (method === 'bank_transfer') onPayBankTransfer();
     else if (promoCode.trim()) onApplyPromo(promoCode.trim());
   };
 
@@ -832,10 +831,6 @@ const PaymentStep = ({
           <button type="button" className={`slw-method ${method === 'card' ? 'slw-method-active' : ''}`} onClick={() => setMethod('card')}>
             <span className="slw-method-icon"><CardMethodIcon /></span>
             <span><b>Card</b><small>Visa, Amex, MasterCard, Verve</small></span>
-          </button>
-          <button type="button" className={`slw-method ${method === 'bank_transfer' ? 'slw-method-active' : ''}`} onClick={() => setMethod('bank_transfer')}>
-            <span className="slw-method-icon"><BankMethodIcon /></span>
-            <span><b>Bank Transfer</b><small>Pay Directly from your Bank</small></span>
           </button>
           {method === 'promo' ? (
             // Selecting Promo Code transforms this card in place into the
@@ -893,9 +888,7 @@ const PaymentStep = ({
               ? 'Processing…'
               : method === 'card'
                 ? `Pay ${formatGbp(price, { maximumFractionDigits: 2 })} & View My Report`
-                : method === 'bank_transfer'
-                  ? 'Get Bank Transfer Details'
-                  : 'Apply Code & View My Report'}
+                : 'Apply Code & View My Report'}
           </button>
         </>
       )}

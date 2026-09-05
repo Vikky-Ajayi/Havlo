@@ -247,6 +247,14 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/stale-listings/seller',
   '/stale-listings/agents',
   '/stale-listings/partnerships',
+  // The prospect wizard (/check is its short alias) is UK-only end to end
+  // — no international/currency angle — and its own header has no inline
+  // badge slot to embed into, so the floating fallback just showed up
+  // unexplained in the corner. Excluded outright rather than embedded.
+  '/check',
+  '/stale-listings/prospect',
+  '/stale-listings/prospect/complete',
+  '/stale-listings/prospect/report',
   '/buyabroad/uk',
   '/buyabroad/uk/agents',
   '/buyabroad/uk/listings',
