@@ -5,6 +5,7 @@ import json
 import asyncio
 import logging
 import random
+import re
 import string
 import uuid
 from datetime import datetime, timezone
@@ -878,8 +879,12 @@ async def create_stale_prospect_manually(
     """Ops console manual-create: for a listing that meets every automated
     discovery criterion except having a scrapeable postal-quality address
     (see is_specific_address). The admin supplies the real address by hand,
-    in parts, so it's trusted outright rather than re-validated the way an
-    auto-scraped displayAddress would be.
+    as free text, so it's trusted outright and used verbatim rather than
+    re-validated the way an auto-scraped displayAddress would be.
+    Everything else (price, days on market, property type) comes from
+    scraping the listing, same as the automated pipeline — an admin
+    correcting a bad address shouldn't also have to retype numbers the
+    listing already states correctly.
 
     Deliberately unauthenticated — see the ops console page itself for why.
     """
@@ -896,41 +901,59 @@ async def create_stale_prospect_manually(
         scraped = {}
 
     snapshot = snapshot_from_scrape(scraped, str(payload.rightmove_url))
-    address_parts = [
-        payload.building_name_or_number.strip() if payload.building_name_or_number else "",
-        payload.street.strip(),
-        payload.city.strip(),
-        payload.county.strip() if payload.county else "",
-        payload.postcode.strip().upper(),
-    ]
-    address = ", ".join(part for part in address_parts if part)
-    # The manually-typed address is authoritative and always specific enough
-    # by construction (street + city + postcode are all required fields) —
-    # is_specific_address exists to catch a vague *scraped* displayAddress,
-    # not to second-guess an admin who just typed the real thing in.
-    snapshot["postcode"] = payload.postcode.strip().upper()
+    address = payload.address.strip()
 
-    price = payload.asking_price if payload.asking_price is not None else extract_price(snapshot.get("price"))
+    # Best-effort postcode/city extraction from the free-text address, purely
+    # to populate the denormalised postcode/city columns (search/filtering) —
+    # property_address itself always uses the admin's exact typed text.
+    postcode_match = re.search(r"[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}", address, re.IGNORECASE)
+    postcode = postcode_match.group(0).upper() if postcode_match else None
+    if postcode:
+        snapshot["postcode"] = postcode
+    city = None
+    address_parts = [p.strip() for p in address.split(",") if p.strip()]
+    if address_parts:
+        last = address_parts[-1]
+        if postcode and postcode.replace(" ", "") in last.replace(" ", "").upper():
+            remainder = re.sub(re.escape(postcode), "", last, flags=re.IGNORECASE).strip(" ,")
+            city = remainder or (address_parts[-2] if len(address_parts) >= 2 else None)
+        else:
+            city = last
+
+    price = extract_price(snapshot.get("price"))
     if price is None or price < 500000:
-        raise HTTPException(status_code=400, detail="Prospect must be a residential sale listing above GBP 500,000.")
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read an asking price above GBP 500,000 from this listing — check the Rightmove URL scraped correctly.",
+        )
     if not is_target_property_type(snapshot.get("property_type") or ""):
         raise HTTPException(
             status_code=400,
             detail="Prospect must be a detached, semi-detached, or terraced house — flats, apartments, and other property types are not targeted.",
         )
-    if int(payload.listing_duration_days or 0) < 180:
-        raise HTTPException(status_code=400, detail="Prospect must have been listed for at least 6 months.")
 
     listed_date = parse_listed_date(snapshot.get("listed_date"))
+    duration_days = (datetime.now(timezone.utc) - listed_date).days if listed_date else None
+    if duration_days is None or duration_days < 180:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Could not read a listed date from this listing to confirm it's been on the market 6+ months — "
+                "check the Rightmove URL scraped correctly."
+                if duration_days is None
+                else "Prospect must have been listed for at least 6 months."
+            ),
+        )
+
     prospect, token, letter_path = await create_prospect_from_listing_snapshot(
         db,
         rightmove_url=str(payload.rightmove_url),
         property_address=address,
         listing_snapshot=snapshot,
         asking_price=float(price),
-        listing_duration_days=int(payload.listing_duration_days),
+        listing_duration_days=duration_days,
         listed_date=listed_date,
-        city=payload.city.strip(),
+        city=city,
         is_manual=True,
     )
     preview_url = f"{_frontend_base_url()}/stale-listings/prospect/{token}"

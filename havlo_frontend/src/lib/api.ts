@@ -1180,13 +1180,7 @@ export const api = {
 
   staleProspectsConsoleCreateManual: (payload: {
     rightmove_url: string;
-    building_name_or_number?: string;
-    street: string;
-    city: string;
-    postcode: string;
-    county?: string;
-    listing_duration_days?: number;
-    asking_price?: number;
+    address: string;
   }) =>
     request<{ prospect_id: string; property_code: string; qr_url: string; preview_url: string; letter_pdf_path?: string | null; email_sent: boolean }>(
       '/stale-listings/prospects-console/prospects/manual',

@@ -50,7 +50,7 @@ function parseReport(data: Record<string, unknown>): ReportEdit {
 }
 
 function emptyManualForm() {
-  return { rightmove_url: '', building_name_or_number: '', street: '', city: '', postcode: '', county: '', asking_price: '', listing_duration_days: '180' };
+  return { rightmove_url: '', address: '' };
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -273,21 +273,15 @@ export const StaleProspectsConsole = () => {
 
   const submitManual = async () => {
     setManualError('');
-    if (!manualForm.rightmove_url.trim() || !manualForm.street.trim() || !manualForm.city.trim() || !manualForm.postcode.trim()) {
-      setManualError('Rightmove URL, street, city and postcode are all required.');
+    if (!manualForm.rightmove_url.trim() || !manualForm.address.trim()) {
+      setManualError('Rightmove URL and address are both required.');
       return;
     }
     setManualSubmitting(true);
     try {
       const res = await api.staleProspectsConsoleCreateManual({
         rightmove_url: manualForm.rightmove_url.trim(),
-        building_name_or_number: manualForm.building_name_or_number.trim() || undefined,
-        street: manualForm.street.trim(),
-        city: manualForm.city.trim(),
-        postcode: manualForm.postcode.trim(),
-        county: manualForm.county.trim() || undefined,
-        asking_price: manualForm.asking_price ? Number(manualForm.asking_price) : undefined,
-        listing_duration_days: manualForm.listing_duration_days ? Number(manualForm.listing_duration_days) : undefined,
+        address: manualForm.address.trim(),
       });
       setManualSuccess({ property_code: res.property_code, preview_url: res.preview_url });
       setManualForm(emptyManualForm());
@@ -785,7 +779,7 @@ export const StaleProspectsConsole = () => {
           <div className="spc-modal spc-modal-sm" onClick={e => e.stopPropagation()}>
             <button className="spc-close" onClick={closeManual} aria-label="Close">✕</button>
             <h2>Add a prospect manually</h2>
-            <p className="sub">For a listing that meets every criterion except having a clean, scrapeable address — type the real address in and it's used exactly as entered on the report and letter.</p>
+            <p className="sub">For a listing that meets every criterion except having a clean, scrapeable address — type the real address in and it's used exactly as entered on the report and letter. Price, days on market and property type are read from the listing itself.</p>
 
             {manualSuccess ? (
               <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 12, padding: 16 }}>
@@ -800,16 +794,14 @@ export const StaleProspectsConsole = () => {
             ) : (
               <>
                 <div className="spc-field"><label>Rightmove URL</label><input value={manualForm.rightmove_url} onChange={e => setManualForm({ ...manualForm, rightmove_url: e.target.value })} placeholder="https://www.rightmove.co.uk/properties/..." /></div>
-                <div className="spc-field"><label>Building name / number (optional)</label><input value={manualForm.building_name_or_number} onChange={e => setManualForm({ ...manualForm, building_name_or_number: e.target.value })} placeholder="The Old Rectory / 14" /></div>
-                <div className="spc-field"><label>Street</label><input value={manualForm.street} onChange={e => setManualForm({ ...manualForm, street: e.target.value })} placeholder="Church Lane" /></div>
-                <div className="spc-row2">
-                  <div className="spc-field"><label>City</label><input value={manualForm.city} onChange={e => setManualForm({ ...manualForm, city: e.target.value })} placeholder="Manchester" /></div>
-                  <div className="spc-field"><label>Postcode</label><input value={manualForm.postcode} onChange={e => setManualForm({ ...manualForm, postcode: e.target.value.toUpperCase() })} placeholder="M20 3AB" /></div>
-                </div>
-                <div className="spc-field"><label>County (optional)</label><input value={manualForm.county} onChange={e => setManualForm({ ...manualForm, county: e.target.value })} /></div>
-                <div className="spc-row2">
-                  <div className="spc-field"><label>Asking price (optional — read from listing if blank)</label><input type="number" value={manualForm.asking_price} onChange={e => setManualForm({ ...manualForm, asking_price: e.target.value })} /></div>
-                  <div className="spc-field"><label>Days on market</label><input type="number" value={manualForm.listing_duration_days} onChange={e => setManualForm({ ...manualForm, listing_duration_days: e.target.value })} /></div>
+                <div className="spc-field">
+                  <label>Full address</label>
+                  <textarea
+                    value={manualForm.address}
+                    onChange={e => setManualForm({ ...manualForm, address: e.target.value })}
+                    placeholder="14 Church Lane, Manchester, M20 3AB"
+                    rows={3}
+                  />
                 </div>
                 {manualError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{manualError}</p>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>

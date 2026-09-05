@@ -568,18 +568,14 @@ class StaleProspectDetailsRequest(BaseModel):
 class StaleProspectAdminCreateRequest(BaseModel):
     """Manual-create flow (ops console): for a listing that meets every
     automated criterion except having a scrapeable postal-quality address.
-    The admin supplies the real address by hand, in parts, so it's composed
-    into a full property_address string server-side and never depends on
-    what Rightmove's own displayAddress happened to include.
-    """
+    The admin supplies the real address by hand, as one free-text field —
+    trusted outright and used verbatim rather than re-validated the way an
+    auto-scraped displayAddress would be. Everything else (price, days on
+    market, property type) is read from scraping the listing itself, same
+    as the automated discovery pipeline — the admin isn't asked to
+    duplicate what the listing already states."""
     rightmove_url: str = Field(..., min_length=8, max_length=2000)
-    building_name_or_number: Optional[str] = Field(None, max_length=200)
-    street: str = Field(..., min_length=2, max_length=200)
-    city: str = Field(..., min_length=2, max_length=100)
-    postcode: str = Field(..., min_length=5, max_length=10)
-    county: Optional[str] = Field(None, max_length=100)
-    listing_duration_days: int = Field(180, ge=180)
-    asking_price: Optional[float] = Field(None, ge=500000)
+    address: str = Field(..., min_length=5, max_length=500)
 
 
 class StaleProspectPreviewResponse(BaseModel):
