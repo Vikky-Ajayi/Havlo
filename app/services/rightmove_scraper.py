@@ -253,6 +253,16 @@ def _headers() -> dict[str, str]:
 # set: every call site below falls straight through to a direct request.
 _SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
 _SCRAPERAPI_ENDPOINT = "http://api.scraperapi.com"
+# ScraperAPI's `premium=true` (residential/mobile IP pool) costs 10 credits
+# per request vs. 1 for a standard datacenter-IP request -- a real, material
+# cost, but standard-tier IPs are themselves datacenter IPs and are unlikely
+# to escape the exact class of block we've diagnosed. Only the one confirmed
+# call site (stale-listing search pages, via build_proxied_request) uses
+# this. Detail-page fetches and the unrelated marketplace scraper are gated
+# behind their own separate opt-in env vars below specifically so that
+# setting SCRAPERAPI_KEY alone can't silently multiply spend across traffic
+# that was never diagnosed as blocked.
+_MARKETPLACE_PROXY_ENABLED = os.getenv("SCRAPERAPI_PROXY_MARKETPLACE", "").strip().lower() in {"1", "true", "yes"}
 
 
 def proxy_enabled() -> bool:
@@ -355,7 +365,10 @@ async def _get(
 ) -> httpx.Response:
     """Rate-limited, politely-delayed HTTP GET."""
     async with sem:
-        request_url, proxy_params, headers = build_proxied_request(url)
+        if _MARKETPLACE_PROXY_ENABLED:
+            request_url, proxy_params, headers = build_proxied_request(url)
+        else:
+            request_url, proxy_params, headers = url, None, _headers()
         if proxy_params:
             existing_params = kwargs.pop("params", None) or {}
             proxy_params = {**proxy_params, **existing_params}

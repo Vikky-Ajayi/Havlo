@@ -33,10 +33,17 @@ logger = logging.getLogger(__name__)
 # Same ScraperAPI workaround as rightmove_scraper.py (see its
 # build_proxied_request docstring for the confirmed IP-reputation root
 # cause). Duplicated here rather than imported to avoid coupling this
-# multi-platform module to the Rightmove-specific one; inert until
-# SCRAPERAPI_KEY is set.
+# multi-platform module to the Rightmove-specific one.
+#
+# Only the stale-listing SEARCH page fetch (stale_listing_discovery.py) was
+# ever diagnosed as blocked -- detail-page fetches (this function) were not.
+# ScraperAPI's premium proxy tier costs 10 credits/request vs. 1 for
+# standard, so auto-proxying every detail fetch just because SCRAPERAPI_KEY
+# is set would silently multiply spend across much higher-volume traffic
+# that doesn't need it. Requires its own explicit opt-in.
 _SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
 _SCRAPERAPI_ENDPOINT = "http://api.scraperapi.com"
+_SCRAPERAPI_PROXY_DETAIL = os.getenv("SCRAPERAPI_PROXY_DETAIL", "").strip().lower() in {"1", "true", "yes"}
 
 # ── Rotating User-Agent pool ────────────────────────────────────────────────
 _USER_AGENTS = [
@@ -76,7 +83,7 @@ async def _fetch(url: str, referer: str | None = None, max_retries: int = 3) -> 
         if attempt > 0:
             await asyncio.sleep((2 ** attempt) + random.uniform(0, 0.5))
         try:
-            if _SCRAPERAPI_KEY:
+            if _SCRAPERAPI_KEY and _SCRAPERAPI_PROXY_DETAIL:
                 request_url = _SCRAPERAPI_ENDPOINT
                 params = {"api_key": _SCRAPERAPI_KEY, "url": url, "country_code": "uk", "premium": "true"}
                 headers: dict[str, str] = {}
