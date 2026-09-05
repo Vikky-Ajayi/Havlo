@@ -100,6 +100,8 @@ export interface StaleProspectAbandonedItem {
   contact_email?: string | null;
   contact_phone?: string | null;
   payment_status: string;
+  status: 'looked_up' | 'confirmed' | 'details_submitted' | 'paid';
+  code_looked_up_at?: string | null;
   property_confirmed_at?: string | null;
   contact_details_submitted_at?: string | null;
   abandonment_emails_sent: number;
@@ -1150,9 +1152,10 @@ export const api = {
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
   },
 
-  staleProspectsConsoleListAbandoned: (params: { includeUnsubscribed?: boolean; q?: string; limit?: number; offset?: number } = {}) => {
+  staleProspectsConsoleListAbandoned: (params: { includeUnsubscribed?: boolean; stage?: string; q?: string; limit?: number; offset?: number } = {}) => {
     const queryParams: Record<string, string> = {};
     if (params.includeUnsubscribed !== undefined) queryParams.include_unsubscribed = String(params.includeUnsubscribed);
+    if (params.stage) queryParams.stage = params.stage;
     if (params.q) queryParams.q = params.q;
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
     if (params.offset !== undefined) queryParams.offset = String(params.offset);

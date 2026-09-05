@@ -58,6 +58,17 @@ const STATUS_LABELS: Record<string, string> = {
   email_queued: 'Email queued', email_sending: 'Sending', email_sent: 'Sent', email_failed: 'Send failed', email_skipped: 'Send skipped',
 };
 
+// Follow Up tab funnel stages — furthest one each prospect reached.
+const STAGE_LABELS: Record<string, string> = {
+  looked_up: 'Looked up', confirmed: 'Confirmed', details_submitted: 'Details submitted', paid: 'Paid',
+};
+const STAGE_COLORS: Record<string, { background: string; color: string }> = {
+  looked_up: { background: '#F1F5F9', color: '#475569' },
+  confirmed: { background: '#DBEAFE', color: '#1D4ED8' },
+  details_submitted: { background: '#FEF3C7', color: '#92400E' },
+  paid: { background: '#DCFCE7', color: '#15803D' },
+};
+
 const money = (v?: number | null) => v == null ? '—' : `£${Math.round(v).toLocaleString('en-GB')}`;
 
 export const StaleProspectsConsole = () => {
@@ -110,9 +121,9 @@ export const StaleProspectsConsole = () => {
     return () => clearTimeout(t);
   }, [loadList, search]);
 
-  // ── Tab: "Prospects" (above) vs "Follow-up" (entered a code, submitted
-  // contact details, never checked out — the worklist for manual/paper
-  // follow-up letters) ────────────────────────────────────────────────────
+  // ── Tab: "Prospects" (above) vs "Follow-up" (everyone a customer
+  // actually interacted with by code/token — from just looking the code
+  // up, through confirmed, details-submitted, to paid) ──────────────────
   const [tab, setTab] = useState<'prospects' | 'abandoned'>('prospects');
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
@@ -120,6 +131,7 @@ export const StaleProspectsConsole = () => {
   const [abandonedError, setAbandonedError] = useState('');
   const [abandonedSearch, setAbandonedSearch] = useState('');
   const [includeUnsubscribed, setIncludeUnsubscribed] = useState(false);
+  const [stageFilter, setStageFilter] = useState<'' | 'looked_up' | 'confirmed' | 'details_submitted' | 'paid'>('');
 
   const loadAbandoned = useCallback(async () => {
     setAbandonedLoading(true);
@@ -127,6 +139,7 @@ export const StaleProspectsConsole = () => {
     try {
       const res = await api.staleProspectsConsoleListAbandoned({
         includeUnsubscribed,
+        stage: stageFilter || undefined,
         q: abandonedSearch.trim() || undefined,
         limit: 100,
       });
@@ -137,7 +150,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setAbandonedLoading(false);
     }
-  }, [includeUnsubscribed, abandonedSearch]);
+  }, [includeUnsubscribed, stageFilter, abandonedSearch]);
 
   useEffect(() => {
     if (tab !== 'abandoned') return;
@@ -498,10 +511,27 @@ export const StaleProspectsConsole = () => {
         {tab === 'abandoned' && (
           <>
             <div className="spc-stats">
-              <div className="spc-stat"><b>{abandonedTotal}</b><span>to follow up</span></div>
+              <div className="spc-stat"><b>{abandonedTotal}</b><span>{STAGE_LABELS[stageFilter] || 'in the funnel'}</span></div>
             </div>
-            <div className="spc-filters">
+            <div className="spc-filters" style={{ flexWrap: 'wrap' }}>
               <input className="spc-input" placeholder="Search address, property code, contact name or email..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['', 'looked_up', 'confirmed', 'details_submitted', 'paid'] as const).map(s => (
+                  <button
+                    key={s || 'all'}
+                    type="button"
+                    onClick={() => setStageFilter(s)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      border: stageFilter === s ? '1px solid #111111' : '1px solid #E5E7EB',
+                      background: stageFilter === s ? '#111111' : '#fff',
+                      color: stageFilter === s ? '#fff' : '#555',
+                    }}
+                  >
+                    {s ? STAGE_LABELS[s] : 'All'}
+                  </button>
+                ))}
+              </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#555' }}>
                 <input type="checkbox" checked={includeUnsubscribed} onChange={e => setIncludeUnsubscribed(e.target.checked)} />
                 Include unsubscribed
@@ -513,13 +543,13 @@ export const StaleProspectsConsole = () => {
             {abandonedLoading ? (
               <div className="spc-loading">Loading follow-up list...</div>
             ) : abandonedItems.length === 0 ? (
-              <div className="spc-empty">Nobody matches — everyone who submitted their details either checked out or hasn't been left behind.</div>
+              <div className="spc-empty">Nobody matches this filter yet.</div>
             ) : (
               <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 10 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
-                      {['Property', 'Contact', 'Price', 'Confirmed', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status'].map(h => (
+                      {['Property', 'Contact', 'Price', 'Stage', 'Confirmed', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status'].map(h => (
                         <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                       ))}
                     </tr>
@@ -537,6 +567,11 @@ export const StaleProspectsConsole = () => {
                           {item.contact_phone && <div style={{ color: '#888', fontSize: 12 }}>{item.contact_phone}</div>}
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{money(item.asking_price)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, ...STAGE_COLORS[item.status] }}>
+                            {STAGE_LABELS[item.status]}
+                          </span>
+                        </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.property_confirmed_at)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.contact_details_submitted_at)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{item.payment_status}</td>

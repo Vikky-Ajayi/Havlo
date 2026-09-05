@@ -527,6 +527,14 @@ class StaleListingProspect(Base):
     contact_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     contact_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # First time this prospect's code/token was actually looked up by a
+    # customer (see _get_prospect_by_access in stale_listings.py) — set once,
+    # idempotently, same pattern as property_confirmed_at. This is the
+    # earliest real signal of customer intent, ahead of confirming the
+    # property or submitting contact details; without it there was no way
+    # to tell "someone entered this code and just looked" apart from a
+    # prospect nobody has ever touched.
+    code_looked_up_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     property_confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     payment_method: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     bank_transfer_reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

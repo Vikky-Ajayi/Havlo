@@ -687,9 +687,10 @@ class StaleProspectConsoleDetail(StaleProspectConsoleListItem):
 
 
 class StaleProspectAbandonedItem(BaseModel):
-    """One prospect who entered a property code and showed real intent
-    (submitted contact details) but never completed checkout — for the
-    follow-up-letters worklist."""
+    """One prospect a customer actually interacted with by code/token — the
+    Follow Up console worklist, spanning the full funnel from "just looked
+    up the code" through to paid. `status` is the furthest stage reached:
+    "looked_up" | "confirmed" | "details_submitted" | "paid"."""
     prospect_id: str
     property_code: str
     property_address: str
@@ -700,6 +701,8 @@ class StaleProspectAbandonedItem(BaseModel):
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     payment_status: str
+    status: str
+    code_looked_up_at: Optional[str] = None
     property_confirmed_at: Optional[str] = None
     contact_details_submitted_at: Optional[str] = None
     abandonment_emails_sent: int = 0

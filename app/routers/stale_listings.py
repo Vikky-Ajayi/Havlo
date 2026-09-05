@@ -12,7 +12,7 @@ from pathlib import Path as FilePath
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse, HTMLResponse
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -633,6 +633,9 @@ async def _get_prospect_by_access(
     prospect = result.scalar_one_or_none()
     if not prospect:
         raise HTTPException(status_code=404, detail="We could not find that property assessment.")
+    if prospect.code_looked_up_at is None:
+        prospect.code_looked_up_at = datetime.utcnow()
+        await db.commit()
     return prospect
 
 
@@ -1057,23 +1060,58 @@ async def list_console_prospects(
     return StaleProspectConsoleListResponse(items=items, total=total, cities=cities)
 
 
+def _prospect_funnel_status(p: StaleListingProspect) -> str:
+    """Furthest stage this prospect actually reached, in priority order —
+    a prospect that paid is "paid" even though it also has a confirmed_at
+    and a contact_details_submitted_at."""
+    if p.payment_status == "completed":
+        return "paid"
+    if p.contact_details_submitted_at is not None:
+        return "details_submitted"
+    if p.property_confirmed_at is not None:
+        return "confirmed"
+    return "looked_up"
+
+
+_FUNNEL_STATUS_FILTERS = {
+    "looked_up": lambda: StaleListingProspect.property_confirmed_at.is_(None),
+    "confirmed": lambda: and_(
+        StaleListingProspect.property_confirmed_at.is_not(None),
+        StaleListingProspect.contact_details_submitted_at.is_(None),
+    ),
+    "details_submitted": lambda: and_(
+        StaleListingProspect.contact_details_submitted_at.is_not(None),
+        StaleListingProspect.payment_status != "completed",
+    ),
+    "paid": lambda: StaleListingProspect.payment_status == "completed",
+}
+
+
 @public_router.get("/prospects-console/abandoned", response_model=StaleProspectAbandonedResponse)
 async def list_abandoned_prospects(
     db: AsyncSession = Depends(get_db),
     include_unsubscribed: bool = Query(default=False),
+    stage: str | None = Query(
+        default=None,
+        description="Funnel stage to filter to: looked_up | confirmed | details_submitted | paid. Omit for every stage.",
+    ),
     q: str | None = Query(default=None, description="Search property address, property code, contact name, or contact email"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> StaleProspectAbandonedResponse:
-    """Prospects who entered a property code and submitted contact
-    details (real intent, not just a random code guess) but never
-    completed checkout — the worklist for manual/paper follow-up.
-    Excludes anyone who's unsubscribed unless include_unsubscribed is
-    set, since they've explicitly opted out of further contact."""
-    filters = [
-        StaleListingProspect.contact_details_submitted_at.is_not(None),
-        StaleListingProspect.payment_status != "completed",
-    ]
+    """Every prospect a customer actually interacted with by code/token —
+    the Follow Up console worklist. Covers the full funnel from "just
+    looked up the code" (code_looked_up_at set, nothing else) through
+    confirmed, details-submitted-but-unpaid, and paid; `stage` narrows to
+    one of those. Excludes anyone who's unsubscribed unless
+    include_unsubscribed is set, since they've explicitly opted out of
+    further contact."""
+    if stage is not None and stage not in _FUNNEL_STATUS_FILTERS:
+        raise HTTPException(status_code=422, detail=f"stage must be one of {sorted(_FUNNEL_STATUS_FILTERS)}.")
+
+    filters = [StaleListingProspect.code_looked_up_at.is_not(None)]
+    if stage:
+        filters.append(_FUNNEL_STATUS_FILTERS[stage]())
     if not include_unsubscribed:
         filters.append(StaleListingProspect.unsubscribed_at.is_(None))
     if q:
@@ -1099,10 +1137,18 @@ async def list_abandoned_prospects(
         .correlate(StaleListingProspect)
         .scalar_subquery()
     )
+    # Most recent thing that actually happened, whichever stage it was —
+    # a NULL contact_details_submitted_at (e.g. a looked-up-only prospect)
+    # would otherwise sort first under a plain DESC order.
+    last_activity_at = func.coalesce(
+        StaleListingProspect.contact_details_submitted_at,
+        StaleListingProspect.property_confirmed_at,
+        StaleListingProspect.code_looked_up_at,
+    )
     result = await db.execute(
         select(StaleListingProspect, emails_sent_count)
         .where(*filters)
-        .order_by(StaleListingProspect.contact_details_submitted_at.desc())
+        .order_by(last_activity_at.desc())
         .limit(limit)
         .offset(offset)
     )
@@ -1118,6 +1164,8 @@ async def list_abandoned_prospects(
             contact_email=p.contact_email,
             contact_phone=p.contact_phone,
             payment_status=p.payment_status,
+            status=_prospect_funnel_status(p),
+            code_looked_up_at=p.code_looked_up_at.isoformat() if p.code_looked_up_at else None,
             property_confirmed_at=p.property_confirmed_at.isoformat() if p.property_confirmed_at else None,
             contact_details_submitted_at=p.contact_details_submitted_at.isoformat() if p.contact_details_submitted_at else None,
             abandonment_emails_sent=emails_sent,
