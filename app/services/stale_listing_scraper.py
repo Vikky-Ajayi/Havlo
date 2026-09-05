@@ -28,8 +28,14 @@ def _positive_int(name: str, default: int) -> int:
 
 async def run_direct_stale_listing_cycle() -> dict:
     target = max(30, _positive_int("STALE_LISTINGS_TARGET_EMAILS", 30))
-    retry_result = await retry_pending_stale_prospect_emails(target=target)
-    remaining_target = max(0, target - retry_result["sent"])
+    # Clear the whole retry backlog each cycle rather than the ~30-per-cycle
+    # `target` floor -- that floor is a "did we hit the minimum" alerting
+    # threshold (used below), not a deliberate cap on retries. The 5000
+    # ceiling here is just a sanity bound against a pathological runaway
+    # query, not a real expected size.
+    retry_result = await retry_pending_stale_prospect_emails(
+        target=_positive_int("STALE_LISTINGS_RETRY_LIMIT", 5000)
+    )
     # Rightmove does not consistently honour its oldest-first sort flag. A
     # small page window therefore contains almost entirely new listings and
     # cannot reach the 180-day inventory. Search a broad, bounded window while
@@ -50,8 +56,19 @@ async def run_direct_stale_listing_cycle() -> dict:
     batch_candidates = _positive_int("STALE_LISTINGS_MAX_CANDIDATES", default_batch_candidates)
     default_batch_pages = max(25, (batch_candidates + 23) // 24)
     batch_pages = _positive_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", default_batch_pages)
+    # target_emails=0 means "no cap" -- run_automatic_discovery_once's
+    # _should_stop() only latches target_reached when target_emails is
+    # truthy (`if state.params.target_emails and state.emails_sent >= ...`).
+    # This used to be passed a ~30-email remaining_target, which meant every
+    # 15-minute cycle stopped emailing as soon as it hit ~30 sends even when
+    # max_candidates/max_pages_per_location (already raised well above that)
+    # left thousands of unscanned, plausibly-eligible candidates on the
+    # table. That was an undocumented daily throughput ceiling completely
+    # independent of the Rightmove IP-block issue. There must be no cap on
+    # emails/day: every eligible stale listing found in a cycle should be
+    # emailed, not just the first ~30.
     result = await run_automatic_discovery_once(
-        target_emails=remaining_target,
+        target_emails=0,
         max_candidates=batch_candidates,
         max_pages_per_location=batch_pages,
     )
