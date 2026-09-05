@@ -392,7 +392,7 @@ async def send_prospect_letter_to_admin(
             return False
         prospect.processing_status = "email_sending"
         await db.commit()
-        property_address = prospect.property_address
+        property_address = address_with_full_postcode(prospect.property_address, prospect.postcode)
         property_code = prospect.property_code
         letter_pdf_path = prospect.letter_pdf_path or ""
 
@@ -441,11 +441,52 @@ def _safe_json(value: str | None) -> dict[str, Any]:
         return {}
 
 
+# Rightmove's own displayAddress text caps a UK postcode at the outward code
+# plus (sometimes) just the first digit of the inward code — e.g. "BH8 9"
+# instead of "BH8 9BG" (see the postcode column's comment in models.py). The
+# real full code is scraped separately from outcode/incode and stored on
+# StaleListingProspect.postcode, but property_address itself is stored
+# verbatim from Rightmove, so every prospect-facing surface that prints the
+# address (this letter, the admin-notify email, the console's report/preview
+# payloads) inherited that truncation. Matches the SAME partial-or-full
+# pattern Rightmove actually produces, anchored at the end of the string.
+_PARTIAL_OR_FULL_POSTCODE_RE = re.compile(r"[A-Z]{1,2}\d[A-Z\d]?(?:\s?\d[A-Z]{0,2})?$", re.IGNORECASE)
+
+
+def address_with_full_postcode(address: str, postcode: str | None) -> str:
+    """Patch a full postcode into a display address whose trailing postcode
+    (if any) Rightmove truncated.
+
+    Only ever *extends* what's already there — replaces the tail with
+    `postcode` when `postcode` is a genuine full code (has the inward-code
+    space, so not just a bare outcode) and is consistent with what's
+    already printed (its own text, minus spaces, starts with the same);
+    appends it when the address has no postcode-looking tail at all.
+    Never touches an address that already ends with the full code, and
+    never substitutes a `postcode` that looks like a different property's
+    address entirely — better to leave Rightmove's own (possibly partial)
+    text than print a wrong one.
+    """
+    full = (postcode or "").strip()
+    if not full or " " not in full:
+        return address
+    stripped = address.rstrip()
+    match = _PARTIAL_OR_FULL_POSTCODE_RE.search(stripped)
+    if not match:
+        return f"{stripped}, {full}" if stripped else full
+    existing = match.group(0)
+    if existing.upper().replace(" ", "") == full.upper().replace(" ", ""):
+        return address
+    if not full.upper().replace(" ", "").startswith(existing.upper().replace(" ", "")):
+        return address
+    return stripped[: match.start()] + full + stripped[match.end():]
+
+
 def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     return {
         "prospect_id": str(prospect.id),
         "property_code": prospect.property_code,
-        "property_address": prospect.property_address,
+        "property_address": address_with_full_postcode(prospect.property_address, prospect.postcode),
         "rightmove_url": prospect.rightmove_url,
         "asking_price": prospect.asking_price,
         "listing_duration_days": prospect.listing_duration_days,
@@ -472,7 +513,7 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
     return {
         "prospect_id": str(prospect.id),
         "property_code": prospect.property_code,
-        "property_address": prospect.property_address,
+        "property_address": address_with_full_postcode(prospect.property_address, prospect.postcode),
         "rightmove_url": prospect.rightmove_url,
         "asking_price": prospect.asking_price,
         "listing_duration_days": prospect.listing_duration_days,
@@ -1190,6 +1231,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     comparable_sales = report.get("comparable_sales") or []
     photo_url = snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
     photo_reader = _letter_fetch_photo(photo_url)
+    # Rightmove's displayAddress (prospect.property_address) truncates the
+    # postcode; prospect.postcode has the real one. Every address printed
+    # in this letter should use the patched-in full version.
+    display_address = address_with_full_postcode(prospect.property_address, prospect.postcode)
 
     M = _LETTER_MARGIN
     page = rl_canvas.Canvas(str(pdf_path), pagesize=A4)
@@ -1201,7 +1246,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica", 10.5)
-    address_lines = [part.strip() for part in re.split(r",|\n", prospect.property_address) if part.strip()]
+    address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
     address_line_h = 14.5
     # In from the margin — not flush with the body text below it (that read
     # as visually mis-aligned/floating). Measured in actual space-widths at
@@ -1234,7 +1279,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y -= 8
     y = _letter_para(page, "Havlo specialises in analysing properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 8
-    y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(prospect.property_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(display_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= 24
 
     page.setFillColor(_LETTER_INK)
@@ -1300,7 +1345,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFont("Helvetica", 9)
     page.drawString(tx, y - 26, "Prepared specifically for this property")
     addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
-    _letter_para(page, _letter_esc(prospect.property_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
+    _letter_para(page, _letter_esc(display_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
     y -= card_h + 12
 
     # Spec: Inter/Bold(700)/10px/150% line-height/-3% letter-spacing/

@@ -61,6 +61,7 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services.stale_prospect_service import (
+    address_with_full_postcode,
     create_access_token,
     create_prospect_from_listing_snapshot,
     current_report_json,
@@ -987,7 +988,7 @@ def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleLi
     return StaleProspectConsoleListItem(
         prospect_id=str(prospect.id),
         property_code=prospect.property_code,
-        property_address=prospect.property_address,
+        property_address=address_with_full_postcode(prospect.property_address, prospect.postcode),
         postcode=prospect.postcode,
         city=prospect.city,
         rightmove_url=prospect.rightmove_url,
@@ -1109,7 +1110,7 @@ async def list_abandoned_prospects(
         StaleProspectAbandonedItem(
             prospect_id=str(p.id),
             property_code=p.property_code,
-            property_address=p.property_address,
+            property_address=address_with_full_postcode(p.property_address, p.postcode),
             postcode=p.postcode,
             city=p.city,
             asking_price=p.asking_price,
