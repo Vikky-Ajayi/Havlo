@@ -34,8 +34,22 @@ async def run_direct_stale_listing_cycle() -> dict:
     # small page window therefore contains almost entirely new listings and
     # cannot reach the 180-day inventory. Search a broad, bounded window while
     # the discovery service handles detail requests concurrently.
-    batch_candidates = max(1200, target * 40)
-    batch_pages = max(25, (batch_candidates + 23) // 24)
+    #
+    # STALE_LISTINGS_MAX_CANDIDATES / STALE_LISTINGS_MAX_PAGES_PER_LOCATION
+    # override these scale-with-target defaults when set. Previously this
+    # function always computed its own values and passed them explicitly to
+    # run_automatic_discovery_once(), which only falls back to reading those
+    # env vars itself when its max_candidates/max_pages_per_location
+    # arguments are falsy (`x or _env_int(...)`) -- an explicit non-zero
+    # value here meant that fallback never ran, so those two env vars were
+    # silently dead no matter what they were set to. Confirmed live: raising
+    # them on Railway had zero effect on the "Dedicated direct stale-listing
+    # scrape starting" log line, which kept reporting the old computed
+    # defaults after multiple redeploys.
+    default_batch_candidates = max(1200, target * 40)
+    batch_candidates = _positive_int("STALE_LISTINGS_MAX_CANDIDATES", default_batch_candidates)
+    default_batch_pages = max(25, (batch_candidates + 23) // 24)
+    batch_pages = _positive_int("STALE_LISTINGS_MAX_PAGES_PER_LOCATION", default_batch_pages)
     result = await run_automatic_discovery_once(
         target_emails=remaining_target,
         max_candidates=batch_candidates,
