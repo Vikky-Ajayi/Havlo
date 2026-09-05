@@ -21,7 +21,14 @@ from app.models.models import StaleListingDiscoveryRun, StaleListingProspect
 from app.services import email_service
 from app.services import google_sheets
 from app.services.listing_scraper import scrape_single_listing
-from app.services.rightmove_scraper import KNOWN_LOCATIONS, PAGE_SIZE, _BASE, _headers, _parse_next_data
+from app.services.rightmove_scraper import (
+    KNOWN_LOCATIONS,
+    PAGE_SIZE,
+    _BASE,
+    _headers,
+    _parse_next_data,
+    build_proxied_request,
+)
 from app.services.scraper_base import run_once_with_advisory_lock
 from app.services.stale_prospect_service import (
     create_prospect_from_listing_snapshot,
@@ -297,7 +304,18 @@ async def _fetch_search_page(
         f"&index={index}"
         f"&minPrice={min_price}"
     )
-    response = await client.get(url, headers=_headers(), follow_redirects=True, timeout=25)
+    # Routed through ScraperAPI (rotating premium/residential proxy pool)
+    # when SCRAPERAPI_KEY is set, working around Rightmove's confirmed
+    # IP-reputation block on Railway's outbound IP -- see build_proxied_request
+    # in rightmove_scraper.py. Falls through to a direct request otherwise.
+    request_url, proxy_params, headers = build_proxied_request(url)
+    response = await client.get(
+        request_url,
+        params=proxy_params,
+        headers=headers,
+        follow_redirects=True,
+        timeout=60 if proxy_params else 25,
+    )
     if response.status_code == 429:
         raise RuntimeError("Rightmove returned HTTP 429 rate limit")
     response.raise_for_status()

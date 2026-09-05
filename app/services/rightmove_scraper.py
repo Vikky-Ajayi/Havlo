@@ -25,6 +25,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
 import re
 import time
@@ -239,6 +240,47 @@ def _headers() -> dict[str, str]:
     }
 
 
+# ── Outbound proxy (anti-bot workaround) ────────────────────────────────────────
+#
+# Confirmed via controlled A/B testing: Rightmove serves degraded (poorly
+# age-sorted -- effectively unsorted/mostly-recent) search results
+# specifically to Railway's outbound datacenter IP. The identical request
+# (same httpx library, same headers, same code) from a non-datacenter IP
+# consistently gets correctly oldest-first-sorted results. This is an
+# IP-reputation block on Rightmove's side, not something fixable by changing
+# request logic -- so route through a rotating premium/residential proxy pool
+# instead. Inert (zero behaviour change, zero cost) until SCRAPERAPI_KEY is
+# set: every call site below falls straight through to a direct request.
+_SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
+_SCRAPERAPI_ENDPOINT = "http://api.scraperapi.com"
+
+
+def proxy_enabled() -> bool:
+    return bool(_SCRAPERAPI_KEY)
+
+
+def build_proxied_request(url: str) -> tuple[str, dict[str, str] | None, dict[str, str]]:
+    """Return (request_url, params, headers) to fetch `url`.
+
+    When SCRAPERAPI_KEY is set, routes the request through ScraperAPI's
+    proxy endpoint (premium residential/mobile IP pool, UK geotargeting,
+    built-in anti-bot bypass) instead of hitting Rightmove directly. Our own
+    UA/Accept/etc. headers are dropped in that case -- ScraperAPI manages
+    those itself, and forwarding ours on top tends to hurt rather than help
+    its bypass logic. Falls through to a plain direct request (unchanged
+    behaviour) when the key isn't set.
+    """
+    if not _SCRAPERAPI_KEY:
+        return url, None, _headers()
+    params = {
+        "api_key": _SCRAPERAPI_KEY,
+        "url": url,
+        "country_code": "uk",
+        "premium": "true",
+    }
+    return _SCRAPERAPI_ENDPOINT, params, {}
+
+
 # ── Work-item type ─────────────────────────────────────────────────────────────
 
 class WorkItem(NamedTuple):
@@ -313,8 +355,17 @@ async def _get(
 ) -> httpx.Response:
     """Rate-limited, politely-delayed HTTP GET."""
     async with sem:
+        request_url, proxy_params, headers = build_proxied_request(url)
+        if proxy_params:
+            existing_params = kwargs.pop("params", None) or {}
+            proxy_params = {**proxy_params, **existing_params}
         resp = await client.get(
-            url, headers=_headers(), follow_redirects=True, timeout=25, **kwargs
+            request_url,
+            headers=headers,
+            params=proxy_params,
+            follow_redirects=True,
+            timeout=60 if proxy_params else 25,
+            **kwargs,
         )
         await asyncio.sleep(random.uniform(0.8, 1.8))
         return resp

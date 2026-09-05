@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
 import re
 from datetime import datetime
@@ -28,6 +29,14 @@ import httpx
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
+
+# Same ScraperAPI workaround as rightmove_scraper.py (see its
+# build_proxied_request docstring for the confirmed IP-reputation root
+# cause). Duplicated here rather than imported to avoid coupling this
+# multi-platform module to the Rightmove-specific one; inert until
+# SCRAPERAPI_KEY is set.
+_SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
+_SCRAPERAPI_ENDPOINT = "http://api.scraperapi.com"
 
 # ── Rotating User-Agent pool ────────────────────────────────────────────────
 _USER_AGENTS = [
@@ -67,12 +76,22 @@ async def _fetch(url: str, referer: str | None = None, max_retries: int = 3) -> 
         if attempt > 0:
             await asyncio.sleep((2 ** attempt) + random.uniform(0, 0.5))
         try:
+            if _SCRAPERAPI_KEY:
+                request_url = _SCRAPERAPI_ENDPOINT
+                params = {"api_key": _SCRAPERAPI_KEY, "url": url, "country_code": "uk", "premium": "true"}
+                headers: dict[str, str] = {}
+                timeout = 60
+            else:
+                request_url = url
+                params = None
+                headers = _browser_headers(referer)
+                timeout = 30
             async with httpx.AsyncClient(
-                timeout=30,
+                timeout=timeout,
                 follow_redirects=True,
-                headers=_browser_headers(referer),
+                headers=headers,
             ) as client:
-                r = await client.get(url)
+                r = await client.get(request_url, params=params)
                 r.raise_for_status()
                 return r.text
         except (httpx.HTTPStatusError, httpx.RequestError) as e:
