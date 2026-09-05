@@ -1070,6 +1070,21 @@ def _letter_draw_gauge_row(page, x, y_top, w, cards, card_h=160.2) -> None:
     # proportionally identical to the original 178pt design instead of
     # bunching up in a shorter box. Horizontal measurements (insets, line
     # extents, paragraph width) are untouched since only height changed.
+    #
+    # NOT shrunk further than this: the longest description ("Listing
+    # Presentation"'s, the only one of the three that wraps to 3 lines at
+    # this card width — measured directly with reportlab's own Paragraph
+    # .wrap()) already only just fits below the gauge at this height
+    # (~1-2pt to spare). Any further reduction pushes that 3-line text up
+    # into the gauge circle and past the card's bottom edge — verified by
+    # computing the actual available space (card_h * 35/178, the fraction
+    # left below the gauge's bottom edge) against the fixed 33.6pt the
+    # 3-line description needs at its unscaled font size. Card height and
+    # the space this needs to fit the description do NOT shrink together,
+    # since only positions scale here, not font size/leading — so this is
+    # a real ceiling, not just a look I chose not to push further. See the
+    # gap added after this row's call site for how "more space before the
+    # heading below" is achieved without touching card height.
     scale = card_h / 178
     gap = 14
     n = len(cards)
@@ -1343,18 +1358,20 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # 4pt was too tight: drawString's y is the text baseline, and an 11pt
     # bold heading's ascent puts its glyph tops within a couple of points
     # of the gauge cards' rounded-rect bottom edge at that gap — reading as
-    # the heading touching the card row above it. Raised to 12 here, and
-    # clawed back by trimming the paragraph/QR gaps below (8->4, 14->10)
-    # so this page's total consumed height is unchanged — the last bottom-
-    # stat column ("of Havlo recommendations implemented...", the longest
-    # label) already wraps to enough lines to run past the page's bottom
-    # margin at the original height budget; this must not make that worse.
-    # Gauge cards are now 160.2pt tall (178 * 0.9, per design feedback) —
-    # this must track that or the row below opens up an unwanted gap where
-    # the taller card used to be. The 17.8pt reclaimed here also helps the
-    # bottom-of-page overflow noted above.
+    # the heading touching the card row above it. Raised to 12, then to 24
+    # (doubled again per design feedback, asking for more separation from
+    # "WHAT'S IN THE FULL ASSESSMENT?" below) — the cards themselves stay
+    # at their current height rather than shrinking further; see
+    # _letter_draw_gauge_row's card_h comment for why that's a real ceiling,
+    # not a style choice. The extra 12pt this adds is reclaimed by trimming
+    # the paragraph/QR gaps below by the same total (4->0, 10->2) so this
+    # page's total consumed height is unchanged either way — the last
+    # bottom-stat column ("of Havlo recommendations implemented...", the
+    # longest label) already wraps to enough lines to run close to the
+    # page's bottom margin at the original height budget; this must not
+    # make that worse.
     _gauge_card_h = 160.2
-    y -= _gauge_card_h + 12
+    y -= _gauge_card_h + 24
 
     _letter_draw_tracked_text(
         page, "WHAT'S IN THE FULL ASSESSMENT?", M, y,
@@ -1365,10 +1382,11 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y -= 4
 
     y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 4
-
+    # Trimmed further (4->0, and qr_h+10->qr_h+2 below) to offset the extra
+    # 12pt added above (12->24) between the gauge cards and "WHAT'S IN THE
+    # FULL ASSESSMENT?" — net zero change to this page's total height.
     _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
-    y -= qr_h + 10
+    y -= qr_h + 2
 
     bottom_stats = [
         ("61%", "Of assessed stale listings sold within 9 weeks"),
