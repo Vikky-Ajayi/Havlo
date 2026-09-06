@@ -43,6 +43,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s — %(message)s",
 )
+# httpx logs the full outgoing request line (including query-string
+# credentials, e.g. ScraperAPI's api_key= param) at INFO level. Confirmed
+# live: our own ScraperAPI key showed up in plaintext, once per proxied
+# request, in exported Railway logs. Silencing httpx's own INFO logging
+# (WARNING+ still comes through) stops that leak at the source instead of
+# relying on every future proxy/credentialed URL to be scrubbed by hand.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
