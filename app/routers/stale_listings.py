@@ -976,7 +976,7 @@ async def create_stale_prospect_manually(
             "city": prospect.city or "",
             "asking_price": price,
             "listed_date": listed_date,
-            "listing_duration_days": payload.listing_duration_days,
+            "listing_duration_days": duration_days,
             "property_type": snapshot.get("property_type"),
             "bedrooms": snapshot.get("bedrooms") or "",
             "bathrooms": snapshot.get("bathrooms") or "",
