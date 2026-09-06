@@ -1089,6 +1089,52 @@ async def _run_location(
         return location_id, start_page + state.params.max_pages_per_location
 
 
+_LOCATION_TIMEOUT_SECONDS = _env_int("STALE_LISTINGS_LOCATION_TIMEOUT_SECONDS", 120)
+_last_location_timeout_log = 0.0
+
+
+def _log_location_timeout(city: str) -> None:
+    """Throttled warning -- many locations can time out in the same cycle."""
+    global _last_location_timeout_log
+    now = time.monotonic()
+    if now - _last_location_timeout_log > 300:
+        _last_location_timeout_log = now
+        logger.warning(
+            "Location %s exceeded its %ds budget and was cut off. Confirmed "
+            "live: with no per-location bound, one slow/stalling outbound "
+            "request (relay or Rightmove itself, without ever raising an "
+            "error) held the whole cycle's Postgres advisory lock for nearly "
+            "an hour with zero new prospects, blocking every other worker's "
+            "attempt the entire time. Its page cursor is left unchanged so "
+            "it resumes from the same point next cycle.",
+            city, _LOCATION_TIMEOUT_SECONDS,
+        )
+
+
+async def _run_location_bounded(
+    state: _DiscoveryState,
+    client: httpx.AsyncClient,
+    city: str,
+    location_id: str,
+    location_sem: asyncio.Semaphore,
+    start_page: int,
+) -> tuple[str, int]:
+    """_run_location, cut off after _LOCATION_TIMEOUT_SECONDS.
+
+    location_sem's other waiters aren't held up by this: cancelling this
+    coroutine (on timeout) releases the semaphore slot immediately, same as
+    a normal return.
+    """
+    try:
+        return await asyncio.wait_for(
+            _run_location(state, client, city, location_id, location_sem, start_page),
+            timeout=_LOCATION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        _log_location_timeout(city)
+        return location_id, start_page
+
+
 async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
     """Run discovery in the background, scanning several locations concurrently.
 
@@ -1168,7 +1214,7 @@ async def run_discovery(run_id: str, params: DiscoveryParams) -> None:
             # for the entire cycle — confirmed live when one transient
             # Supabase connection blip in one location took down all ~107.
             location_results = await asyncio.gather(*(
-                _run_location(
+                _run_location_bounded(
                     state, client, city, location_id, location_sem,
                     cursors.get(location_id, 0),
                 )
