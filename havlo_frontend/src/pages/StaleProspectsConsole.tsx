@@ -71,6 +71,36 @@ const STAGE_COLORS: Record<string, { background: string; color: string }> = {
 
 const money = (v?: number | null) => v == null ? '—' : `£${Math.round(v).toLocaleString('en-GB')}`;
 
+function Pager({ page, pageSize, total, onChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  if (pageCount <= 1) return null;
+  const rangeStart = total === 0 ? 0 : page * pageSize + 1;
+  const rangeEnd = Math.min(total, (page + 1) * pageSize);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', margin: '22px 0 0', flexWrap: 'wrap' }}>
+      <button
+        className="spc-btn spc-btn-ghost"
+        disabled={page === 0}
+        onClick={() => onChange(page - 1)}
+        style={{ opacity: page === 0 ? 0.5 : 1, cursor: page === 0 ? 'default' : 'pointer' }}
+      >
+        ← Previous
+      </button>
+      <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 700 }}>
+        {rangeStart}–{rangeEnd} of {total} · page {page + 1} of {pageCount}
+      </span>
+      <button
+        className="spc-btn spc-btn-ghost"
+        disabled={page >= pageCount - 1}
+        onClick={() => onChange(page + 1)}
+        style={{ opacity: page >= pageCount - 1 ? 0.5 : 1, cursor: page >= pageCount - 1 ? 'default' : 'pointer' }}
+      >
+        Next →
+      </button>
+    </div>
+  );
+}
+
 export const StaleProspectsConsole = () => {
   useEffect(() => {
     document.title = 'Stale Prospects Console — Havlo';
@@ -87,14 +117,27 @@ export const StaleProspectsConsole = () => {
   }, []);
   const isMobile = viewportWidth < 700;
 
+  // Page size caps at what the backend allows (le=200) — 100 keeps each
+  // page's grid reasonably fast to render while still halving the number
+  // of page-clicks needed versus a smaller size.
+  const PAGE_SIZE = 100;
+
   const [items, setItems] = useState<StaleProspectConsoleListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [cities, setCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
-  const [treatedFilter, setTreatedFilter] = useState<'all' | 'treated' | 'untreated'>('untreated');
-  const [search, setSearch] = useState('');
+  const [cityFilter, setCityFilterRaw] = useState('');
+  const [treatedFilter, setTreatedFilterRaw] = useState<'all' | 'treated' | 'untreated'>('untreated');
+  const [search, setSearchRaw] = useState('');
+  const [page, setPage] = useState(0);
+  // Changing any filter invalidates whatever page you were on (e.g. page 3
+  // of "All" almost certainly doesn't exist once you switch to "Treated") —
+  // every filter setter below resets back to page 0 alongside the filter
+  // itself, rather than a separate effect racing the debounced reload.
+  const setCityFilter = (v: string) => { setCityFilterRaw(v); setPage(0); };
+  const setTreatedFilter = (v: 'all' | 'treated' | 'untreated') => { setTreatedFilterRaw(v); setPage(0); };
+  const setSearch = (v: string) => { setSearchRaw(v); setPage(0); };
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -104,7 +147,8 @@ export const StaleProspectsConsole = () => {
         city: cityFilter || undefined,
         treated: treatedFilter === 'all' ? undefined : treatedFilter === 'treated',
         q: search.trim() || undefined,
-        limit: 100,
+        limit: PAGE_SIZE,
+        offset: page * PAGE_SIZE,
       });
       setItems(res.items);
       setTotal(res.total);
@@ -114,7 +158,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setLoading(false);
     }
-  }, [cityFilter, treatedFilter, search]);
+  }, [cityFilter, treatedFilter, search, page]);
 
   useEffect(() => {
     const t = setTimeout(loadList, search ? 350 : 0);
@@ -129,9 +173,16 @@ export const StaleProspectsConsole = () => {
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [abandonedLoading, setAbandonedLoading] = useState(false);
   const [abandonedError, setAbandonedError] = useState('');
-  const [abandonedSearch, setAbandonedSearch] = useState('');
-  const [includeUnsubscribed, setIncludeUnsubscribed] = useState(false);
-  const [stageFilter, setStageFilter] = useState<'' | 'looked_up' | 'confirmed' | 'details_submitted' | 'paid'>('');
+  const [abandonedSearchRaw, setAbandonedSearchRaw] = useState('');
+  const [includeUnsubscribedRaw, setIncludeUnsubscribedRaw] = useState(false);
+  const [stageFilterRaw, setStageFilterRaw] = useState<'' | 'looked_up' | 'confirmed' | 'details_submitted' | 'paid'>('');
+  const [abandonedPage, setAbandonedPage] = useState(0);
+  const abandonedSearch = abandonedSearchRaw;
+  const includeUnsubscribed = includeUnsubscribedRaw;
+  const stageFilter = stageFilterRaw;
+  const setAbandonedSearch = (v: string) => { setAbandonedSearchRaw(v); setAbandonedPage(0); };
+  const setIncludeUnsubscribed = (v: boolean) => { setIncludeUnsubscribedRaw(v); setAbandonedPage(0); };
+  const setStageFilter = (v: '' | 'looked_up' | 'confirmed' | 'details_submitted' | 'paid') => { setStageFilterRaw(v); setAbandonedPage(0); };
 
   const loadAbandoned = useCallback(async () => {
     setAbandonedLoading(true);
@@ -141,7 +192,8 @@ export const StaleProspectsConsole = () => {
         includeUnsubscribed,
         stage: stageFilter || undefined,
         q: abandonedSearch.trim() || undefined,
-        limit: 100,
+        limit: PAGE_SIZE,
+        offset: abandonedPage * PAGE_SIZE,
       });
       setAbandonedItems(res.items);
       setAbandonedTotal(res.total);
@@ -150,7 +202,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setAbandonedLoading(false);
     }
-  }, [includeUnsubscribed, stageFilter, abandonedSearch]);
+  }, [includeUnsubscribed, stageFilter, abandonedSearch, abandonedPage]);
 
   useEffect(() => {
     if (tab !== 'abandoned') return;
@@ -366,7 +418,19 @@ export const StaleProspectsConsole = () => {
         .spc-stat span{color:#8A8F98;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
         .spc-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #EEF0F3;border-radius:14px;padding:14px;margin-bottom:20px}
         .spc-select,.spc-input{height:40px;border-radius:9px;border:1px solid #E3E5E9;padding:0 12px;font-size:13.5px;font-family:inherit;color:#111;background:#fff}
-        .spc-input{flex:1;min-width:180px}
+        /* A native <select> sizes itself to fit its widest <option> text by
+           default, and a flex item's minimum width defaults to that content
+           width (min-width:auto) rather than shrinking to fit the container.
+           With 600+ city options here, the widest city name forced this
+           select to ~720px even on a 375px mobile screen — which doesn't
+           just overflow its own row, it forces the whole page's layout
+           viewport to widen to fit, leaving the rest of the page rendered
+           at "desktop width" and shrunk down (the empty horizontal space
+           on mobile). min-width:0 lets it shrink like every other flex
+           item; max-width caps it so it can never do this again. */
+        .spc-select{min-width:0;max-width:100%}
+        .spc-input{flex:1;min-width:180px;max-width:100%}
+        @media (max-width:520px){.spc-input{min-width:0}}
         .spc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
         .spc-card{background:#fff;border:1px solid #EEF0F3;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s}
         .spc-card:hover{box-shadow:0 10px 28px rgba(17,17,17,.08);transform:translateY(-2px)}
@@ -595,6 +659,7 @@ export const StaleProspectsConsole = () => {
             })}
           </div>
         )}
+        <Pager page={page} pageSize={PAGE_SIZE} total={total} onChange={setPage} />
         </>
         )}
 
@@ -680,6 +745,7 @@ export const StaleProspectsConsole = () => {
                 </table>
               </div>
             )}
+            <Pager page={abandonedPage} pageSize={PAGE_SIZE} total={abandonedTotal} onChange={setAbandonedPage} />
           </>
         )}
       </div>
