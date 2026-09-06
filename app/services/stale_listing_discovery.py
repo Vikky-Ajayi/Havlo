@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -271,6 +272,25 @@ def _locations_for_request(names: list[str] | None) -> list[tuple[str, str]]:
     return matched or KNOWN_LOCATIONS
 
 
+_last_proxy_failure_log = 0.0
+
+
+def _log_proxy_fallback(status_code: int) -> None:
+    """Throttled warning -- every location in a cycle can hit this at once."""
+    global _last_proxy_failure_log
+    now = time.monotonic()
+    if now - _last_proxy_failure_log > 300:
+        _last_proxy_failure_log = now
+        logger.warning(
+            "ScraperAPI proxy request failed (HTTP %d -- commonly an "
+            "exhausted-credits or plan-restriction response from ScraperAPI "
+            "itself, not Rightmove). Falling back to a direct request so "
+            "discovery keeps producing output; check "
+            "https://dashboard.scraperapi.com/billing.",
+            status_code,
+        )
+
+
 async def _fetch_search_page(
     client: httpx.AsyncClient,
     city: str,
@@ -316,6 +336,19 @@ async def _fetch_search_page(
         follow_redirects=True,
         timeout=60 if proxy_params else 25,
     )
+    if proxy_params and response.status_code in (403, 429):
+        # Confirmed live: ScraperAPI itself returns 403 with an
+        # "exhausted the API Credits" body when the proxy account's
+        # balance/plan can't serve the request -- this is ScraperAPI
+        # rejecting the call before it ever reaches Rightmove, not a
+        # Rightmove-side signal. Without this fallback, a billing problem
+        # on the proxy account fails every single location every cycle
+        # (confirmed: eligible=0, failed=107 for over an hour straight),
+        # which is strictly worse than not proxying at all. Fall back to
+        # the plain direct request -- degraded sort order, but still
+        # producing output -- while the proxy account gets fixed.
+        _log_proxy_fallback(response.status_code)
+        response = await client.get(url, headers=_headers(), follow_redirects=True, timeout=25)
     if response.status_code == 429:
         raise RuntimeError("Rightmove returned HTTP 429 rate limit")
     response.raise_for_status()
