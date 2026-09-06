@@ -186,7 +186,7 @@ async def _process_bulk_upload_row(
                 listing_duration_days=duration_days,
                 listed_date=listed_date,
                 city=city,
-                is_manual=True,
+                is_manual=False,
             )
             await db.commit()
             property_code = prospect.property_code
