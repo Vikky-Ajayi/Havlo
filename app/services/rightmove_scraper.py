@@ -244,13 +244,23 @@ def _headers() -> dict[str, str]:
 #
 # Confirmed via controlled A/B testing: Rightmove serves degraded (poorly
 # age-sorted -- effectively unsorted/mostly-recent) search results
-# specifically to Railway's outbound datacenter IP. The identical request
-# (same httpx library, same headers, same code) from a non-datacenter IP
-# consistently gets correctly oldest-first-sorted results. This is an
-# IP-reputation block on Rightmove's side, not something fixable by changing
-# request logic -- so route through a rotating premium/residential proxy pool
-# instead. Inert (zero behaviour change, zero cost) until SCRAPERAPI_KEY is
-# set: every call site below falls straight through to a direct request.
+# specifically to Railway's outbound IP. The identical request (same httpx
+# library, same headers, same code) from a non-Railway IP consistently gets
+# correctly oldest-first-sorted results. This is an IP-reputation block
+# specific to Railway's IP range (plausibly: Railway hosts a lot of low-effort
+# scrapers, so its whole range got flagged) rather than "all datacenter IPs",
+# since a blanket datacenter-IP block would also catch the huge share of the
+# web that fronts through Cloudflare -- which Rightmove obviously cannot
+# afford to block. That means the fix doesn't require paying for a
+# residential-IP proxy pool at all: routing through literally any other
+# host's IP should work just as well. SCRAPE_RELAY_URL points at a tiny,
+# free Cloudflare Worker (or any similar passthrough relay) that fetches the
+# target URL from its own IP and returns the raw response -- see
+# scripts/cloudflare_relay_worker.js. Preferred over SCRAPERAPI_KEY (a paid,
+# credit-metered fallback) whenever both are set. Inert -- zero behaviour
+# change -- until one of them is.
+_SCRAPE_RELAY_URL = os.getenv("SCRAPE_RELAY_URL", "").strip().rstrip("/")
+_SCRAPE_RELAY_TOKEN = os.getenv("SCRAPE_RELAY_TOKEN", "").strip()
 _SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "").strip()
 _SCRAPERAPI_ENDPOINT = "http://api.scraperapi.com"
 # ScraperAPI's `premium=true` (residential/mobile IP pool) costs 10 credits
@@ -266,20 +276,26 @@ _MARKETPLACE_PROXY_ENABLED = os.getenv("SCRAPERAPI_PROXY_MARKETPLACE", "").strip
 
 
 def proxy_enabled() -> bool:
-    return bool(_SCRAPERAPI_KEY)
+    return bool(_SCRAPE_RELAY_URL or _SCRAPERAPI_KEY)
 
 
 def build_proxied_request(url: str) -> tuple[str, dict[str, str] | None, dict[str, str]]:
     """Return (request_url, params, headers) to fetch `url`.
 
-    When SCRAPERAPI_KEY is set, routes the request through ScraperAPI's
-    proxy endpoint (premium residential/mobile IP pool, UK geotargeting,
-    built-in anti-bot bypass) instead of hitting Rightmove directly. Our own
-    UA/Accept/etc. headers are dropped in that case -- ScraperAPI manages
-    those itself, and forwarding ours on top tends to hurt rather than help
-    its bypass logic. Falls through to a plain direct request (unchanged
-    behaviour) when the key isn't set.
+    Tries, in order:
+      1. SCRAPE_RELAY_URL -- a free passthrough relay (e.g. a Cloudflare
+         Worker) hit with `?url=<target>`. No credits, no billing, just a
+         different outbound IP than Railway's.
+      2. SCRAPERAPI_KEY -- ScraperAPI's paid proxy endpoint (premium
+         residential/mobile IP pool, UK geotargeting). Our own UA/Accept/etc.
+         headers are dropped in this case -- ScraperAPI manages those itself.
+      3. A plain direct request (unchanged behaviour) when neither is set.
     """
+    if _SCRAPE_RELAY_URL:
+        relay_params = {"url": url}
+        if _SCRAPE_RELAY_TOKEN:
+            relay_params["token"] = _SCRAPE_RELAY_TOKEN
+        return _SCRAPE_RELAY_URL, relay_params, {}
     if not _SCRAPERAPI_KEY:
         return url, None, _headers()
     params = {

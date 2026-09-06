@@ -282,11 +282,12 @@ def _log_proxy_fallback(status_code: int) -> None:
     if now - _last_proxy_failure_log > 300:
         _last_proxy_failure_log = now
         logger.warning(
-            "ScraperAPI proxy request failed (HTTP %d -- commonly an "
-            "exhausted-credits or plan-restriction response from ScraperAPI "
-            "itself, not Rightmove). Falling back to a direct request so "
-            "discovery keeps producing output; check "
-            "https://dashboard.scraperapi.com/billing.",
+            "Outbound proxy/relay request failed (HTTP %d). If SCRAPERAPI_KEY "
+            "is set this commonly means exhausted credits/plan restriction -- "
+            "check https://dashboard.scraperapi.com/billing. If SCRAPE_RELAY_URL "
+            "is set instead, this may mean the relay itself is down or Rightmove "
+            "blocked it too. Falling back to a direct request either way so "
+            "discovery keeps producing output.",
             status_code,
         )
 
