@@ -1187,6 +1187,31 @@ export const api = {
       { method: 'POST', body: payload, timeout: 30000 }
     ),
 
+  // Bulk CSV upload: same pipeline as staleProspectsConsoleCreateManual, run
+  // over every row in an uploaded CSV. Not a JSON body, so this bypasses the
+  // generic request() helper to send multipart/form-data directly. Deliberately
+  // unauthenticated (no token), matching every other prospects-console endpoint.
+  staleProspectsConsoleBulkUpload: async (file: File): Promise<StaleProspectDiscoveryRun> => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${API_BASE}/stale-listings/prospects-console/prospects/bulk-upload`, {
+      method: 'POST',
+      body: form,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const message =
+        data?.detail && typeof data.detail === 'string' ? data.detail : `Upload failed (${res.status})`;
+      throw new Error(message);
+    }
+    return data as StaleProspectDiscoveryRun;
+  },
+
+  staleProspectsConsoleBulkUploadStatus: (runId: string) =>
+    request<StaleProspectDiscoveryRun>(
+      `/stale-listings/prospects-console/prospects/bulk-upload/${encodeURIComponent(runId)}`
+    ),
+
   staleListingsBackfillPostcodes: (token: string) =>
     request<{
       total: number;

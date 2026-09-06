@@ -295,6 +295,56 @@ export const StaleProspectsConsole = () => {
 
   const closeManual = () => { setShowManual(false); setManualError(''); setManualSuccess(null); setManualForm(emptyManualForm()); };
 
+  // ── Bulk CSV upload ────────────────────────────────────────────────────
+  // Runs every row (rightmove_url, address) through the exact same
+  // scrape/validate/create-report/create-letter pipeline as "Add manually",
+  // just as a background job the console polls — a CSV can easily be
+  // thousands of rows, far too slow to process within one HTTP request.
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkError, setBulkError] = useState('');
+  const [bulkRun, setBulkRun] = useState<{
+    run_id: string; status: string; candidates_seen: number; created_prospects_count: number;
+    skipped_count: number; failed_count: number; max_candidates: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!bulkRun || bulkRun.status !== 'running') return;
+    const interval = window.setInterval(async () => {
+      try {
+        const res = await api.staleProspectsConsoleBulkUploadStatus(bulkRun.run_id);
+        setBulkRun({
+          run_id: res.run_id, status: res.status, candidates_seen: res.candidates_seen,
+          created_prospects_count: res.created_prospects_count, skipped_count: res.skipped_count,
+          failed_count: res.failed_count, max_candidates: res.max_candidates,
+        });
+        if (res.status !== 'running') loadList();
+      } catch {
+        // Transient — the next tick will retry. The banner just stops
+        // advancing until it does.
+      }
+    }, 3000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulkRun?.run_id, bulkRun?.status]);
+
+  const handleBulkFileSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setBulkError('');
+    setBulkUploading(true);
+    try {
+      const res = await api.staleProspectsConsoleBulkUpload(file);
+      setBulkRun({
+        run_id: res.run_id, status: res.status, candidates_seen: res.candidates_seen,
+        created_prospects_count: res.created_prospects_count, skipped_count: res.skipped_count,
+        failed_count: res.failed_count, max_candidates: res.max_candidates,
+      });
+    } catch (e) {
+      setBulkError(e instanceof Error ? e.message : 'Could not start the bulk upload.');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   return (
     <div className="spc-page">
       <style>{`
@@ -419,9 +469,55 @@ export const StaleProspectsConsole = () => {
           </div>
           <div className="spc-header-actions">
             <button className="spc-btn spc-btn-ghost" onClick={tab === 'prospects' ? loadList : loadAbandoned}>Refresh</button>
-            {tab === 'prospects' && <button className="spc-btn spc-btn-primary" onClick={() => setShowManual(true)}>+ Add manually</button>}
+            {tab === 'prospects' && (
+              <>
+                <button className="spc-btn spc-btn-primary" onClick={() => setShowManual(true)}>+ Add manually</button>
+                <label
+                  className="spc-btn spc-btn-ghost"
+                  style={{ cursor: bulkUploading ? 'wait' : 'pointer', opacity: bulkUploading ? 0.6 : 1 }}
+                >
+                  {bulkUploading ? 'Uploading…' : 'Upload CSV'}
+                  <input
+                    type="file"
+                    accept=".csv"
+                    disabled={bulkUploading}
+                    style={{ display: 'none' }}
+                    onChange={e => { handleBulkFileSelected(e.target.files?.[0]); e.target.value = ''; }}
+                  />
+                </label>
+              </>
+            )}
           </div>
         </div>
+
+        {tab === 'prospects' && (bulkError || bulkRun) && (
+          <div
+            style={{
+              margin: '0 0 18px', padding: '12px 16px', borderRadius: 10,
+              background: bulkError ? '#FEF2F2' : bulkRun?.status === 'completed' ? '#F0FDF4' : '#FFFBEB',
+              border: `1px solid ${bulkError ? '#FCA5A5' : bulkRun?.status === 'completed' ? '#86EFAC' : '#FDE68A'}`,
+              fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            }}
+          >
+            {bulkError ? (
+              <span style={{ color: '#B91C1C', fontWeight: 700 }}>{bulkError}</span>
+            ) : bulkRun ? (
+              <>
+                <span style={{ fontWeight: 700 }}>
+                  {bulkRun.status === 'running' && `Processing CSV upload… ${bulkRun.candidates_seen}/${bulkRun.max_candidates} rows`}
+                  {bulkRun.status === 'completed' && 'CSV upload finished.'}
+                  {bulkRun.status === 'failed' && 'CSV upload failed.'}
+                </span>
+                <span>Created {bulkRun.created_prospects_count}</span>
+                <span style={{ color: '#92400E' }}>Skipped {bulkRun.skipped_count}</span>
+                {bulkRun.failed_count > 0 && <span style={{ color: '#B91C1C' }}>Failed {bulkRun.failed_count}</span>}
+                {bulkRun.status !== 'running' && (
+                  <button className="spc-btn spc-btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setBulkRun(null)}>Dismiss</button>
+                )}
+              </>
+            ) : null}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 18, borderBottom: '1px solid #E5E7EB' }}>
           <button

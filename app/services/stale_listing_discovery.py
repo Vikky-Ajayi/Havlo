@@ -107,6 +107,174 @@ async def retry_pending_stale_prospect_emails(*, target: int) -> dict[str, int]:
     return {"attempted": attempted, "sent": sent}
 
 
+async def _process_bulk_upload_row(
+    row: dict[str, str],
+    row_num: int,
+) -> dict[str, Any]:
+    """Process one CSV row exactly like the single manual-add endpoint does:
+    scrape the listing, validate it against the same criteria the automated
+    pipeline enforces, and create a fully processed prospect (report +
+    letter PDF) on success. Returns a {"outcome": "created"|"skipped"|"failed",
+    ...} dict describing what happened -- never raises, so one bad row can't
+    take down the rest of the batch.
+
+    Deliberately leaves the new prospect's processing_status at whatever
+    create_prospect_from_listing_snapshot sets it to ("letter_ready") rather
+    than sending the admin email itself: retry_pending_stale_prospect_emails
+    already polls for exactly that status every cycle and will pick these up
+    at its own (already-uncapped) pace, without this bulk job needing to
+    duplicate email-sending or risk blasting hundreds of emails at once.
+    """
+    rightmove_url = (row.get("rightmove_url") or "").strip()
+    address = (row.get("address") or "").strip()
+    if not rightmove_url or not address:
+        return {"outcome": "failed", "row": row_num, "rightmove_url": rightmove_url,
+                "reason": "Row is missing rightmove_url or address."}
+
+    try:
+        async with AsyncSessionLocal() as db:
+            existing = await db.execute(
+                select(StaleListingProspect).where(StaleListingProspect.rightmove_url == rightmove_url)
+            )
+            if existing.scalar_one_or_none():
+                return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                        "address": address, "reason": "duplicate_prospect"}
+
+        try:
+            scraped = await scrape_single_listing(rightmove_url)
+        except Exception as exc:
+            logger.warning("Bulk-upload scrape failed for %s: %s", rightmove_url, exc)
+            scraped = {}
+
+        snapshot = snapshot_from_scrape(scraped, rightmove_url)
+
+        postcode_match = re.search(r"[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}", address, re.IGNORECASE)
+        postcode = postcode_match.group(0).upper() if postcode_match else None
+        if postcode:
+            snapshot["postcode"] = postcode
+        city = None
+        address_parts = [p.strip() for p in address.split(",") if p.strip()]
+        if address_parts:
+            last = address_parts[-1]
+            if postcode and postcode.replace(" ", "") in last.replace(" ", "").upper():
+                remainder = re.sub(re.escape(postcode), "", last, flags=re.IGNORECASE).strip(" ,")
+                city = remainder or (address_parts[-2] if len(address_parts) >= 2 else None)
+            else:
+                city = last
+
+        price = extract_price(snapshot.get("price"))
+        if price is None or price < 500000:
+            return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                    "address": address, "reason": "below_minimum_price_or_unscrapable"}
+        if not is_target_property_type(snapshot.get("property_type") or ""):
+            return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                    "address": address, "reason": "not_target_property_type"}
+
+        listed_date = parse_listed_date(snapshot.get("listed_date"))
+        duration_days = (datetime.now(timezone.utc) - listed_date).days if listed_date else None
+        if duration_days is None or duration_days < 180:
+            return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                    "address": address, "reason": "not_stale_enough_or_unscrapable"}
+
+        async with AsyncSessionLocal() as db:
+            prospect, token, letter_path = await create_prospect_from_listing_snapshot(
+                db,
+                rightmove_url=rightmove_url,
+                property_address=address,
+                listing_snapshot=snapshot,
+                asking_price=float(price),
+                listing_duration_days=duration_days,
+                listed_date=listed_date,
+                city=city,
+                is_manual=True,
+            )
+            await db.commit()
+            property_code = prospect.property_code
+            prospect_id = str(prospect.id)
+
+        try:
+            # record_stale_listing_address is a plain synchronous function
+            # that makes real (blocking) Google Sheets API calls -- run it in
+            # a thread so one slow/failing Sheets call can't stall this
+            # coroutine's event-loop turn for every other concurrent row.
+            await asyncio.to_thread(google_sheets.record_stale_listing_address, {
+                "rightmove_id": snapshot.get("rightmove_id"),
+                "property_code": property_code,
+                "property_address": address,
+                "postcode": postcode or "",
+                "city": city or "",
+                "asking_price": price,
+                "listed_date": listed_date,
+                "listing_duration_days": duration_days,
+                "property_type": snapshot.get("property_type"),
+                "bedrooms": snapshot.get("bedrooms") or "",
+                "bathrooms": snapshot.get("bathrooms") or "",
+                "listing_url": rightmove_url,
+                "source_status": "bulk_csv_upload",
+            })
+        except Exception as exc:
+            logger.warning("Bulk-upload Sheets sync failed for %s: %s", rightmove_url, exc)
+
+        return {"outcome": "created", "row": row_num, "rightmove_url": rightmove_url,
+                "address": address, "property_code": property_code, "prospect_id": prospect_id}
+    except Exception as exc:
+        logger.exception("Bulk-upload row %d failed: %s", row_num, rightmove_url)
+        return {"outcome": "failed", "row": row_num, "rightmove_url": rightmove_url,
+                "address": address, "reason": str(exc)[:240]}
+
+
+async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]]) -> None:
+    """Background job behind the console's CSV-upload field: run every row
+    through the exact same scrape -> validate -> create-prospect -> letter
+    pipeline as the single manual-add endpoint, tracked via the existing
+    StaleListingDiscoveryRun table/status-polling endpoint so the console
+    can watch it progress without any new tracking machinery.
+    """
+    sem = asyncio.Semaphore(max(1, min(8, _env_int("STALE_LISTINGS_BULK_UPLOAD_CONCURRENCY", 5))))
+    lock = asyncio.Lock()
+    results: dict[str, list[dict[str, Any]]] = {"created": [], "skipped": [], "failed": []}
+    counts = {"candidates_seen": 0, "created_prospects_count": 0, "skipped_count": 0, "failed_count": 0}
+
+    async def _flush() -> None:
+        async with AsyncSessionLocal() as db:
+            run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+            if run:
+                run.candidates_seen = counts["candidates_seen"]
+                run.created_prospects_count = counts["created_prospects_count"]
+                run.skipped_count = counts["skipped_count"]
+                run.failed_count = counts["failed_count"]
+                run.result_json = json.dumps(results, ensure_ascii=False)
+                await db.commit()
+
+    async def _run_one(row: dict[str, str], row_num: int) -> None:
+        async with sem:
+            outcome = await _process_bulk_upload_row(row, row_num)
+        async with lock:
+            counts["candidates_seen"] += 1
+            bucket = outcome["outcome"] + ("_prospects_count" if outcome["outcome"] == "created" else "_count")
+            counts[bucket] += 1
+            results[outcome["outcome"]].append({k: v for k, v in outcome.items() if k != "outcome"})
+            await _flush()
+
+    try:
+        await asyncio.gather(*(_run_one(row, i + 1) for i, row in enumerate(rows)))
+        async with AsyncSessionLocal() as db:
+            run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+            if run:
+                run.status = "completed"
+                run.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+    except Exception as exc:
+        logger.exception("Bulk CSV upload run %s failed", run_id)
+        async with AsyncSessionLocal() as db:
+            run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+            if run:
+                run.status = "failed"
+                run.error_message = str(exc)[:500]
+                run.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+
+
 def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
     try:
         return max(minimum, int(os.getenv(name, str(default))))

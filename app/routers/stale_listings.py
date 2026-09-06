@@ -1,6 +1,8 @@
 """Stale Listings — public property assessment with SumUp payment and AI report."""
 from __future__ import annotations
 
+import csv
+import io
 import json
 import asyncio
 import logging
@@ -11,7 +13,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path as FilePath
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, HTMLResponse
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,6 +84,7 @@ from app.services.stale_prospect_service import (
 from app.services.stale_listing_discovery import (
     DiscoveryParams,
     is_target_property_type,
+    run_bulk_csv_upload,
     run_discovery,
     serialize_discovery_run,
 )
@@ -1005,6 +1008,82 @@ async def create_stale_prospect_manually(
         letter_pdf_path=letter_path,
         email_sent=email_sent,
     )
+
+
+@public_router.post("/prospects-console/prospects/bulk-upload", response_model=StaleProspectDiscoveryRunResponse)
+async def bulk_upload_stale_prospects(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectDiscoveryRunResponse:
+    """Console CSV-upload field: run every row through the exact same
+    scrape -> validate -> create-prospect -> letter pipeline as the single
+    "add prospect manually" form above, just bulk. Expects a CSV with
+    `rightmove_url` and `address` columns (any extra columns, e.g. from a
+    manually-fetched export, are ignored). Processing happens in the
+    background — this returns immediately with a run_id the console polls
+    via the endpoint below.
+
+    Deliberately unauthenticated, matching create_stale_prospect_manually
+    above — see that endpoint's docstring for why.
+    """
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a .csv file.")
+
+    raw = await file.read()
+    try:
+        text_content = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text_content = raw.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(text_content))
+    if not reader.fieldnames or "rightmove_url" not in reader.fieldnames or "address" not in reader.fieldnames:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV must have 'rightmove_url' and 'address' columns.",
+        )
+    rows = [
+        {"rightmove_url": (row.get("rightmove_url") or "").strip(), "address": (row.get("address") or "").strip()}
+        for row in reader
+        if (row.get("rightmove_url") or "").strip()
+    ]
+    if not rows:
+        raise HTTPException(status_code=400, detail="No rows with a rightmove_url found in that CSV.")
+
+    run = StaleListingDiscoveryRun(
+        status="running",
+        dry_run=False,
+        location_names=json.dumps(["csv_upload"]),
+        min_price=500000,
+        min_days_on_market=180,
+        max_candidates=len(rows),
+        max_pages_per_location=0,
+        started_at=datetime.now(timezone.utc),
+        result_json=json.dumps({"created": [], "skipped": [], "failed": []}),
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+
+    background_tasks.add_task(run_bulk_csv_upload, str(run.id), rows)
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+
+
+@public_router.get(
+    "/prospects-console/prospects/bulk-upload/{run_id}",
+    response_model=StaleProspectDiscoveryRunResponse,
+)
+async def bulk_upload_status(run_id: str, db: AsyncSession = Depends(get_db)) -> StaleProspectDiscoveryRunResponse:
+    """Poll a bulk-upload run's progress. Unauthenticated, matching every
+    other prospects-console endpoint on this router."""
+    try:
+        run_uuid = uuid.UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    run = await db.get(StaleListingDiscoveryRun, run_uuid)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
 
 
 def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleListItem:
