@@ -482,6 +482,35 @@ def address_with_full_postcode(address: str, postcode: str | None) -> str:
     return stripped[: match.start()] + full + stripped[match.end():]
 
 
+# Full postcode only (has the inward-code space/digit-letter pair) - a bare
+# outcode like "L18" or "SK7" is short enough that it reads fine tacked onto
+# a "City, Outcode" line, and usually already lands on its own comma-split
+# line anyway. A full postcode glued onto the end of a line with no comma
+# before it (Rightmove's own raw format is frequently "Town POSTCODE" with
+# just a space) is the case that actually needs splitting out.
+_FULL_POSTCODE_TAIL_RE = re.compile(r"([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s*$", re.IGNORECASE)
+
+
+def _isolate_postcode_line(lines: list[str]) -> list[str]:
+    """Force a trailing full postcode onto its own line, splitting it out of
+    whatever line it's currently glued to. Used for the printed letter's
+    address block, per design feedback: the postcode should never share a
+    line with other address text, even when the source address has no comma
+    separating them ("...Macclesfield SK11 9LL" -> "...Macclesfield" /
+    "SK11 9LL")."""
+    if not lines:
+        return lines
+    last = lines[-1]
+    match = _FULL_POSTCODE_TAIL_RE.search(last)
+    if not match:
+        return lines
+    prefix = last[: match.start()].strip(" ,")
+    postcode = match.group(1).upper()
+    if not prefix:
+        return lines  # Already alone on its own line - nothing to do.
+    return [*lines[:-1], prefix, postcode]
+
+
 def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     return {
         "prospect_id": str(prospect.id),
@@ -1247,6 +1276,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica", 10.5)
     address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
+    address_lines = _isolate_postcode_line(address_lines)
     address_line_h = 14.5
     # In from the margin — not flush with the body text below it (that read
     # as visually mis-aligned/floating). Measured in actual space-widths at
@@ -1266,7 +1296,15 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # right), per design feedback.
     if prospect.letter_first_downloaded_at:
         page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
-    for line in ["Regarding your property for sale"] + address_lines[:5]:
+    # Cap at 6 lines, but never let the postcode (always last, once
+    # _isolate_postcode_line has run) be the one a plain [:6] would drop for
+    # an unusually long address - trim from the middle instead so the
+    # postcode line always survives.
+    capped_address_lines = (
+        address_lines if len(address_lines) <= 6
+        else [*address_lines[:5], address_lines[-1]]
+    )
+    for line in ["Regarding your property for sale"] + capped_address_lines:
         page.drawString(address_x, y, line)
         y -= address_line_h
     y -= 22
