@@ -168,7 +168,7 @@ export const StaleProspectsConsole = () => {
   // ── Tab: "Prospects" (above) vs "Follow-up" (everyone a customer
   // actually interacted with by code/token — from just looking the code
   // up, through confirmed, details-submitted, to paid) ──────────────────
-  const [tab, setTab] = useState<'prospects' | 'abandoned'>('prospects');
+  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters'>('prospects');
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [abandonedLoading, setAbandonedLoading] = useState(false);
@@ -397,6 +397,92 @@ export const StaleProspectsConsole = () => {
     }
   };
 
+  // Poll the CSV upload's own auto-built letters ZIP (letters_zip_status on
+  // the same run row) once the upload itself has finished — separate effect
+  // from the upload-progress one above since this keeps polling after
+  // bulkRun.status is already "completed"/"failed".
+  useEffect(() => {
+    if (!bulkRun || bulkRun.status === 'running') return;
+    if (!bulkRun.letters_zip_status || bulkRun.letters_zip_status === 'ready' || bulkRun.letters_zip_status === 'failed') return;
+    const interval = window.setInterval(async () => {
+      try {
+        const res = await api.staleProspectsConsoleBulkUploadStatus(bulkRun.run_id);
+        setBulkRun(prev => (prev ? { ...prev, ...res } : prev));
+      } catch {
+        // Transient — next tick retries.
+      }
+    }, 3000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bulkRun?.run_id, bulkRun?.status, bulkRun?.letters_zip_status]);
+
+  // ── Letters tab: pick prospects, generate a downloadable ZIP of their
+  // letter PDFs ───────────────────────────────────────────────────────────
+  // Selection persists across pages and filter changes within this tab —
+  // an admin filtering by one location, selecting all, then switching to
+  // another location to add more is the realistic way a big mail-out batch
+  // gets built up.
+  const [selectedLetterIds, setSelectedLetterIds] = useState<Set<string>>(new Set());
+  const toggleLetterSelected = (id: string) => {
+    setSelectedLetterIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allOnPageSelected = items.length > 0 && items.every(it => selectedLetterIds.has(it.prospect_id));
+  const toggleSelectAllOnPage = () => {
+    setSelectedLetterIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) items.forEach(it => next.delete(it.prospect_id));
+      else items.forEach(it => next.add(it.prospect_id));
+      return next;
+    });
+  };
+
+  const [lettersRun, setLettersRun] = useState<{
+    run_id: string; letters_zip_status?: string | null; letters_zip_total?: number; letters_zip_done?: number;
+    letters_zip_error?: string | null;
+  } | null>(null);
+  const [lettersZipError, setLettersZipError] = useState('');
+  const [lettersZipStarting, setLettersZipStarting] = useState(false);
+
+  useEffect(() => {
+    if (!lettersRun || lettersRun.letters_zip_status === 'ready' || lettersRun.letters_zip_status === 'failed') return;
+    const interval = window.setInterval(async () => {
+      try {
+        const res = await api.staleProspectsConsoleLettersZipStatus(lettersRun.run_id);
+        setLettersRun({
+          run_id: res.run_id, letters_zip_status: res.letters_zip_status,
+          letters_zip_total: res.letters_zip_total, letters_zip_done: res.letters_zip_done,
+          letters_zip_error: res.letters_zip_error,
+        });
+      } catch {
+        // Transient — next tick retries.
+      }
+    }, 3000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lettersRun?.run_id, lettersRun?.letters_zip_status]);
+
+  const generateLettersFolder = async () => {
+    if (selectedLetterIds.size === 0) return;
+    setLettersZipError('');
+    setLettersZipStarting(true);
+    try {
+      const res = await api.staleProspectsConsoleLettersZipStart(Array.from(selectedLetterIds));
+      setLettersRun({
+        run_id: res.run_id, letters_zip_status: res.letters_zip_status,
+        letters_zip_total: res.letters_zip_total, letters_zip_done: res.letters_zip_done,
+        letters_zip_error: res.letters_zip_error,
+      });
+    } catch (e) {
+      setLettersZipError(e instanceof Error ? e.message : 'Could not start building the ZIP.');
+    } finally {
+      setLettersZipStarting(false);
+    }
+  };
+
   return (
     <div className="spc-page">
       <style>{`
@@ -532,7 +618,17 @@ export const StaleProspectsConsole = () => {
             <p className="spc-subtitle">Every property the automated Rightmove discovery has found (plus anything added by hand below) — browse, edit the report and letter, mark properties as dealt with, and add near-misses manually.</p>
           </div>
           <div className="spc-header-actions">
-            <button className="spc-btn spc-btn-ghost" onClick={tab === 'prospects' ? loadList : loadAbandoned}>Refresh</button>
+            <button className="spc-btn spc-btn-ghost" onClick={tab === 'abandoned' ? loadAbandoned : loadList}>Refresh</button>
+            {tab === 'letters' && (
+              <button
+                className="spc-btn spc-btn-primary"
+                disabled={selectedLetterIds.size === 0 || lettersZipStarting}
+                style={{ opacity: selectedLetterIds.size === 0 || lettersZipStarting ? 0.5 : 1, cursor: selectedLetterIds.size === 0 ? 'default' : 'pointer' }}
+                onClick={generateLettersFolder}
+              >
+                {lettersZipStarting ? 'Starting…' : `Generate Folder (${selectedLetterIds.size})`}
+              </button>
+            )}
             {tab === 'prospects' && (
               <>
                 <button className="spc-btn spc-btn-primary" onClick={() => setShowManual(true)}>+ Add manually</button>
@@ -575,8 +671,31 @@ export const StaleProspectsConsole = () => {
                 <span>Created {bulkRun.created_prospects_count}</span>
                 <span style={{ color: '#92400E' }}>Skipped {bulkRun.skipped_count}</span>
                 {bulkRun.failed_count > 0 && <span style={{ color: '#B91C1C' }}>Failed {bulkRun.failed_count}</span>}
+                {bulkRun.status !== 'running' && bulkRun.created_prospects_count > 0 && (
+                  bulkRun.letters_zip_status === 'ready' ? (
+                    <a
+                      className="spc-btn spc-btn-primary"
+                      style={{ marginLeft: 'auto', textDecoration: 'none', display: 'inline-block' }}
+                      href={api.staleProspectsConsoleLettersZipDownloadUrl(bulkRun.run_id)}
+                    >
+                      Download letters ZIP
+                    </a>
+                  ) : bulkRun.letters_zip_status === 'failed' ? (
+                    <span style={{ marginLeft: 'auto', color: '#B91C1C' }}>Letters ZIP failed to build{bulkRun.letters_zip_error ? `: ${bulkRun.letters_zip_error}` : ''}</span>
+                  ) : (
+                    <span style={{ marginLeft: 'auto', color: '#92400E' }}>
+                      Building letters ZIP… {bulkRun.letters_zip_done ?? 0}/{bulkRun.letters_zip_total ?? bulkRun.created_prospects_count}
+                    </span>
+                  )
+                )}
                 {bulkRun.status !== 'running' && (
-                  <button className="spc-btn spc-btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setBulkRun(null)}>Dismiss</button>
+                  <button
+                    className="spc-btn spc-btn-ghost"
+                    style={bulkRun.created_prospects_count > 0 ? undefined : { marginLeft: 'auto' }}
+                    onClick={() => setBulkRun(null)}
+                  >
+                    Dismiss
+                  </button>
                 )}
               </>
             ) : null}
@@ -592,9 +711,15 @@ export const StaleProspectsConsole = () => {
           </button>
           <button
             onClick={() => setTab('abandoned')}
-            style={{ padding: '10px 4px', background: 'none', border: 'none', borderBottom: tab === 'abandoned' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'abandoned' ? '#111111' : '#888', cursor: 'pointer' }}
+            style={{ padding: '10px 4px', marginRight: 20, background: 'none', border: 'none', borderBottom: tab === 'abandoned' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'abandoned' ? '#111111' : '#888', cursor: 'pointer' }}
           >
             Follow Up
+          </button>
+          <button
+            onClick={() => setTab('letters')}
+            style={{ padding: '10px 4px', background: 'none', border: 'none', borderBottom: tab === 'letters' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'letters' ? '#111111' : '#888', cursor: 'pointer' }}
+          >
+            Letters
           </button>
         </div>
 
@@ -746,6 +871,115 @@ export const StaleProspectsConsole = () => {
               </div>
             )}
             <Pager page={abandonedPage} pageSize={PAGE_SIZE} total={abandonedTotal} onChange={setAbandonedPage} />
+          </>
+        )}
+
+        {tab === 'letters' && (
+          <>
+            <div className="spc-stats">
+              <div className="spc-stat"><b>{selectedLetterIds.size}</b><span>Selected</span></div>
+              <div className="spc-stat"><b>{total}</b><span>{treatedFilter === 'all' ? 'total' : treatedFilter}</span></div>
+            </div>
+
+            <div className="spc-filters">
+              <select className="spc-select" value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
+                <option value="">All locations</option>
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select className="spc-select" value={treatedFilter} onChange={e => setTreatedFilter(e.target.value as 'all' | 'treated' | 'untreated')}>
+                <option value="untreated">Not treated</option>
+                <option value="treated">Treated</option>
+                <option value="all">All</option>
+              </select>
+              <input className="spc-input" placeholder="Search address, postcode or property code..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+
+            {(lettersZipError || lettersRun) && (
+              <div
+                style={{
+                  margin: '0 0 18px', padding: '12px 16px', borderRadius: 10,
+                  background: lettersZipError ? '#FEF2F2' : lettersRun?.letters_zip_status === 'ready' ? '#F0FDF4' : lettersRun?.letters_zip_status === 'failed' ? '#FEF2F2' : '#FFFBEB',
+                  border: `1px solid ${lettersZipError || lettersRun?.letters_zip_status === 'failed' ? '#FCA5A5' : lettersRun?.letters_zip_status === 'ready' ? '#86EFAC' : '#FDE68A'}`,
+                  fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                }}
+              >
+                {lettersZipError ? (
+                  <span style={{ color: '#B91C1C', fontWeight: 700 }}>{lettersZipError}</span>
+                ) : lettersRun ? (
+                  <>
+                    <span style={{ fontWeight: 700 }}>
+                      {(lettersRun.letters_zip_status === 'queued' || lettersRun.letters_zip_status === 'building') &&
+                        `Building letters ZIP… ${lettersRun.letters_zip_done ?? 0}/${lettersRun.letters_zip_total ?? 0}`}
+                      {lettersRun.letters_zip_status === 'ready' && 'Letters ZIP is ready.'}
+                      {lettersRun.letters_zip_status === 'failed' && `Letters ZIP failed to build${lettersRun.letters_zip_error ? `: ${lettersRun.letters_zip_error}` : ''}.`}
+                    </span>
+                    {lettersRun.letters_zip_status === 'ready' && (
+                      <a
+                        className="spc-btn spc-btn-primary"
+                        style={{ marginLeft: 'auto', textDecoration: 'none', display: 'inline-block' }}
+                        href={api.staleProspectsConsoleLettersZipDownloadUrl(lettersRun.run_id)}
+                      >
+                        Download ZIP
+                      </a>
+                    )}
+                    {(lettersRun.letters_zip_status === 'ready' || lettersRun.letters_zip_status === 'failed') && (
+                      <button
+                        className="spc-btn spc-btn-ghost"
+                        style={lettersRun.letters_zip_status === 'failed' ? { marginLeft: 'auto' } : undefined}
+                        onClick={() => setLettersRun(null)}
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            )}
+
+            {listError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{listError}</p>}
+
+            {loading ? (
+              <div className="spc-loading">Loading prospects...</div>
+            ) : items.length === 0 ? (
+              <div className="spc-empty">No prospects match these filters.</div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
+                      <th style={{ padding: '10px 12px', borderBottom: '1px solid #E5E7EB', width: 32 }}>
+                        <input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label="Select all on this page" />
+                      </th>
+                      {['Property', 'Price', 'Status'].map(h => (
+                        <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map(item => (
+                      <tr key={item.prospect_id} style={{ borderBottom: '1px solid #F0F0F0' }}>
+                        <td style={{ padding: '10px 12px' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedLetterIds.has(item.prospect_id)}
+                            onChange={() => toggleLetterSelected(item.prospect_id)}
+                          />
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div style={{ fontWeight: 600 }}>{item.property_address}</div>
+                          <div style={{ color: '#888', fontSize: 12 }}>{item.property_code}{item.postcode ? ` · ${item.postcode}` : ''}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{money(item.asking_price)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span className="spc-status-pill">{STATUS_LABELS[item.processing_status] || item.processing_status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Pager page={page} pageSize={PAGE_SIZE} total={total} onChange={setPage} />
           </>
         )}
       </div>

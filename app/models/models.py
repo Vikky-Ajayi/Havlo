@@ -11,6 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     func,
@@ -679,6 +680,21 @@ class StaleListingDiscoveryRun(Base):
     result_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     started_by_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Bulk letter-PDF ZIP for this run: either the CSV bulk-upload's own
+    # created prospects (auto-built once the upload finishes) or an ad-hoc
+    # admin-picked selection from the console's "Generate Folder" letters tab
+    # (which creates a run row purely to reuse this same tracking/storage,
+    # same convention as location_names=["csv_upload"] for bulk uploads).
+    # Stored as bytea rather than a file on disk -- Railway's filesystem is
+    # ephemeral and per-worker, so a temp file wouldn't reliably be there for
+    # whichever of the 4 uvicorn workers handles the download request.
+    letters_zip_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    letters_zip_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+    letters_zip_filename: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    letters_zip_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    letters_zip_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    letters_zip_done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    letters_zip_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

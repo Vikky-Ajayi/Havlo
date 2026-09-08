@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import logging
 import os
 import re
 import time
 import uuid
+import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +17,7 @@ from typing import Any
 
 import httpx
 from sqlalchemy import or_, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal
@@ -273,6 +276,154 @@ async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]]) -> None:
                 run.error_message = str(exc)[:500]
                 run.completed_at = datetime.now(timezone.utc)
                 await db.commit()
+        return
+
+    # Auto-build a letters ZIP for whatever this run actually created, so
+    # the admin doesn't have to separately re-select the same rows on the
+    # console's "Generate Folder" tab right after uploading a CSV. Runs in
+    # the same background task, after `status` already flipped to
+    # "completed" above -- the console shows created/skipped/failed counts
+    # immediately and polls the separate letters_zip_status field for this
+    # part, since zipping hundreds of PDFs can meaningfully outlast the
+    # scrape/validate pass itself.
+    created_ids = [c["prospect_id"] for c in results["created"] if c.get("prospect_id")]
+    if created_ids:
+        await build_letters_zip_for_run(run_id, created_ids)
+
+
+def _letters_zip_frontend_base_url() -> str:
+    return (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
+
+
+async def ensure_letter_pdf_path(db: AsyncSession, prospect: StaleListingProspect) -> Path:
+    """Return a filesystem path to `prospect`'s current letter PDF,
+    regenerating it first if needed. Shared by the single-letter download
+    endpoint and the bulk letters-ZIP job below so there's exactly one copy
+    of this logic.
+
+    Regeneration happens when the cached path is missing from disk (Railway's
+    filesystem is ephemeral per deploy -- a PDF from an earlier container is
+    simply gone) or on this prospect's first real download ever: the date
+    printed on the letter locks in at that point and never changes after
+    (see the column comment on letter_first_downloaded_at), so a file that
+    predates that lock-in must be redrawn even though it isn't otherwise
+    missing.
+
+    Mutates `prospect` and does not commit -- the caller commits alongside
+    whatever else it's doing in the same session.
+    """
+    first_download = prospect.letter_first_downloaded_at is None
+    if first_download:
+        prospect.letter_first_downloaded_at = datetime.now(timezone.utc)
+
+    path = Path(prospect.letter_pdf_path) if prospect.letter_pdf_path else None
+    if not path or not path.is_file() or first_download:
+        new_token = create_access_token()
+        prospect.qr_token_hash = hash_access_token(new_token)
+        prospect.letter_pdf_path = await asyncio.wait_for(
+            asyncio.to_thread(generate_letter_pdf, prospect, new_token, _letters_zip_frontend_base_url()),
+            timeout=20.0,
+        )
+        path = Path(prospect.letter_pdf_path)
+    return path
+
+
+async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> None:
+    """Background job: regenerate every listed prospect's letter PDF and
+    zip them together, storing the finished bytes directly on the run row
+    (see the model column comments -- bytea rather than a disk file, so any
+    of the 4 uvicorn workers can serve the download regardless of which one
+    built it). Used two ways:
+      - Right after run_bulk_csv_upload finishes, zipping whatever it
+        created -- run_id is that same upload run.
+      - From the console's "Generate Folder" letters tab, for an arbitrary
+        admin-picked selection -- the router creates a fresh run row purely
+        to reuse this tracking/storage (same convention as
+        location_names=["csv_upload"] for bulk uploads).
+    Never raises -- always leaves the run row in a terminal letters_zip_status
+    ("ready" or "failed") so the console's poll loop has something to stop on.
+    """
+    sem = asyncio.Semaphore(max(1, min(8, _env_int("STALE_LISTINGS_LETTERS_ZIP_CONCURRENCY", 6))))
+    lock = asyncio.Lock()
+    done = 0
+    entries: list[tuple[str, bytes]] = []
+    errors: list[str] = []
+
+    async with AsyncSessionLocal() as db:
+        run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+        if not run:
+            return
+        run.letters_zip_status = "building"
+        run.letters_zip_total = len(prospect_ids)
+        run.letters_zip_done = 0
+        run.letters_zip_error = None
+        await db.commit()
+
+    async def _one(pid: str) -> None:
+        nonlocal done
+        async with sem:
+            try:
+                prospect_uuid = uuid.UUID(pid)
+            except ValueError:
+                async with lock:
+                    errors.append(f"{pid}: invalid prospect id")
+                    done += 1
+                return
+            name: str | None = None
+            pdf_bytes: bytes | None = None
+            async with AsyncSessionLocal() as db:
+                prospect = await db.get(StaleListingProspect, prospect_uuid)
+                if not prospect:
+                    async with lock:
+                        errors.append(f"{pid}: prospect not found")
+                else:
+                    try:
+                        path = await ensure_letter_pdf_path(db, prospect)
+                        pdf_bytes = await asyncio.to_thread(path.read_bytes)
+                        name = f"Havlo-letter-{prospect.property_code or pid}.pdf"
+                    except Exception as exc:
+                        logger.warning("Letters zip: skipping prospect %s: %s", pid, exc)
+                        async with lock:
+                            errors.append(f"{prospect.property_code or pid}: {type(exc).__name__}")
+                run_row = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+                async with lock:
+                    if name and pdf_bytes is not None:
+                        entries.append((name, pdf_bytes))
+                    done += 1
+                    if run_row:
+                        run_row.letters_zip_done = done
+                await db.commit()
+
+    await asyncio.gather(*(_one(pid) for pid in prospect_ids))
+
+    async with AsyncSessionLocal() as db:
+        run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+        if not run:
+            return
+        if not entries:
+            run.letters_zip_status = "failed"
+            run.letters_zip_error = "; ".join(errors[:20]) or "No letters could be generated."
+            await db.commit()
+            return
+
+        buf = io.BytesIO()
+        used_names: set[str] = set()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for name, pdf_bytes in entries:
+                final_name = name
+                i = 2
+                while final_name in used_names:
+                    final_name = f"{name[:-4]}-{i}.pdf"
+                    i += 1
+                used_names.add(final_name)
+                zf.writestr(final_name, pdf_bytes)
+
+        run.letters_zip_data = buf.getvalue()
+        run.letters_zip_filename = f"havlo-letters-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.zip"
+        run.letters_zip_status = "ready"
+        run.letters_zip_error = "; ".join(errors[:20]) if errors else None
+        run.letters_zip_generated_at = datetime.now(timezone.utc)
+        await db.commit()
 
 
 def _env_int(name: str, default: int, *, minimum: int = 1) -> int:
@@ -813,6 +964,11 @@ def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
         "failed_count": run.failed_count,
         "results": results,
         "error_message": run.error_message,
+        "letters_zip_status": run.letters_zip_status,
+        "letters_zip_filename": run.letters_zip_filename,
+        "letters_zip_error": run.letters_zip_error,
+        "letters_zip_total": run.letters_zip_total,
+        "letters_zip_done": run.letters_zip_done,
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "completed_at": run.completed_at.isoformat() if run.completed_at else None,
         "created_at": run.created_at.isoformat() if run.created_at else None,
