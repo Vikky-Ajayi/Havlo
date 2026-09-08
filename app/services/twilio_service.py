@@ -113,3 +113,11 @@ def send_stale_prospect_abandonment_sms(to_phone: str, preview_url: str) -> bool
     """
     body = f"Your Havlo property assessment is ready to view: {preview_url}"
     return _send_sms(to_phone, body)
+
+
+def send_test_sms(to_phone: str) -> bool:
+    """Admin QA helper — confirms TWILIO_ACCOUNT_SID/AUTH_TOKEN/PHONE_NUMBER
+    and the destination number actually work, without needing a real inbox
+    message or stale-prospect abandonment event to trigger one."""
+    body = "This is a test SMS from Havlo confirming the Twilio integration is working."
+    return _send_sms(to_phone, body)

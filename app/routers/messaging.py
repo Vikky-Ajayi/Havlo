@@ -80,6 +80,33 @@ async def require_admin_or_secret(
     return user
 
 
+@router.post("/admin/test-sms")
+async def send_test_sms(
+    to_phone: str = Query(..., description="Destination phone number, e.g. +2349038383542."),
+    _admin: Optional[User] = Depends(require_admin_or_secret),
+) -> dict:
+    """QA helper: send a one-off test SMS via Twilio to confirm
+    TWILIO_ACCOUNT_SID/AUTH_TOKEN/PHONE_NUMBER and the destination number
+    actually work — doesn't require a real inbox message or stale-prospect
+    abandonment event to trigger a send."""
+    normalized = twilio_service.normalize_to_e164(to_phone)
+    if not normalized:
+        raise HTTPException(
+            status_code=400,
+            detail="That doesn't look like a valid E.164 phone number, e.g. +2349038383542.",
+        )
+    sent = await asyncio.to_thread(twilio_service.send_test_sms, normalized)
+    if not sent:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "Twilio did not accept the test SMS. Check TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN "
+                "and TWILIO_PHONE_NUMBER are set and correct, and that the destination number is valid."
+            ),
+        )
+    return {"ok": True, "to_phone": normalized}
+
+
 def _to_message_out(msg: Message, viewer: MessageSenderType) -> MessageOut:
     is_deleted = bool(getattr(msg, "is_deleted", False))
     return MessageOut(
