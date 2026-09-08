@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
+import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import {
   confirmProspectProperty,
   createProspectCheckout,
@@ -1180,6 +1181,32 @@ const RecommendationModal = ({
   </div>
 );
 
+// A "Lead" is this specific prospect actually being found (a real letter
+// code/QR token resolving to a real property) — not just landing on /check
+// or /stale-listings/prospect, which the sitewide pixel in index.html
+// already covers via its own automatic PageView. Fired from both ways a
+// prospect can be found: the boot effect (token/code already in the URL,
+// e.g. a QR scan) and handleLandingSubmit (typed into the landing form).
+// sessionStorage-gated per property_code so refreshing or resuming
+// mid-wizard — the boot effect re-runs on every reload — doesn't re-fire it.
+function fireProspectLeadPixel(data: ProspectPreview) {
+  try {
+    const key = `sl_prospect_lead_pixel_${data.property_code}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch {
+    // Storage unavailable (private mode, etc.) — fire once for this load
+    // rather than not at all.
+  }
+  trackMetaPixelEvent('Lead', {
+    content_name: 'Stale Listing Prospect Letter Lookup',
+    content_category: 'stale_listings_prospect',
+    content_ids: [data.property_code],
+    value: unlockPrice(data.asking_price),
+    currency: 'GBP',
+  }, `sl_prospect_lead_${data.property_code}`);
+}
+
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
 export const StaleProspectWizard = () => {
@@ -1241,6 +1268,7 @@ export const StaleProspectWizard = () => {
         const data = await getProspectPreview(query);
         if (cancelled) return;
         setProspect(data);
+        fireProspectLeadPixel(data);
         setAccess({ token: query.token, code: data.property_code });
         if (data.is_unlocked) {
           const reportData = await getProspectReport({ token: query.token, code: data.property_code });
@@ -1327,6 +1355,7 @@ export const StaleProspectWizard = () => {
     try {
       const data = await lookupProspect(code);
       setProspect(data);
+      fireProspectLeadPixel(data);
       setAccess({ code: data.property_code });
       setStep(data.property_confirmed ? (data.has_contact_details ? 'assessment' : 'details') : 'confirm');
     } catch {

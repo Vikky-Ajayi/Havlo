@@ -11,10 +11,9 @@ import re
 import string
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path as FilePath
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +46,7 @@ from app.schemas.schemas import (
     StaleProspectDetailsResponse,
     StaleProspectDiscoveryRunRequest,
     StaleProspectDiscoveryRunResponse,
+    StaleProspectLettersZipRequest,
     StaleProspectLookupRequest,
     StaleProspectPreviewResponse,
     StaleProspectReportResponse,
@@ -83,6 +83,8 @@ from app.services.stale_prospect_service import (
 )
 from app.services.stale_listing_discovery import (
     DiscoveryParams,
+    build_letters_zip_for_run,
+    ensure_letter_pdf_path,
     is_target_property_type,
     run_bulk_csv_upload,
     run_discovery,
@@ -1402,34 +1404,16 @@ async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depen
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found.")
 
-    # The date printed on the letter locks in on the *first* real download
-    # and never changes after — see the column comment on
-    # letter_first_downloaded_at. If this is that first download, a cached
-    # file on disk (e.g. from prospect creation, before anyone downloaded
-    # it) was drawn before this date existed and must be redrawn now,
-    # even though it isn't otherwise missing.
-    first_download = prospect.letter_first_downloaded_at is None
-    if first_download:
-        prospect.letter_first_downloaded_at = datetime.now(timezone.utc)
-
-    path = FilePath(prospect.letter_pdf_path) if prospect.letter_pdf_path else None
-    if not path or not path.is_file() or first_download:
-        try:
-            new_token = create_access_token()
-            prospect.qr_token_hash = hash_access_token(new_token)
-            # See the comment on the same call in update_console_prospect_report —
-            # synchronous, must not run directly on the event loop, and
-            # hard-capped so a stuck photo fetch can't hang this request.
-            prospect.letter_pdf_path = await asyncio.wait_for(
-                asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
-                timeout=20.0,
-            )
-            await db.commit()
-            await db.refresh(prospect)
-            path = FilePath(prospect.letter_pdf_path)
-        except Exception as exc:
-            logger.warning("On-demand letter regeneration failed for prospect %s: %s", prospect_id, exc)
-            raise HTTPException(status_code=500, detail="Could not generate the letter PDF — try again in a moment.") from exc
+    # Regenerate-if-needed (missing from disk, or this is the first real
+    # download so the print date needs to lock in now) is shared with the
+    # bulk letters-ZIP job — see ensure_letter_pdf_path's docstring.
+    try:
+        path = await ensure_letter_pdf_path(db, prospect)
+        await db.commit()
+        await db.refresh(prospect)
+    except Exception as exc:
+        logger.warning("On-demand letter regeneration failed for prospect %s: %s", prospect_id, exc)
+        raise HTTPException(status_code=500, detail="Could not generate the letter PDF — try again in a moment.") from exc
 
     return FileResponse(
         path,
@@ -1442,6 +1426,88 @@ async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depen
         # console kept showing the pre-edit PDF because the browser never
         # asked the server for it again.
         headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
+    )
+
+
+@public_router.post(
+    "/prospects-console/prospects/letters-zip",
+    response_model=StaleProspectDiscoveryRunResponse,
+)
+async def start_letters_zip(
+    payload: StaleProspectLettersZipRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectDiscoveryRunResponse:
+    """Console's "Generate Folder" letters tab: build a downloadable ZIP of
+    the letter PDFs for an admin-picked selection of prospects. Creates a
+    StaleListingDiscoveryRun row purely to reuse its existing
+    tracking/polling/storage plumbing (same convention as
+    location_names=["csv_upload"] for bulk uploads) — the actual zipping
+    happens in the background since regenerating hundreds of PDFs can take
+    a while; the console polls the run below and shows a download button
+    once letters_zip_status is "ready".
+
+    Deliberately unauthenticated, matching every other prospects-console
+    endpoint on this router.
+    """
+    run = StaleListingDiscoveryRun(
+        status="completed",
+        dry_run=False,
+        location_names=json.dumps(["manual_letters_zip"]),
+        min_price=0,
+        min_days_on_market=0,
+        max_candidates=len(payload.prospect_ids),
+        max_pages_per_location=0,
+        started_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(timezone.utc),
+        result_json=json.dumps({"created": [], "skipped": [], "failed": []}),
+        letters_zip_status="queued",
+        letters_zip_total=len(payload.prospect_ids),
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+
+    background_tasks.add_task(build_letters_zip_for_run, str(run.id), payload.prospect_ids)
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+
+
+@public_router.get(
+    "/prospects-console/prospects/letters-zip/{run_id}",
+    response_model=StaleProspectDiscoveryRunResponse,
+)
+async def letters_zip_status_endpoint(run_id: str, db: AsyncSession = Depends(get_db)) -> StaleProspectDiscoveryRunResponse:
+    """Poll a letters-ZIP job's progress — used both for the console's
+    ad-hoc "Generate Folder" selection and, on the same bulk-upload run
+    object, for the auto-built ZIP that follows a CSV upload. Unauthenticated,
+    matching every other prospects-console endpoint on this router."""
+    try:
+        run_uuid = uuid.UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    run = await db.get(StaleListingDiscoveryRun, run_uuid)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+
+
+@public_router.get("/prospects-console/prospects/letters-zip/{run_id}/download")
+async def download_letters_zip(run_id: str, db: AsyncSession = Depends(get_db)) -> Response:
+    """Serves a finished letters ZIP straight out of the run row (stored as
+    bytea, not a disk file — see the model column comments for why).
+    Unauthenticated, matching every other prospects-console endpoint on
+    this router."""
+    try:
+        run_uuid = uuid.UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    run = await db.get(StaleListingDiscoveryRun, run_uuid)
+    if not run or not run.letters_zip_data:
+        raise HTTPException(status_code=404, detail="This letters ZIP isn't ready (or doesn't exist).")
+    return Response(
+        content=run.letters_zip_data,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{run.letters_zip_filename or "havlo-letters.zip"}"'},
     )
 
 

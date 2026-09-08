@@ -48,6 +48,15 @@ export interface StaleProspectDiscoveryRun {
     failed?: Record<string, unknown>[];
   };
   error_message?: string | null;
+  // Letters-ZIP sub-job on this same run row — populated for CSV
+  // bulk-upload runs (auto-built once the upload finishes) and for runs
+  // created purely to track an ad-hoc "Generate Folder" selection. null/
+  // undefined status means no zip job exists for this run at all.
+  letters_zip_status?: 'queued' | 'building' | 'ready' | 'failed' | null;
+  letters_zip_filename?: string | null;
+  letters_zip_error?: string | null;
+  letters_zip_total?: number;
+  letters_zip_done?: number;
   started_at?: string | null;
   completed_at?: string | null;
   created_at?: string | null;
@@ -1211,6 +1220,29 @@ export const api = {
     request<StaleProspectDiscoveryRun>(
       `/stale-listings/prospects-console/prospects/bulk-upload/${encodeURIComponent(runId)}`
     ),
+
+  // Letters tab: build a downloadable ZIP of letter PDFs for an admin-picked
+  // selection of prospects. Same run/poll shape as bulk-upload above — the
+  // zip is built in the background and the console polls until
+  // letters_zip_status leaves "queued"/"building".
+  staleProspectsConsoleLettersZipStart: (prospectIds: string[]) =>
+    request<StaleProspectDiscoveryRun>('/stale-listings/prospects-console/prospects/letters-zip', {
+      method: 'POST',
+      body: { prospect_ids: prospectIds },
+    }),
+
+  staleProspectsConsoleLettersZipStatus: (runId: string) =>
+    request<StaleProspectDiscoveryRun>(
+      `/stale-listings/prospects-console/prospects/letters-zip/${encodeURIComponent(runId)}`
+    ),
+
+  // Not a fetch — a direct browser-navigable URL for the finished ZIP, so
+  // clicking "Download" triggers a normal file download rather than
+  // pulling the whole archive through JS into a blob.
+  staleProspectsConsoleLettersZipDownloadUrl: (runId: string) => {
+    const base = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
+    return `${base}/stale-listings/prospects-console/prospects/letters-zip/${encodeURIComponent(runId)}/download`;
+  },
 
   staleListingsBackfillPostcodes: (token: string) =>
     request<{

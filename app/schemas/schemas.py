@@ -745,9 +745,18 @@ class StaleProspectDiscoveryRunResponse(BaseModel):
     failed_count: int = 0
     results: dict = Field(default_factory=dict)
     error_message: Optional[str] = None
+    letters_zip_status: Optional[str] = None
+    letters_zip_filename: Optional[str] = None
+    letters_zip_error: Optional[str] = None
+    letters_zip_total: int = 0
+    letters_zip_done: int = 0
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
+
+
+class StaleProspectLettersZipRequest(BaseModel):
+    prospect_ids: list[str] = Field(..., min_length=1, max_length=1000)
 
 
 class StaleListingAdminItem(BaseModel):
