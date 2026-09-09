@@ -588,27 +588,6 @@ export const StaleProspectsConsole = () => {
         .spc-preview-table{width:100%;border-collapse:collapse;font-size:12.5px}
         .spc-preview-table th{text-align:left;color:#9AA0AA;font-size:11px;text-transform:uppercase;padding:0 8px 8px 0}
         .spc-preview-table td{padding:8px 8px 8px 0;border-top:1px solid #EEF0F3}
-        @media print{
-          /* The mobile-bobbing scroll-lock (see the anyModalOpen effect
-             above) sets body{position:fixed} with an inline style while
-             this modal — and this print button — are open. That makes
-             body the containing block for any descendant position:absolute
-             element, including #spc-print-target below, instead of the
-             page. body's own box still spans its full ~290-card content
-             height even though every child is visibility:hidden (that
-             only hides paint, not layout), so the print target ended up
-             absolutely positioned inside a ~40,000px-tall invisible box —
-             paginated into a couple dozen mostly-blank pages with the
-             real content stranded on page 1. !important is required
-             because it must beat the higher-specificity inline style.
-             html{overflow:hidden} is reset too, defensively, in case any
-             browser lets that clip print content. */
-          html,body{position:static !important;overflow:visible !important;height:auto !important}
-          body *{visibility:hidden}
-          #spc-print-target,#spc-print-target *{visibility:visible}
-          #spc-print-target{position:absolute;top:0;left:0;width:100%;padding:24px}
-          .spc-preview-head img{display:block}
-        }
       `}</style>
 
       <div className="spc-shell">
@@ -1023,7 +1002,23 @@ export const StaleProspectsConsole = () => {
                 {viewMode === 'preview' ? (
                   <>
                     <div style={{ margin: '4px 0 14px' }}>
-                      <button className="spc-btn spc-btn-ghost" onClick={() => window.print()}>🖨 Print / save full report as PDF</button>
+                      {/* A real ReportLab-built PDF from the server, not window.print()
+                          on this preview — printing the on-screen modal was producing
+                          pages of near-blank browser-paginated output with Chrome's own
+                          date/URL/page-number chrome stamped on it, since this page was
+                          never laid out for paper. Cache-busted the same way the letter
+                          download link below already is, for the same reason (an admin
+                          edit that just regenerated the PDF must not be shadowed by the
+                          browser reusing a cached response for this same URL). */}
+                      <a
+                        className="spc-btn spc-btn-ghost"
+                        style={{ textDecoration: 'none', display: 'inline-block' }}
+                        href={`${API_BASE}/stale-listings/prospects-console/prospects/${detail.prospect_id}/full-report.pdf?v=${Date.now()}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        ⬇ Download full report as PDF
+                      </a>
                     </div>
                     <div id="spc-print-target">
                       <div className="spc-preview-head">

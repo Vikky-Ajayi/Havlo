@@ -38,13 +38,17 @@ logger = logging.getLogger(__name__)
 try:
     import qrcode
     from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.lib.utils import ImageReader
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import Paragraph
+    from reportlab.platypus import (
+        Flowable, HRFlowable, Image as RLImage, KeepTogether, PageBreak,
+        Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    )
     from reportlab.pdfgen import canvas as rl_canvas
     _PDF_LIBS_IMPORT_ERROR: ImportError | None = None
 except ImportError as _pdf_libs_exc:  # pragma: no cover - depends on deployment image
@@ -98,6 +102,15 @@ if not _PDF_LIBS_IMPORT_ERROR:
                 "%s not found/registrable — falling back to %s for the letter.",
                 _file_name, globals()[_fallback_attr], exc_info=True,
             )
+    # Lets <b>/<i> tags inside a Paragraph resolve to whichever font each
+    # weight actually ended up as above (Inter-Bold, or Helvetica-Bold if
+    # that registration failed) — used by generate_full_report_pdf's
+    # Platypus-based layout below, not by the letter's raw-canvas drawing
+    # (which never uses inline markup, so never needed this).
+    pdfmetrics.registerFontFamily(
+        _LETTER_FONT_REGULAR, normal=_LETTER_FONT_REGULAR, bold=_LETTER_FONT_BOLD,
+        italic=_LETTER_FONT_REGULAR, boldItalic=_LETTER_FONT_BOLD,
+    )
 
 
 def create_access_token() -> str:
@@ -1499,6 +1512,527 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
         )
 
     page.save()
+    return os.path.abspath(pdf_path)
+
+
+# ── Full Property Assessment PDF ─────────────────────────────────────────────
+# Replaces the console's previous "export" of this report: window.print() on
+# the on-screen preview modal (#spc-print-target in StaleProspectsConsole.tsx)
+# — a plain browser print of a page never laid out for paper, which is what
+# was actually producing pages of near-blank browser-paginated output with
+# Chrome's own date/URL/page-number chrome stamped on it. This builds a real
+# document instead, via reportlab's Platypus flow layout (automatic, sane
+# pagination) rather than the letter's raw-canvas placement above — the two
+# have very different shapes (a fixed two-page letter vs. a report whose
+# length depends entirely on how much content this particular property has)
+# and Platypus is the right tool for the latter. Shares this file's proven
+# brand constants (_LETTER_INK etc., the exact same font files, the same
+# _letter_draw_gauge arc/needle math) rather than redefining them.
+
+_REPORT_GREEN_BG = colors.HexColor("#E7F7EF") if not _PDF_LIBS_IMPORT_ERROR else None
+_REPORT_RED_BG = colors.HexColor("#FDECEC") if not _PDF_LIBS_IMPORT_ERROR else None
+_REPORT_ORANGE_BG = colors.HexColor("#FDF1E7") if not _PDF_LIBS_IMPORT_ERROR else None
+
+_REPORT_PAGE_W, _REPORT_PAGE_H = A4 if not _PDF_LIBS_IMPORT_ERROR else (None, None)
+_REPORT_MARGIN = 20 * mm if not _PDF_LIBS_IMPORT_ERROR else None
+_REPORT_CONTENT_W = (_REPORT_PAGE_W - 2 * _REPORT_MARGIN) if not _PDF_LIBS_IMPORT_ERROR else None
+
+
+def _report_score_color(v: float):
+    if v >= 65:
+        return _LETTER_GREEN
+    if v >= 45:
+        return _LETTER_ORANGE
+    return _LETTER_RED
+
+
+def _report_styles() -> dict[str, "ParagraphStyle"]:
+    # Built fresh per call rather than at module import time: ParagraphStyle
+    # construction is cheap, and this avoids any risk of a shared mutable
+    # style object being mutated by one report generation (concurrent
+    # requests each get their own dict).
+    B, BOLD, XBOLD = _LETTER_FONT_REGULAR, _LETTER_FONT_BOLD, _LETTER_FONT_EXTRABOLD
+    return {
+        "h1": ParagraphStyle("h1", fontName=XBOLD, fontSize=20, leading=24, textColor=_LETTER_INK, spaceAfter=2),
+        "h2": ParagraphStyle("h2", fontName=XBOLD, fontSize=14, leading=18, textColor=_LETTER_INK, spaceBefore=4, spaceAfter=8),
+        "h3": ParagraphStyle("h3", fontName=BOLD, fontSize=11.5, leading=15, textColor=_LETTER_INK, spaceAfter=3),
+        "body": ParagraphStyle("body", fontName=B, fontSize=9.3, leading=14, textColor=_LETTER_INK, alignment=TA_JUSTIFY),
+        "body_left": ParagraphStyle("body_left", fontName=B, fontSize=9.3, leading=14, textColor=_LETTER_INK),
+        "muted": ParagraphStyle("muted", fontName=B, fontSize=8.6, leading=12.5, textColor=_LETTER_MUTED),
+        "addr": ParagraphStyle("addr", fontName=BOLD, fontSize=13, leading=16.5, textColor=_LETTER_INK),
+        "meta": ParagraphStyle("meta", fontName=B, fontSize=8.8, leading=13, textColor=_LETTER_MUTED),
+        "score_num": ParagraphStyle("score_num", fontName=XBOLD, fontSize=26, leading=28, textColor=_LETTER_INK, alignment=TA_CENTER),
+        "score_lbl": ParagraphStyle("score_lbl", fontName=B, fontSize=8, leading=10, textColor=_LETTER_MUTED, alignment=TA_CENTER),
+        "week_num": ParagraphStyle("week_num", fontName=BOLD, fontSize=8, leading=10, textColor=_LETTER_ACCENT),
+        "week_title": ParagraphStyle("week_title", fontName=BOLD, fontSize=9.5, leading=13, textColor=_LETTER_INK),
+        "callout_lbl": ParagraphStyle("callout_lbl", fontName=BOLD, fontSize=8, leading=11, textColor=colors.white),
+        "callout_body": ParagraphStyle("callout_body", fontName=B, fontSize=9.5, leading=14, textColor=colors.white),
+        "callout_body_bold": ParagraphStyle("callout_body_bold", fontName=BOLD, fontSize=11.5, leading=15, textColor=colors.white),
+        "bullet": ParagraphStyle("bullet", fontName=B, fontSize=8.8, leading=13, textColor=_LETTER_INK, leftIndent=10),
+    }
+
+
+class _ReportScoreGauge(Flowable):
+    """Thin Flowable wrapper around _letter_draw_gauge (same proven arc/
+    needle math the letter's page 2 uses) so it can sit inline in a
+    Platypus flow. _letter_draw_gauge takes an absolute (cx, cy) chosen by
+    the caller and draws the needle pivot BELOW that point — cy has to
+    leave enough room under it for the pivot + dot, or they'd render
+    outside this flowable's reported box and overlap whatever Platypus
+    stacks next; derived from radius so it holds at any size."""
+
+    def __init__(self, score: float, w=100, radius=42, bottom_pad=4):
+        super().__init__()
+        self.score = score
+        self.w = w
+        self.radius = radius
+        self._cy = bottom_pad + radius * abs(math.sin(math.radians(_LETTER_GAUGE_START)))
+        self.h = self._cy + radius + 2
+
+    def wrap(self, *args):
+        return self.w, self.h
+
+    def draw(self):
+        _letter_draw_gauge(self.canv, self.w / 2, self._cy, self.radius,
+                            self.score, _report_score_color(self.score or 0))
+
+
+class _ReportScoreBar(Flowable):
+    """One labelled horizontal progress bar (Pricing 40/100, etc.)."""
+
+    def __init__(self, label: str, value: int, w, h=26):
+        super().__init__()
+        self.label = label
+        self.value = max(0, min(100, value))
+        self.w = w
+        self.h = h
+
+    def wrap(self, *args):
+        return self.w, self.h
+
+    def draw(self):
+        c = self.canv
+        c.setFont(_LETTER_FONT_REGULAR, 9)
+        c.setFillColor(_LETTER_INK)
+        c.drawString(0, self.h - 11, self.label)
+        c.setFont(_LETTER_FONT_BOLD, 9)
+        c.drawRightString(self.w, self.h - 11, f"{self.value}/100")
+        track_h = 6
+        c.setFillColor(colors.HexColor("#EEEEF0"))
+        c.roundRect(0, 0, self.w, track_h, track_h / 2, stroke=0, fill=1)
+        fill_w = self.w * (self.value / 100.0)
+        if fill_w > track_h:
+            c.setFillColor(_report_score_color(self.value))
+            c.roundRect(0, 0, fill_w, track_h, track_h / 2, stroke=0, fill=1)
+
+
+class _ReportPill(Flowable):
+    """Small rounded label pill — used for both the ISSUE/STRENGTH finding
+    tag and the URGENT/HIGH/MEDIUM priority tag (colour set by caller)."""
+
+    def __init__(self, text: str, color, bg):
+        super().__init__()
+        self.text = (text or "").upper()
+        self.color = color
+        self.bg = bg
+        self.w = 8 + pdfmetrics.stringWidth(self.text, _LETTER_FONT_BOLD, 6.6) + 10
+        self.h = 13
+
+    def wrap(self, *args):
+        return self.w, self.h
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(self.bg)
+        c.roundRect(0, 0, self.w, self.h, self.h / 2, stroke=0, fill=1)
+        c.setFillColor(self.color)
+        c.setFont(_LETTER_FONT_BOLD, 6.6)
+        c.drawCentredString(self.w / 2, self.h / 2 - 2.3, self.text)
+
+
+def _report_type_pill(finding_type: str) -> "_ReportPill":
+    is_strength = (finding_type == "strength")
+    return _ReportPill("STRENGTH" if is_strength else "ISSUE",
+                        _LETTER_GREEN if is_strength else _LETTER_RED,
+                        _REPORT_GREEN_BG if is_strength else _REPORT_RED_BG)
+
+
+def _report_priority_pill(priority: str) -> "_ReportPill":
+    p = (priority or "MEDIUM").upper()
+    color_map = {"URGENT": (_LETTER_RED, _REPORT_RED_BG), "HIGH": (_LETTER_ORANGE, _REPORT_ORANGE_BG),
+                 "MEDIUM": (_LETTER_ACCENT, _LETTER_ACCENT_PALE)}
+    color, bg = color_map.get(p, (_LETTER_ACCENT, _LETTER_ACCENT_PALE))
+    return _ReportPill(p, color, bg)
+
+
+def _report_hr(space_before=10, space_after=10):
+    return HRFlowable(width="100%", thickness=0.75, color=_LETTER_CARD_BORDER,
+                       spaceBefore=space_before, spaceAfter=space_after)
+
+
+def _report_card(flowables, pad=12, bg=None, border=None, radius=8, width=None):
+    """Wrap flowables in a padded, rounded-corner card via a single-cell
+    Table (reportlab has no native rounded-rect flowable background).
+
+    `width` is the card's OUTER width (defaults to the full content width;
+    pass e.g. half of it inside a 2-column grid) — padding then insets the
+    content inside that, so any inner flowable sized to `width - 2*pad`
+    fills it exactly. Getting this wrong (colWidth already narrowed by the
+    padding amount, then padding applied again on top) double-counts the
+    inset and clips anything sized to fill the card — confirmed live on an
+    early version of this layout, where it clipped the priority/type pills
+    on the right edge of every card's header row."""
+    width = _REPORT_CONTENT_W if width is None else width
+    bg = _LETTER_CARD_BG if bg is None else bg
+    border = _LETTER_CARD_BORDER if border is None else border
+    t = Table([[flowables]], colWidths=[width])
+    t.setStyle(TableStyle([
+        ("LEFTPADDING", (0, 0), (-1, -1), pad), ("RIGHTPADDING", (0, 0), (-1, -1), pad),
+        ("TOPPADDING", (0, 0), (-1, -1), pad), ("BOTTOMPADDING", (0, 0), (-1, -1), pad),
+        ("BACKGROUND", (0, 0), (-1, -1), bg), ("BOX", (0, 0), (-1, -1), 0.75, border),
+        ("ROUNDEDCORNERS", [radius, radius, radius, radius]), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return t
+
+
+def _report_header_row(title_para, pill: "_ReportPill", width):
+    """Title on the left, a pill right-aligned on the same line — the
+    2-column-table trick, sized to `width` (must be the card's inner
+    content width, i.e. card_width - 2*pad, same reasoning as _report_card
+    above)."""
+    pill_col = pill.w
+    t = Table([[title_para, pill]], colWidths=[width - pill_col, pill_col])
+    t.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+    ]))
+    return t
+
+
+def _report_dedupe_bullets(bullets):
+    # The model sometimes returns the same generic filler bullet twice for
+    # one action (seen live) — a report is not the place to show a
+    # customer the same sentence back to back.
+    seen = set()
+    out = []
+    for b in bullets or []:
+        key = (b or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(b)
+    return out
+
+
+def _report_multi_para(text, style, space_between=6):
+    """Split on blank lines into separate Paragraph flowables — several of
+    the standing-advisory action items (Neighbourhood Buyer Outreach etc.)
+    are genuinely multi-paragraph copy; a bare Paragraph() ignores \\n\\n
+    and renders it as one dense justified block. Escapes each part (see
+    _letter_esc) since this always takes raw AI-generated text, never
+    markup this function writes itself."""
+    parts = [p.strip() for p in (text or "").split("\n\n") if p.strip()]
+    if not parts:
+        return [Paragraph("", style)]
+    out = []
+    for i, p in enumerate(parts):
+        if i > 0:
+            out.append(Spacer(1, space_between))
+        out.append(Paragraph(_letter_esc(p), style))
+    return out
+
+
+def _report_money(v) -> str:
+    try:
+        return f"£{float(v):,.0f}"
+    except (TypeError, ValueError):
+        return str(v) if v else "—"
+
+
+def _fetch_report_photo_bytesio(url: str | None) -> BytesIO | None:
+    """Same best-effort fetch as _letter_fetch_photo, but returns a BytesIO
+    rather than an ImageReader — reportlab.platypus.Image requires either a
+    path string or a file-like object with .read(); ImageReader exposes
+    neither (confirmed against the installed reportlab), so the letter's
+    existing helper isn't reusable as-is for this Platypus-based layout."""
+    if not url:
+        return None
+    try:
+        import httpx
+        resp = httpx.get(url, timeout=5.0, follow_redirects=True)
+        resp.raise_for_status()
+        return BytesIO(resp.content)
+    except Exception:
+        logger.warning("Could not fetch listing photo for full-report PDF: %s", url, exc_info=True)
+        return None
+
+
+def _report_page_chrome(c, doc, subject_address: str):
+    c.saveState()
+    if _LETTER_LOGO_PATH.is_file():
+        c.drawImage(str(_LETTER_LOGO_PATH), _REPORT_MARGIN, _REPORT_PAGE_H - 15 * mm,
+                    width=26 * mm, height=8 * mm, preserveAspectRatio=True, mask="auto")
+    c.setFont(_LETTER_FONT_BOLD, 7.5)
+    c.setFillColor(_LETTER_MUTED)
+    c.drawString(_REPORT_MARGIN + 30 * mm, _REPORT_PAGE_H - 12.2 * mm, "STALE LISTINGS · FULL PROPERTY ASSESSMENT")
+    c.setStrokeColor(_LETTER_CARD_BORDER)
+    c.setLineWidth(0.75)
+    c.line(_REPORT_MARGIN, _REPORT_PAGE_H - 17 * mm, _REPORT_PAGE_W - _REPORT_MARGIN, _REPORT_PAGE_H - 17 * mm)
+    c.line(_REPORT_MARGIN, 14 * mm, _REPORT_PAGE_W - _REPORT_MARGIN, 14 * mm)
+    c.setFont(_LETTER_FONT_REGULAR, 7)
+    c.setFillColor(_LETTER_MUTED)
+    c.drawString(_REPORT_MARGIN, 10 * mm, subject_address[:70])
+    c.drawCentredString(_REPORT_PAGE_W / 2, 10 * mm, "Prepared by Havlo — heyhavlo.com")
+    c.drawRightString(_REPORT_PAGE_W - _REPORT_MARGIN, 10 * mm, f"Page {doc.page}")
+    c.restoreState()
+
+
+def generate_full_report_pdf(prospect: StaleListingProspect) -> str:
+    """Generate the multi-page Full Property Assessment PDF (the paid
+    report's content — executive summary, saleability score, key findings,
+    competition/comparable-sales tables, 30-day plan, full action plan) and
+    return its absolute path. Always regenerates from the prospect's
+    current report_json rather than caching to disk: unlike the letter
+    (generate_letter_pdf, whose printed date must never change once a
+    physical copy has been mailed), this has no such lock-in reason, and a
+    report an admin has just edited should never serve a stale cached copy.
+    """
+    if _PDF_LIBS_IMPORT_ERROR:
+        raise RuntimeError("Install reportlab to generate the full report PDF.") from _PDF_LIBS_IMPORT_ERROR
+
+    styles = _report_styles()
+    report = _safe_json(current_report_json(prospect))
+    snapshot = _safe_json(prospect.listing_snapshot_json)
+    address = address_with_full_postcode(prospect.property_address, prospect.postcode)
+
+    output_dir = Path("generated") / "stale-full-reports"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = output_dir / f"full-report-{prospect.property_code}.pdf"
+
+    photo_bytes = _fetch_report_photo_bytesio(
+        snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
+    )
+
+    doc = SimpleDocTemplate(
+        str(pdf_path), pagesize=A4,
+        leftMargin=_REPORT_MARGIN, rightMargin=_REPORT_MARGIN,
+        topMargin=24 * mm, bottomMargin=18 * mm,
+        title=f"Havlo Full Property Assessment — {prospect.property_code}", author="Havlo",
+    )
+    story: list = []
+
+    # ── Cover / property summary ────────────────────────────────────────────
+    story.append(Paragraph("Full Property Assessment", styles["h1"]))
+    story.append(Paragraph(f"Prepared {datetime.now(timezone.utc):%d %B %Y}", styles["muted"]))
+    story.append(Spacer(1, 12))
+
+    img_flow = None
+    if photo_bytes is not None:
+        try:
+            img_flow = RLImage(photo_bytes, width=52 * mm, height=36 * mm)
+            img_flow.hAlign = "LEFT"
+        except Exception:
+            logger.warning("Could not decode listing photo for full-report PDF", exc_info=True)
+            img_flow = None
+    meta_line = " · ".join(filter(None, [
+        prospect.postcode, prospect.property_type,
+        f"{prospect.bedrooms} bed" if prospect.bedrooms else None,
+        f"{prospect.bathrooms} bath" if prospect.bathrooms else None,
+    ]))
+    summary_cell = [
+        Paragraph(_letter_esc(address), styles["addr"]),
+        Spacer(1, 4),
+        Paragraph(_letter_esc(meta_line), styles["meta"]),
+        Spacer(1, 8),
+        Paragraph(f'<font color="#A409D2" size="16"><b>{_report_money(prospect.asking_price)}</b></font>'
+                   f'  <font color="#6B7280" size="9">asking</font>', styles["body_left"]),
+        Spacer(1, 3),
+        Paragraph(_letter_esc(f'{prospect.listing_duration_days if prospect.listing_duration_days is not None else "—"} days on market'), styles["meta"]),
+    ]
+    gauge_cell = [
+        _ReportScoreGauge(report.get("overall_score", 0), w=100, radius=42),
+        Spacer(1, 6),
+        Paragraph(f'<font size="18"><b>{_letter_esc(report.get("overall_score", "—"))}</b></font>/100', styles["score_num"]),
+        Paragraph("SALEABILITY SCORE", styles["score_lbl"]),
+    ]
+    header_table = Table(
+        [[img_flow, summary_cell, gauge_cell]] if img_flow else [[summary_cell, gauge_cell]],
+        colWidths=([58 * mm, _REPORT_CONTENT_W - 58 * mm - 42 * mm, 42 * mm] if img_flow
+                   else [_REPORT_CONTENT_W - 42 * mm, 42 * mm]),
+    )
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 14))
+    story.append(_report_hr())
+
+    # ── Executive summary ───────────────────────────────────────────────────
+    if report.get("executive_summary"):
+        story.append(Paragraph("Executive summary", styles["h2"]))
+        story.append(Paragraph(_letter_esc(report["executive_summary"]), styles["body"]))
+        story.append(Spacer(1, 16))
+
+    # ── Score breakdown ──────────────────────────────────────────────────────
+    scores = report.get("scores") or {}
+    score_labels = {
+        "pricing": "Pricing", "listing_presentation": "Listing presentation",
+        "market_positioning": "Market positioning", "competition": "Competition",
+        "buyer_appeal": "Buyer appeal",
+    }
+    bars = []
+    for key, label in score_labels.items():
+        if key in scores:
+            bars.append(_ReportScoreBar(label, scores[key], w=_REPORT_CONTENT_W - 24))
+            bars.append(Spacer(1, 6))
+    if bars:
+        story.append(Paragraph("Saleability score breakdown", styles["h2"]))
+        story.append(_report_card(bars))
+        story.append(Spacer(1, 16))
+
+    # ── Pricing recommendation callout ──────────────────────────────────────
+    if report.get("pricing_recommendation_detail") or report.get("pricing_recommendation"):
+        pricing_flow = [
+            Paragraph("PRICING RECOMMENDATION", styles["callout_lbl"]), Spacer(1, 4),
+            Paragraph(_letter_esc(report.get("pricing_recommendation", "")), styles["callout_body_bold"]), Spacer(1, 5),
+            Paragraph(_letter_esc(report.get("pricing_recommendation_detail", "")), styles["callout_body"]),
+        ]
+        story.append(_report_card(pricing_flow, bg=_LETTER_INK, border=_LETTER_INK))
+        story.append(Spacer(1, 16))
+
+    # ── Key findings ─────────────────────────────────────────────────────────
+    findings = report.get("key_findings") or []
+    if findings:
+        story.append(Paragraph("Key findings", styles["h2"]))
+        for f in findings:
+            inner_w = _REPORT_CONTENT_W - 24
+            finding_flow = [
+                _report_header_row(Paragraph(_letter_esc(f.get("title", "")), styles["h3"]),
+                                    _report_type_pill(f.get("type", "issue")), inner_w),
+                Spacer(1, 4),
+                Paragraph(_letter_esc(f.get("description", "")), styles["body"]),
+            ]
+            for label, key, color_hex in (("EVIDENCE", "evidence", "A409D2"), ("IMPACT", "impact", "DE2921"),
+                                           ("RECOMMEND", "recommend", "0E7D4C")):
+                if f.get(key):
+                    finding_flow += [
+                        Spacer(1, 5), Paragraph(f'<font color="#{color_hex}"><b>{label}</b></font>', styles["body_left"]),
+                        Paragraph(_letter_esc(f[key]), styles["muted"]),
+                    ]
+            story.append(KeepTogether(_report_card(finding_flow)))
+            story.append(Spacer(1, 10))
+        story.append(Spacer(1, 6))
+
+    # ── Competition analysis ────────────────────────────────────────────────
+    competitors = report.get("active_competition") or []
+    if competitors:
+        story.append(Paragraph("Competition analysis", styles["h2"]))
+        story.append(Paragraph("Properties currently competing for the same buyers:", styles["muted"]))
+        story.append(Spacer(1, 8))
+        rows = [["Address", "Price", "Beds", "Distance", "Listed", "Edge"]]
+        for comp in competitors:
+            rows.append([
+                comp.get("address", ""), comp.get("price", ""), str(comp.get("beds", "")),
+                comp.get("distance", ""), f'{comp.get("days_listed", "")}d', comp.get("differentiator", ""),
+            ])
+        t = Table(rows, colWidths=[_REPORT_CONTENT_W * w for w in (0.32, 0.13, 0.08, 0.12, 0.1, 0.25)])
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, 0), _LETTER_FONT_BOLD), ("FONTSIZE", (0, 0), (-1, 0), 7.6),
+            ("TEXTCOLOR", (0, 0), (-1, 0), _LETTER_MUTED), ("FONTNAME", (0, 1), (-1, -1), _LETTER_FONT_REGULAR),
+            ("FONTSIZE", (0, 1), (-1, -1), 8.6), ("TEXTCOLOR", (0, 1), (-1, -1), _LETTER_INK),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.75, _LETTER_CARD_BORDER),
+            ("LINEBELOW", (0, 1), (-1, -2), 0.5, colors.HexColor("#F0F0F0")),
+            ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 16))
+
+    # ── Comparable sold prices ──────────────────────────────────────────────
+    comps = report.get("comparable_sales") or []
+    if comps:
+        story.append(Paragraph("Comparable sold prices", styles["h2"]))
+        rows = [["Address", "Beds", "Type", "Price"]]
+        highlight_row = None
+        for i, comp in enumerate(comps):
+            if comp.get("is_subject"):
+                highlight_row = i + 1
+            rows.append([comp.get("address", ""), str(comp.get("beds", "")),
+                         comp.get("property_type", ""), comp.get("sold_asking", "")])
+        t = Table(rows, colWidths=[_REPORT_CONTENT_W * w for w in (0.46, 0.13, 0.2, 0.21)])
+        tstyle = [
+            ("FONTNAME", (0, 0), (-1, 0), _LETTER_FONT_BOLD), ("FONTSIZE", (0, 0), (-1, 0), 7.6),
+            ("TEXTCOLOR", (0, 0), (-1, 0), _LETTER_MUTED), ("FONTNAME", (0, 1), (-1, -1), _LETTER_FONT_REGULAR),
+            ("FONTSIZE", (0, 1), (-1, -1), 8.6), ("TEXTCOLOR", (0, 1), (-1, -1), _LETTER_INK),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.75, _LETTER_CARD_BORDER),
+            ("LINEBELOW", (0, 1), (-1, -2), 0.5, colors.HexColor("#F0F0F0")),
+            ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]
+        if highlight_row:
+            tstyle += [("BACKGROUND", (0, highlight_row), (-1, highlight_row), _LETTER_ACCENT_PALE),
+                       ("FONTNAME", (0, highlight_row), (-1, highlight_row), _LETTER_FONT_BOLD)]
+        t.setStyle(TableStyle(tstyle))
+        story.append(t)
+        story.append(Paragraph("Highlighted row is the subject property.", styles["muted"]))
+        story.append(Spacer(1, 16))
+
+    if findings or competitors or comps:
+        story.append(PageBreak())
+
+    # ── 30-day plan ──────────────────────────────────────────────────────────
+    plan = report.get("thirty_day_plan") or []
+    if plan:
+        story.append(Paragraph("30-day action plan", styles["h2"]))
+        gutter = 8
+        col_w = _REPORT_CONTENT_W / 2 - gutter
+        week_cells = [
+            _report_card([
+                Paragraph(f"WEEK {_letter_esc(wk.get('week', ''))}", styles["week_num"]), Spacer(1, 3),
+                Paragraph(_letter_esc(wk.get("title", "")), styles["week_title"]),
+            ], pad=10, width=col_w)
+            for wk in plan
+        ]
+        rows2 = [week_cells[i:i + 2] for i in range(0, len(week_cells), 2)]
+        gt = Table(rows2, colWidths=[_REPORT_CONTENT_W / 2, _REPORT_CONTENT_W / 2])
+        gt.setStyle(TableStyle([
+            ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(gt)
+        story.append(Spacer(1, 18))
+
+    # ── Full action plan ────────────────────────────────────────────────────
+    actions = report.get("action_plan") or []
+    if actions:
+        story.append(Paragraph("Recommended actions", styles["h2"]))
+        for i, action in enumerate(actions, start=1):
+            title_para = Paragraph(f"{i}. {_letter_esc(action.get('title', ''))}", styles["h3"])
+            if action.get("priority"):
+                action_flow = [_report_header_row(title_para, _report_priority_pill(action["priority"]), _REPORT_CONTENT_W - 24)]
+            else:
+                action_flow = [title_para]
+            action_flow += [Spacer(1, 4)] + _report_multi_para(action.get("description", ""), styles["body"])
+            if action.get("why_it_matters"):
+                action_flow += [Spacer(1, 5),
+                                 Paragraph(f'<i>Why it matters: {_letter_esc(action["why_it_matters"])}</i>', styles["muted"])]
+            bullets = _report_dedupe_bullets(action.get("bullets"))
+            if bullets:
+                action_flow.append(Spacer(1, 6))
+                action_flow += [Paragraph(f"•  {_letter_esc(b)}", styles["bullet"]) for b in bullets]
+            story.append(KeepTogether(_report_card(action_flow)))
+            story.append(Spacer(1, 10))
+
+    story.append(Spacer(1, 10))
+    story.append(_report_hr())
+    story.append(Paragraph(
+        "This assessment is generated from publicly available listing data and market signals. "
+        "It is intended as guidance to support your property's sale and does not constitute formal "
+        "valuation or financial advice.", styles["muted"]))
+
+    def _on_page(c, d):
+        _report_page_chrome(c, d, address)
+
+    doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
     return os.path.abspath(pdf_path)
 
 

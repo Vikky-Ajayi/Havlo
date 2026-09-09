@@ -71,6 +71,7 @@ from app.services.stale_prospect_service import (
     current_report_json,
     expand_report_in_background,
     extract_price,
+    generate_full_report_pdf,
     generate_letter_pdf,
     hash_access_token,
     is_report_expanded,
@@ -1434,6 +1435,43 @@ async def download_console_letter_pdf(prospect_id: str, db: AsyncSession = Depen
         # the report and the letter is genuinely regenerated on disk, the
         # console kept showing the pre-edit PDF because the browser never
         # asked the server for it again.
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
+    )
+
+
+@public_router.get("/prospects-console/prospects/{prospect_id}/full-report.pdf")
+async def download_console_full_report_pdf(prospect_id: str, db: AsyncSession = Depends(get_db)) -> FileResponse:
+    """Serves the Full Property Assessment report as a real PDF (built with
+    ReportLab — see generate_full_report_pdf's docstring), replacing the
+    console's previous "Print / save full report as PDF" button, which just
+    called window.print() on the on-screen preview modal — a plain browser
+    print of a page never laid out for paper, producing pages of near-blank
+    browser-paginated output with Chrome's own chrome stamped on it.
+
+    Always regenerates (no on-disk cache check, unlike the letter endpoint
+    above) — there's no print-date lock-in reason here, and an admin who
+    just edited the report should never be served a stale cached copy.
+    """
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+
+    try:
+        path = await asyncio.wait_for(
+            asyncio.to_thread(generate_full_report_pdf, prospect),
+            timeout=25.0,
+        )
+    except Exception as exc:
+        logger.warning("Full-report PDF generation failed for prospect %s: %s", prospect_id, exc)
+        raise HTTPException(status_code=500, detail="Could not generate the report PDF — try again in a moment.") from exc
+
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=f"Havlo-full-report-{prospect.property_code}.pdf",
         headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
     )
 
