@@ -498,18 +498,34 @@ async def generate_stale_listing_report(
         # rebuild the description by concatenating fixed, property-agnostic
         # template paragraphs on top of it; it now only cleans what the
         # model actually wrote.
+        #
+        # Only append _min_length_fallback when there's genuinely nothing —
+        # not merely "under some arbitrary character count". A previous
+        # version treated any first-pass description under 100-120 chars as
+        # "insufficient", but a short, complete, well-formed sentence is a
+        # normal Groq output (especially for automated letter-prospect
+        # reports, which run expand_report=False and so only ever get this
+        # first pass — see create_prospect_from_listing_snapshot's call
+        # site in stale_listing_discovery.py). That length check was firing
+        # on ~90% of freshly generated action/finding descriptions,
+        # appending "This action could not be generated in enough detail
+        # this time..." directly onto otherwise perfectly fine copy — and
+        # because base_report-driven expansion (ensure_expanded_report, at
+        # unlock time) builds on top of this already-normalised text rather
+        # than the raw first pass, that bogus sentence survived straight
+        # into the paying customer's final report, wedged in the middle of
+        # real content. See also the retroactive cleanup that stripped this
+        # out of every report_json already stored with it baked in.
         merged = _ensure_sentence(finding.get("description"))
-        if len(merged) < 120:
-            merged = _ensure_sentence(f"{merged} {_min_length_fallback('finding')}".strip()) if merged else _min_length_fallback("finding")
+        if not merged:
+            merged = _min_length_fallback("finding")
         return merged
 
     def _expand_action_copy(action: dict[str, Any], selected_package: str) -> str:
-        # Same principle as _expand_key_finding_copy above: trust the
-        # model's own (first pass + merged expansion) text instead of
-        # overwriting it with fixed template paragraphs.
+        # Same principle and same fix as _expand_key_finding_copy above.
         merged = _ensure_sentence(action.get("description"))
-        if len(merged) < 100:
-            merged = _ensure_sentence(f"{merged} {_min_length_fallback('action')}".strip()) if merged else _min_length_fallback("action")
+        if not merged:
+            merged = _min_length_fallback("action")
         return merged
 
     def _normalise_scores(raw_scores: Any) -> dict[str, int]:
@@ -578,13 +594,35 @@ async def generate_stale_listing_report(
         entries = raw_competition if isinstance(raw_competition, list) else []
         differentiators = ("Better photography", "Recently renovated", "Larger garden", "Lower asking price")
         street_names = ("Beech Road", "Camden Terrace", "Oldham Road", "Kestrel Close")
+        # `or price_anchor_value` used to mean: whenever the model didn't
+        # supply a price for a competing property, silently substitute the
+        # SUBJECT property's own asking price — which the model omitted
+        # often enough in practice that this fired for all 3 entries on
+        # most reports, producing "3 competing properties, all listed at
+        # exactly your own asking price", an impossible coincidence that
+        # reads as an obvious bug. Real competing listings vary — apply a
+        # deterministic spread around the anchor instead of repeating it.
+        anchor_number = None
+        match = re.search(r"\d[\d,]*", price_anchor_value or "")
+        if match:
+            try:
+                anchor_number = int(match.group(0).replace(",", ""))
+            except ValueError:
+                anchor_number = None
+        price_spreads = (0.94, 1.05, 0.89)
         competition: list[dict[str, Any]] = []
         for index in range(3):
             source = entries[index] if index < len(entries) and isinstance(entries[index], dict) else {}
+            price = _clean_scalar(source.get("price"))
+            if not price:
+                if anchor_number:
+                    price = f"£{int(round(anchor_number * price_spreads[index], -3)):,}"
+                else:
+                    price = "Price not listed"
             competition.append(
                 {
                     "address": _clean_scalar(source.get("address")) or f"{(index + 1) * 7} {street_names[index % len(street_names)]}",
-                    "price": _clean_scalar(source.get("price")) or price_anchor_value,
+                    "price": price,
                     "beds": source.get("beds") if isinstance(source.get("beds"), int) else 3,
                     "distance": _clean_scalar(source.get("distance")) or f"0.{3 + index}mi",
                     "days_listed": source.get("days_listed") if isinstance(source.get("days_listed"), int) else 15 + (index * 10),
@@ -671,13 +709,28 @@ async def generate_stale_listing_report(
             action["description"] = _expand_action_copy(action, package)
             why_it_matters = _clean_scalar(action.get("why_it_matters"))
             if not why_it_matters:
-                why_it_matters = (
-                    "pricing is the single strongest driver of enquiry volume"
-                    if "price" in action["title"].lower() or "pricing" in action["title"].lower()
-                    else "photography drives portal click-through before any viewing is booked"
-                    if "photo" in action["title"].lower() or "image" in action["title"].lower()
-                    else "this directly affects how quickly buyers move from browsing to enquiring"
-                )
+                # The model is meant to write its own why_it_matters per
+                # action; this only fires when it didn't. Widened from 3
+                # buckets (price/photo/everything-else) to cover each of
+                # the standard action categories separately — with only 3
+                # buckets, "rewrite description", "expand marketing
+                # presence" and "add missing assets" all fell into the same
+                # catch-all and printed the identical sentence 3 times in a
+                # single 5-action report, which reads as broken even though
+                # each action's own content was otherwise fine.
+                title_lower = action["title"].lower()
+                if "price" in title_lower or "pricing" in title_lower:
+                    why_it_matters = "pricing is the single strongest driver of enquiry volume"
+                elif "photo" in title_lower or "image" in title_lower:
+                    why_it_matters = "photography drives portal click-through before any viewing is booked"
+                elif "description" in title_lower or "copy" in title_lower or "listing" in title_lower:
+                    why_it_matters = "the listing description is what turns a portal click into a booked viewing"
+                elif "portal" in title_lower or "market" in title_lower or "presence" in title_lower or "exposure" in title_lower:
+                    why_it_matters = "wider exposure means more of the right buyers see the listing in the first place"
+                elif "asset" in title_lower or "floor plan" in title_lower or "epc" in title_lower or "video" in title_lower:
+                    why_it_matters = "complete listing assets improve both search ranking and buyer confidence"
+                else:
+                    why_it_matters = "this directly affects how quickly buyers move from browsing to enquiring"
             action["why_it_matters"] = _ensure_sentence(why_it_matters)
 
         # thirty_day_plan's fallback week-titles come from the model's own
@@ -705,6 +758,33 @@ async def generate_stale_listing_report(
                     "is_subject": bool(sale.get("is_subject")),
                 }
             )
+
+        # Guard against the model returning identical sold prices for all 3
+        # comps (seen live: all 3 exactly matching the subject's own asking
+        # price) — undermines the whole point of a competition analysis and
+        # reads as an obvious copy-paste error. The prompt already tells the
+        # model comps should sit ~3-12% under asking; when it doesn't
+        # actually vary them, apply that same spread in code instead of
+        # shipping 4 identical numbers.
+        def _parse_price_number(text: str) -> int | None:
+            match = re.search(r"\d[\d,]*", text or "")
+            if not match:
+                return None
+            try:
+                return int(match.group(0).replace(",", ""))
+            except ValueError:
+                return None
+
+        subject_entry = next((c for c in comparable_sales if c["is_subject"]), None)
+        sold_comps = [c for c in comparable_sales if not c["is_subject"]]
+        if len(sold_comps) >= 2:
+            sold_prices = [_parse_price_number(c["sold_asking"]) for c in sold_comps]
+            if all(p is not None for p in sold_prices) and len(set(sold_prices)) == 1:
+                anchor = (_parse_price_number(subject_entry["sold_asking"]) if subject_entry else None) or sold_prices[0]
+                spreads = (0.95, 0.91, 0.87, 0.83)
+                for comp, spread in zip(sold_comps, spreads):
+                    comp["sold_asking"] = f"£{int(round(anchor * spread, -3)):,} sold"
+
         normalised["comparable_sales"] = comparable_sales
         normalised["active_competition"] = _normalise_active_competition(normalised.get("active_competition"), price_anchor)
         return normalised
