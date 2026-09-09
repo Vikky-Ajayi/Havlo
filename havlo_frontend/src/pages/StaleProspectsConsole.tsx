@@ -857,10 +857,12 @@ export const StaleProspectsConsole = () => {
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{item.payment_status}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           {item.abandonment_emails_sent} email{item.abandonment_emails_sent === 1 ? '' : 's'}
-                          {item.abandonment_sms_sent_at && ', 1 SMS'}
+                          {item.abandonment_sms_sent > 0 && `, ${item.abandonment_sms_sent} SMS`}
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                          {item.unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed</span>
+                          {item.unsubscribed_at && item.sms_unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed (both)</span>
+                            : item.unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed (email)</span>
+                            : item.sms_unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed (SMS)</span>
                             : item.treated_at ? <span style={{ color: '#15803D', fontWeight: 700 }}>Treated</span>
                             : <span style={{ color: '#92400E', fontWeight: 700 }}>Open</span>}
                         </td>

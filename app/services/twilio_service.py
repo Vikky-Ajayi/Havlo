@@ -104,20 +104,70 @@ def send_new_message_sms(
     return _send_sms(to_phone, body)
 
 
-def send_stale_prospect_abandonment_sms(to_phone: str, preview_url: str) -> bool:
-    """One-time SMS nudge (24h after "Your Details" without paying) pointing
-    straight at the prospect's own preview/assessment page.
-
-    Same 'never let a failure propagate' contract as send_new_message_sms —
-    returns False on any misconfiguration, invalid number, or Twilio error.
-    """
-    body = f"Your Havlo property assessment is ready to view: {preview_url}"
-    return _send_sms(to_phone, body)
-
-
 def send_test_sms(to_phone: str) -> bool:
     """Admin QA helper — confirms TWILIO_ACCOUNT_SID/AUTH_TOKEN/PHONE_NUMBER
     and the destination number actually work, without needing a real inbox
     message or stale-prospect abandonment event to trigger one."""
     body = "This is a test SMS from Havlo confirming the Twilio integration is working."
+    return _send_sms(to_phone, body)
+
+
+# ── Stale-prospect abandonment SMS ladder ───────────────────────────────────
+# Day 0 -> Day 90, every 3 days (31 stages) -- see
+# stale_prospect_abandonment.run_abandonment_sms_cycle for the scheduling
+# (business-hours gating, per-stage idempotency). The stage key is the day
+# number itself, matching StaleProspectAbandonmentSms.stage. Copy approved
+# verbatim; only the {link} substitution and the unsubscribe line are added
+# on top of it.
+SMS_ABANDONMENT_TEMPLATES: dict[int, str] = {
+    0: "Your property assessment is ready. We’ve taken a closer look at what could be standing between your property and its next buyer. See what we found: {link}",
+    3: "What if the reason your property hasn’t sold isn’t what you think? We’ve identified some possibilities in your property assessment: {link}",
+    6: "Your property is competing for attention with hundreds of others. The question is: what makes yours stand out? See your property assessment: {link}",
+    9: "A property can be beautifully presented and still struggle to sell. Your assessment looks at some of the reasons why: {link}",
+    12: "If your property could tell you why it hasn’t sold yet, what would it say? Your property assessment may have some answers: {link}",
+    15: "Your asking price is only one part of the equation. See what else we identified about your property: {link}",
+    18: "The right buyer could already be looking. But are they seeing your property? Find out what your property assessment says: {link}",
+    21: "Three weeks in — and your property assessment is still waiting for you. Take a fresh look at what could be holding the sale back: {link}",
+    24: "First impressions matter. Especially when buyers have hundreds of properties to choose from. See how your property is positioned: {link}",
+    27: "Could your listing be attracting the wrong attention — or not enough of it? Your property assessment takes a closer look: {link}",
+    30: "One month later, the same question remains: why hasn’t the property sold? Your property assessment was designed to help answer it: {link}",
+    33: "Sometimes it’s not the property that’s the problem. It can be the way the opportunity is presented to the market. See your property assessment: {link}",
+    36: "Imagine seeing your property through the eyes of a potential buyer. That’s what we want you to do with your property assessment: {link}",
+    39: "What would make someone choose your property over the next one they see? Your assessment highlights areas worth considering: {link}",
+    42: "Properties don’t always sell simply because they’re good properties. Positioning matters. See what we found: {link}",
+    45: "If you’ve been waiting for the right buyer, it may be worth asking whether the right buyers are actually being reached. Your property assessment explains more: {link}",
+    48: "Your property has been on the market. But has it been marketed to its full potential? Take another look at your property assessment: {link}",
+    51: "There’s a difference between being listed and being noticed. Your property assessment looks at that difference: {link}",
+    54: "What could you change today that might make your property more appealing tomorrow? Start with your property assessment: {link}",
+    57: "A buyer doesn’t see everything you see. Your assessment looks at your property from the buyer’s perspective: {link}",
+    60: "Two months on. If your property is still available, understanding what’s happening in the market could be more important than ever. See your property assessment: {link}",
+    63: "Could there be buyers for your property that your current marketing isn’t reaching? Your property assessment explores the opportunity: {link}",
+    66: "Sometimes selling isn’t about waiting longer. It’s about changing the way the property is positioned. See what we recommend: {link}",
+    69: "Your property may have more potential than its current listing suggests. Find out what our assessment identified: {link}",
+    72: "If you could improve one thing about the way your property is being marketed, what would it be? Your property assessment gives you a place to start: {link}",
+    75: "The market changes. Buyer attention changes. Your property strategy may need to change too. See your property assessment: {link}",
+    78: "Still thinking about the sale? Take another look at the property assessment we prepared for you: {link}",
+    81: "Your next buyer won’t necessarily be the person who sees your property first. They may be the person your current marketing isn’t reaching. See your property assessment: {link}",
+    84: "Before making another change to your property strategy, see what we identified about your listing: {link}",
+    87: "You’ve had plenty of time to think about the sale. Now take a few minutes to see what our assessment says could be done differently: {link}",
+    90: "This is our final message about your property assessment. If you’re still looking for answers about why your property hasn’t sold, your assessment is here: {link}",
+}
+
+SMS_ABANDONMENT_STAGE_DAYS: tuple[int, ...] = tuple(sorted(SMS_ABANDONMENT_TEMPLATES.keys()))
+
+
+def send_stale_prospect_abandonment_sms(to_phone: str, stage: int, preview_url: str, unsubscribe_url: str) -> bool:
+    """One stage of the Day 0 -> Day 90 abandonment SMS ladder. `stage` is
+    the day number (see SMS_ABANDONMENT_TEMPLATES). Always appends an
+    unsubscribe link distinct from the email drip's — see
+    StaleListingProspect.sms_unsubscribed_at.
+
+    Same 'never let a failure propagate' contract as send_new_message_sms —
+    returns False on any misconfiguration, invalid number, or Twilio error.
+    """
+    template = SMS_ABANDONMENT_TEMPLATES.get(stage)
+    if not template:
+        logger.error("Unknown SMS abandonment stage: %r", stage)
+        return False
+    body = template.format(link=preview_url) + f"\n\nUnsubscribe: {unsubscribe_url}"
     return _send_sms(to_phone, body)

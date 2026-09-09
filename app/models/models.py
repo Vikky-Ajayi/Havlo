@@ -546,10 +546,13 @@ class StaleListingProspect(Base):
     # Set when the prospect clicks "unsubscribe" on a drip email. Checked
     # before every send; permanently stops the sequence once set.
     unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Set once the one-time 24h abandonment SMS has been sent (see
-    # stale_prospect_abandonment.run_abandonment_sms_cycle) — the idempotency
-    # guard for that single send, separate from the 12-stage email sequence.
-    abandonment_sms_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when the prospect clicks "unsubscribe" on an abandonment SMS —
+    # deliberately its OWN flag, separate from unsubscribed_at (email):
+    # opting out of one channel must not silently opt someone out of the
+    # other. Checked before every SMS send; each stage's send is recorded
+    # in stale_prospect_abandonment_sms (own table, same (prospect_id,
+    # stage) idempotency pattern as stale_prospect_abandonment_emails).
+    sms_unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # City this prospect's location filter belongs to (matches candidate.city
     # from discovery, or the ops console's manual-create form). Populated
     # going forward; existing rows are backfilled from listing_snapshot_json
@@ -615,6 +618,40 @@ class StaleProspectAbandonmentEmail(Base):
     __table_args__ = (
         Index(
             "ux_stale_prospect_abandonment_emails_prospect_stage",
+            "prospect_id",
+            "stage",
+            unique=True,
+        ),
+    )
+
+
+class StaleProspectAbandonmentSms(Base):
+    """Records one sent step of the pre-purchase / cart-abandonment SMS
+    ladder (see app/services/stale_prospect_abandonment.py) for a
+    StaleListingProspect. Same one-row-per-(prospect, stage) idempotency
+    shape as StaleProspectAbandonmentEmail, kept as its own table since the
+    two drips have independent, non-overlapping stage numbers (this one
+    uses the day number itself as the stage -- 0, 3, 6, ... 90 -- rather
+    than a sequential 1-12 counter, since the cadence is simpler and the
+    day number is self-documenting)."""
+
+    __tablename__ = "stale_prospect_abandonment_sms"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # The day number itself (0, 3, 6, ... 90) -- see class docstring.
+    stage: Mapped[int] = mapped_column(Integer, nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index(
+            "ux_stale_prospect_abandonment_sms_prospect_stage",
             "prospect_id",
             "stage",
             unique=True,

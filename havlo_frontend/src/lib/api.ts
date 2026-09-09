@@ -114,8 +114,9 @@ export interface StaleProspectAbandonedItem {
   property_confirmed_at?: string | null;
   contact_details_submitted_at?: string | null;
   abandonment_emails_sent: number;
-  abandonment_sms_sent_at?: string | null;
+  abandonment_sms_sent: number;
   unsubscribed_at?: string | null;
+  sms_unsubscribed_at?: string | null;
   treated_at?: string | null;
 }
 

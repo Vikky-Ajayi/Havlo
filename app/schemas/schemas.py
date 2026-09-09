@@ -702,8 +702,9 @@ class StaleProspectAbandonedItem(BaseModel):
     property_confirmed_at: Optional[str] = None
     contact_details_submitted_at: Optional[str] = None
     abandonment_emails_sent: int = 0
-    abandonment_sms_sent_at: Optional[str] = None
+    abandonment_sms_sent: int = 0
     unsubscribed_at: Optional[str] = None
+    sms_unsubscribed_at: Optional[str] = None
     treated_at: Optional[str] = None
 
 

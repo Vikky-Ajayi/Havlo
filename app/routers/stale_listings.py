@@ -25,6 +25,7 @@ from app.models.models import (
     StaleListingDiscoveryRun,
     StaleListingProspect,
     StaleProspectAbandonmentEmail,
+    StaleProspectAbandonmentSms,
     User,
 )
 from app.schemas.schemas import (
@@ -1241,6 +1242,13 @@ async def list_abandoned_prospects(
         .correlate(StaleListingProspect)
         .scalar_subquery()
     )
+    sms_sent_count = (
+        select(func.count())
+        .select_from(StaleProspectAbandonmentSms)
+        .where(StaleProspectAbandonmentSms.prospect_id == StaleListingProspect.id)
+        .correlate(StaleListingProspect)
+        .scalar_subquery()
+    )
     # Most recent thing that actually happened, whichever stage it was —
     # a NULL contact_details_submitted_at (e.g. a looked-up-only prospect)
     # would otherwise sort first under a plain DESC order.
@@ -1250,7 +1258,7 @@ async def list_abandoned_prospects(
         StaleListingProspect.code_looked_up_at,
     )
     result = await db.execute(
-        select(StaleListingProspect, emails_sent_count)
+        select(StaleListingProspect, emails_sent_count, sms_sent_count)
         .where(*filters)
         .order_by(last_activity_at.desc())
         .limit(limit)
@@ -1273,11 +1281,12 @@ async def list_abandoned_prospects(
             property_confirmed_at=p.property_confirmed_at.isoformat() if p.property_confirmed_at else None,
             contact_details_submitted_at=p.contact_details_submitted_at.isoformat() if p.contact_details_submitted_at else None,
             abandonment_emails_sent=emails_sent,
-            abandonment_sms_sent_at=p.abandonment_sms_sent_at.isoformat() if p.abandonment_sms_sent_at else None,
+            abandonment_sms_sent=sms_sent,
             unsubscribed_at=p.unsubscribed_at.isoformat() if p.unsubscribed_at else None,
+            sms_unsubscribed_at=p.sms_unsubscribed_at.isoformat() if p.sms_unsubscribed_at else None,
             treated_at=p.treated_at.isoformat() if p.treated_at else None,
         )
-        for p, emails_sent in result.all()
+        for p, emails_sent, sms_sent in result.all()
     ]
     return StaleProspectAbandonedResponse(items=items, total=total)
 
@@ -1932,6 +1941,49 @@ async def unsubscribe_stale_prospect(
         await db.commit()
 
     return _page("You've been unsubscribed from these reminder emails. You won't receive any more.")
+
+
+@public_router.get("/prospects/unsubscribe-sms", response_class=HTMLResponse)
+async def unsubscribe_stale_prospect_sms(
+    prospect_id: str,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """Public, no-login link clicked from an abandonment-SMS text. Sets
+    sms_unsubscribed_at — deliberately separate from unsubscribed_at (the
+    email drip's own opt-out): stopping the texts must not silently stop
+    the emails too, or vice versa. Same HMAC-token verification as the
+    email unsubscribe endpoint above."""
+
+    def _page(message: str) -> HTMLResponse:
+        return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StaleListings</title></head>
+<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:60px 16px;">
+<tr><td align="center">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:14px;border:1px solid rgba(207,207,206,0.4);padding:40px 32px;text-align:center;">
+<tr><td style="font-size:16px;font-weight:800;color:#111111;padding-bottom:18px;">StaleListings</td></tr>
+<tr><td style="font-size:14px;line-height:22px;color:#556274;">{message}</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>""")
+
+    try:
+        prospect_uuid = uuid.UUID(prospect_id)
+    except ValueError:
+        return _page("This unsubscribe link is invalid.")
+
+    if not verify_unsubscribe_token(prospect_id, token):
+        return _page("This unsubscribe link is invalid or has expired.")
+
+    prospect = await db.get(StaleListingProspect, prospect_uuid)
+    if prospect and prospect.sms_unsubscribed_at is None:
+        prospect.sms_unsubscribed_at = datetime.utcnow()
+        await db.commit()
+
+    return _page("You've been unsubscribed from these text message reminders. You won't receive any more.")
 
 
 @admin_router.get("/admin", response_model=list[StaleListingAdminItem])

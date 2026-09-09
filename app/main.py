@@ -369,8 +369,7 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS last_error TEXT,
                             ADD COLUMN IF NOT EXISTS discovered_at TIMESTAMPTZ,
                             ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ,
-                            ADD COLUMN IF NOT EXISTS letter_sent_at TIMESTAMPTZ,
-                            ADD COLUMN IF NOT EXISTS abandonment_sms_sent_at TIMESTAMPTZ;
+                            ADD COLUMN IF NOT EXISTS letter_sent_at TIMESTAMPTZ;
                     """))
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_stale_listing_discovery_runs_status "
