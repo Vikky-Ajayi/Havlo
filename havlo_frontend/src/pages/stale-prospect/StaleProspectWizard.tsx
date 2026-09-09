@@ -1225,24 +1225,17 @@ export const StaleProspectWizard = () => {
   const [pollHandle, setPollHandle] = useState<number | null>(null);
 
   useEffect(() => {
+    // slw-prospect-active also drives an overflow-x:hidden rule (see the
+    // <style> block below) unrelated to chat — kept. What used to live here
+    // was a MutationObserver actively fighting to keep the Tawk.to widget
+    // hidden on this page (hideWidget() + forcing display:none on its
+    // injected iframe/#chat-bubble, re-applied on every DOM mutation).
+    // Removed on request — letter/QR-code prospects going through this
+    // wizard should have the same live-chat support available as everywhere
+    // else on the site.
     document.body.classList.add('slw-prospect-active');
-    const hideInjectedChat = () => {
-      const tawk = (window as any).Tawk_API;
-      if (tawk?.hideWidget) tawk.hideWidget();
-      document.querySelectorAll<HTMLElement>('body > iframe, body > div#chat-bubble').forEach((element) => {
-        element.style.setProperty('display', 'none', 'important');
-        element.style.setProperty('visibility', 'hidden', 'important');
-        element.style.setProperty('pointer-events', 'none', 'important');
-      });
-    };
-    hideInjectedChat();
-    const observer = new MutationObserver(hideInjectedChat);
-    observer.observe(document.body, { childList: true, subtree: false });
     return () => {
-      observer.disconnect();
       document.body.classList.remove('slw-prospect-active');
-      const tawk = (window as any).Tawk_API;
-      if (tawk?.showWidget) tawk.showWidget();
     };
   }, []);
 
@@ -1581,8 +1574,6 @@ const WizardStyles = () => (
   <style>{`
     .slw-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#1f2024;background:#fff;min-height:100vh;display:flex;flex-direction:column}
     body.slw-prospect-active{overflow-x:hidden}
-    body.slw-prospect-active > iframe,
-    body.slw-prospect-active #chat-bubble{display:none !important;visibility:hidden !important;pointer-events:none !important}
     .slw-page *{box-sizing:border-box}
     .slw-header{display:flex;align-items:center;justify-content:space-between;padding:16px max(24px,calc((100vw - 1240px)/2));border-bottom:1px solid #eee;position:relative}
     .slw-logo-link{display:inline-flex;align-items:center;text-decoration:none;color:inherit}
