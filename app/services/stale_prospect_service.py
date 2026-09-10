@@ -134,6 +134,26 @@ def verify_unsubscribe_token(prospect_id: str, token: str) -> bool:
     return hmac.compare_digest(expected, (token or "").strip())
 
 
+def sms_unsubscribe_short_token(property_code: str) -> str:
+    """Short (12-char) deterministic token for the SMS unsubscribe link —
+    keyed by property_code (4 digits, already public — printed on the
+    letter/every text) rather than the prospect's UUID, and truncated much
+    further than unsubscribe_token's 32 chars. The long email-unsubscribe
+    URL (UUID + 32-char token, 140+ chars) was blowing out the SMS
+    character budget on its own. 12 hex chars (48 bits) is a deliberately
+    weaker guarantee than the email token, but proportionate: the only
+    thing this gates is opting a number out of further marketing texts,
+    not anything sensitive — cheaper to over-unsubscribe by brute force
+    than to keep texting someone a link they can't realistically tap."""
+    secret = (get_settings().SECRET_KEY or "").encode("utf-8")
+    return hmac.new(secret, f"sms:{property_code}".encode("utf-8"), hashlib.sha256).hexdigest()[:12]
+
+
+def verify_sms_unsubscribe_short_token(property_code: str, token: str) -> bool:
+    expected = sms_unsubscribe_short_token(property_code)
+    return hmac.compare_digest(expected, (token or "").strip())
+
+
 def prospect_unlock_price(asking_price: float | None) -> float:
     """Full-report price shown to a letter prospect, tiered by asking price.
 

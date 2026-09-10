@@ -1242,7 +1242,18 @@ export const StaleProspectWizard = () => {
   const query = useMemo(() => {
     const token = params.get('token') || undefined;
     const code = params.get('code') || undefined;
-    return { token, code };
+    // Only one recognised value today: 'assessment', from the SMS
+    // abandonment ladder's links — overrides the boot effect's normal
+    // resume-where-you-left-off default (straight to Payment) so a
+    // re-engagement text shows the free assessment snippet again first.
+    // The boot effect strips `step` back out of the URL once it's acted on
+    // it (see the setSearchParams call there) — otherwise, since the
+    // access-sync effect below preserves whatever was already in the URL
+    // when it adds token/code, a plain refresh later (e.g. after they've
+    // since moved on to Payment themselves) would keep re-forcing
+    // 'assessment' forever instead of applying just once.
+    const forceStep = params.get('step') === 'assessment' ? 'assessment' as const : undefined;
+    return { token, code, forceStep };
   }, [params]);
 
   // Resume mid-flow on reload (or land straight into the right step after a
@@ -1263,6 +1274,17 @@ export const StaleProspectWizard = () => {
         setProspect(data);
         fireProspectLeadPixel(data);
         setAccess({ token: query.token, code: data.property_code });
+        if (query.forceStep === 'assessment') {
+          // One-shot: consumed above by the payment_status branch below,
+          // then removed here so it doesn't linger in the URL and keep
+          // overriding the normal resume behaviour on every future reload
+          // of this same link (see the query useMemo's comment).
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('step');
+            return next;
+          }, { replace: true });
+        }
         if (data.is_unlocked) {
           const reportData = await getProspectReport({ token: query.token, code: data.property_code });
           if (cancelled) return;
@@ -1278,12 +1300,13 @@ export const StaleProspectWizard = () => {
           // straight to the Payment step, skipping Confirm Property and
           // Your Details entirely.
           setStep(data.property_confirmed ? 'details' : 'confirm');
-        } else if (data.payment_status === 'pending') {
+        } else if (data.payment_status === 'pending' && query.forceStep !== 'assessment') {
           // Already has contact details on file and isn't unlocked yet -
           // either landed back from a SumUp/bank-transfer redirect while
           // still confirming, or is simply revisiting the same link after
           // already reaching Payment - either way, resume the same polling
-          // the payment step itself would run.
+          // the payment step itself would run. Skipped when forceStep asks
+          // for the assessment snippet instead (see the query useMemo).
           setStep('payment');
           const handle = window.setInterval(async () => {
             try {

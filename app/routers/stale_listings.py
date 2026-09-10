@@ -80,7 +80,9 @@ from app.services.stale_prospect_service import (
     serialize_preview,
     serialize_report,
     send_prospect_letter_to_admin,
+    sms_unsubscribe_short_token,
     snapshot_from_scrape,
+    verify_sms_unsubscribe_short_token,
     verify_unsubscribe_token,
 )
 from app.services.stale_listing_discovery import (
@@ -135,6 +137,13 @@ def _stale_prospect_checkout_amount(asking_price: float | None) -> float:
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
 admin_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings Admin"])
+# No prefix at all (mounted directly on `app` in main.py, not under
+# API_PREFIX) — exclusively for links that have to fit inside an SMS.
+# heyhavlo.com/u/<code>?t=<token> versus .../api/v1/stale-listings/
+# prospects/unsubscribe-sms?prospect_id=<uuid>&token=<32 chars> is the
+# difference between ~35 characters and 140+ eaten out of a 160-char
+# segment before the message body even starts.
+short_router = APIRouter(tags=["Stale Listings — short links"])
 
 
 def _review_preview_session(authorization: str | None) -> dict[str, str] | None:
@@ -2017,6 +2026,50 @@ async def unsubscribe_stale_prospect_sms(
         return _page("This unsubscribe link is invalid or has expired.")
 
     prospect = await db.get(StaleListingProspect, prospect_uuid)
+    if prospect and prospect.sms_unsubscribed_at is None:
+        prospect.sms_unsubscribed_at = datetime.utcnow()
+        await db.commit()
+
+    return _page("You've been unsubscribed from these text message reminders. You won't receive any more.")
+
+
+@short_router.get("/u/{property_code}", response_class=HTMLResponse)
+async def unsubscribe_stale_prospect_sms_short(
+    property_code: str,
+    t: str,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """Short-link version of unsubscribe_stale_prospect_sms above, for
+    texted links specifically — see short_router's own docstring/comment
+    for why this needs to be this much shorter. Keyed by property_code (4
+    digits, already public on every letter/text) + a short deterministic
+    token (sms_unsubscribe_short_token) rather than the prospect's UUID +
+    the full 32-char token; same outcome (sets sms_unsubscribed_at), same
+    confirmation page. The long-form endpoint stays in place unchanged —
+    this doesn't replace it, just gives the SMS ladder something that
+    fits in a message."""
+
+    def _page(message: str) -> HTMLResponse:
+        return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StaleListings</title></head>
+<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:60px 16px;">
+<tr><td align="center">
+<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:14px;border:1px solid rgba(207,207,206,0.4);padding:40px 32px;text-align:center;">
+<tr><td style="font-size:16px;font-weight:800;color:#111111;padding-bottom:18px;">StaleListings</td></tr>
+<tr><td style="font-size:14px;line-height:22px;color:#556274;">{message}</td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>""")
+
+    code = normalize_property_code(property_code)
+    if len(code) != 4 or not verify_sms_unsubscribe_short_token(code, t):
+        return _page("This unsubscribe link is invalid or has expired.")
+
+    result = await db.execute(select(StaleListingProspect).where(StaleListingProspect.property_code == code))
+    prospect = result.scalar_one_or_none()
     if prospect and prospect.sms_unsubscribed_at is None:
         prospect.sms_unsubscribed_at = datetime.utcnow()
         await db.commit()

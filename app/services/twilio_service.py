@@ -55,11 +55,19 @@ def _get_client() -> Client:
     return Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 
 
-def _send_sms(to_phone: str, body: str) -> bool:
+def _send_sms(to_phone: str, body: str, *, from_override: str | None = None) -> bool:
     """Shared send path: validates the number and config, sends via Twilio,
     and turns every failure mode into a plain False rather than an
     exception — callers (background loops, HTTP routes) should never have
-    an SMS failure propagate as a crash or a 500."""
+    an SMS failure propagate as a crash or a 500.
+
+    from_override lets a caller send as an alphanumeric sender ID (e.g.
+    "Havlo") instead of settings.TWILIO_PHONE_NUMBER — confirmed working
+    against the real account/UK destination numbers. Deliberately opt-in
+    per call rather than a blanket switch: an alphanumeric sender has no
+    real number behind it, so the recipient cannot reply to it at all —
+    fine for a one-way nudge with a link, not for send_new_message_sms
+    (inbox notifications), which stays on the real number."""
     if not is_valid_e164(to_phone):
         logger.warning("Skipping SMS — invalid E.164 phone: %r", to_phone)
         return False
@@ -73,7 +81,7 @@ def _send_sms(to_phone: str, body: str) -> bool:
         client = _get_client()
         message = client.messages.create(
             body=body,
-            from_=settings.TWILIO_PHONE_NUMBER,
+            from_=from_override or settings.TWILIO_PHONE_NUMBER,
             to=to_phone,
         )
         logger.info("SMS sent to %s — SID: %s", to_phone, message.sid)
@@ -170,4 +178,4 @@ def send_stale_prospect_abandonment_sms(to_phone: str, stage: int, preview_url: 
         logger.error("Unknown SMS abandonment stage: %r", stage)
         return False
     body = template.format(link=preview_url) + f"\n\nUnsubscribe: {unsubscribe_url}"
-    return _send_sms(to_phone, body)
+    return _send_sms(to_phone, body, from_override="Havlo")

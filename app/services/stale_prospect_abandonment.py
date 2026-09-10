@@ -39,7 +39,7 @@ from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectAbandonmentEmail, StaleProspectAbandonmentSms
 from app.services import email_service, twilio_service
 from app.services.scraper_base import run_scraper_loop
-from app.services.stale_prospect_service import unsubscribe_token
+from app.services.stale_prospect_service import sms_unsubscribe_short_token, unsubscribe_token
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -218,16 +218,19 @@ def _within_sms_send_window(now_utc: datetime) -> bool:
     return _SMS_SEND_WINDOW_START_HOUR <= local_hour < _SMS_SEND_WINDOW_END_HOUR
 
 
-def build_sms_unsubscribe_url(prospect_id: UUID) -> str:
+def build_sms_unsubscribe_url(property_code: str) -> str:
     """Distinct from build_unsubscribe_url (email) — points at its own
-    endpoint and sets sms_unsubscribed_at, not unsubscribed_at. Reuses the
-    same HMAC token scheme (it only proves "this link is for this prospect
-    id", not which channel — safe to share)."""
+    endpoint and sets sms_unsubscribed_at, not unsubscribed_at. Uses the
+    short /u/<code>?t=<12-char token> route (unsubscribe_stale_prospect_
+    sms_short in stale_listings.py), not the long-form UUID+32-char-token
+    one the email drip's link uses — that one alone was ~90+ characters,
+    which does not fit alongside an actual message inside an SMS's
+    character budget without pushing every send into extra segments."""
     base = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
     if "localhost" in base or "127.0.0.1" in base:
         base = "https://www.heyhavlo.com"
-    token = unsubscribe_token(str(prospect_id))
-    return f"{base}/api/v1/stale-listings/prospects/unsubscribe-sms?prospect_id={prospect_id}&token={token}"
+    token = sms_unsubscribe_short_token(property_code)
+    return f"{base}/u/{property_code}?t={token}"
 
 
 async def run_abandonment_sms_cycle() -> dict:
@@ -285,8 +288,15 @@ async def run_abandonment_sms_cycle() -> dict:
 
     for prospect, stage in due:
         e164 = twilio_service.normalize_to_e164(prospect.contact_phone or "")
-        preview_url = f"{base_url}/stale-listings/prospect?code={prospect.property_code}"
-        unsubscribe_url = build_sms_unsubscribe_url(prospect.id)
+        # step=assessment overrides the wizard's normal resume-where-you-
+        # left-off default, which would otherwise send anyone with contact
+        # details on file and pending payment straight back to the Payment
+        # step (see StaleProspectWizard.tsx's boot effect) — right for
+        # someone revisiting their own link mid-checkout, wrong for a
+        # re-engagement nudge, which should show the value again (the free
+        # assessment snippet) before asking them to pay a second time.
+        preview_url = f"{base_url}/stale-listings/prospect?code={prospect.property_code}&step=assessment"
+        unsubscribe_url = build_sms_unsubscribe_url(prospect.property_code)
 
         if not e164:
             # An unusable number will never become usable on its own —
