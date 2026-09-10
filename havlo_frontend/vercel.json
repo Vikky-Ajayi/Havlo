@@ -5,6 +5,10 @@
       "source": "/api/v1/:path*",
       "destination": "https://havlo.up.railway.app/api/v1/:path*"
     },
+    {
+      "source": "/u/:path*",
+      "destination": "https://havlo.up.railway.app/u/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
