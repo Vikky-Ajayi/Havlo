@@ -1949,6 +1949,39 @@ async def send_stale_prospect_post_purchase_test_email(
     return {"ok": True, "to_email": recipient, "stage": stage, "prospect_id": str(prospect.id)}
 
 
+def _stale_listing_confirmation_page(message: str) -> HTMLResponse:
+    """Shared confirmation/error page for every unsubscribe link (email,
+    long-form SMS, short-form SMS). Plain flex/block CSS on real <div>s
+    rather than an email-style nested-table layout — the previous version
+    used <table width="480"> for the card, and padding set directly on a
+    <table> element (rather than a td/div) is unreliably applied by mobile
+    browsers. On narrow phone screens that meant no actual side margin,
+    so the 480px-wide card ran off the right edge of the viewport instead
+    of shrinking to fit (confirmed live on iOS Safari — the card was cut
+    off and text truncated). width:100%/max-width on a div does not have
+    that failure mode."""
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StaleListings</title>
+<style>
+  * {{ box-sizing: border-box; }}
+  body {{ margin: 0; padding: 0; background: #F5F6F8; font-family: Arial, Helvetica, sans-serif; }}
+  .wrap {{ min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 16px; }}
+  .card {{ width: 100%; max-width: 480px; background: #FFFFFF; border-radius: 14px; border: 1px solid rgba(207,207,206,0.4); padding: 32px 24px; text-align: center; }}
+  .card h1 {{ margin: 0 0 14px; font-size: 16px; font-weight: 800; color: #111111; }}
+  .card p {{ margin: 0; font-size: 14px; line-height: 22px; color: #556274; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>StaleListings</h1>
+    <p>{message}</p>
+  </div>
+</div>
+</body></html>""")
+
+
 @public_router.get("/prospects/unsubscribe", response_class=HTMLResponse)
 async def unsubscribe_stale_prospect(
     prospect_id: str,
@@ -1959,20 +1992,7 @@ async def unsubscribe_stale_prospect(
     an HMAC token (see stale_prospect_service.unsubscribe_token) rather than
     requiring auth, so it works straight from an inbox."""
 
-    def _page(message: str) -> HTMLResponse:
-        return HTMLResponse(f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>StaleListings</title></head>
-<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:60px 16px;">
-<tr><td align="center">
-<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:14px;border:1px solid rgba(207,207,206,0.4);padding:40px 32px;text-align:center;">
-<tr><td style="font-size:16px;font-weight:800;color:#111111;padding-bottom:18px;">StaleListings</td></tr>
-<tr><td style="font-size:14px;line-height:22px;color:#556274;">{message}</td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>""")
+    _page = _stale_listing_confirmation_page
 
     try:
         prospect_uuid = uuid.UUID(prospect_id)
@@ -2002,20 +2022,7 @@ async def unsubscribe_stale_prospect_sms(
     the emails too, or vice versa. Same HMAC-token verification as the
     email unsubscribe endpoint above."""
 
-    def _page(message: str) -> HTMLResponse:
-        return HTMLResponse(f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>StaleListings</title></head>
-<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:60px 16px;">
-<tr><td align="center">
-<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:14px;border:1px solid rgba(207,207,206,0.4);padding:40px 32px;text-align:center;">
-<tr><td style="font-size:16px;font-weight:800;color:#111111;padding-bottom:18px;">StaleListings</td></tr>
-<tr><td style="font-size:14px;line-height:22px;color:#556274;">{message}</td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>""")
+    _page = _stale_listing_confirmation_page
 
     try:
         prospect_uuid = uuid.UUID(prospect_id)
@@ -2049,20 +2056,7 @@ async def unsubscribe_stale_prospect_sms_short(
     this doesn't replace it, just gives the SMS ladder something that
     fits in a message."""
 
-    def _page(message: str) -> HTMLResponse:
-        return HTMLResponse(f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>StaleListings</title></head>
-<body style="margin:0;padding:0;background:#F5F6F8;font-family:Arial,Helvetica,sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:60px 16px;">
-<tr><td align="center">
-<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:14px;border:1px solid rgba(207,207,206,0.4);padding:40px 32px;text-align:center;">
-<tr><td style="font-size:16px;font-weight:800;color:#111111;padding-bottom:18px;">StaleListings</td></tr>
-<tr><td style="font-size:14px;line-height:22px;color:#556274;">{message}</td></tr>
-</table>
-</td></tr>
-</table>
-</body></html>""")
+    _page = _stale_listing_confirmation_page
 
     code = normalize_property_code(property_code)
     if len(code) != 4 or not verify_sms_unsubscribe_short_token(code, t):
