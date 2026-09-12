@@ -888,12 +888,25 @@ async def get_stale_prospect_report(
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 
+_OUTCODE_ONLY_RE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]?$", re.IGNORECASE)
+
+
 def _derive_postcode_and_city(address: str) -> tuple[str | None, str | None]:
     """Best-effort postcode/city extraction from a free-text address, purely
     to populate the denormalised postcode/city columns (search/filtering,
     the console's location dropdown) — property_address itself always keeps
     the exact text it was given. Shared by every write path that takes a
-    hand-typed or edited address (manual-create, console address edit)."""
+    hand-typed or edited address (manual-create, console address edit).
+
+    Guards against the one failure mode confirmed live: an address ending
+    in a bare postcode OUTCODE with no incode ("...Inverness, IV2") has no
+    full postcode for the `postcode and postcode in last` branch to match,
+    so `last` — "IV2" itself — fell through as the "city" once instead of
+    the town before it. That's not a rare shape: it's the norm for
+    automated-discovery addresses, whose displayAddress is exactly "street,
+    town, OUTCODE". Reject a last-part that is itself just an outcode and
+    fall back to the part before it instead.
+    """
     postcode_match = re.search(r"[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}", address, re.IGNORECASE)
     postcode = postcode_match.group(0).upper() if postcode_match else None
     city = None
@@ -903,6 +916,8 @@ def _derive_postcode_and_city(address: str) -> tuple[str | None, str | None]:
         if postcode and postcode.replace(" ", "") in last.replace(" ", "").upper():
             remainder = re.sub(re.escape(postcode), "", last, flags=re.IGNORECASE).strip(" ,")
             city = remainder or (address_parts[-2] if len(address_parts) >= 2 else None)
+        elif _OUTCODE_ONLY_RE.match(last):
+            city = address_parts[-2] if len(address_parts) >= 2 else None
         else:
             city = last
     return postcode, city
