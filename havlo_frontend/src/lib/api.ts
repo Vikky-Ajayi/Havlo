@@ -1182,6 +1182,13 @@ export const api = {
       timeout: 30000,
     }),
 
+  staleProspectsConsoleUpdateAddress: (prospectId: string, propertyAddress: string) =>
+    request<StaleProspectConsoleDetail>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}/address`, {
+      method: 'PATCH',
+      body: { property_address: propertyAddress },
+      timeout: 30000,
+    }),
+
   staleProspectsConsoleSetTreated: (prospectId: string, treated: boolean) =>
     request<StaleProspectConsoleListItem>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}/treated`, {
       method: 'PATCH',

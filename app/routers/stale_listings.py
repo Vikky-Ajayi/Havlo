@@ -38,6 +38,7 @@ from app.schemas.schemas import (
     StaleProspectCheckoutResponse,
     StaleProspectConfirmRequest,
     StaleProspectConfirmResponse,
+    StaleProspectConsoleAddressEditRequest,
     StaleProspectConsoleDetail,
     StaleProspectConsoleEditRequest,
     StaleProspectConsoleListItem,
@@ -86,6 +87,7 @@ from app.services.stale_prospect_service import (
     verify_unsubscribe_token,
 )
 from app.services.stale_listing_discovery import (
+    KNOWN_LOCATIONS,
     DiscoveryParams,
     build_letters_zip_for_run,
     ensure_letter_pdf_path,
@@ -886,6 +888,26 @@ async def get_stale_prospect_report(
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 
+def _derive_postcode_and_city(address: str) -> tuple[str | None, str | None]:
+    """Best-effort postcode/city extraction from a free-text address, purely
+    to populate the denormalised postcode/city columns (search/filtering,
+    the console's location dropdown) — property_address itself always keeps
+    the exact text it was given. Shared by every write path that takes a
+    hand-typed or edited address (manual-create, console address edit)."""
+    postcode_match = re.search(r"[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}", address, re.IGNORECASE)
+    postcode = postcode_match.group(0).upper() if postcode_match else None
+    city = None
+    address_parts = [p.strip() for p in address.split(",") if p.strip()]
+    if address_parts:
+        last = address_parts[-1]
+        if postcode and postcode.replace(" ", "") in last.replace(" ", "").upper():
+            remainder = re.sub(re.escape(postcode), "", last, flags=re.IGNORECASE).strip(" ,")
+            city = remainder or (address_parts[-2] if len(address_parts) >= 2 else None)
+        else:
+            city = last
+    return postcode, city
+
+
 @public_router.post("/prospects-console/prospects/manual", response_model=StaleProspectAdminCreateResponse)
 async def create_stale_prospect_manually(
     payload: StaleProspectAdminCreateRequest,
@@ -922,19 +944,9 @@ async def create_stale_prospect_manually(
     # Best-effort postcode/city extraction from the free-text address, purely
     # to populate the denormalised postcode/city columns (search/filtering) —
     # property_address itself always uses the admin's exact typed text.
-    postcode_match = re.search(r"[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}", address, re.IGNORECASE)
-    postcode = postcode_match.group(0).upper() if postcode_match else None
+    postcode, city = _derive_postcode_and_city(address)
     if postcode:
         snapshot["postcode"] = postcode
-    city = None
-    address_parts = [p.strip() for p in address.split(",") if p.strip()]
-    if address_parts:
-        last = address_parts[-1]
-        if postcode and postcode.replace(" ", "") in last.replace(" ", "").upper():
-            remainder = re.sub(re.escape(postcode), "", last, flags=re.IGNORECASE).strip(" ,")
-            city = remainder or (address_parts[-2] if len(address_parts) >= 2 else None)
-        else:
-            city = last
 
     price = extract_price(snapshot.get("price"))
     if price is None or price < 500000:
@@ -1170,7 +1182,18 @@ async def list_console_prospects(
         .distinct()
         .order_by(StaleListingProspect.city.asc())
     )
-    cities = [c for (c,) in cities_result.all() if c]
+    # `city` is denormalised free text — clean for the ~106 automated-discovery
+    # locations (candidate.city is always one of KNOWN_LOCATIONS' own names),
+    # but bulk-CSV/manual-add rows derive it by guessing the last comma part
+    # of a hand-typed address, which produces postcodes ("PE2"), street names
+    # ("Park Road"), counties ("West Midlands"), and marketing copy as "city"
+    # values. That grew this dropdown to 700+ entries, most appearing once.
+    # Confirmed live: of 727 distinct values, 443 occur exactly once. Filter
+    # the dropdown to known real locations rather than every raw string ever
+    # parsed — the prospects themselves aren't touched, they're still found
+    # via "All locations" or the address/postcode search either way.
+    _known_lower = {name.lower() for name, _ in KNOWN_LOCATIONS}
+    cities = [c for (c,) in cities_result.all() if c and c.strip().lower() in _known_lower]
 
     return StaleProspectConsoleListResponse(items=items, total=total, cities=cities)
 
@@ -1364,6 +1387,73 @@ async def update_console_prospect_report(
         prospect.letter_pdf_path = letter_path
     except Exception as exc:
         logger.warning("Letter regeneration failed for prospect %s after report edit: %s", prospect_id, exc)
+    await db.commit()
+    await db.refresh(prospect)
+
+    base = _console_list_item(prospect)
+    return StaleProspectConsoleDetail(
+        **base.model_dump(),
+        listing_snapshot=json.loads(prospect.listing_snapshot_json or "{}"),
+        report_data=json.loads(current_report_json(prospect) or "{}"),
+        is_edited=bool(prospect.agent_edited_report_json),
+        letter_pdf_path=prospect.letter_pdf_path,
+        contact_name=prospect.contact_name,
+        contact_email=prospect.contact_email,
+        contact_phone=prospect.contact_phone,
+    )
+
+
+@public_router.patch("/prospects-console/prospects/{prospect_id}/address", response_model=StaleProspectConsoleDetail)
+async def update_console_prospect_address(
+    prospect_id: str,
+    payload: StaleProspectConsoleAddressEditRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectConsoleDetail:
+    """Lets an admin correct property_address by hand — e.g. a scraped
+    displayAddress that's missing the house number/name a scrape or manual
+    typo got wrong. property_address is the single source every other
+    surface reads from (the letter PDF, the full report PDF, the QR
+    landing page's own lookup, the console list/detail views), so editing
+    it here is enough for all of them EXCEPT the already-generated letter
+    PDF file sitting on disk (download_console_letter_pdf serves that file
+    as-is if one already exists) — same regenerate-immediately pattern as
+    update_console_prospect_report above, including issuing a fresh QR
+    token, so a letter already printed against the old address doesn't
+    keep pointing at a now-stale one.
+
+    Also re-derives postcode/city from the new text (best-effort, same
+    heuristic as the manual-create form) since those are denormalised
+    columns used for search and the console's location filter — leaving
+    them at their old values after an address edit would silently
+    mismatch the two."""
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+
+    address = payload.property_address.strip()
+    if not address:
+        raise HTTPException(status_code=400, detail="Address cannot be empty.")
+
+    prospect.property_address = address
+    postcode, city = _derive_postcode_and_city(address)
+    if postcode:
+        prospect.postcode = postcode
+    if city:
+        prospect.city = city
+
+    try:
+        new_token = create_access_token()
+        prospect.qr_token_hash = hash_access_token(new_token)
+        letter_path = await asyncio.wait_for(
+            asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
+            timeout=20.0,
+        )
+        prospect.letter_pdf_path = letter_path
+    except Exception as exc:
+        logger.warning("Letter regeneration failed for prospect %s after address edit: %s", prospect_id, exc)
     await db.commit()
     await db.refresh(prospect)
 

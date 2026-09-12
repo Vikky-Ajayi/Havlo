@@ -220,6 +220,10 @@ export const StaleProspectsConsole = () => {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [viewMode, setViewMode] = useState<'preview' | 'edit'>('preview');
+  const [addressEditing, setAddressEditing] = useState(false);
+  const [addressDraft, setAddressDraft] = useState('');
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressSaveMsg, setAddressSaveMsg] = useState('');
 
   const openDetail = async (id: string) => {
     setSelectedId(id);
@@ -227,6 +231,8 @@ export const StaleProspectsConsole = () => {
     setEditForm(null);
     setSaveMsg('');
     setViewMode('preview');
+    setAddressEditing(false);
+    setAddressSaveMsg('');
     setDetailLoading(true);
     try {
       const d = await api.staleProspectsConsoleGet(id);
@@ -253,6 +259,35 @@ export const StaleProspectsConsole = () => {
       setSaveMsg(e instanceof Error ? e.message : 'Save failed.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const startEditingAddress = () => {
+    if (!detail) return;
+    setAddressDraft(detail.property_address);
+    setAddressSaveMsg('');
+    setAddressEditing(true);
+  };
+  const cancelEditingAddress = () => { setAddressEditing(false); setAddressSaveMsg(''); };
+
+  const saveAddress = async () => {
+    if (!selectedId) return;
+    const next = addressDraft.trim();
+    if (!next) { setAddressSaveMsg('Address cannot be empty.'); return; }
+    setAddressSaving(true);
+    setAddressSaveMsg('');
+    try {
+      const updated = await api.staleProspectsConsoleUpdateAddress(selectedId, next);
+      setDetail(updated);
+      setAddressEditing(false);
+      setAddressSaveMsg('Saved — letter PDF regenerated.');
+      // Keep the list row (and its address/postcode/city columns) in sync
+      // without a full reload, same as saveEdit does for report fields.
+      setItems(prev => prev.map(it => it.prospect_id === selectedId ? { ...it, ...updated } : it));
+    } catch (e) {
+      setAddressSaveMsg(e instanceof Error ? e.message : 'Save failed.');
+    } finally {
+      setAddressSaving(false);
     }
   };
 
@@ -973,7 +1008,41 @@ export const StaleProspectsConsole = () => {
               <div className="spc-loading">{saveMsg || 'Loading...'}</div>
             ) : (
               <>
-                <h2>{detail.property_address}</h2>
+                {addressEditing ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                    <input
+                      className="spc-input"
+                      style={{ flex: '1 1 320px', fontSize: 18, fontWeight: 700 }}
+                      value={addressDraft}
+                      onChange={e => setAddressDraft(e.target.value)}
+                      disabled={addressSaving}
+                      autoFocus
+                    />
+                    <button className="spc-btn" style={{ padding: '6px 14px', fontSize: 12.5 }} onClick={saveAddress} disabled={addressSaving}>
+                      {addressSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button className="spc-btn spc-btn-ghost" style={{ padding: '6px 14px', fontSize: 12.5 }} onClick={cancelEditingAddress} disabled={addressSaving}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <h2 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {detail.property_address}
+                    <button
+                      className="spc-btn spc-btn-ghost"
+                      style={{ padding: '3px 10px', fontSize: 11.5, fontWeight: 700 }}
+                      onClick={startEditingAddress}
+                      title="Edit this address — updates the letter, report, and everywhere else it's shown"
+                    >
+                      Edit
+                    </button>
+                  </h2>
+                )}
+                {addressSaveMsg && (
+                  <p style={{ fontSize: 12, fontWeight: 700, margin: '0 0 6px', color: addressSaveMsg.startsWith('Saved') ? '#16A34A' : '#DC2626' }}>
+                    {addressSaveMsg}
+                  </p>
+                )}
                 <p className="sub">{detail.postcode || 'No postcode'} · {detail.city || 'Unknown location'} · {money(detail.asking_price)} · {detail.listing_duration_days ?? '?'} days on market</p>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
                   <a className="spc-link" href={detail.rightmove_url} target="_blank" rel="noreferrer">View on Rightmove →</a>
