@@ -438,7 +438,22 @@ export const StaleProspectsConsole = () => {
   // bulkRun.status is already "completed"/"failed".
   useEffect(() => {
     if (!bulkRun || bulkRun.status === 'running') return;
-    if (!bulkRun.letters_zip_status || bulkRun.letters_zip_status === 'ready' || bulkRun.letters_zip_status === 'failed') return;
+    // Nothing was created, so build_letters_zip_for_run is never even
+    // called server-side — no zip job will ever exist for this run.
+    if (bulkRun.created_prospects_count === 0) return;
+    // Bug fixed here: this used to also bail out on `!letters_zip_status`
+    // (falsy/unset), on the assumption that "no status yet" meant "no zip
+    // job". But the backend sets status to "completed" and only *then*
+    // calls build_letters_zip_for_run, which is what actually sets
+    // letters_zip_status to "building" — there's a real gap between those
+    // two writes. A poll landing inside that gap saw letters_zip_status
+    // still null, bailed out before ever starting the interval, and since
+    // nothing was polling anymore, the frontend never found out the zip
+    // job started (or finished) at all — confirmed live: the "Building
+    // letters ZIP" banner would just hang, or never appear, depending on
+    // exactly when that first poll landed. Only stop for the terminal
+    // states themselves.
+    if (bulkRun.letters_zip_status === 'ready' || bulkRun.letters_zip_status === 'failed') return;
     const interval = window.setInterval(async () => {
       try {
         const res = await api.staleProspectsConsoleBulkUploadStatus(bulkRun.run_id);
@@ -449,7 +464,7 @@ export const StaleProspectsConsole = () => {
     }, 3000);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bulkRun?.run_id, bulkRun?.status, bulkRun?.letters_zip_status]);
+  }, [bulkRun?.run_id, bulkRun?.status, bulkRun?.letters_zip_status, bulkRun?.created_prospects_count]);
 
   // ── Letters tab: pick prospects, generate a downloadable ZIP of their
   // letter PDFs ───────────────────────────────────────────────────────────
@@ -477,7 +492,7 @@ export const StaleProspectsConsole = () => {
 
   const [lettersRun, setLettersRun] = useState<{
     run_id: string; letters_zip_status?: string | null; letters_zip_total?: number; letters_zip_done?: number;
-    letters_zip_error?: string | null;
+    letters_zip_error?: string | null; letters_pdf_filename?: string | null;
   } | null>(null);
   const [lettersZipError, setLettersZipError] = useState('');
   const [lettersZipStarting, setLettersZipStarting] = useState(false);
@@ -490,7 +505,7 @@ export const StaleProspectsConsole = () => {
         setLettersRun({
           run_id: res.run_id, letters_zip_status: res.letters_zip_status,
           letters_zip_total: res.letters_zip_total, letters_zip_done: res.letters_zip_done,
-          letters_zip_error: res.letters_zip_error,
+          letters_zip_error: res.letters_zip_error, letters_pdf_filename: res.letters_pdf_filename,
         });
       } catch {
         // Transient — next tick retries.
@@ -509,7 +524,7 @@ export const StaleProspectsConsole = () => {
       setLettersRun({
         run_id: res.run_id, letters_zip_status: res.letters_zip_status,
         letters_zip_total: res.letters_zip_total, letters_zip_done: res.letters_zip_done,
-        letters_zip_error: res.letters_zip_error,
+        letters_zip_error: res.letters_zip_error, letters_pdf_filename: res.letters_pdf_filename,
       });
     } catch (e) {
       setLettersZipError(e instanceof Error ? e.message : 'Could not start building the ZIP.');
@@ -687,13 +702,24 @@ export const StaleProspectsConsole = () => {
                 {bulkRun.failed_count > 0 && <span style={{ color: '#B91C1C' }}>Failed {bulkRun.failed_count}</span>}
                 {bulkRun.status !== 'running' && bulkRun.created_prospects_count > 0 && (
                   bulkRun.letters_zip_status === 'ready' ? (
-                    <a
-                      className="spc-btn spc-btn-primary"
-                      style={{ marginLeft: 'auto', textDecoration: 'none', display: 'inline-block' }}
-                      href={api.staleProspectsConsoleLettersZipDownloadUrl(bulkRun.run_id)}
-                    >
-                      Download letters ZIP
-                    </a>
+                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                      <a
+                        className="spc-btn spc-btn-primary"
+                        style={{ textDecoration: 'none', display: 'inline-block' }}
+                        href={api.staleProspectsConsoleLettersZipDownloadUrl(bulkRun.run_id)}
+                      >
+                        Download letters ZIP
+                      </a>
+                      {bulkRun.letters_pdf_filename && (
+                        <a
+                          className="spc-btn spc-btn-ghost"
+                          style={{ textDecoration: 'none', display: 'inline-block' }}
+                          href={api.staleProspectsConsoleLettersPdfDownloadUrl(bulkRun.run_id)}
+                        >
+                          Download merged PDF
+                        </a>
+                      )}
+                    </span>
                   ) : bulkRun.letters_zip_status === 'failed' ? (
                     <span style={{ marginLeft: 'auto', color: '#B91C1C' }}>Letters ZIP failed to build{bulkRun.letters_zip_error ? `: ${bulkRun.letters_zip_error}` : ''}</span>
                   ) : (
@@ -936,6 +962,15 @@ export const StaleProspectsConsole = () => {
                         href={api.staleProspectsConsoleLettersZipDownloadUrl(lettersRun.run_id)}
                       >
                         Download ZIP
+                      </a>
+                    )}
+                    {lettersRun.letters_zip_status === 'ready' && lettersRun.letters_pdf_filename && (
+                      <a
+                        className="spc-btn spc-btn-ghost"
+                        style={{ textDecoration: 'none', display: 'inline-block' }}
+                        href={api.staleProspectsConsoleLettersPdfDownloadUrl(lettersRun.run_id)}
+                      >
+                        Download merged PDF
                       </a>
                     )}
                     {(lettersRun.letters_zip_status === 'ready' || lettersRun.letters_zip_status === 'failed') && (

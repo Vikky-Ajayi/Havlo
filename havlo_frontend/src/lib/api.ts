@@ -57,6 +57,10 @@ export interface StaleProspectDiscoveryRun {
   letters_zip_error?: string | null;
   letters_zip_total?: number;
   letters_zip_done?: number;
+  // The same letters merged into one PDF instead of separate zip entries —
+  // built in the same job, so it's only ever set once letters_zip_status
+  // is "ready" (or left null if every letter failed to merge).
+  letters_pdf_filename?: string | null;
   started_at?: string | null;
   completed_at?: string | null;
   created_at?: string | null;
@@ -1250,6 +1254,14 @@ export const api = {
   staleProspectsConsoleLettersZipDownloadUrl: (runId: string) => {
     const base = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
     return `${base}/stale-listings/prospects-console/prospects/letters-zip/${encodeURIComponent(runId)}/download`;
+  },
+
+  // Same run's letters merged into one PDF instead of a zip of separate
+  // files — same "direct browser-navigable URL" reasoning as the zip
+  // download above.
+  staleProspectsConsoleLettersPdfDownloadUrl: (runId: string) => {
+    const base = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
+    return `${base}/stale-listings/prospects-console/prospects/letters-zip/${encodeURIComponent(runId)}/pdf`;
   },
 
   staleListingsBackfillPostcodes: (token: string) =>

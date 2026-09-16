@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from pypdf import PdfWriter
 from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -406,6 +407,14 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
             await db.commit()
             return
 
+        # Deterministic order for both artifacts -- entries arrives in
+        # whatever order the concurrent _one() tasks happened to finish in,
+        # which is fine for a zip (each file stands alone) but would make
+        # the merged PDF's page order effectively random run to run. Sort
+        # by filename (Havlo-letter-<property_code>.pdf), so the merged
+        # file always lists in the same, predictable order.
+        entries.sort(key=lambda e: e[0])
+
         buf = io.BytesIO()
         used_names: set[str] = set()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -418,10 +427,32 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
                 used_names.add(final_name)
                 zf.writestr(final_name, pdf_bytes)
 
+        # Same letters merged into one continuous PDF (2 pages each, so N
+        # letters -> a 2N-page file) for a print shop to run through a
+        # duplex printer in one pass instead of opening 400 separate files.
+        # A single unreadable/corrupt PDF must not sink the whole merge --
+        # skip it and record why, same as a per-prospect generation failure
+        # above skips just that one letter from the zip.
+        merged_filename = None
+        merge_errors: list[str] = []
+        writer = PdfWriter()
+        for name, pdf_bytes in entries:
+            try:
+                writer.append(io.BytesIO(pdf_bytes))
+            except Exception as exc:
+                merge_errors.append(f"{name}: could not merge ({type(exc).__name__})")
+        if len(writer.pages) > 0:
+            merged_buf = io.BytesIO()
+            writer.write(merged_buf)
+            run.letters_pdf_data = merged_buf.getvalue()
+            merged_filename = f"havlo-letters-merged-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pdf"
+        writer.close()
+        run.letters_pdf_filename = merged_filename
+
         run.letters_zip_data = buf.getvalue()
         run.letters_zip_filename = f"havlo-letters-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.zip"
         run.letters_zip_status = "ready"
-        run.letters_zip_error = "; ".join(errors[:20]) if errors else None
+        run.letters_zip_error = "; ".join(errors[:20] + merge_errors[:5]) if (errors or merge_errors) else None
         run.letters_zip_generated_at = datetime.now(timezone.utc)
         await db.commit()
 
@@ -969,6 +1000,7 @@ def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
         "letters_zip_error": run.letters_zip_error,
         "letters_zip_total": run.letters_zip_total,
         "letters_zip_done": run.letters_zip_done,
+        "letters_pdf_filename": run.letters_pdf_filename,
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "completed_at": run.completed_at.isoformat() if run.completed_at else None,
         "created_at": run.created_at.isoformat() if run.created_at else None,

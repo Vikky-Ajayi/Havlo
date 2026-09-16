@@ -755,6 +755,7 @@ class StaleProspectDiscoveryRunResponse(BaseModel):
     letters_zip_error: Optional[str] = None
     letters_zip_total: int = 0
     letters_zip_done: int = 0
+    letters_pdf_filename: Optional[str] = None
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     created_at: Optional[str] = None

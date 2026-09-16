@@ -1672,6 +1672,25 @@ async def download_letters_zip(run_id: str, db: AsyncSession = Depends(get_db)) 
     )
 
 
+@public_router.get("/prospects-console/prospects/letters-zip/{run_id}/pdf")
+async def download_letters_merged_pdf(run_id: str, db: AsyncSession = Depends(get_db)) -> Response:
+    """Serves the same run's letters as one merged PDF instead of a zip of
+    separate files — built alongside the zip in build_letters_zip_for_run,
+    stored as bytea for the same reason (see download_letters_zip)."""
+    try:
+        run_uuid = uuid.UUID(run_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    run = await db.get(StaleListingDiscoveryRun, run_uuid)
+    if not run or not run.letters_pdf_data:
+        raise HTTPException(status_code=404, detail="This merged letters PDF isn't ready (or doesn't exist).")
+    return Response(
+        content=run.letters_pdf_data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{run.letters_pdf_filename or "havlo-letters-merged.pdf"}"'},
+    )
+
+
 @admin_router.post(
     "/admin/prospects/discovery-runs",
     response_model=StaleProspectDiscoveryRunResponse,
