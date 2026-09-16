@@ -733,13 +733,20 @@ class StaleListingDiscoveryRun(Base):
     letters_zip_done: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     letters_zip_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # Same set of letters, merged into one continuous PDF instead of zipped
-    # separately -- built alongside the zip in the same pass (the individual
-    # PDF bytes are already in memory there) so a print shop can run one
-    # file through a duplex printer rather than 400 separate ones. Reuses
-    # letters_zip_status/_total/_done/_generated_at/_error as the shared
-    # progress/terminal-state fields for both artifacts -- they're always
-    # built together, so a second parallel set of status columns would just
-    # be two copies of the same state.
+    # separately -- built alongside the zip in the same pass, so a print
+    # shop can run one file through a duplex printer rather than 400
+    # separate ones. Reuses letters_zip_status/_total/_done/_generated_at/
+    # _error as the shared progress/terminal-state fields for both
+    # artifacts -- they're always built together, so a second parallel set
+    # of status columns would just be two copies of the same state.
+    # letters_pdf_data is UNUSED -- confirmed live that a merged PDF for a
+    # few hundred photo-carrying letters is large enough (tens of MB) to
+    # hit Supabase's own server-side statement_timeout on the UPDATE that
+    # would write it here, independent of any client-side setting. The
+    # file is written to disk instead (merged_letters_pdf_path(run_id) in
+    # stale_listing_discovery.py); this column is kept rather than
+    # migrated away since dropping a column is its own risk for zero
+    # benefit over just never writing to it.
     letters_pdf_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
     letters_pdf_filename: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

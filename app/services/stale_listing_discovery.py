@@ -358,6 +358,13 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
         run.letters_zip_total = len(prospect_ids)
         run.letters_zip_done = 0
         run.letters_zip_error = None
+        # Recorded purely so the merged-PDF download endpoint can rebuild
+        # on demand if the disk file it wrote (see _build_merged_letters_pdf)
+        # isn't present on whichever of the 4 workers serves the download --
+        # Railway's filesystem is per-worker and ephemeral, so "the worker
+        # that built it" and "the worker that serves it" aren't guaranteed
+        # to be the same one or even still running.
+        run.result_json = json.dumps({"prospect_ids": prospect_ids})
         await db.commit()
 
     async def _one(pid: str) -> None:
@@ -432,11 +439,28 @@ def _build_letters_zip_bytes(entries: list[tuple[str, bytes]]) -> bytes:
     return buf.getvalue()
 
 
-def _build_merged_letters_pdf(entries: list[tuple[str, bytes]]) -> tuple[bytes | None, str | None, list[str]]:
+def merged_letters_pdf_path(run_id: str) -> Path:
+    """Deterministic disk location for a run's merged letters PDF -- shared
+    by the writer below and the download endpoint's regenerate-on-miss
+    path, so both agree on where to look without needing another DB
+    column."""
+    return Path("generated") / "stale-prospect-letters-merged" / f"{run_id}.pdf"
+
+
+def _build_merged_letters_pdf(run_id: str, entries: list[tuple[str, bytes]]) -> tuple[str | None, list[str]]:
     """Best-effort -- a single unreadable/corrupt PDF, or the merge failing
     outright, must never take the zip down with it (the zip's bytes are
-    built entirely separately). Returns (pdf_bytes_or_None, filename_or_None,
-    errors)."""
+    built entirely separately).
+
+    Written straight to disk rather than returned as bytes for the DB row
+    to store: confirmed live that a merged PDF for a few hundred
+    photo-carrying letters is large enough (tens of MB) to blow past
+    Supabase's server-side statement_timeout on the UPDATE that would
+    otherwise write it in one go, independent of any client-side timeout
+    setting -- raising OUR timeout further doesn't help since the
+    database itself cancels the statement. A file has no such limit.
+    Returns (filename_or_None, errors).
+    """
     merge_errors: list[str] = []
     try:
         writer = PdfWriter()
@@ -445,18 +469,18 @@ def _build_merged_letters_pdf(entries: list[tuple[str, bytes]]) -> tuple[bytes |
                 writer.append(io.BytesIO(pdf_bytes))
             except Exception as exc:
                 merge_errors.append(f"{name}: could not merge ({type(exc).__name__})")
-        merged_bytes, merged_filename = None, None
+        merged_filename = None
         if len(writer.pages) > 0:
-            merged_buf = io.BytesIO()
-            writer.write(merged_buf)
-            merged_bytes = merged_buf.getvalue()
+            path = merged_letters_pdf_path(run_id)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            writer.write(str(path))
             merged_filename = f"havlo-letters-merged-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pdf"
         writer.close()
-        return merged_bytes, merged_filename, merge_errors
+        return merged_filename, merge_errors
     except Exception as exc:
         logger.exception("Letters merged-PDF build failed — zip is unaffected")
         merge_errors.append(f"merged PDF: {type(exc).__name__}")
-        return None, None, merge_errors
+        return None, merge_errors
 
 
 async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], errors: list[str]) -> None:
@@ -487,22 +511,20 @@ async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], e
     # exhausted the DB pool waiting on the connection this frozen loop was
     # still holding checked out the whole time.
     zip_bytes = await asyncio.to_thread(_build_letters_zip_bytes, entries)
-    merged_bytes, merged_filename, merge_errors = await asyncio.to_thread(_build_merged_letters_pdf, entries)
+    merged_filename, merge_errors = await asyncio.to_thread(_build_merged_letters_pdf, run_id, entries)
 
-    # AsyncSessionLocalBulkWrite, not AsyncSessionLocal -- this single
-    # commit can be tens of MB (zip + merged PDF together, for a few
-    # hundred prospects each carrying an embedded photo). Confirmed live:
-    # this exact write hit the normal engine's 30s command_timeout and
-    # failed outright on a real 197-letter run. See that engine's own
-    # comment in app/db/database.py for why this needs a dedicated
-    # connection rather than raising the timeout everywhere.
+    # AsyncSessionLocalBulkWrite, not AsyncSessionLocal -- the zip alone
+    # (compressed, unlike the merged PDF which is now written straight to
+    # disk instead -- see _build_merged_letters_pdf) can still run to
+    # several MB for a few hundred letters. Kept on the longer-timeout
+    # engine as a margin against the same class of failure at larger
+    # batch sizes; see that engine's own comment in app/db/database.py.
     async with AsyncSessionLocalBulkWrite() as db:
         run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
         if not run:
             return
         run.letters_zip_data = zip_bytes
         run.letters_zip_filename = f"havlo-letters-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.zip"
-        run.letters_pdf_data = merged_bytes
         run.letters_pdf_filename = merged_filename
         run.letters_zip_status = "ready"
         run.letters_zip_error = "; ".join(errors[:20] + merge_errors[:5]) if (errors or merge_errors) else None

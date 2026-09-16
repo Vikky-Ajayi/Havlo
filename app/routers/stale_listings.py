@@ -92,6 +92,7 @@ from app.services.stale_listing_discovery import (
     build_letters_zip_for_run,
     ensure_letter_pdf_path,
     is_target_property_type,
+    merged_letters_pdf_path,
     run_bulk_csv_upload,
     run_discovery,
     serialize_discovery_run,
@@ -1673,21 +1674,41 @@ async def download_letters_zip(run_id: str, db: AsyncSession = Depends(get_db)) 
 
 
 @public_router.get("/prospects-console/prospects/letters-zip/{run_id}/pdf")
-async def download_letters_merged_pdf(run_id: str, db: AsyncSession = Depends(get_db)) -> Response:
+async def download_letters_merged_pdf(run_id: str, db: AsyncSession = Depends(get_db)) -> FileResponse:
     """Serves the same run's letters as one merged PDF instead of a zip of
-    separate files — built alongside the zip in build_letters_zip_for_run,
-    stored as bytea for the same reason (see download_letters_zip)."""
+    separate files — built alongside the zip in build_letters_zip_for_run.
+
+    Written to disk rather than stored on the run row: a merged PDF for a
+    few hundred photo-carrying letters is large enough (tens of MB) that
+    writing it as a single database value hit Supabase's own server-side
+    statement_timeout, independent of anything on our end -- confirmed
+    live on a real 197-letter run. A disk file has no such limit. The
+    tradeoff is Railway's filesystem being per-worker and ephemeral, same
+    as every individual letter PDF -- if the worker that built this file
+    isn't the one serving this request, it won't be here; there's no
+    stored list of which prospects made up this run to rebuild it from,
+    so for now this just asks for a fresh "Generate Folder" rather than
+    silently regenerating (which the individual-letter endpoint can do
+    cheaply for one PDF, but this can't for a few hundred without making
+    this GET itself minutes long)."""
     try:
         run_uuid = uuid.UUID(run_id)
     except ValueError:
         raise HTTPException(status_code=404, detail="Run not found.")
     run = await db.get(StaleListingDiscoveryRun, run_uuid)
-    if not run or not run.letters_pdf_data:
+    if not run or not run.letters_pdf_filename:
         raise HTTPException(status_code=404, detail="This merged letters PDF isn't ready (or doesn't exist).")
-    return Response(
-        content=run.letters_pdf_data,
+    path = merged_letters_pdf_path(run_id)
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="This merged PDF isn't on this server anymore — rebuild it from Generate Folder and download again right away.",
+        )
+    return FileResponse(
+        path,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{run.letters_pdf_filename or "havlo-letters-merged.pdf"}"'},
+        filename=run.letters_pdf_filename,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
     )
 
 
