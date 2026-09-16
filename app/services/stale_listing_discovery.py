@@ -502,16 +502,32 @@ async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], e
 
     # Both of these are pure CPU/IO-bound work (zipfile compression, pypdf
     # page copying) with no DB access -- deliberately run via to_thread and
-    # with no DB session open across them. Confirmed live: doing this
-    # directly on the event loop, inside an open `async with
-    # AsyncSessionLocal()`, froze an entire worker process for minutes on
-    # a real 197-letter merge (each letter carrying an embedded photo) --
-    # every *other* request that worker was handling, including totally
-    # unrelated ones, stalled behind it and then failed once they'd also
-    # exhausted the DB pool waiting on the connection this frozen loop was
-    # still holding checked out the whole time.
+    # with no DB session open across them (see app/db/database.py's
+    # AsyncSessionLocalBulkWrite for the parallel DB-side story).
     zip_bytes = await asyncio.to_thread(_build_letters_zip_bytes, entries)
-    merged_filename, merge_errors = await asyncio.to_thread(_build_merged_letters_pdf, run_id, entries)
+
+    # Cap on the merge specifically, not the zip: confirmed live, even
+    # after moving this to asyncio.to_thread and fixing every timeout on
+    # the write side, a real 197-letter merge (each letter carrying an
+    # embedded photo) still made the whole app unresponsive for minutes --
+    # Python's GIL means CPU-heavy pure-Python work (pypdf's page/object
+    # copying) in a thread still starves the event loop of the interpreter
+    # time it needs to service any other request, to_thread or not. This
+    # isn't a bug to fix with a smarter timeout; it's a real ceiling on
+    # how much of this work a single request-serving process can absorb
+    # without taking the whole site down with it. Until this runs
+    # somewhere else (a real background worker, not a FastAPI background
+    # task in the same process as live traffic), cap it well under where
+    # that happens rather than let every "Generate Folder" risk a repeat.
+    # The zip has no such limit -- it stays available at any batch size.
+    merge_cap = _env_int("STALE_LISTINGS_LETTERS_MERGE_MAX", 60)
+    if len(entries) > merge_cap:
+        merged_filename, merge_errors = None, [
+            f"Merged PDF skipped: {len(entries)} letters exceeds the {merge_cap}-letter cap "
+            "(this batch's zip is unaffected -- see STALE_LISTINGS_LETTERS_MERGE_MAX)."
+        ]
+    else:
+        merged_filename, merge_errors = await asyncio.to_thread(_build_merged_letters_pdf, run_id, entries)
 
     # AsyncSessionLocalBulkWrite, not AsyncSessionLocal -- the zip alone
     # (compressed, unlike the merged PDF which is now written straight to
