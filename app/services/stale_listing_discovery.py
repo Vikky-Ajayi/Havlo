@@ -414,6 +414,48 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
                 await db.commit()
 
 
+def _build_letters_zip_bytes(entries: list[tuple[str, bytes]]) -> bytes:
+    buf = io.BytesIO()
+    used_names: set[str] = set()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, pdf_bytes in entries:
+            final_name = name
+            i = 2
+            while final_name in used_names:
+                final_name = f"{name[:-4]}-{i}.pdf"
+                i += 1
+            used_names.add(final_name)
+            zf.writestr(final_name, pdf_bytes)
+    return buf.getvalue()
+
+
+def _build_merged_letters_pdf(entries: list[tuple[str, bytes]]) -> tuple[bytes | None, str | None, list[str]]:
+    """Best-effort -- a single unreadable/corrupt PDF, or the merge failing
+    outright, must never take the zip down with it (the zip's bytes are
+    built entirely separately). Returns (pdf_bytes_or_None, filename_or_None,
+    errors)."""
+    merge_errors: list[str] = []
+    try:
+        writer = PdfWriter()
+        for name, pdf_bytes in entries:
+            try:
+                writer.append(io.BytesIO(pdf_bytes))
+            except Exception as exc:
+                merge_errors.append(f"{name}: could not merge ({type(exc).__name__})")
+        merged_bytes, merged_filename = None, None
+        if len(writer.pages) > 0:
+            merged_buf = io.BytesIO()
+            writer.write(merged_buf)
+            merged_bytes = merged_buf.getvalue()
+            merged_filename = f"havlo-letters-merged-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pdf"
+        writer.close()
+        return merged_bytes, merged_filename, merge_errors
+    except Exception as exc:
+        logger.exception("Letters merged-PDF build failed — zip is unaffected")
+        merge_errors.append(f"merged PDF: {type(exc).__name__}")
+        return None, None, merge_errors
+
+
 async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], errors: list[str]) -> None:
     async with AsyncSessionLocal() as db:
         run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
@@ -425,66 +467,33 @@ async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], e
             await db.commit()
             return
 
-        # Deterministic order for both artifacts -- entries arrives in
-        # whatever order the concurrent _one() tasks happened to finish in,
-        # which is fine for a zip (each file stands alone) but would make
-        # the merged PDF's page order effectively random run to run. Sort
-        # by filename (Havlo-letter-<property_code>.pdf), so the merged
-        # file always lists in the same, predictable order.
-        entries.sort(key=lambda e: e[0])
+    # Deterministic order for both artifacts -- entries arrives in whatever
+    # order the concurrent _one() tasks happened to finish in, which is
+    # fine for a zip (each file stands alone) but would make the merged
+    # PDF's page order effectively random run to run.
+    entries.sort(key=lambda e: e[0])
 
-        buf = io.BytesIO()
-        used_names: set[str] = set()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            for name, pdf_bytes in entries:
-                final_name = name
-                i = 2
-                while final_name in used_names:
-                    final_name = f"{name[:-4]}-{i}.pdf"
-                    i += 1
-                used_names.add(final_name)
-                zf.writestr(final_name, pdf_bytes)
+    # Both of these are pure CPU/IO-bound work (zipfile compression, pypdf
+    # page copying) with no DB access -- deliberately run via to_thread and
+    # with no DB session open across them. Confirmed live: doing this
+    # directly on the event loop, inside an open `async with
+    # AsyncSessionLocal()`, froze an entire worker process for minutes on
+    # a real 197-letter merge (each letter carrying an embedded photo) --
+    # every *other* request that worker was handling, including totally
+    # unrelated ones, stalled behind it and then failed once they'd also
+    # exhausted the DB pool waiting on the connection this frozen loop was
+    # still holding checked out the whole time.
+    zip_bytes = await asyncio.to_thread(_build_letters_zip_bytes, entries)
+    merged_bytes, merged_filename, merge_errors = await asyncio.to_thread(_build_merged_letters_pdf, entries)
 
-        # Same letters merged into one continuous PDF (2 pages each, so N
-        # letters -> a 2N-page file) for a print shop to run through a
-        # duplex printer in one pass instead of opening 400 separate files.
-        # This whole block is best-effort and must never take the zip down
-        # with it -- confirmed live: an unguarded writer.write() here threw
-        # partway through a real 197-letter run (each with an embedded
-        # photo, so a genuinely large merge) and, because it wasn't caught,
-        # the exception propagated straight out of build_letters_zip_for_run
-        # entirely -- past the "ready" assignment below, past the calling
-        # run_bulk_csv_upload's own try/except (which only wraps the
-        # create-prospects phase, not this call). The run row was left
-        # stuck at letters_zip_done == letters_zip_total forever with
-        # status still "building", since nothing ever reached the commit
-        # that would have flipped it. The zip itself (proven, already
-        # built into `buf` above) has nothing to do with whether the merge
-        # succeeds, so a merge failure now only costs the merged PDF, never
-        # the zip.
-        merged_filename = None
-        merge_errors: list[str] = []
-        try:
-            writer = PdfWriter()
-            for name, pdf_bytes in entries:
-                try:
-                    writer.append(io.BytesIO(pdf_bytes))
-                except Exception as exc:
-                    merge_errors.append(f"{name}: could not merge ({type(exc).__name__})")
-            if len(writer.pages) > 0:
-                merged_buf = io.BytesIO()
-                writer.write(merged_buf)
-                run.letters_pdf_data = merged_buf.getvalue()
-                merged_filename = f"havlo-letters-merged-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pdf"
-            writer.close()
-        except Exception as exc:
-            logger.exception("Letters merged-PDF build failed for run %s — zip is unaffected", run_id)
-            merge_errors.append(f"merged PDF: {type(exc).__name__}")
-            merged_filename = None
-        run.letters_pdf_filename = merged_filename
-
-        run.letters_zip_data = buf.getvalue()
+    async with AsyncSessionLocal() as db:
+        run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+        if not run:
+            return
+        run.letters_zip_data = zip_bytes
         run.letters_zip_filename = f"havlo-letters-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.zip"
+        run.letters_pdf_data = merged_bytes
+        run.letters_pdf_filename = merged_filename
         run.letters_zip_status = "ready"
         run.letters_zip_error = "; ".join(errors[:20] + merge_errors[:5]) if (errors or merge_errors) else None
         run.letters_zip_generated_at = datetime.now(timezone.utc)
