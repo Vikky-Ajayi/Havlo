@@ -1156,11 +1156,12 @@ export const api = {
 
   // Prospects console — deliberately unauthenticated (no token), see the
   // page itself (StaleProspectsConsole.tsx) for why.
-  staleProspectsConsoleList: (params: { city?: string; treated?: boolean; q?: string; limit?: number; offset?: number } = {}) => {
+  staleProspectsConsoleList: (params: { city?: string; treated?: boolean; q?: string; codes?: string; limit?: number; offset?: number } = {}) => {
     const queryParams: Record<string, string> = {};
     if (params.city) queryParams.city = params.city;
     if (params.treated !== undefined) queryParams.treated = String(params.treated);
     if (params.q) queryParams.q = params.q;
+    if (params.codes) queryParams.codes = params.codes;
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });

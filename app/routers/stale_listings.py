@@ -1158,6 +1158,12 @@ async def list_console_prospects(
     city: str | None = Query(default=None),
     treated: bool | None = Query(default=None),
     q: str | None = Query(default=None, description="Search property address or property code"),
+    codes: str | None = Query(
+        default=None,
+        description="Filter to an exact set of property codes — any mix of commas/whitespace/newlines "
+        "(e.g. pasted straight from a spreadsheet column). Composes with the other filters (AND), so "
+        "e.g. codes + treated=false narrows a known list down to just the untreated ones.",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> StaleProspectConsoleListResponse:
@@ -1177,6 +1183,10 @@ async def list_console_prospects(
                 StaleListingProspect.postcode.ilike(like),
             )
         )
+    if codes:
+        code_list = sorted({c for raw in re.split(r"[\s,]+", codes.strip()) if (c := normalize_property_code(raw))})
+        if code_list:
+            filters.append(StaleListingProspect.property_code.in_(code_list))
 
     count_result = await db.execute(
         select(func.count()).select_from(StaleListingProspect).where(*filters)

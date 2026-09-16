@@ -131,6 +131,12 @@ export const StaleProspectsConsole = () => {
   const [treatedFilter, setTreatedFilterRaw] = useState<'all' | 'treated' | 'untreated'>('untreated');
   const [search, setSearchRaw] = useState('');
   const [page, setPage] = useState(0);
+  // Applied separately from the textarea it comes from (codesFilterInput,
+  // declared with the Letters-tab UI below) rather than debounced like
+  // `search` — pasting a couple hundred codes at once shouldn't fire a
+  // query after every keystroke the way a live search box does, so this
+  // only updates (and triggers loadList) when "Apply" is clicked.
+  const [codesFilter, setCodesFilterRaw] = useState('');
   // Changing any filter invalidates whatever page you were on (e.g. page 3
   // of "All" almost certainly doesn't exist once you switch to "Treated") —
   // every filter setter below resets back to page 0 alongside the filter
@@ -138,6 +144,7 @@ export const StaleProspectsConsole = () => {
   const setCityFilter = (v: string) => { setCityFilterRaw(v); setPage(0); };
   const setTreatedFilter = (v: 'all' | 'treated' | 'untreated') => { setTreatedFilterRaw(v); setPage(0); };
   const setSearch = (v: string) => { setSearchRaw(v); setPage(0); };
+  const setCodesFilter = (v: string) => { setCodesFilterRaw(v); setPage(0); };
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -147,6 +154,7 @@ export const StaleProspectsConsole = () => {
         city: cityFilter || undefined,
         treated: treatedFilter === 'all' ? undefined : treatedFilter === 'treated',
         q: search.trim() || undefined,
+        codes: codesFilter.trim() || undefined,
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
       });
@@ -158,7 +166,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setLoading(false);
     }
-  }, [cityFilter, treatedFilter, search, page]);
+  }, [cityFilter, treatedFilter, search, codesFilter, page]);
 
   useEffect(() => {
     const t = setTimeout(loadList, search ? 350 : 0);
@@ -473,6 +481,14 @@ export const StaleProspectsConsole = () => {
   // another location to add more is the realistic way a big mail-out batch
   // gets built up.
   const [selectedLetterIds, setSelectedLetterIds] = useState<Set<string>>(new Set());
+  // Filter-by-code-list: for narrowing straight to a known batch (e.g. "the
+  // 197 codes from that CSV upload") instead of hunting through pages by
+  // eye. Draft text is separate from the applied `codesFilter` so pasting
+  // a couple hundred codes doesn't fire a query per keystroke.
+  const [showCodesFilter, setShowCodesFilter] = useState(false);
+  const [codesFilterDraft, setCodesFilterDraft] = useState('');
+  const applyCodesFilter = () => { setCodesFilter(codesFilterDraft); };
+  const clearCodesFilter = () => { setCodesFilterDraft(''); setCodesFilter(''); };
   const toggleLetterSelected = (id: string) => {
     setSelectedLetterIds(prev => {
       const next = new Set(prev);
@@ -934,7 +950,40 @@ export const StaleProspectsConsole = () => {
                 <option value="all">All</option>
               </select>
               <input className="spc-input" placeholder="Search address, postcode or property code..." value={search} onChange={e => setSearch(e.target.value)} />
+              <button
+                className="spc-btn spc-btn-ghost"
+                onClick={() => setShowCodesFilter(v => !v)}
+                style={codesFilter ? { borderColor: '#111111', fontWeight: 700 } : undefined}
+              >
+                {codesFilter
+                  ? `Filtered to ${new Set(codesFilter.split(/[\s,]+/).filter(Boolean)).size} codes`
+                  : 'Filter by code list'}
+              </button>
             </div>
+
+            {showCodesFilter && (
+              <div style={{ margin: '0 0 18px', padding: 12, borderRadius: 10, border: '1px solid #E5E7EB', background: '#F7F8F8' }}>
+                <p style={{ margin: '0 0 8px', fontSize: 12.5, color: '#556274' }}>
+                  Paste property codes — any mix of commas, spaces or one-per-line works (e.g. straight
+                  from a spreadsheet column). Combines with the filters above.
+                </p>
+                <textarea
+                  className="spc-input"
+                  style={{ width: '100%', minHeight: 90, fontFamily: 'monospace', fontSize: 12.5, resize: 'vertical', boxSizing: 'border-box' }}
+                  placeholder={'1061\n1380\n0872\n...'}
+                  value={codesFilterDraft}
+                  onChange={e => setCodesFilterDraft(e.target.value)}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                  <button className="spc-btn spc-btn-primary" onClick={applyCodesFilter} disabled={!codesFilterDraft.trim()}>
+                    Apply ({new Set(codesFilterDraft.split(/[\s,]+/).filter(Boolean)).size} codes)
+                  </button>
+                  {codesFilter && (
+                    <button className="spc-btn spc-btn-ghost" onClick={clearCodesFilter}>Clear filter</button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {(lettersZipError || lettersRun) && (
               <div
