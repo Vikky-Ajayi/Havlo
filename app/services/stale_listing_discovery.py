@@ -399,18 +399,21 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
 
     try:
         await _finalize_letters_zip(run_id, entries, errors)
-    except Exception:
+    except Exception as exc:
         # The docstring promises this function never raises -- honour that
         # even for a failure mode nothing above anticipated, rather than
         # leaving the run stuck at letters_zip_done == letters_zip_total
         # with status still "building" forever (confirmed live: exactly
         # this happened when the merge step below wasn't yet guarded).
+        # Surface the real exception in letters_zip_error, not a generic
+        # "see server logs" -- there's no way to reach those from the
+        # console, so a vague message here is undiagnosable in practice.
         logger.exception("Letters zip finalize failed unexpectedly for run %s", run_id)
         async with AsyncSessionLocal() as db:
             run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
             if run and run.letters_zip_status != "ready":
                 run.letters_zip_status = "failed"
-                run.letters_zip_error = "Unexpected error while finishing the zip — see server logs."
+                run.letters_zip_error = f"{type(exc).__name__}: {str(exc)[:300]}"
                 await db.commit()
 
 
