@@ -55,30 +55,30 @@ if DATABASE_URL:
     clean_query = urlencode(qs, doseq=True)
     DATABASE_URL = urlunparse(parsed._replace(query=clean_query))
 
-    connect_args: dict = {}
-    if needs_ssl:
-        ssl_ctx = _ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = _ssl.CERT_NONE
-        connect_args["ssl"] = ssl_ctx
-
-    # Disable prepared statements entirely — required for pgbouncer/Supabase pooler.
-    if _is_supabase_pooler(DATABASE_URL):
-        connect_args["statement_cache_size"] = 0
-        connect_args["prepared_statement_cache_size"] = 0
-
-    # Confirmed live, repeatedly: nothing here ever bounded how long a
-    # single query can run. Starlette doesn't cancel an in-flight request
-    # handler just because the HTTP client disconnected, so a slow query
-    # (e.g. /listings/cities, /listings/stats under load) that outlives
-    # its client keeps running against the DB indefinitely — observed
-    # sessions still "active" *hours* later, each pinning a pool
-    # connection that never comes back, until the whole pool is
-    # effectively gone. asyncpg's command_timeout cancels any single
-    # query that runs past this, independent of whether anyone's still
-    # listening for the result — the fix belongs at the driver level
-    # since no per-endpoint code here ever checks for client disconnect.
-    connect_args["command_timeout"] = 30
+    def _connect_args(command_timeout: int) -> dict:
+        args: dict = {}
+        if needs_ssl:
+            ssl_ctx = _ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = _ssl.CERT_NONE
+            args["ssl"] = ssl_ctx
+        # Disable prepared statements entirely — required for pgbouncer/Supabase pooler.
+        if _is_supabase_pooler(DATABASE_URL):
+            args["statement_cache_size"] = 0
+            args["prepared_statement_cache_size"] = 0
+        # Confirmed live, repeatedly: nothing here ever bounded how long a
+        # single query can run. Starlette doesn't cancel an in-flight request
+        # handler just because the HTTP client disconnected, so a slow query
+        # (e.g. /listings/cities, /listings/stats under load) that outlives
+        # its client keeps running against the DB indefinitely — observed
+        # sessions still "active" *hours* later, each pinning a pool
+        # connection that never comes back, until the whole pool is
+        # effectively gone. asyncpg's command_timeout cancels any single
+        # query that runs past this, independent of whether anyone's still
+        # listening for the result — the fix belongs at the driver level
+        # since no per-endpoint code here ever checks for client disconnect.
+        args["command_timeout"] = command_timeout
+        return args
 
     engine = create_async_engine(
         DATABASE_URL,
@@ -90,9 +90,10 @@ if DATABASE_URL:
         # out to hard-cap session-mode connections at 40 total ("FATAL: max
         # clients reached in session mode - max clients are limited to
         # pool_size: 40" — hit directly while testing the DB migration).
-        # 6+3=9 per worker x 4 workers = 36 max, leaving headroom under that
-        # ceiling for Supabase's own overhead.
-        pool_size=6,
+        # 5+3=8 per worker (+1 reserved for bulk_write_engine below) x 4
+        # workers = 36 max, leaving headroom under that ceiling for
+        # Supabase's own overhead.
+        pool_size=5,
         max_overflow=3,
         pool_pre_ping=True,
         # Recycle connections every 30 min instead of 5. With 5-min recycle the
@@ -103,7 +104,34 @@ if DATABASE_URL:
         # against actually-stale sockets.
         pool_recycle=1800,
         pool_timeout=10,             # wait up to 10s for a free connection
-        connect_args=connect_args,
+        connect_args=_connect_args(30),
+    )
+
+    # Dedicated engine/session for the handful of call sites that write a
+    # single large blob in one statement (currently: the letters-zip and
+    # merged-letters-PDF bytes on StaleListingDiscoveryRun -- can run to
+    # tens of MB for a few hundred prospects, each letter carrying an
+    # embedded photo). Confirmed live: writing one of these through the
+    # normal `engine` above hit its 30s command_timeout and failed outright
+    # on a real 197-letter run. This needs real headroom, but bumping the
+    # shared engine's timeout would undo the fix the comment above
+    # documents (a stuck/slow query pinning a connection indefinitely) for
+    # every other query in the app. A separate engine with its own long
+    # timeout gets both: normal queries stay bounded at 30s, and this one
+    # narrow use case gets minutes instead. pool_size=1/no overflow is
+    # deliberate -- this path isn't hit concurrently in practice (an
+    # admin-triggered, occasional background job), and it's carved out of
+    # the same 9-per-worker connection budget above (5+3+1=9), not on top
+    # of it, so the 36-connection ceiling doesn't move.
+    bulk_write_engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        pool_size=1,
+        max_overflow=0,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+        pool_timeout=30,
+        connect_args=_connect_args(180),
     )
 else:
     engine = create_async_engine(
@@ -111,9 +139,19 @@ else:
         echo=False,
         poolclass=NullPool,
     )
+    bulk_write_engine = engine
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)
+
+# For the rare large-single-write call sites described above -- see
+# bulk_write_engine's own comment. Everything else should keep using
+# AsyncSessionLocal.
+AsyncSessionLocalBulkWrite = async_sessionmaker(
+    bind=bulk_write_engine,
     expire_on_commit=False,
     class_=AsyncSession,
 )

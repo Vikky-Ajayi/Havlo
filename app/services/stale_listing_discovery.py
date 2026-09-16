@@ -21,7 +21,7 @@ from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.database import AsyncSessionLocal
+from app.db.database import AsyncSessionLocal, AsyncSessionLocalBulkWrite
 from app.models.models import StaleListingDiscoveryRun, StaleListingProspect
 from app.services import email_service
 from app.services import google_sheets
@@ -489,7 +489,14 @@ async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], e
     zip_bytes = await asyncio.to_thread(_build_letters_zip_bytes, entries)
     merged_bytes, merged_filename, merge_errors = await asyncio.to_thread(_build_merged_letters_pdf, entries)
 
-    async with AsyncSessionLocal() as db:
+    # AsyncSessionLocalBulkWrite, not AsyncSessionLocal -- this single
+    # commit can be tens of MB (zip + merged PDF together, for a few
+    # hundred prospects each carrying an embedded photo). Confirmed live:
+    # this exact write hit the normal engine's 30s command_timeout and
+    # failed outright on a real 197-letter run. See that engine's own
+    # comment in app/db/database.py for why this needs a dedicated
+    # connection rather than raising the timeout everywhere.
+    async with AsyncSessionLocalBulkWrite() as db:
         run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
         if not run:
             return
