@@ -397,6 +397,24 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
 
     await asyncio.gather(*(_one(pid) for pid in prospect_ids))
 
+    try:
+        await _finalize_letters_zip(run_id, entries, errors)
+    except Exception:
+        # The docstring promises this function never raises -- honour that
+        # even for a failure mode nothing above anticipated, rather than
+        # leaving the run stuck at letters_zip_done == letters_zip_total
+        # with status still "building" forever (confirmed live: exactly
+        # this happened when the merge step below wasn't yet guarded).
+        logger.exception("Letters zip finalize failed unexpectedly for run %s", run_id)
+        async with AsyncSessionLocal() as db:
+            run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
+            if run and run.letters_zip_status != "ready":
+                run.letters_zip_status = "failed"
+                run.letters_zip_error = "Unexpected error while finishing the zip — see server logs."
+                await db.commit()
+
+
+async def _finalize_letters_zip(run_id: str, entries: list[tuple[str, bytes]], errors: list[str]) -> None:
     async with AsyncSessionLocal() as db:
         run = await db.get(StaleListingDiscoveryRun, uuid.UUID(run_id))
         if not run:
@@ -430,23 +448,39 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
         # Same letters merged into one continuous PDF (2 pages each, so N
         # letters -> a 2N-page file) for a print shop to run through a
         # duplex printer in one pass instead of opening 400 separate files.
-        # A single unreadable/corrupt PDF must not sink the whole merge --
-        # skip it and record why, same as a per-prospect generation failure
-        # above skips just that one letter from the zip.
+        # This whole block is best-effort and must never take the zip down
+        # with it -- confirmed live: an unguarded writer.write() here threw
+        # partway through a real 197-letter run (each with an embedded
+        # photo, so a genuinely large merge) and, because it wasn't caught,
+        # the exception propagated straight out of build_letters_zip_for_run
+        # entirely -- past the "ready" assignment below, past the calling
+        # run_bulk_csv_upload's own try/except (which only wraps the
+        # create-prospects phase, not this call). The run row was left
+        # stuck at letters_zip_done == letters_zip_total forever with
+        # status still "building", since nothing ever reached the commit
+        # that would have flipped it. The zip itself (proven, already
+        # built into `buf` above) has nothing to do with whether the merge
+        # succeeds, so a merge failure now only costs the merged PDF, never
+        # the zip.
         merged_filename = None
         merge_errors: list[str] = []
-        writer = PdfWriter()
-        for name, pdf_bytes in entries:
-            try:
-                writer.append(io.BytesIO(pdf_bytes))
-            except Exception as exc:
-                merge_errors.append(f"{name}: could not merge ({type(exc).__name__})")
-        if len(writer.pages) > 0:
-            merged_buf = io.BytesIO()
-            writer.write(merged_buf)
-            run.letters_pdf_data = merged_buf.getvalue()
-            merged_filename = f"havlo-letters-merged-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pdf"
-        writer.close()
+        try:
+            writer = PdfWriter()
+            for name, pdf_bytes in entries:
+                try:
+                    writer.append(io.BytesIO(pdf_bytes))
+                except Exception as exc:
+                    merge_errors.append(f"{name}: could not merge ({type(exc).__name__})")
+            if len(writer.pages) > 0:
+                merged_buf = io.BytesIO()
+                writer.write(merged_buf)
+                run.letters_pdf_data = merged_buf.getvalue()
+                merged_filename = f"havlo-letters-merged-{datetime.now(timezone.utc):%Y%m%d-%H%M%S}.pdf"
+            writer.close()
+        except Exception as exc:
+            logger.exception("Letters merged-PDF build failed for run %s — zip is unaffected", run_id)
+            merge_errors.append(f"merged PDF: {type(exc).__name__}")
+            merged_filename = None
         run.letters_pdf_filename = merged_filename
 
         run.letters_zip_data = buf.getvalue()
