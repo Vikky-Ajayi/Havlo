@@ -733,13 +733,10 @@ _LETTER_STATIC_QR_PATH = Path("havlo_frontend/public/stale-listing-qr.png")
 if not _PDF_LIBS_IMPORT_ERROR:
     _LETTER_BODY_STYLE = ParagraphStyle("LetterBody", fontName="Helvetica", fontSize=10, leading=14.5, textColor=_LETTER_INK)
     _LETTER_LEGAL_TEXT = (
-        "Havlo Ltd, registered in England and Wales (Company No. 15369975). Office: 2nd Floor, Berkeley Square, "
-        "London, England, W1J 6BD. Telephone: 0333 339 0423. Email: "
-        "<a href=\"mailto:hello@heyhavlo.com\">hello@heyhavlo.com</a>. Havlo provides property marketing intelligence "
-        "to help sellers understand and improve the performance of their property listings. We identified your "
-        "property using publicly available listing information. You have the right to opt out of future marketing "
-        "communications from us at any time. To opt out, "
-        "<a href=\"mailto:hello@heyhavlo.com\">email us</a> and we will remove your address from our marketing records."
+        "Havlo Ltd (No. 15369975), 2nd Floor, Berkeley Square, London W1J 6BD &middot; 0333 339 0423 &middot; "
+        "<a href=\"mailto:hello@heyhavlo.com\">hello@heyhavlo.com</a>. To opt out of future marketing "
+        "communications, <a href=\"mailto:hello@heyhavlo.com\">email us</a> and we will remove your address "
+        "from our marketing records."
     )
     _LETTER_STYLE_LEGAL = ParagraphStyle("LetterLegal", fontName="Helvetica-Oblique", fontSize=6.8, leading=9.4, textColor=_LETTER_MUTED, alignment=1)
     _LETTER_STYLE_NOTE = ParagraphStyle("LetterNote", fontName="Helvetica-Oblique", fontSize=7.6, leading=10.2, textColor=_LETTER_MUTED, alignment=1)
@@ -1380,7 +1377,12 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     y -= 4
     _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
 
-    footer_note = "This is a property marketing and saleability analysis, not a formal valuation, survey or structural assessment."
+    footer_note = (
+        "If your property is not currently listed for sale, please disregard this letter. We identify "
+        "properties currently listed for sale using publicly available listing information, and occasional "
+        "errors may occur. This is a property marketing and saleability analysis, not a formal valuation, "
+        "survey or structural assessment."
+    )
     qr_h = 91
     qr_bottom = _letter_footer_height(width, footer_note) + 18
     _letter_draw_qr_box(page, M, qr_bottom, width - 2 * M, qr_h, qr_reader, prospect.property_code)
