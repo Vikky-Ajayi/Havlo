@@ -344,7 +344,16 @@ async def build_letters_zip_for_run(run_id: str, prospect_ids: list[str]) -> Non
     Never raises -- always leaves the run row in a terminal letters_zip_status
     ("ready" or "failed") so the console's poll loop has something to stop on.
     """
-    sem = asyncio.Semaphore(max(1, min(8, _env_int("STALE_LISTINGS_LETTERS_ZIP_CONCURRENCY", 6))))
+    # Each concurrent _one() call below holds a DB connection checked out of
+    # the shared pool for the whole time it takes to regenerate that one
+    # letter's PDF (up to 20s -- see ensure_letter_pdf_path), not just for a
+    # quick query. Confirmed live: 6 concurrent regenerations on top of the
+    # routine background scrapers' own connections exhausted every worker's
+    # pool (5 + 3 overflow each), taking the entire site down with
+    # request-level timeouts for several minutes. Capped much lower here as
+    # a direct fix for that -- a slower letters build is fine, an outage
+    # isn't.
+    sem = asyncio.Semaphore(max(1, min(3, _env_int("STALE_LISTINGS_LETTERS_ZIP_CONCURRENCY", 2))))
     lock = asyncio.Lock()
     done = 0
     entries: list[tuple[str, bytes]] = []
