@@ -114,6 +114,7 @@ async def retry_pending_stale_prospect_emails(*, target: int) -> dict[str, int]:
 async def _process_bulk_upload_row(
     row: dict[str, str],
     row_num: int,
+    override_duration_check: bool = False,
 ) -> dict[str, Any]:
     """Process one CSV row exactly like the single manual-add endpoint does:
     scrape the listing, validate it against the same criteria the automated
@@ -128,6 +129,12 @@ async def _process_bulk_upload_row(
     already polls for exactly that status every cycle and will pick these up
     at its own (already-uncapped) pace, without this bulk job needing to
     duplicate email-sending or risk blasting hundreds of emails at once.
+
+    override_duration_check: admin has already manually confirmed these rows
+    are worth prospecting despite Rightmove's current listing-date signal
+    showing under 180 days (e.g. a price reduction reset the apparent
+    listing age) -- price and property-type still have to pass normally,
+    only the staleness check is skipped.
     """
     rightmove_url = (row.get("rightmove_url") or "").strip()
     address = (row.get("address") or "").strip()
@@ -176,9 +183,10 @@ async def _process_bulk_upload_row(
 
         listed_date = parse_listed_date(snapshot.get("listed_date"))
         duration_days = (datetime.now(timezone.utc) - listed_date).days if listed_date else None
-        if duration_days is None or duration_days < 180:
+        if not override_duration_check and (duration_days is None or duration_days < 180):
             return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
                     "address": address, "reason": "not_stale_enough_or_unscrapable"}
+        duration_days = duration_days if duration_days is not None else 0
 
         async with AsyncSessionLocal() as db:
             prospect, token, letter_path = await create_prospect_from_listing_snapshot(
@@ -227,7 +235,7 @@ async def _process_bulk_upload_row(
                 "address": address, "reason": str(exc)[:240]}
 
 
-async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]]) -> None:
+async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]], override_duration_check: bool = False) -> None:
     """Background job behind the console's CSV-upload field: run every row
     through the exact same scrape -> validate -> create-prospect -> letter
     pipeline as the single manual-add endpoint, tracked via the existing
@@ -252,7 +260,7 @@ async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]]) -> None:
 
     async def _run_one(row: dict[str, str], row_num: int) -> None:
         async with sem:
-            outcome = await _process_bulk_upload_row(row, row_num)
+            outcome = await _process_bulk_upload_row(row, row_num, override_duration_check=override_duration_check)
         async with lock:
             counts["candidates_seen"] += 1
             bucket = outcome["outcome"] + ("_prospects_count" if outcome["outcome"] == "created" else "_count")
@@ -287,8 +295,16 @@ async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]]) -> None:
     # immediately and polls the separate letters_zip_status field for this
     # part, since zipping hundreds of PDFs can meaningfully outlast the
     # scrape/validate pass itself.
+    #
+    # Skipped for override_duration_check batches: those run at a scale
+    # (hundreds of prospects at once, by design) where the ZIP's bytes
+    # blow past Supabase's server-side statement_timeout on the write --
+    # confirmed live for the same reason the merged PDF was moved off the
+    # DB entirely (see _build_merged_letters_pdf). Rather than spend real
+    # CPU building a zip that then fails to save, the admin builds letters
+    # for this batch via the per-prospect download endpoint instead.
     created_ids = [c["prospect_id"] for c in results["created"] if c.get("prospect_id")]
-    if created_ids:
+    if created_ids and not override_duration_check:
         await build_letters_zip_for_run(run_id, created_ids)
 
 

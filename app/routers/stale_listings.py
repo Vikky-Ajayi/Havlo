@@ -12,7 +12,7 @@ import string
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1055,6 +1055,12 @@ async def create_stale_prospect_manually(
 async def bulk_upload_stale_prospects(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    override_duration_check: bool = Form(
+        default=False,
+        description="Skip the 180-day listing-duration check for this batch (price and property "
+        "type still apply). For a batch the admin has already manually confirmed is worth "
+        "prospecting despite Rightmove's current listing-date signal showing under 180 days.",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectDiscoveryRunResponse:
     """Console CSV-upload field: run every row through the exact same
@@ -1106,7 +1112,7 @@ async def bulk_upload_stale_prospects(
     await db.commit()
     await db.refresh(run)
 
-    background_tasks.add_task(run_bulk_csv_upload, str(run.id), rows)
+    background_tasks.add_task(run_bulk_csv_upload, str(run.id), rows, override_duration_check)
     return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
 
 
