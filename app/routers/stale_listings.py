@@ -1164,6 +1164,12 @@ async def list_console_prospects(
         "(e.g. pasted straight from a spreadsheet column). Composes with the other filters (AND), so "
         "e.g. codes + treated=false narrows a known list down to just the untreated ones.",
     ),
+    has_house_number: bool | None = Query(
+        default=None,
+        description="true: only prospects whose property_address starts with a number (a normal "
+        "'123 Some Street' address -- the common case). false: only ones that don't (named "
+        "properties like 'Rose Cottage', flat-only addresses, etc.). Omit for no filtering.",
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> StaleProspectConsoleListResponse:
@@ -1187,6 +1193,10 @@ async def list_console_prospects(
         code_list = sorted({c for raw in re.split(r"[\s,]+", codes.strip()) if (c := normalize_property_code(raw))})
         if code_list:
             filters.append(StaleListingProspect.property_code.in_(code_list))
+    if has_house_number is True:
+        filters.append(StaleListingProspect.property_address.op("~")(r"^\s*\d+"))
+    elif has_house_number is False:
+        filters.append(StaleListingProspect.property_address.op("!~")(r"^\s*\d+"))
 
     count_result = await db.execute(
         select(func.count()).select_from(StaleListingProspect).where(*filters)

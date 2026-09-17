@@ -137,6 +137,10 @@ export const StaleProspectsConsole = () => {
   // query after every keystroke the way a live search box does, so this
   // only updates (and triggers loadList) when "Apply" is clicked.
   const [codesFilter, setCodesFilterRaw] = useState('');
+  // 'all': no filtering. 'has': address starts with a number (the normal
+  // "123 Some Street" case). 'no': named properties, flat-only addresses,
+  // etc. that don't start with a number.
+  const [houseNumberFilter, setHouseNumberFilterRaw] = useState<'all' | 'has' | 'no'>('all');
   // Changing any filter invalidates whatever page you were on (e.g. page 3
   // of "All" almost certainly doesn't exist once you switch to "Treated") —
   // every filter setter below resets back to page 0 alongside the filter
@@ -145,6 +149,7 @@ export const StaleProspectsConsole = () => {
   const setTreatedFilter = (v: 'all' | 'treated' | 'untreated') => { setTreatedFilterRaw(v); setPage(0); };
   const setSearch = (v: string) => { setSearchRaw(v); setPage(0); };
   const setCodesFilter = (v: string) => { setCodesFilterRaw(v); setPage(0); };
+  const setHouseNumberFilter = (v: 'all' | 'has' | 'no') => { setHouseNumberFilterRaw(v); setPage(0); };
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -155,6 +160,7 @@ export const StaleProspectsConsole = () => {
         treated: treatedFilter === 'all' ? undefined : treatedFilter === 'treated',
         q: search.trim() || undefined,
         codes: codesFilter.trim() || undefined,
+        hasHouseNumber: houseNumberFilter === 'all' ? undefined : houseNumberFilter === 'has',
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
       });
@@ -166,7 +172,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setLoading(false);
     }
-  }, [cityFilter, treatedFilter, search, codesFilter, page]);
+  }, [cityFilter, treatedFilter, search, codesFilter, houseNumberFilter, page]);
 
   useEffect(() => {
     const t = setTimeout(loadList, search ? 350 : 0);
@@ -798,6 +804,11 @@ export const StaleProspectsConsole = () => {
             <option value="treated">Treated</option>
             <option value="all">All</option>
           </select>
+          <select className="spc-select" value={houseNumberFilter} onChange={e => setHouseNumberFilter(e.target.value as 'all' | 'has' | 'no')}>
+            <option value="all">Any address</option>
+            <option value="has">Has house number</option>
+            <option value="no">No house number</option>
+          </select>
           <input className="spc-input" placeholder="Search address, postcode or property code..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
@@ -948,6 +959,11 @@ export const StaleProspectsConsole = () => {
                 <option value="untreated">Not treated</option>
                 <option value="treated">Treated</option>
                 <option value="all">All</option>
+              </select>
+              <select className="spc-select" value={houseNumberFilter} onChange={e => setHouseNumberFilter(e.target.value as 'all' | 'has' | 'no')}>
+                <option value="all">Any address</option>
+                <option value="has">Has house number</option>
+                <option value="no">No house number</option>
               </select>
               <input className="spc-input" placeholder="Search address, postcode or property code..." value={search} onChange={e => setSearch(e.target.value)} />
               <button
