@@ -524,13 +524,22 @@ def address_with_full_postcode(address: str, postcode: str | None) -> str:
 _FULL_POSTCODE_TAIL_RE = re.compile(r"([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\s*$", re.IGNORECASE)
 
 
-def _isolate_postcode_line(lines: list[str]) -> list[str]:
+def _isolate_postcode_line(lines: list[str], max_width: float | None = None, font: str = "Helvetica", size: float = 10.5) -> list[str]:
     """Force a trailing full postcode onto its own line, splitting it out of
     whatever line it's currently glued to. Used for the printed letter's
     address block, per design feedback: the postcode should never share a
     line with other address text, even when the source address has no comma
     separating them ("...Macclesfield SK11 9LL" -> "...Macclesfield" /
-    "SK11 9LL")."""
+    "SK11 9LL").
+
+    The town name this isolates (e.g. "Doncaster") would otherwise become a
+    brand-new standalone line even though it reads naturally alongside the
+    line above it ("Bessacarr" -> "Bessacarr, Doncaster") -- confirmed live,
+    this was the actual source of some addresses running to one line more
+    than the layout has room for. Merges it back onto the preceding line
+    instead when `max_width` is given and it still fits at that width;
+    falls back to its own line (the original behaviour) when there's no
+    preceding line, no width to check against, or it wouldn't fit."""
     if not lines:
         return lines
     last = lines[-1]
@@ -541,6 +550,10 @@ def _isolate_postcode_line(lines: list[str]) -> list[str]:
     postcode = match.group(1).upper()
     if not prefix:
         return lines  # Already alone on its own line - nothing to do.
+    if len(lines) >= 2 and max_width is not None:
+        merged = f"{lines[-2]}, {prefix}"
+        if pdfmetrics.stringWidth(merged, font, size) <= max_width:
+            return [*lines[:-2], merged, postcode]
     return [*lines[:-1], prefix, postcode]
 
 
@@ -710,6 +723,11 @@ async def expand_report_in_background(prospect_id: str) -> None:
 # casual crop.
 
 _LETTER_MARGIN = 44.0
+# Lowest the letter's page-2 bottom-stats row may end -- same as the page
+# margin. Measured: the row's lowest label sits ~92pt up on a typical
+# letter, so this only ever engages (compressing whitespace gaps) for an
+# unusually tall page-2 layout.
+_LETTER_PAGE2_MIN_BOTTOM_MARGIN = 44.0
 _LETTER_INK = colors.HexColor("#141414") if not _PDF_LIBS_IMPORT_ERROR else None
 _LETTER_MUTED = colors.HexColor("#6B7280") if not _PDF_LIBS_IMPORT_ERROR else None
 _LETTER_ACCENT = colors.HexColor("#A409D2") if not _PDF_LIBS_IMPORT_ERROR else None
@@ -1286,10 +1304,10 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
 
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica", 10.5)
-    address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
-    address_lines = _isolate_postcode_line(address_lines)
-    address_line_h = 14.5
     address_x = M + 7 * page.stringWidth(" ", "Helvetica", 10.5)
+    address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
+    address_lines = _isolate_postcode_line(address_lines, max_width=width - address_x - M, font="Helvetica", size=10.5)
+    address_line_h = 14.5
     if prospect.letter_first_downloaded_at:
         page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
     capped_address_lines = (
@@ -1335,6 +1353,145 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
     y -= g(4)
     y = _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     return y
+
+
+def _letter_draw_page2_body(
+    page, width: float, height: float, M: float, display_address: str, prospect: StaleListingProspect,
+    snapshot: dict[str, Any], scores: dict[str, Any], active_competition: list, comparable_sales: list,
+    photo_reader, qr_reader: BytesIO, qr_h: float, gap_scale: float = 1.0,
+) -> float:
+    """Draws (or, on a throwaway canvas, just measures) page 2's full flow
+    and returns the lowest y reached by the bottom-stats row.
+
+    Same technique as _letter_draw_page1_body: this page's total height
+    varies with its content (gauge-card and bottom-stat label text lengths
+    vary), and the bottom-stats row has to still clear the page's bottom
+    margin. `gap_scale` compresses the fixed whitespace gaps between blocks
+    -- never the text/graphics themselves, and never the deliberate gap
+    above the QR box -- enough to make room.
+    """
+    def g(n: float) -> float:
+        return n * gap_scale
+
+    y = height - 128
+    _letter_draw_tracked_text(
+        page, "Property Performance Snapshot", M, y,
+        font=_LETTER_FONT_EXTRABOLD, size=14, char_space=14 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(22)
+
+    card_h = 70
+    page.setFillColor(colors.white)
+    page.setStrokeColor(_LETTER_CARD_BORDER)
+    page.setLineWidth(1)
+    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=1, fill=1)
+    photo_w = 96
+    if photo_reader is not None:
+        try:
+            page.drawImage(photo_reader, M + 12, y - card_h + 12, photo_w, card_h - 24, mask="auto", preserveAspectRatio=True, anchor="c")
+        except Exception:
+            photo_reader = None
+    if photo_reader is None:
+        page.setFillColor(colors.HexColor("#E5E7EB"))
+        page.roundRect(M + 12, y - card_h + 12, photo_w, card_h - 24, 8, stroke=0, fill=1)
+    tx = M + 12 + photo_w + 18
+    page.setFillColor(_LETTER_MUTED)
+    page.setFont("Helvetica", 9)
+    page.drawString(tx, y - 26, "Prepared specifically for this property")
+    addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
+    _letter_para(page, _letter_esc(display_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
+    y -= card_h + g(12)
+
+    _letter_draw_tracked_text(
+        page, "PROPERTY AT A GLANCE", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(24)
+
+    days = prospect.listing_duration_days
+    months = max(1, round(days / 30)) if days else 0
+    competing_count = len(active_competition) or 3
+    stats = [
+        (_letter_icon_coins, "Current asking price", _letter_fmt_gbp(prospect.asking_price)),
+        (_letter_icon_hourglass, "Time on market", f"{months} months" if months else "—"),
+        (_letter_icon_trending_up, "Price changes", "Reduced" if snapshot.get("price_reduced") else "Nil"),
+        (_letter_icon_people, "Competing properties", str(competing_count)),
+    ]
+    _letter_draw_stat_row(page, M, y, width - 2 * M, stats)
+    y -= 70
+
+    _letter_draw_tracked_text(
+        page, "OUR INITIAL FINDINGS", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(8)
+
+    price_label, price_dir, price_status, price_color = _letter_price_position(prospect.asking_price, comparable_sales)
+    comp_score = scores.get("competition", 50)
+    comp_tier = _letter_score_tier(comp_score)
+    comp_label = {"low": "High Competition", "mid": "Moderate Competition", "high": "Low Competition"}[comp_tier]
+    comp_status = {"low": "Highly competitive", "mid": "Some competition", "high": "Well positioned"}[comp_tier]
+    comp_color = {"low": _LETTER_RED, "mid": _LETTER_ORANGE, "high": _LETTER_GREEN}[comp_tier]
+
+    pres_score = scores.get("listing_presentation", 50)
+    pres_tier = _letter_score_tier(pres_score)
+    pres_label = {"low": "Needs Improvement", "mid": "Average", "high": "Strong"}[pres_tier]
+    pres_status = {"low": "Needs attention", "mid": "Opportunity identified", "high": "Performing well"}[pres_tier]
+    pres_color = {"low": _LETTER_RED, "mid": _LETTER_ORANGE, "high": _LETTER_GREEN}[pres_tier]
+
+    gauge_cards = [
+        ("Pricing and Positioning", price_status, price_color, scores.get("pricing", 50), price_label, f"Current asking price appears <b>{price_dir}</b> comparable properties."),
+        ("Market Competition", comp_status, comp_color, comp_score, comp_label, f"<b>{competing_count}</b> similar properties are currently competing for the same buyers."),
+        ("Listing Presentation", pres_status, pres_color, pres_score, pres_label, "Opportunities identified to improve how the property is presented to buyers."),
+    ]
+    _letter_draw_gauge_row(page, M, y, width - 2 * M, gauge_cards)
+    _gauge_card_h = 160.2
+    y -= _gauge_card_h + g(24)
+
+    _letter_draw_tracked_text(
+        page, "WHAT'S IN THE FULL ASSESSMENT?", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(10)
+    y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
+    y -= g(4)
+
+    y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    # Deliberately NOT scaled by gap_scale: this is the gap the printed
+    # letter was missing (QR box top flush with this paragraph's last line,
+    # reading as the text touching the card) -- roughly one line of
+    # _LETTER_BODY_STYLE's 14.5pt leading. Every other gap on the page
+    # compresses to make room for it instead.
+    y -= 12
+    _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
+    y -= qr_h + g(2)
+
+    bottom_stats = [
+        ("61%", "Of assessed stale listings sold within 9 weeks"),
+        ("87%", "of Havlo recommendations implemented led to renewed buyer interest"),
+        ("10K+", "Stale listings analysed nationwide"),
+        ("YOU", "Stay in Control. We Provide Insight."),
+    ]
+    page.setStrokeColor(colors.HexColor("#DDDDDD"))
+    page.setLineWidth(0.6)
+    page.line(M, y, width - M, y)
+    col_w = (width - 2 * M) / 4
+    lowest_bottom_y = y
+    for i, (num, label) in enumerate(bottom_stats):
+        cx = M + col_w * i + col_w / 2
+        _letter_draw_tracked_text(
+            page, num, cx, y - 22,
+            font=_LETTER_FONT_METRIC, size=13.87, char_space=0, color=_LETTER_INK,
+            align="center",
+        )
+        label_end_y = _letter_draw_tracked_text(
+            page, label, cx, y - 30,
+            font=_LETTER_FONT_REGULAR, size=8.55, char_space=-0.43, color=_LETTER_MUTED,
+            align="center", max_w=col_w - 16, leading=8.55 * 1.05,
+        )
+        lowest_bottom_y = min(lowest_bottom_y, label_end_y)
+
+    return lowest_bottom_y
 
 
 def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:
@@ -1421,147 +1578,26 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     # ── Page 2 ──
     _letter_draw_header(page, width, height)
-    y = height - 128
-    # Spec: Inter/ExtraBold(800)/14px/110% line-height/-3% letter-spacing.
-    _letter_draw_tracked_text(
-        page, "Property Performance Snapshot", M, y,
-        font=_LETTER_FONT_EXTRABOLD, size=14, char_space=14 * -0.03, color=_LETTER_INK,
-    )
-    y -= 22
 
-    card_h = 70
-    page.setFillColor(colors.white)
-    page.setStrokeColor(_LETTER_CARD_BORDER)
-    page.setLineWidth(1)
-    page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=1, fill=1)
-    photo_w = 96
-    if photo_reader is not None:
-        try:
-            page.drawImage(photo_reader, M + 12, y - card_h + 12, photo_w, card_h - 24, mask="auto", preserveAspectRatio=True, anchor="c")
-        except Exception:
-            photo_reader = None
-    if photo_reader is None:
-        page.setFillColor(colors.HexColor("#E5E7EB"))
-        page.roundRect(M + 12, y - card_h + 12, photo_w, card_h - 24, 8, stroke=0, fill=1)
-    tx = M + 12 + photo_w + 18
-    page.setFillColor(_LETTER_MUTED)
-    page.setFont("Helvetica", 9)
-    page.drawString(tx, y - 26, "Prepared specifically for this property")
-    addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
-    _letter_para(page, _letter_esc(display_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
-    y -= card_h + 12
+    # Same measure-then-draw approach as page 1: this page's total height
+    # varies with its content (a wrapped address in the top card, gauge/
+    # bottom-stat label lengths), while the QR box's position and the
+    # bottom-stats row's clearance from the page's bottom margin both
+    # depend on where that content actually ends up. Confirmed live: a
+    # fixed 0pt gap above the QR box here read as the paragraph above it
+    # touching the card.
+    page2_args = (width, height, M, display_address, prospect, snapshot, scores, active_competition, comparable_sales, photo_reader, qr_reader, qr_h)
+    _measure_page2 = rl_canvas.Canvas(BytesIO(), pagesize=A4)
+    bottom_y_full = _letter_draw_page2_body(_measure_page2, *page2_args, gap_scale=1.0)
+    bottom_y_zero = _letter_draw_page2_body(_measure_page2, *page2_args, gap_scale=0.0)
+    total_scalable_gap2 = bottom_y_zero - bottom_y_full
+    overflow2 = _LETTER_PAGE2_MIN_BOTTOM_MARGIN - bottom_y_full
+    if overflow2 > 0 and total_scalable_gap2 > 0:
+        gap_scale2 = max(0.55, 1.0 - overflow2 / total_scalable_gap2)
+    else:
+        gap_scale2 = 1.0
 
-    # Spec: Inter/Bold(700)/10px/150% line-height/-3% letter-spacing/
-    # CAP_HEIGHT leading-trim — same spec as OUR INITIAL FINDINGS and
-    # WHAT'S IN THE FULL ASSESSMENT? below.
-    _letter_draw_tracked_text(
-        page, "PROPERTY AT A GLANCE", M, y,
-        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
-    )
-    y -= 24
-
-    days = prospect.listing_duration_days
-    months = max(1, round(days / 30)) if days else 0
-    competing_count = len(active_competition) or 3
-    stats = [
-        (_letter_icon_coins, "Current asking price", _letter_fmt_gbp(prospect.asking_price)),
-        (_letter_icon_hourglass, "Time on market", f"{months} months" if months else "—"),
-        # Real signal from Rightmove's own listingHistory (see
-        # listing_scraper.py's price_reduced detection) when the snapshot
-        # was scraped after that field existed. Snapshots taken before this
-        # change won't have the key at all — bool(None) is False, so those
-        # correctly show "Nil" rather than a fabricated number, same rule
-        # the report prompt itself enforces for cold outreach.
-        (_letter_icon_trending_up, "Price changes", "Reduced" if snapshot.get("price_reduced") else "Nil"),
-        (_letter_icon_people, "Competing properties", str(competing_count)),
-    ]
-    _letter_draw_stat_row(page, M, y, width - 2 * M, stats)
-    y -= 70
-
-    _letter_draw_tracked_text(
-        page, "OUR INITIAL FINDINGS", M, y,
-        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
-    )
-    y -= 8
-
-    price_label, price_dir, price_status, price_color = _letter_price_position(prospect.asking_price, comparable_sales)
-    comp_score = scores.get("competition", 50)
-    comp_tier = _letter_score_tier(comp_score)
-    comp_label = {"low": "High Competition", "mid": "Moderate Competition", "high": "Low Competition"}[comp_tier]
-    comp_status = {"low": "Highly competitive", "mid": "Some competition", "high": "Well positioned"}[comp_tier]
-    comp_color = {"low": _LETTER_RED, "mid": _LETTER_ORANGE, "high": _LETTER_GREEN}[comp_tier]
-
-    pres_score = scores.get("listing_presentation", 50)
-    pres_tier = _letter_score_tier(pres_score)
-    pres_label = {"low": "Needs Improvement", "mid": "Average", "high": "Strong"}[pres_tier]
-    pres_status = {"low": "Needs attention", "mid": "Opportunity identified", "high": "Performing well"}[pres_tier]
-    pres_color = {"low": _LETTER_RED, "mid": _LETTER_ORANGE, "high": _LETTER_GREEN}[pres_tier]
-
-    gauge_cards = [
-        ("Pricing and Positioning", price_status, price_color, scores.get("pricing", 50), price_label, f"Current asking price appears <b>{price_dir}</b> comparable properties."),
-        ("Market Competition", comp_status, comp_color, comp_score, comp_label, f"<b>{competing_count}</b> similar properties are currently competing for the same buyers."),
-        ("Listing Presentation", pres_status, pres_color, pres_score, pres_label, "Opportunities identified to improve how the property is presented to buyers."),
-    ]
-    _letter_draw_gauge_row(page, M, y, width - 2 * M, gauge_cards)
-    # 4pt was too tight: drawString's y is the text baseline, and an 11pt
-    # bold heading's ascent puts its glyph tops within a couple of points
-    # of the gauge cards' rounded-rect bottom edge at that gap — reading as
-    # the heading touching the card row above it. Raised to 12, then to 24
-    # (doubled again per design feedback, asking for more separation from
-    # "WHAT'S IN THE FULL ASSESSMENT?" below) — the cards themselves stay
-    # at their current height rather than shrinking further; see
-    # _letter_draw_gauge_row's card_h comment for why that's a real ceiling,
-    # not a style choice. The extra 12pt this adds is reclaimed by trimming
-    # the paragraph/QR gaps below by the same total (4->0, 10->2) so this
-    # page's total consumed height is unchanged either way — the last
-    # bottom-stat column ("of Havlo recommendations implemented...", the
-    # longest label) already wraps to enough lines to run close to the
-    # page's bottom margin at the original height budget; this must not
-    # make that worse.
-    _gauge_card_h = 160.2
-    y -= _gauge_card_h + 24
-
-    _letter_draw_tracked_text(
-        page, "WHAT'S IN THE FULL ASSESSMENT?", M, y,
-        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
-    )
-    y -= 10
-    y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
-    y -= 4
-
-    y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    # Trimmed further (4->0, and qr_h+10->qr_h+2 below) to offset the extra
-    # 12pt added above (12->24) between the gauge cards and "WHAT'S IN THE
-    # FULL ASSESSMENT?" — net zero change to this page's total height.
-    _letter_draw_qr_box(page, M, y - qr_h, width - 2 * M, qr_h, qr_reader, prospect.property_code)
-    y -= qr_h + 2
-
-    bottom_stats = [
-        ("61%", "Of assessed stale listings sold within 9 weeks"),
-        ("87%", "of Havlo recommendations implemented led to renewed buyer interest"),
-        ("10K+", "Stale listings analysed nationwide"),
-        ("YOU", "Stay in Control. We Provide Insight."),
-    ]
-    page.setStrokeColor(colors.HexColor("#DDDDDD"))
-    page.setLineWidth(0.6)
-    page.line(M, y, width - M, y)
-    col_w = (width - 2 * M) / 4
-    for i, (num, label) in enumerate(bottom_stats):
-        cx = M + col_w * i + col_w / 2
-        # Metrics number spec: Millik/Regular(400)/13.87px/0 letter-spacing/
-        # CAP_HEIGHT leading-trim.
-        _letter_draw_tracked_text(
-            page, num, cx, y - 22,
-            font=_LETTER_FONT_METRIC, size=13.87, char_space=0, color=_LETTER_INK,
-            align="center",
-        )
-        # Small-text spec: Inter/Regular(400)/8.55px/105% line-height/
-        # -0.43px letter-spacing.
-        _letter_draw_tracked_text(
-            page, label, cx, y - 30,
-            font=_LETTER_FONT_REGULAR, size=8.55, char_space=-0.43, color=_LETTER_MUTED,
-            align="center", max_w=col_w - 16, leading=8.55 * 1.05,
-        )
+    _letter_draw_page2_body(page, *page2_args, gap_scale=gap_scale2)
 
     page.save()
     return os.path.abspath(pdf_path)
