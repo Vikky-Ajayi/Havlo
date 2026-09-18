@@ -1262,6 +1262,81 @@ def _letter_fmt_gbp(value: float | None) -> str:
     return f"£{value:,.0f}"
 
 
+def _letter_draw_page1_body(page, width: float, M: float, display_address: str, prospect: StaleListingProspect, gap_scale: float = 1.0) -> float:
+    """Draws page 1's flowing content -- address block through "Your report
+    is specific to this property." -- and returns the final y.
+
+    `page` can be a throwaway in-memory canvas for measuring only (nothing
+    downstream reads what gets drawn on it). `gap_scale` compresses the
+    fixed whitespace gaps between blocks (never the paragraph text itself,
+    which is measured via Paragraph.wrap() and always drawn at full size)
+    -- used by generate_letter_pdf to guarantee this content never
+    overlaps the QR box fixed below it. Confirmed live: a longer
+    property_address both adds address lines directly and, via the
+    "specifically for {address}" paragraph, can push it onto an extra
+    wrapped line too -- both push this block's bottom edge down, and at
+    gap_scale=1.0 (the original fixed layout) that was sometimes enough to
+    run into the QR box's fixed position below it.
+    """
+    def g(n: float) -> float:
+        return n * gap_scale
+
+    _, height = A4
+    y = height - 150
+
+    page.setFillColor(_LETTER_INK)
+    page.setFont("Helvetica", 10.5)
+    address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
+    address_lines = _isolate_postcode_line(address_lines)
+    address_line_h = 14.5
+    address_x = M + 7 * page.stringWidth(" ", "Helvetica", 10.5)
+    if prospect.letter_first_downloaded_at:
+        page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
+    capped_address_lines = (
+        address_lines if len(address_lines) <= 6
+        else [*address_lines[:5], address_lines[-1]]
+    )
+    for line in ["Regarding your property for sale"] + capped_address_lines:
+        page.drawString(address_x, y, line)
+        y -= address_line_h
+    y -= g(22)
+
+    headline_style = ParagraphStyle("LetterHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=_LETTER_ACCENT)
+    y = _letter_para(page, "Your property has been on the market for more than six months.", M, y, width - 2 * M, headline_style)
+    y -= g(16)
+
+    y = _letter_para(page, "We have reviewed the available market information for this property and identified several factors that may be affecting its ability to attract the right buyer.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= g(8)
+    y = _letter_para(page, "Havlo specialises in analysing properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= g(8)
+    y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(display_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= g(24)
+
+    page.setFillColor(_LETTER_INK)
+    _letter_draw_tracked_text(
+        page, "WHAT WE FOUND", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(10)
+    y = _letter_para(page, "Our initial assessment has identified <b>several areas worth your attention,</b> including potential opportunities around:", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= g(14)
+
+    y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Buyer Appeal"], 2, row_h=26)
+    y -= g(6)
+    y = _letter_para(page, "We've summarised some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= g(24)
+
+    _letter_draw_tracked_text(
+        page, "YOUR FULL ASSESSMENT", M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(10)
+    y = _letter_para(page, "Your complete property assessment contains our detailed analysis and recommendations.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    y -= g(4)
+    y = _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    return y
+
+
 def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:
     """Generate the printable two-page homeowner letter PDF and return its
     absolute path (page 1: intro + initial checklist; page 2: property
@@ -1301,81 +1376,6 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     # ── Page 1 ──
     _letter_draw_header(page, width, height)
-    y = height - 150
-
-    page.setFillColor(_LETTER_INK)
-    page.setFont("Helvetica", 10.5)
-    address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
-    address_lines = _isolate_postcode_line(address_lines)
-    address_line_h = 14.5
-    # In from the margin — not flush with the body text below it (that read
-    # as visually mis-aligned/floating). Measured in actual space-widths at
-    # this font/size rather than a guessed constant: 2 per the original
-    # design feedback, then 5, then 7 total per later rounds of feedback
-    # moving it further right each time.
-    address_x = M + 7 * page.stringWidth(" ", "Helvetica", 10.5)
-    # Dateline: the date this specific letter was first downloaded from the
-    # prospects console (see download_console_letter_pdf) — set once and
-    # never updated on a later re-download, so it stays accurate even
-    # though the PDF file itself may be regenerated again after that (e.g.
-    # Railway's ephemeral filesystem losing the cached copy between
-    # deploys). Blank until the letter has actually been downloaded once.
-    # Right-aligned at the top-right of the page, level with the first
-    # address line, rather than stacked above the address block on the
-    # left — a conventional letter layout (recipient address left, date
-    # right), per design feedback.
-    if prospect.letter_first_downloaded_at:
-        page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
-    # Cap at 6 lines, but never let the postcode (always last, once
-    # _isolate_postcode_line has run) be the one a plain [:6] would drop for
-    # an unusually long address - trim from the middle instead so the
-    # postcode line always survives.
-    capped_address_lines = (
-        address_lines if len(address_lines) <= 6
-        else [*address_lines[:5], address_lines[-1]]
-    )
-    for line in ["Regarding your property for sale"] + capped_address_lines:
-        page.drawString(address_x, y, line)
-        y -= address_line_h
-    y -= 22
-
-    headline_style = ParagraphStyle("LetterHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=_LETTER_ACCENT)
-    y = _letter_para(page, "Your property has been on the market for more than six months.", M, y, width - 2 * M, headline_style)
-    y -= 16
-
-    y = _letter_para(page, "We have reviewed the available market information for this property and identified several factors that may be affecting its ability to attract the right buyer.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 8
-    y = _letter_para(page, "Havlo specialises in analysing properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 8
-    y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(display_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 24
-
-    page.setFillColor(_LETTER_INK)
-    # Same section-heading spec as page 2's headings (Inter Bold 10px/-3%)
-    # — applied here too for consistency across the two pages, since this
-    # is the same kind of section header, not literally one of the three
-    # named in the spec request.
-    _letter_draw_tracked_text(
-        page, "WHAT WE FOUND", M, y,
-        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
-    )
-    y -= 10
-    y = _letter_para(page, "Our initial assessment has identified <b>several areas worth your attention,</b> including potential opportunities around:", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 14
-
-    y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Buyer Appeal"], 2, row_h=26)
-    y -= 6
-    y = _letter_para(page, "We've summarised some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 24
-
-    _letter_draw_tracked_text(
-        page, "YOUR FULL ASSESSMENT", M, y,
-        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
-    )
-    y -= 10
-    y = _letter_para(page, "Your complete property assessment contains our detailed analysis and recommendations.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
-    y -= 4
-    _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
 
     footer_note = (
         "If your property is not currently listed for sale, please disregard this letter. We identify "
@@ -1385,6 +1385,36 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     )
     qr_h = 91
     qr_bottom = _letter_footer_height(width, footer_note) + 18
+    qr_top = qr_bottom + qr_h
+
+    # Measure this letter's actual content against a throwaway canvas
+    # before drawing for real -- address length (and the paragraph that
+    # embeds it) varies per property, so how far down the page this block
+    # ends varies too, and the QR box below is at a fixed position.
+    # Confirmed live: at gap_scale=1.0 (full-size whitespace) that was
+    # sometimes enough for the text to run into the QR box. Two measure
+    # passes (gap_scale=1.0 and 0.0) rather than a hard-coded "total gap"
+    # constant, so this can't silently drift out of sync if someone edits
+    # a gap inside _letter_draw_page1_body later without updating a
+    # separate constant here.
+    _measure_page = rl_canvas.Canvas(BytesIO(), pagesize=A4)
+    y_full_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=1.0)
+    y_no_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=0.0)
+    total_scalable_gap = y_no_gaps - y_full_gaps
+    min_gap_above_qr = 16
+    overflow = (qr_top + min_gap_above_qr) - y_full_gaps
+    if overflow > 0 and total_scalable_gap > 0:
+        # Floored so compression never looks unreasonably cramped even for
+        # an extreme address -- if that floor still isn't enough, the text
+        # ends up merely closer to the QR box than ideal rather than
+        # genuinely overlapping it, which is the failure mode this whole
+        # measure step exists to prevent.
+        gap_scale = max(0.55, 1.0 - overflow / total_scalable_gap)
+    else:
+        gap_scale = 1.0
+
+    _letter_draw_page1_body(page, width, M, display_address, prospect, gap_scale=gap_scale)
+
     _letter_draw_qr_box(page, M, qr_bottom, width - 2 * M, qr_h, qr_reader, prospect.property_code)
     _letter_draw_footer(page, width, footer_note)
     page.showPage()
