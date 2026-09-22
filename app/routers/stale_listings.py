@@ -52,6 +52,7 @@ from app.schemas.schemas import (
     StaleProspectLookupRequest,
     StaleProspectPreviewResponse,
     StaleProspectReportResponse,
+    StaleProspectUsScanRequest,
     StaleListingAdminFinalizeRequest,
     StaleListingAdminItem,
     StaleListingListingSnapshot,
@@ -63,6 +64,7 @@ from app.schemas.schemas import (
     StaleListingSubmitResponse,
 )
 from app.services import email_service, google_sheets, sumup_service
+from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services.stale_prospect_service import (
@@ -924,6 +926,83 @@ def _derive_postcode_and_city(address: str) -> tuple[str | None, str | None]:
     return postcode, city
 
 
+async def _create_us_prospect_manually(
+    payload: StaleProspectAdminCreateRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession,
+) -> StaleProspectAdminCreateResponse:
+    """America console manual-add: a Zillow listing URL plus the address the
+    admin wants printed on the letter. Same validation as the automated US
+    pipeline (price floor, target home type, days on Zillow)."""
+    url = zillow_scraper.normalize_zillow_url(str(payload.rightmove_url))
+    if not zillow_scraper.is_zillow_url(url):
+        raise HTTPException(
+            status_code=400,
+            detail="That doesn't look like a Zillow listing URL (expected https://www.zillow.com/homedetails/..._zpid/).",
+        )
+    zpid = zillow_scraper.zpid_from_url(url) or ""
+    existing = await us_stale_discovery._existing_by_zpid_or_url([zpid] if zpid else [], [url])
+    if existing:
+        raise HTTPException(status_code=409, detail="This Zillow listing has already been prospected.")
+
+    try:
+        scraped = await zillow_scraper.scrape_zillow_listing(url)
+    except Exception as exc:
+        logger.warning("US prospect scrape failed for %s: %s", url, exc)
+        raise HTTPException(status_code=502, detail=f"Could not read that Zillow listing: {str(exc)[:200]}") from exc
+
+    min_price = us_stale_discovery.min_price_default()
+    reason = us_stale_discovery.skip_reason(
+        scraped, min_price=min_price, min_days=us_stale_discovery.min_days_default()
+    )
+    if reason:
+        messages = {
+            "below_minimum_price_or_unscrapable": f"Could not read an asking price of at least ${min_price:,} from this listing.",
+            "not_target_property_type": "Prospect must be a single-family home — condos, townhomes, land and other types are not targeted.",
+            "not_currently_for_sale": "This listing is not currently for sale on Zillow.",
+            "not_stale_enough_or_unscrapable": (
+                "Could not confirm this listing has been on Zillow for at least "
+                f"{us_stale_discovery.min_days_default()} days."
+            ),
+        }
+        raise HTTPException(status_code=400, detail=messages.get(reason, reason))
+
+    snapshot = us_stale_discovery.us_snapshot(scraped, url)
+    address = payload.address.strip()
+    price = extract_price(snapshot.get("price")) or 0.0
+    days = int(scraped.get("days_on_zillow") or 0)
+    prospect, token, letter_path = await create_prospect_from_listing_snapshot(
+        db,
+        rightmove_url=url,
+        property_address=address,
+        listing_snapshot=snapshot,
+        asking_price=float(price),
+        listing_duration_days=days,
+        listed_date=parse_listed_date(snapshot.get("listed_date")),
+        city=snapshot.get("city") or None,
+        is_manual=True,
+        country="US",
+    )
+    preview_url = f"{_frontend_base_url()}/stale-listings/prospect/{token}"
+    await db.commit()
+    await db.refresh(prospect)
+
+    admin_email = (get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if admin_email:
+        background_tasks.add_task(send_prospect_letter_to_admin, str(prospect.id), token, _frontend_base_url())
+        prospect.processing_status = "email_queued"
+        await db.commit()
+
+    return StaleProspectAdminCreateResponse(
+        prospect_id=str(prospect.id),
+        property_code=prospect.property_code,
+        preview_url=preview_url,
+        qr_url=preview_url,
+        letter_pdf_path=letter_path,
+        email_sent=False,
+    )
+
+
 @public_router.post("/prospects-console/prospects/manual", response_model=StaleProspectAdminCreateResponse)
 async def create_stale_prospect_manually(
     payload: StaleProspectAdminCreateRequest,
@@ -942,6 +1021,9 @@ async def create_stale_prospect_manually(
 
     Deliberately unauthenticated — see the ops console page itself for why.
     """
+    if payload.country == "US":
+        return await _create_us_prospect_manually(payload, background_tasks, db)
+
     existing = await db.execute(
         select(StaleListingProspect).where(StaleListingProspect.rightmove_url == str(payload.rightmove_url))
     )
@@ -1061,6 +1143,7 @@ async def bulk_upload_stale_prospects(
         "type still apply). For a batch the admin has already manually confirmed is worth "
         "prospecting despite Rightmove's current listing-date signal showing under 180 days.",
     ),
+    country: str = Form(default="UK", pattern="^(UK|US)$"),
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectDiscoveryRunResponse:
     """Console CSV-upload field: run every row through the exact same
@@ -1084,25 +1167,43 @@ async def bulk_upload_stale_prospects(
         text_content = raw.decode("latin-1")
 
     reader = csv.DictReader(io.StringIO(text_content))
-    if not reader.fieldnames or "rightmove_url" not in reader.fieldnames or "address" not in reader.fieldnames:
-        raise HTTPException(
-            status_code=400,
-            detail="CSV must have 'rightmove_url' and 'address' columns.",
-        )
-    rows = [
-        {"rightmove_url": (row.get("rightmove_url") or "").strip(), "address": (row.get("address") or "").strip()}
-        for row in reader
-        if (row.get("rightmove_url") or "").strip()
-    ]
-    if not rows:
-        raise HTTPException(status_code=400, detail="No rows with a rightmove_url found in that CSV.")
+    if country == "US":
+        # Zillow CSVs only need a listing URL; the address column is optional
+        # (Zillow's own address is used when it's blank).
+        url_columns = [c for c in ("zillow_url", "listing_url", "url", "rightmove_url") if c in (reader.fieldnames or [])]
+        if not url_columns:
+            raise HTTPException(
+                status_code=400,
+                detail="CSV must have a 'zillow_url' column (an optional 'address' column overrides the printed address).",
+            )
+        rows = []
+        for row in reader:
+            row_url = next(((row.get(c) or "").strip() for c in url_columns if (row.get(c) or "").strip()), "")
+            if row_url:
+                rows.append({"rightmove_url": row_url, "address": (row.get("address") or "").strip()})
+        if not rows:
+            raise HTTPException(status_code=400, detail="No rows with a zillow_url found in that CSV.")
+    else:
+        if not reader.fieldnames or "rightmove_url" not in reader.fieldnames or "address" not in reader.fieldnames:
+            raise HTTPException(
+                status_code=400,
+                detail="CSV must have 'rightmove_url' and 'address' columns.",
+            )
+        rows = [
+            {"rightmove_url": (row.get("rightmove_url") or "").strip(), "address": (row.get("address") or "").strip()}
+            for row in reader
+            if (row.get("rightmove_url") or "").strip()
+        ]
+        if not rows:
+            raise HTTPException(status_code=400, detail="No rows with a rightmove_url found in that CSV.")
 
     run = StaleListingDiscoveryRun(
         status="running",
+        country=country,
         dry_run=False,
         location_names=json.dumps(["csv_upload"]),
-        min_price=500000,
-        min_days_on_market=180,
+        min_price=us_stale_discovery.min_price_default() if country == "US" else 500000,
+        min_days_on_market=us_stale_discovery.min_days_default() if country == "US" else 180,
         max_candidates=len(rows),
         max_pages_per_location=0,
         started_at=datetime.now(timezone.utc),
@@ -1112,7 +1213,68 @@ async def bulk_upload_stale_prospects(
     await db.commit()
     await db.refresh(run)
 
-    background_tasks.add_task(run_bulk_csv_upload, str(run.id), rows, override_duration_check)
+    background_tasks.add_task(run_bulk_csv_upload, str(run.id), rows, override_duration_check, country)
+    return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
+
+
+@public_router.get("/prospects-console/us-scan/config")
+async def us_scan_config() -> dict:
+    """What the America console's 'Scan Zillow' panel needs to render: the
+    built-in market list, defaults, and whether the proxy is configured."""
+    return {
+        "proxy_configured": zillow_scraper.proxy_configured(),
+        "regions": [label for label, _slug in zillow_scraper.SEARCH_REGIONS],
+        "min_price": us_stale_discovery.min_price_default(),
+        "min_days_on_market": us_stale_discovery.min_days_default(),
+    }
+
+
+@public_router.post("/prospects-console/us-scan", response_model=StaleProspectDiscoveryRunResponse)
+async def start_us_scan(
+    payload: StaleProspectUsScanRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectDiscoveryRunResponse:
+    """On-demand Zillow discovery for the America console. Unauthenticated
+    like every prospects-console endpoint, so it is deliberately bounded: one
+    scan at a time, and a capped candidate budget per run, because each scan
+    spends residential-proxy credits."""
+    if not zillow_scraper.proxy_configured():
+        raise HTTPException(
+            status_code=400,
+            detail="ZILLOW_SCRAPER_PROXY_URL is not set on the server. Zillow blocks direct requests, so add a residential proxy URL to the backend environment first.",
+        )
+    if await us_stale_discovery.active_us_run_exists():
+        raise HTTPException(status_code=409, detail="A Zillow scan is already running. Wait for it to finish first.")
+
+    locations = [item.strip() for item in (payload.location_names or []) if item.strip()]
+    run = StaleListingDiscoveryRun(
+        status="running",
+        started_at=datetime.now(timezone.utc),
+        country="US",
+        dry_run=payload.dry_run,
+        location_names=json.dumps(locations),
+        min_price=payload.min_price,
+        min_days_on_market=payload.min_days_on_market,
+        max_candidates=payload.max_candidates,
+        max_pages_per_location=payload.max_tail_pages,
+        result_json=json.dumps({"eligible": [], "created": [], "skipped": [], "failed": []}),
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+    background_tasks.add_task(
+        us_stale_discovery.run_us_discovery,
+        str(run.id),
+        us_stale_discovery.UsDiscoveryParams(
+            dry_run=payload.dry_run,
+            location_names=locations or None,
+            max_candidates=payload.max_candidates,
+            max_tail_pages=payload.max_tail_pages,
+            min_price=payload.min_price,
+            min_days_on_market=payload.min_days_on_market,
+        ),
+    )
     return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
 
 
@@ -1176,10 +1338,11 @@ async def list_console_prospects(
         "'123 Some Street' address -- the common case). false: only ones that don't (named "
         "properties like 'Rose Cottage', flat-only addresses, etc.). Omit for no filtering.",
     ),
+    country: str = Query(default="UK", pattern="^(UK|US)$", description="Which market's prospects to list."),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> StaleProspectConsoleListResponse:
-    filters = []
+    filters = [StaleListingProspect.country == country]
     if city:
         filters.append(StaleListingProspect.city == city)
     if treated is True:
@@ -1220,7 +1383,7 @@ async def list_console_prospects(
 
     cities_result = await db.execute(
         select(StaleListingProspect.city)
-        .where(StaleListingProspect.city.is_not(None))
+        .where(StaleListingProspect.city.is_not(None), StaleListingProspect.country == country)
         .distinct()
         .order_by(StaleListingProspect.city.asc())
     )
@@ -1235,7 +1398,10 @@ async def list_console_prospects(
     # parsed — the prospects themselves aren't touched, they're still found
     # via "All locations" or the address/postcode search either way.
     _known_lower = {name.lower() for name, _ in KNOWN_LOCATIONS}
-    cities = [c for (c,) in cities_result.all() if c and c.strip().lower() in _known_lower]
+    cities = [
+        c for (c,) in cities_result.all()
+        if c and (country == "US" or c.strip().lower() in _known_lower)
+    ]
 
     return StaleProspectConsoleListResponse(items=items, total=total, cities=cities)
 
@@ -1276,6 +1442,7 @@ async def list_abandoned_prospects(
         description="Funnel stage to filter to: looked_up | confirmed | details_submitted | paid. Omit for every stage.",
     ),
     q: str | None = Query(default=None, description="Search property address, property code, contact name, or contact email"),
+    country: str = Query(default="UK", pattern="^(UK|US)$"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> StaleProspectAbandonedResponse:
@@ -1289,7 +1456,7 @@ async def list_abandoned_prospects(
     if stage is not None and stage not in _FUNNEL_STATUS_FILTERS:
         raise HTTPException(status_code=422, detail=f"stage must be one of {sorted(_FUNNEL_STATUS_FILTERS)}.")
 
-    filters = [StaleListingProspect.code_looked_up_at.is_not(None)]
+    filters = [StaleListingProspect.code_looked_up_at.is_not(None), StaleListingProspect.country == country]
     if stage:
         filters.append(_FUNNEL_STATUS_FILTERS[stage]())
     if not include_unsubscribed:

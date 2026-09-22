@@ -69,7 +69,8 @@ const STAGE_COLORS: Record<string, { background: string; color: string }> = {
   paid: { background: '#DCFCE7', color: '#15803D' },
 };
 
-const money = (v?: number | null) => v == null ? '—' : `£${Math.round(v).toLocaleString('en-GB')}`;
+const formatMoney = (v: number | null | undefined, us: boolean) =>
+  v == null ? '—' : `${us ? '$' : '£'}${Math.round(v).toLocaleString(us ? 'en-US' : 'en-GB')}`;
 
 function Pager({ page, pageSize, total, onChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -101,13 +102,16 @@ function Pager({ page, pageSize, total, onChange }: { page: number; pageSize: nu
   );
 }
 
-export const StaleProspectsConsole = () => {
+export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US' }) => {
+  const isUS = country === 'US';
+  const money = (v?: number | null) => formatMoney(v, isUS);
+  const sourceName = isUS ? 'Zillow' : 'Rightmove';
   useEffect(() => {
-    document.title = 'Stale Prospects Console — Havlo';
+    document.title = `${isUS ? 'America ' : ''}Stale Prospects Console — Havlo`;
     let meta = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
     if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'robots'); document.head.appendChild(meta); }
     meta.setAttribute('content', 'noindex, nofollow');
-  }, []);
+  }, [isUS]);
 
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1280));
   useEffect(() => {
@@ -161,6 +165,7 @@ export const StaleProspectsConsole = () => {
         q: search.trim() || undefined,
         codes: codesFilter.trim() || undefined,
         hasHouseNumber: houseNumberFilter === 'all' ? undefined : houseNumberFilter === 'has',
+        country,
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
       });
@@ -172,7 +177,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setLoading(false);
     }
-  }, [cityFilter, treatedFilter, search, codesFilter, houseNumberFilter, page]);
+  }, [cityFilter, treatedFilter, search, codesFilter, houseNumberFilter, page, country]);
 
   useEffect(() => {
     const t = setTimeout(loadList, search ? 350 : 0);
@@ -206,6 +211,7 @@ export const StaleProspectsConsole = () => {
         includeUnsubscribed,
         stage: stageFilter || undefined,
         q: abandonedSearch.trim() || undefined,
+        country,
         limit: PAGE_SIZE,
         offset: abandonedPage * PAGE_SIZE,
       });
@@ -216,7 +222,7 @@ export const StaleProspectsConsole = () => {
     } finally {
       setAbandonedLoading(false);
     }
-  }, [includeUnsubscribed, stageFilter, abandonedSearch, abandonedPage]);
+  }, [includeUnsubscribed, stageFilter, abandonedSearch, abandonedPage, country]);
 
   useEffect(() => {
     if (tab !== 'abandoned') return;
@@ -224,7 +230,7 @@ export const StaleProspectsConsole = () => {
     return () => clearTimeout(t);
   }, [tab, loadAbandoned, abandonedSearch]);
 
-  const fmtDate = (v?: string | null) => v ? new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const fmtDate = (v?: string | null) => v ? new Date(v).toLocaleDateString(isUS ? 'en-US' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   // ── Detail / edit ──────────────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -317,6 +323,40 @@ export const StaleProspectsConsole = () => {
     }
   };
 
+  // ── America: on-demand Zillow scan ─────────────────────────────────────
+  const [showScan, setShowScan] = useState(false);
+  const [scanLocations, setScanLocations] = useState('');
+  const [scanMax, setScanMax] = useState(40);
+  const [scanStarting, setScanStarting] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const [scanConfig, setScanConfig] = useState<{ proxy_configured: boolean; regions: string[]; min_price: number; min_days_on_market: number } | null>(null);
+  const openScan = () => {
+    setShowScan(true);
+    setScanError('');
+    api.staleProspectsConsoleUsScanConfig().then(setScanConfig).catch(() => setScanConfig(null));
+  };
+  const startScan = async () => {
+    setScanStarting(true);
+    setScanError('');
+    try {
+      const res = await api.staleProspectsConsoleUsScanStart({
+        location_names: scanLocations.split('\n').map(l => l.trim()).filter(Boolean),
+        max_candidates: scanMax,
+      });
+      setBulkKind('scan');
+      setBulkRun({
+        run_id: res.run_id, status: res.status, candidates_seen: res.candidates_seen,
+        created_prospects_count: res.created_prospects_count, skipped_count: res.skipped_count,
+        failed_count: res.failed_count, max_candidates: res.max_candidates, error_message: res.error_message,
+      });
+      setShowScan(false);
+    } catch (e) {
+      setScanError(e instanceof Error ? e.message : 'Could not start the scan.');
+    } finally {
+      setScanStarting(false);
+    }
+  };
+
   // ── Manual create ──────────────────────────────────────────────────────
   const [showManual, setShowManual] = useState(false);
   const [manualForm, setManualForm] = useState(emptyManualForm());
@@ -342,7 +382,7 @@ export const StaleProspectsConsole = () => {
   // for that to be visible. The robust fix for that specific iOS bug is
   // pinning the body with position:fixed at its current scroll offset,
   // then restoring both on close.
-  const anyModalOpen = !!selectedId || showManual;
+  const anyModalOpen = !!selectedId || showManual || showScan;
   useEffect(() => {
     if (!anyModalOpen) return;
     const scrollY = window.scrollY;
@@ -375,7 +415,7 @@ export const StaleProspectsConsole = () => {
   const submitManual = async () => {
     setManualError('');
     if (!manualForm.rightmove_url.trim() || !manualForm.address.trim()) {
-      setManualError('Rightmove URL and address are both required.');
+      setManualError(`${sourceName} URL and address are both required.`);
       return;
     }
     setManualSubmitting(true);
@@ -383,6 +423,7 @@ export const StaleProspectsConsole = () => {
       const res = await api.staleProspectsConsoleCreateManual({
         rightmove_url: manualForm.rightmove_url.trim(),
         address: manualForm.address.trim(),
+        country,
       });
       setManualSuccess({ property_code: res.property_code, preview_url: res.preview_url });
       setManualForm(emptyManualForm());
@@ -402,10 +443,11 @@ export const StaleProspectsConsole = () => {
   // just as a background job the console polls — a CSV can easily be
   // thousands of rows, far too slow to process within one HTTP request.
   const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkKind, setBulkKind] = useState<'csv' | 'scan'>('csv');
   const [bulkError, setBulkError] = useState('');
   const [bulkRun, setBulkRun] = useState<{
     run_id: string; status: string; candidates_seen: number; created_prospects_count: number;
-    skipped_count: number; failed_count: number; max_candidates: number;
+    skipped_count: number; failed_count: number; max_candidates: number; error_message?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -416,7 +458,7 @@ export const StaleProspectsConsole = () => {
         setBulkRun({
           run_id: res.run_id, status: res.status, candidates_seen: res.candidates_seen,
           created_prospects_count: res.created_prospects_count, skipped_count: res.skipped_count,
-          failed_count: res.failed_count, max_candidates: res.max_candidates,
+          failed_count: res.failed_count, max_candidates: res.max_candidates, error_message: res.error_message,
         });
         if (res.status !== 'running') loadList();
       } catch {
@@ -433,11 +475,12 @@ export const StaleProspectsConsole = () => {
     setBulkError('');
     setBulkUploading(true);
     try {
-      const res = await api.staleProspectsConsoleBulkUpload(file);
+      const res = await api.staleProspectsConsoleBulkUpload(file, country);
+      setBulkKind('csv');
       setBulkRun({
         run_id: res.run_id, status: res.status, candidates_seen: res.candidates_seen,
         created_prospects_count: res.created_prospects_count, skipped_count: res.skipped_count,
-        failed_count: res.failed_count, max_candidates: res.max_candidates,
+        failed_count: res.failed_count, max_candidates: res.max_candidates, error_message: res.error_message,
       });
     } catch (e) {
       setBulkError(e instanceof Error ? e.message : 'Could not start the bulk upload.');
@@ -451,7 +494,7 @@ export const StaleProspectsConsole = () => {
   // from the upload-progress one above since this keeps polling after
   // bulkRun.status is already "completed"/"failed".
   useEffect(() => {
-    if (!bulkRun || bulkRun.status === 'running') return;
+    if (!bulkRun || bulkRun.status === 'running' || bulkKind === 'scan') return;
     // Nothing was created, so build_letters_zip_for_run is never even
     // called server-side — no zip job will ever exist for this run.
     if (bulkRun.created_prospects_count === 0) return;
@@ -478,7 +521,7 @@ export const StaleProspectsConsole = () => {
     }, 3000);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bulkRun?.run_id, bulkRun?.status, bulkRun?.letters_zip_status, bulkRun?.created_prospects_count]);
+  }, [bulkRun?.run_id, bulkRun?.status, bulkRun?.letters_zip_status, bulkRun?.created_prospects_count, bulkKind]);
 
   // ── Letters tab: pick prospects, generate a downloadable ZIP of their
   // letter PDFs ───────────────────────────────────────────────────────────
@@ -665,8 +708,16 @@ export const StaleProspectsConsole = () => {
       <div className="spc-shell">
         <div className="spc-header">
           <div>
-            <h1 className="spc-title">Stale Prospects Console</h1>
-            <p className="spc-subtitle">Every property the automated Rightmove discovery has found (plus anything added by hand below) — browse, edit the report and letter, mark properties as dealt with, and add near-misses manually.</p>
+            <h1 className="spc-title">{isUS ? 'America Stale Prospects Console' : 'Stale Prospects Console'}</h1>
+            <p className="spc-subtitle">
+              {isUS
+                ? 'Every stale Zillow listing found by the America scan or uploaded by CSV (plus anything added by hand) — browse, edit the report and letter, mark properties as dealt with, and generate the letters folder.'
+                : 'Every property the automated Rightmove discovery has found (plus anything added by hand below) — browse, edit the report and letter, mark properties as dealt with, and add near-misses manually.'}
+            </p>
+            <p style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 700 }}>
+              <a href="/dashboard/stale-prospects" style={{ color: isUS ? '#888' : '#111', textDecoration: isUS ? 'none' : 'underline', marginRight: 14 }}>UK</a>
+              <a href="/dashboard/stale-prospects/america" style={{ color: isUS ? '#111' : '#888', textDecoration: isUS ? 'underline' : 'none' }}>America</a>
+            </p>
           </div>
           <div className="spc-header-actions">
             <button className="spc-btn spc-btn-ghost" onClick={tab === 'abandoned' ? loadAbandoned : loadList}>Refresh</button>
@@ -682,12 +733,13 @@ export const StaleProspectsConsole = () => {
             )}
             {tab === 'prospects' && (
               <>
-                <button className="spc-btn spc-btn-primary" onClick={() => setShowManual(true)}>+ Add manually</button>
+                {isUS && <button className="spc-btn spc-btn-primary" onClick={openScan}>Scan Zillow</button>}
+                <button className={isUS ? 'spc-btn spc-btn-ghost' : 'spc-btn spc-btn-primary'} onClick={() => setShowManual(true)}>+ Add manually</button>
                 <label
                   className="spc-btn spc-btn-ghost"
                   style={{ cursor: bulkUploading ? 'wait' : 'pointer', opacity: bulkUploading ? 0.6 : 1 }}
                 >
-                  {bulkUploading ? 'Uploading…' : 'Upload CSV'}
+                  {bulkUploading ? 'Uploading…' : isUS ? 'Upload CSV (zillow_url)' : 'Upload CSV'}
                   <input
                     type="file"
                     accept=".csv"
@@ -705,8 +757,8 @@ export const StaleProspectsConsole = () => {
           <div
             style={{
               margin: '0 0 18px', padding: '12px 16px', borderRadius: 10,
-              background: bulkError ? '#FEF2F2' : bulkRun?.status === 'completed' ? '#F0FDF4' : '#FFFBEB',
-              border: `1px solid ${bulkError ? '#FCA5A5' : bulkRun?.status === 'completed' ? '#86EFAC' : '#FDE68A'}`,
+              background: bulkError ? '#FEF2F2' : bulkRun?.status === 'completed' && !bulkRun.error_message ? '#F0FDF4' : '#FFFBEB',
+              border: `1px solid ${bulkError ? '#FCA5A5' : bulkRun?.status === 'completed' && !bulkRun.error_message ? '#86EFAC' : '#FDE68A'}`,
               fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
             }}
           >
@@ -715,14 +767,22 @@ export const StaleProspectsConsole = () => {
             ) : bulkRun ? (
               <>
                 <span style={{ fontWeight: 700 }}>
-                  {bulkRun.status === 'running' && `Processing CSV upload… ${bulkRun.candidates_seen}/${bulkRun.max_candidates} rows`}
-                  {bulkRun.status === 'completed' && 'CSV upload finished.'}
-                  {bulkRun.status === 'failed' && 'CSV upload failed.'}
+                  {bulkRun.status === 'running' && (bulkKind === 'scan'
+                    ? `Scanning Zillow… ${bulkRun.candidates_seen} listings checked`
+                    : `Processing CSV upload… ${bulkRun.candidates_seen}/${bulkRun.max_candidates} rows`)}
+                  {bulkRun.status === 'completed' && !bulkRun.error_message && (bulkKind === 'scan' ? 'Zillow scan finished.' : 'CSV upload finished.')}
+                  {bulkRun.status === 'completed' && bulkRun.error_message && 'Stopped early — Zillow blocked this session.'}
+                  {bulkRun.status === 'failed' && (bulkKind === 'scan' ? 'Zillow scan failed.' : 'CSV upload failed.')}
                 </span>
+                {bulkRun.error_message && (
+                  <span style={{ color: '#92400E', flexBasis: '100%', fontSize: 12 }}>
+                    {bulkRun.error_message} Try again later, or add/rotate the scraper proxy.
+                  </span>
+                )}
                 <span>Created {bulkRun.created_prospects_count}</span>
                 <span style={{ color: '#92400E' }}>Skipped {bulkRun.skipped_count}</span>
                 {bulkRun.failed_count > 0 && <span style={{ color: '#B91C1C' }}>Failed {bulkRun.failed_count}</span>}
-                {bulkRun.status !== 'running' && bulkRun.created_prospects_count > 0 && (
+                {bulkRun.status !== 'running' && bulkKind === 'csv' && bulkRun.created_prospects_count > 0 && (
                   bulkRun.letters_zip_status === 'ready' ? (
                     <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                       <a
@@ -753,7 +813,7 @@ export const StaleProspectsConsole = () => {
                 {bulkRun.status !== 'running' && (
                   <button
                     className="spc-btn spc-btn-ghost"
-                    style={bulkRun.created_prospects_count > 0 ? undefined : { marginLeft: 'auto' }}
+                    style={bulkRun.created_prospects_count > 0 && bulkKind === 'csv' ? undefined : { marginLeft: 'auto' }}
                     onClick={() => setBulkRun(null)}
                   >
                     Dismiss
@@ -809,7 +869,7 @@ export const StaleProspectsConsole = () => {
             <option value="has">Has house number</option>
             <option value="no">No house number</option>
           </select>
-          <input className="spc-input" placeholder="Search address, postcode or property code..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="spc-input" placeholder={isUS ? 'Search address, ZIP or property code...' : 'Search address, postcode or property code...'} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
         {listError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{listError}</p>}
@@ -833,7 +893,7 @@ export const StaleProspectsConsole = () => {
                   <div className="spc-card-body">
                     <p className="spc-addr">{item.property_address}</p>
                     <div className="spc-meta">
-                      <span>{item.postcode || 'No postcode'}</span>
+                      <span>{item.postcode || (isUS ? 'No ZIP' : 'No postcode')}</span>
                       {item.bedrooms != null && <span>{item.bedrooms} bed</span>}
                       {item.property_type && <span>{item.property_type}</span>}
                     </div>
@@ -965,7 +1025,7 @@ export const StaleProspectsConsole = () => {
                 <option value="has">Has house number</option>
                 <option value="no">No house number</option>
               </select>
-              <input className="spc-input" placeholder="Search address, postcode or property code..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input className="spc-input" placeholder={isUS ? 'Search address, ZIP or property code...' : 'Search address, postcode or property code...'} value={search} onChange={e => setSearch(e.target.value)} />
               <button
                 className="spc-btn spc-btn-ghost"
                 onClick={() => setShowCodesFilter(v => !v)}
@@ -1143,9 +1203,9 @@ export const StaleProspectsConsole = () => {
                     {addressSaveMsg}
                   </p>
                 )}
-                <p className="sub">{detail.postcode || 'No postcode'} · {detail.city || 'Unknown location'} · {money(detail.asking_price)} · {detail.listing_duration_days ?? '?'} days on market</p>
+                <p className="sub">{detail.postcode || (isUS ? 'No ZIP' : 'No postcode')} · {detail.city || 'Unknown location'} · {money(detail.asking_price)} · {detail.listing_duration_days ?? '?'} days on market</p>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <a className="spc-link" href={detail.rightmove_url} target="_blank" rel="noreferrer">View on Rightmove →</a>
+                  <a className="spc-link" href={detail.rightmove_url} target="_blank" rel="noreferrer">View on {sourceName} →</a>
                   {detail.letter_pdf_path && (
                     // Cache-bust with a fresh value on every render of a new
                     // `detail` (i.e. after a save/regenerate) — without it,
@@ -1336,6 +1396,42 @@ export const StaleProspectsConsole = () => {
         </div>
       )}
 
+      {showScan && (
+        <div className="spc-overlay" onClick={() => setShowScan(false)}>
+          <div className="spc-modal spc-modal-sm" onClick={e => e.stopPropagation()}>
+            <button className="spc-close" onClick={() => setShowScan(false)} aria-label="Close">✕</button>
+            <h2>Scan Zillow</h2>
+            <p className="sub">
+              Finds single-family homes listed {scanConfig?.min_days_on_market ?? 180}+ days on Zillow at ${(scanConfig?.min_price ?? 500000).toLocaleString('en-US')}+ and turns each into a report and letter. Each scan spends proxy credits, so only one runs at a time.
+            </p>
+            {scanConfig && !scanConfig.proxy_configured && (
+              <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>
+                ZILLOW_SCRAPER_PROXY_URL isn't set on the backend yet — Zillow blocks direct requests, so the scan can't start until a residential proxy URL is added in Railway.
+              </p>
+            )}
+            <div className="spc-field">
+              <label>Markets (one per line — leave blank for the built-in metro list)</label>
+              <textarea
+                value={scanLocations}
+                onChange={e => setScanLocations(e.target.value)}
+                placeholder={'Austin, TX\nDallas, TX\nboise-id'}
+                rows={4}
+              />
+              {scanConfig && <p style={{ fontSize: 12, color: '#8A8F98', margin: '6px 0 0' }}>Built-in: {scanConfig.regions.slice(0, 8).join(' · ')} … ({scanConfig.regions.length} total). Any other market works as a Zillow slug like "boise-id".</p>}
+            </div>
+            <div className="spc-field">
+              <label>Max new prospects this run</label>
+              <input type="number" min={1} max={100} value={scanMax} onChange={e => setScanMax(Math.max(1, Math.min(100, Number(e.target.value) || 1)))} />
+            </div>
+            {scanError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{scanError}</p>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button className="spc-btn spc-btn-ghost" onClick={() => setShowScan(false)}>Cancel</button>
+              <button className="spc-btn spc-btn-primary" disabled={scanStarting} onClick={startScan}>{scanStarting ? 'Starting…' : 'Start scan'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showManual && (
         <div className="spc-overlay" onClick={closeManual}>
           <div className="spc-modal spc-modal-sm" onClick={e => e.stopPropagation()}>
@@ -1355,13 +1451,13 @@ export const StaleProspectsConsole = () => {
               </div>
             ) : (
               <>
-                <div className="spc-field"><label>Rightmove URL</label><input value={manualForm.rightmove_url} onChange={e => setManualForm({ ...manualForm, rightmove_url: e.target.value })} placeholder="https://www.rightmove.co.uk/properties/..." /></div>
+                <div className="spc-field"><label>{sourceName} URL</label><input value={manualForm.rightmove_url} onChange={e => setManualForm({ ...manualForm, rightmove_url: e.target.value })} placeholder={isUS ? 'https://www.zillow.com/homedetails/.../12345678_zpid/' : 'https://www.rightmove.co.uk/properties/...'} /></div>
                 <div className="spc-field">
                   <label>Full address</label>
                   <textarea
                     value={manualForm.address}
                     onChange={e => setManualForm({ ...manualForm, address: e.target.value })}
-                    placeholder="14 Church Lane, Manchester, M20 3AB"
+                    placeholder={isUS ? '3618 S 2nd St, Austin, TX 78704' : '14 Church Lane, Manchester, M20 3AB'}
                     rows={3}
                   />
                 </div>

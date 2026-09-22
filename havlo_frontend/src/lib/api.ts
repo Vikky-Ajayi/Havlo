@@ -30,6 +30,7 @@ export interface AgentListing {
 export interface StaleProspectDiscoveryRun {
   run_id: string;
   status: string;
+  country?: 'UK' | 'US';
   dry_run: boolean;
   location_names: string[];
   min_price: number;
@@ -1156,22 +1157,24 @@ export const api = {
 
   // Prospects console — deliberately unauthenticated (no token), see the
   // page itself (StaleProspectsConsole.tsx) for why.
-  staleProspectsConsoleList: (params: { city?: string; treated?: boolean; q?: string; codes?: string; hasHouseNumber?: boolean; limit?: number; offset?: number } = {}) => {
+  staleProspectsConsoleList: (params: { city?: string; treated?: boolean; q?: string; codes?: string; hasHouseNumber?: boolean; country?: 'UK' | 'US'; limit?: number; offset?: number } = {}) => {
     const queryParams: Record<string, string> = {};
     if (params.city) queryParams.city = params.city;
     if (params.treated !== undefined) queryParams.treated = String(params.treated);
     if (params.q) queryParams.q = params.q;
     if (params.codes) queryParams.codes = params.codes;
     if (params.hasHouseNumber !== undefined) queryParams.has_house_number = String(params.hasHouseNumber);
+    if (params.country) queryParams.country = params.country;
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
   },
 
-  staleProspectsConsoleListAbandoned: (params: { includeUnsubscribed?: boolean; stage?: string; q?: string; limit?: number; offset?: number } = {}) => {
+  staleProspectsConsoleListAbandoned: (params: { includeUnsubscribed?: boolean; stage?: string; q?: string; country?: 'UK' | 'US'; limit?: number; offset?: number } = {}) => {
     const queryParams: Record<string, string> = {};
     if (params.includeUnsubscribed !== undefined) queryParams.include_unsubscribed = String(params.includeUnsubscribed);
     if (params.stage) queryParams.stage = params.stage;
+    if (params.country) queryParams.country = params.country;
     if (params.q) queryParams.q = params.q;
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
@@ -1204,6 +1207,7 @@ export const api = {
   staleProspectsConsoleCreateManual: (payload: {
     rightmove_url: string;
     address: string;
+    country?: 'UK' | 'US';
   }) =>
     request<{ prospect_id: string; property_code: string; qr_url: string; preview_url: string; letter_pdf_path?: string | null; email_sent: boolean }>(
       '/stale-listings/prospects-console/prospects/manual',
@@ -1214,9 +1218,10 @@ export const api = {
   // over every row in an uploaded CSV. Not a JSON body, so this bypasses the
   // generic request() helper to send multipart/form-data directly. Deliberately
   // unauthenticated (no token), matching every other prospects-console endpoint.
-  staleProspectsConsoleBulkUpload: async (file: File): Promise<StaleProspectDiscoveryRun> => {
+  staleProspectsConsoleBulkUpload: async (file: File, country: 'UK' | 'US' = 'UK'): Promise<StaleProspectDiscoveryRun> => {
     const form = new FormData();
     form.append('file', file);
+    form.append('country', country);
     const res = await fetch(`${API_BASE}/stale-listings/prospects-console/prospects/bulk-upload`, {
       method: 'POST',
       body: form,
@@ -1229,6 +1234,20 @@ export const api = {
     }
     return data as StaleProspectDiscoveryRun;
   },
+
+  // America console: on-demand Zillow discovery run (polled via the same
+  // bulk-upload status endpoint below, which works for any run id).
+  staleProspectsConsoleUsScanConfig: () =>
+    request<{ proxy_configured: boolean; regions: string[]; min_price: number; min_days_on_market: number }>(
+      '/stale-listings/prospects-console/us-scan/config'
+    ),
+
+  staleProspectsConsoleUsScanStart: (payload: { location_names: string[]; max_candidates: number; dry_run?: boolean }) =>
+    request<StaleProspectDiscoveryRun>('/stale-listings/prospects-console/us-scan', {
+      method: 'POST',
+      body: payload,
+      timeout: 30000,
+    }),
 
   staleProspectsConsoleBulkUploadStatus: (runId: string) =>
     request<StaleProspectDiscoveryRun>(

@@ -498,6 +498,10 @@ class StaleListingProspect(Base):
     # this column existed has none, and a small number of listings withhold
     # incode entirely so even a fresh scrape may only yield an outcode.
     postcode: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    # Market this prospect belongs to: "UK" (Rightmove) or "US" (Zillow). The
+    # rightmove_url / rightmove_id columns keep their legacy names but hold the
+    # source listing's URL / ID for either market (Zillow: the zpid).
+    country: Mapped[str] = mapped_column(String(2), nullable=False, default="UK", server_default="UK")
     rightmove_url: Mapped[str] = mapped_column(Text, nullable=False)
     rightmove_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     asking_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -703,6 +707,7 @@ class StaleListingDiscoveryRun(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="queued", index=True)
+    country: Mapped[str] = mapped_column(String(2), nullable=False, default="UK", server_default="UK")
     dry_run: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     location_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     min_price: Mapped[int] = mapped_column(Integer, nullable=False, default=300001)

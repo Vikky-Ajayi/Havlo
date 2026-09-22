@@ -401,7 +401,8 @@ export default function App() {
               <Route path="/dashboard/stale-listings" element={<AdminRoute><DashboardStaleListings /></AdminRoute>} />
               <Route path="/stale-listings/review-dashboard" element={<DashboardStaleListings reviewMode />} />
               {/* Deliberately unauthenticated — see StaleProspectsConsole.tsx */}
-              <Route path="/dashboard/stale-prospects" element={<StaleProspectsConsole />} />
+              <Route path="/dashboard/stale-prospects" element={<StaleProspectsConsole country="UK" />} />
+              <Route path="/dashboard/stale-prospects/america" element={<StaleProspectsConsole country="US" />} />
               <Route path="/dashboard/custom-offers" element={<AdminRoute><DashboardCustomOffers /></AdminRoute>} />
             </Routes>
           </Suspense>

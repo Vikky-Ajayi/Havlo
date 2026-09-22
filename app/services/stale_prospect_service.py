@@ -39,7 +39,7 @@ try:
     import qrcode
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, LETTER
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.lib.utils import ImageReader
@@ -352,6 +352,7 @@ async def create_prospect_from_listing_snapshot(
     expand_report: bool = True,
     city: str | None = None,
     is_manual: bool = False,
+    country: str = "UK",
 ) -> tuple[StaleListingProspect, str, str]:
     """Create a fully processed prospect, report, preview and letter PDF."""
     token = create_access_token()
@@ -362,10 +363,12 @@ async def create_prospect_from_listing_snapshot(
         snapshot=listing_snapshot,
         listing_duration_days=listing_duration_days,
         expand_report=expand_report,
+        market=country,
     )
     preview = build_preview(report, listing_snapshot, property_address)
     now = datetime.now(timezone.utc)
     prospect = StaleListingProspect(
+        country=country,
         property_code=property_code,
         qr_token_hash=hash_access_token(token),
         property_address=property_address,
@@ -462,6 +465,26 @@ def build_preview(report: dict[str, Any], snapshot: dict[str, Any], address: str
         "locked_message": "Unlock the full assessment to see the complete action plan, pricing recommendation, comparable sales review and agent-backed recommendations.",
         "listing_snapshot": snapshot,
     }
+
+
+def prospect_country(prospect: Any) -> str:
+    return "US" if str(getattr(prospect, "country", None) or "UK").upper() == "US" else "UK"
+
+
+_US_ADDRESS_RE = re.compile(
+    r"^(?P<street>.+?),\s*(?P<city>[^,]+?),\s*(?P<state>[A-Za-z]{2})\s+(?P<zip>\d{5}(?:-\d{4})?)\s*$"
+)
+
+
+def us_address_lines(address: str) -> list[str]:
+    """"3618 S 2nd St, Austin, TX 78704" -> ["3618 S 2nd St", "Austin, TX 78704"].
+    Anything that doesn't fit the standard street/city/state/ZIP shape falls
+    back to one line per comma part."""
+    text = re.sub(r"\s+", " ", (address or "").replace("\n", ", ")).strip()
+    match = _US_ADDRESS_RE.match(text)
+    if match:
+        return [match.group("street").strip(), f"{match.group('city').strip()}, {match.group('state').upper()} {match.group('zip')}"]
+    return [part.strip() for part in text.split(",") if part.strip()]
 
 
 def _safe_json(value: str | None) -> dict[str, Any]:
@@ -606,11 +629,16 @@ async def generate_prospect_report(
     listing_duration_days: int | None,
     expand_report: bool = True,
     base_report: dict[str, Any] | None = None,
+    market: str = "UK",
 ) -> dict[str, Any]:
     questions_data = {
         "lead_source": "automated_letter_prospecting",
         "days_on_market": listing_duration_days,
-        "marketing_context": "Rightmove stale listing identified for homeowner letter preview.",
+        "marketing_context": (
+            "Zillow stale listing identified for homeowner letter preview."
+            if str(market).upper() == "US"
+            else "Rightmove stale listing identified for homeowner letter preview."
+        ),
     }
     return await generate_stale_listing_report(
         package="listing_recovery_assessment",
@@ -624,6 +652,7 @@ async def generate_prospect_report(
         # or offers. The report must not imply otherwise.
         has_seller_survey=False,
         base_report=base_report,
+        market=market,
     )
 
 
@@ -656,6 +685,7 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
         listing_duration_days=prospect.listing_duration_days,
         expand_report=True,
         base_report=report,
+        market=prospect_country(prospect),
     )
     expanded["_expanded"] = True
     prospect.report_json = json.dumps(expanded, ensure_ascii=False)
@@ -981,8 +1011,14 @@ def _letter_draw_trustpilot(page, right_x, top_y) -> None:
     page.drawRightString(right_x, top_y - 16, "Based on verified customer feedback")
 
 
+def _letter_page_size(prospect: Any) -> tuple[float, float]:
+    return LETTER if prospect_country(prospect) == "US" else A4
+
+
 def _letter_draw_corner_flag(page, width, height) -> None:
-    x0, y0 = 565.0, 725.0
+    # Positioned from the top-right corner (the A4 values were 565/725 on a
+    # 595x842 page), so the same flag lands identically on US Letter.
+    x0, y0 = width - 30.0, height - 117.0
     w, h = 90.0, 147.0  # generous bleed so the top/right edges stay off-page
     r = 20.0
     page.setFillColor(_LETTER_ACCENT_PALE)
@@ -1274,10 +1310,10 @@ def _letter_score_tier(score: float) -> str:
     return "high"
 
 
-def _letter_fmt_gbp(value: float | None) -> str:
+def _letter_fmt_money(value: float | None, country: str = "UK") -> str:
     if not value:
         return "N/A"
-    return f"£{value:,.0f}"
+    return f"{'$' if country == 'US' else '£'}{value:,.0f}"
 
 
 def _letter_draw_page1_body(page, width: float, M: float, display_address: str, prospect: StaleListingProspect, gap_scale: float = 1.0) -> float:
@@ -1299,17 +1335,21 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
     def g(n: float) -> float:
         return n * gap_scale
 
-    _, height = A4
+    is_us = prospect_country(prospect) == "US"
+    _, height = _letter_page_size(prospect)
     y = height - 150
 
     page.setFillColor(_LETTER_INK)
     page.setFont("Helvetica", 10.5)
     address_x = M + 7 * page.stringWidth(" ", "Helvetica", 10.5)
-    address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
-    address_lines = _isolate_postcode_line(address_lines, max_width=width - address_x - M, font="Helvetica", size=10.5)
+    if is_us:
+        address_lines = us_address_lines(display_address)
+    else:
+        address_lines = [part.strip() for part in re.split(r",|\n", display_address) if part.strip()]
+        address_lines = _isolate_postcode_line(address_lines, max_width=width - address_x - M, font="Helvetica", size=10.5)
     address_line_h = 14.5
     if prospect.letter_first_downloaded_at:
-        page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%d/%m/%Y"))
+        page.drawRightString(width - M, y, prospect.letter_first_downloaded_at.strftime("%m/%d/%Y" if is_us else "%d/%m/%Y"))
     capped_address_lines = (
         address_lines if len(address_lines) <= 6
         else [*address_lines[:5], address_lines[-1]]
@@ -1325,9 +1365,11 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
 
     y = _letter_para(page, "We have reviewed the available market information for this property and identified several factors that may be affecting its ability to attract the right buyer.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= g(8)
-    y = _letter_para(page, "Havlo specialises in analysing properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    specialises = "specializes in analyzing" if is_us else "specialises in analysing"
+    y = _letter_para(page, f"Havlo {specialises} properties that have remained unsold for an extended period, looking at factors such as <b>pricing, competition, positioning and listing presentation.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= g(8)
-    y = _letter_para(page, f"We have prepared a <b>Property Saleability Assessment specifically for {_letter_esc(display_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    assessment_name = "Property Marketability Assessment" if is_us else "Property Saleability Assessment"
+    y = _letter_para(page, f"We have prepared a <b>{assessment_name} specifically for {_letter_esc(display_address)}.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= g(24)
 
     page.setFillColor(_LETTER_INK)
@@ -1341,7 +1383,8 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
 
     y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Buyer Appeal"], 2, row_h=26)
     y -= g(6)
-    y = _letter_para(page, "We've summarised some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    summarised = "summarized" if is_us else "summarised"
+    y = _letter_para(page, f"We've {summarised} some of our initial findings on the following page.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= g(24)
 
     _letter_draw_tracked_text(
@@ -1380,12 +1423,19 @@ def _letter_draw_page2_body(
     )
     y -= g(22)
 
-    card_h = 70
+    photo_w = 96
+    tx = M + 12 + photo_w + 18
+    addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
+    addr_w = width - 2 * M - (tx - M) - 12
+    # The card grows with the address: a wrapped (2-line) address used to run
+    # into the card's bottom border. 38 = offset of the address's first
+    # baseline below the card top; 12 = bottom padding.
+    _, addr_h = Paragraph(_letter_esc(display_address), addr_style).wrap(addr_w, 200)
+    card_h = max(70, 38 + addr_h + 12)
     page.setFillColor(colors.white)
     page.setStrokeColor(_LETTER_CARD_BORDER)
     page.setLineWidth(1)
     page.roundRect(M, y - card_h, width - 2 * M, card_h, 12, stroke=1, fill=1)
-    photo_w = 96
     if photo_reader is not None:
         try:
             page.drawImage(photo_reader, M + 12, y - card_h + 12, photo_w, card_h - 24, mask="auto", preserveAspectRatio=True, anchor="c")
@@ -1394,12 +1444,10 @@ def _letter_draw_page2_body(
     if photo_reader is None:
         page.setFillColor(colors.HexColor("#E5E7EB"))
         page.roundRect(M + 12, y - card_h + 12, photo_w, card_h - 24, 8, stroke=0, fill=1)
-    tx = M + 12 + photo_w + 18
     page.setFillColor(_LETTER_MUTED)
     page.setFont("Helvetica", 9)
     page.drawString(tx, y - 26, "Prepared specifically for this property")
-    addr_style = ParagraphStyle("LetterAddr", fontName="Helvetica-Bold", fontSize=14, leading=17, textColor=_LETTER_INK)
-    _letter_para(page, _letter_esc(display_address), tx, y - 38, width - 2 * M - (tx - M) - 12, addr_style)
+    _letter_para(page, _letter_esc(display_address), tx, y - 38, addr_w, addr_style)
     y -= card_h + g(12)
 
     _letter_draw_tracked_text(
@@ -1412,7 +1460,7 @@ def _letter_draw_page2_body(
     months = max(1, round(days / 30)) if days else 0
     competing_count = len(active_competition) or 3
     stats = [
-        (_letter_icon_coins, "Current asking price", _letter_fmt_gbp(prospect.asking_price)),
+        (_letter_icon_coins, "Current asking price", _letter_fmt_money(prospect.asking_price, prospect_country(prospect))),
         (_letter_icon_hourglass, "Time on market", f"{months} months" if months else "—"),
         (_letter_icon_trending_up, "Price changes", "Reduced" if snapshot.get("price_reduced") else "Nil"),
         (_letter_icon_people, "Competing properties", str(competing_count)),
@@ -1456,7 +1504,8 @@ def _letter_draw_page2_body(
     y = _letter_draw_checklist_grid(page, M, y, width - 2 * M, ["Pricing analysis", "Comparable-property analysis", "Buyer positioning", "Competition analysis", "Listing presentation review", "Recommended changes"], 3, row_h=24)
     y -= g(4)
 
-    y = _letter_para(page, "Your Havlo assessment works alongside your existing estate agent, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    agent_word = "real estate agent" if prospect_country(prospect) == "US" else "estate agent"
+    y = _letter_para(page, f"Your Havlo assessment works alongside your existing {agent_word}, providing recommendations to strengthen your property's market position. <b>You stay fully in control of your property and agent relationship.</b>", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     # Deliberately NOT scaled by gap_scale: this is the gap the printed
     # letter was missing (QR box top flush with this paragraph's last line,
     # reading as the text touching the card) -- roughly one line of
@@ -1469,7 +1518,7 @@ def _letter_draw_page2_body(
     bottom_stats = [
         ("61%", "Of assessed stale listings sold within 9 weeks"),
         ("87%", "of Havlo recommendations implemented led to renewed buyer interest"),
-        ("10K+", "Stale listings analysed nationwide"),
+        ("10K+", "Stale listings analyzed nationwide" if prospect_country(prospect) == "US" else "Stale listings analysed nationwide"),
         ("YOU", "Stay in Control. We Provide Insight."),
     ]
     page.setStrokeColor(colors.HexColor("#DDDDDD"))
@@ -1528,8 +1577,9 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     display_address = address_with_full_postcode(prospect.property_address, prospect.postcode)
 
     M = _LETTER_MARGIN
-    page = rl_canvas.Canvas(str(pdf_path), pagesize=A4)
-    width, height = A4
+    page_size = _letter_page_size(prospect)
+    page = rl_canvas.Canvas(str(pdf_path), pagesize=page_size)
+    width, height = page_size
 
     # ── Page 1 ──
     _letter_draw_header(page, width, height)
@@ -1537,9 +1587,9 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     footer_note = (
         "If your property is not currently listed for sale, please disregard this letter. We identify "
         "properties currently listed for sale using publicly available listing information, and occasional "
-        "errors may occur. This is a property marketing and saleability analysis, not a formal valuation, "
+        "errors may occur. This is a property marketing and {saleability} analysis, not a formal valuation, "
         "survey or structural assessment."
-    )
+    ).replace("{saleability}", "marketability" if prospect_country(prospect) == "US" else "saleability")
     qr_h = 91
     qr_bottom = _letter_footer_height(width, footer_note) + 18
     qr_top = qr_bottom + qr_h
@@ -1554,7 +1604,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # constant, so this can't silently drift out of sync if someone edits
     # a gap inside _letter_draw_page1_body later without updating a
     # separate constant here.
-    _measure_page = rl_canvas.Canvas(BytesIO(), pagesize=A4)
+    _measure_page = rl_canvas.Canvas(BytesIO(), pagesize=page_size)
     y_full_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=1.0)
     y_no_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=0.0)
     total_scalable_gap = y_no_gaps - y_full_gaps
@@ -1587,7 +1637,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # fixed 0pt gap above the QR box here read as the paragraph above it
     # touching the card.
     page2_args = (width, height, M, display_address, prospect, snapshot, scores, active_competition, comparable_sales, photo_reader, qr_reader, qr_h)
-    _measure_page2 = rl_canvas.Canvas(BytesIO(), pagesize=A4)
+    _measure_page2 = rl_canvas.Canvas(BytesIO(), pagesize=page_size)
     bottom_y_full = _letter_draw_page2_body(_measure_page2, *page2_args, gap_scale=1.0)
     bottom_y_zero = _letter_draw_page2_body(_measure_page2, *page2_args, gap_scale=0.0)
     total_scalable_gap2 = bottom_y_zero - bottom_y_full
@@ -1830,9 +1880,9 @@ def _report_multi_para(text, style, space_between=6):
     return out
 
 
-def _report_money(v) -> str:
+def _report_money(v, symbol: str = "£") -> str:
     try:
-        return f"£{float(v):,.0f}"
+        return f"{symbol}{float(v):,.0f}"
     except (TypeError, ValueError):
         return str(v) if v else "—"
 
@@ -1932,7 +1982,7 @@ def generate_full_report_pdf(prospect: StaleListingProspect) -> str:
         Spacer(1, 4),
         Paragraph(_letter_esc(meta_line), styles["meta"]),
         Spacer(1, 8),
-        Paragraph(f'<font color="#A409D2" size="16"><b>{_report_money(prospect.asking_price)}</b></font>'
+        Paragraph(f'<font color="#A409D2" size="16"><b>{_report_money(prospect.asking_price, '$' if prospect_country(prospect) == 'US' else '£')}</b></font>'
                    f'  <font color="#6B7280" size="9">asking</font>', styles["body_left"]),
         Spacer(1, 3),
         Paragraph(_letter_esc(f'{prospect.listing_duration_days if prospect.listing_duration_days is not None else "—"} days on market'), styles["meta"]),

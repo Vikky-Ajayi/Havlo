@@ -299,6 +299,99 @@ Write in a warm but direct tone — honest, professional, and easy for a homeown
 
 
 
+# ── US market localisation ───────────────────────────────────────────────────
+# The stale-listing prompts, fallback copy and STANDING_ADVISORY_ACTIONS are
+# written for the UK market. Rather than fork every prompt, US (Zillow)
+# prospects get an explicit override block appended to the prompt AND every
+# string of the finished report is passed through _us_text, so any UK
+# wording the model (or the fixed fallback copy) still produces is converted.
+
+_US_TEXT_REPLACEMENTS: tuple[tuple[str, str], ...] = (
+    ("Rightmove, Zoopla or other portals", "Zillow, Redfin, Realtor.com or other portals"),
+    ("Rightmove and Zoopla", "Zillow and Redfin"),
+    ("Zoopla and OnTheMarket", "Redfin and Realtor.com"),
+    ("Rightmove", "Zillow"),
+    ("Zoopla", "Redfin"),
+    ("OnTheMarket", "Realtor.com"),
+    ("\u00a3", "$"),
+    ("GBP ", "USD "),
+    ("Land Registry", "public sales records"),
+    ("stamp duty", "closing costs"),
+    ("UK property", "US real estate"),
+    ("UK portals", "US portals"),
+    ("Estate agents", "Real estate agents"),
+    ("estate agents", "real estate agents"),
+    ("Estate agent", "Real estate agent"),
+    ("estate agent", "real estate agent"),
+    ("Neighbourhood", "Neighborhood"),
+    ("neighbourhood", "neighborhood"),
+    ("Neighbouring", "Neighboring"),
+    ("neighbouring", "neighboring"),
+    ("Neighbours", "Neighbors"),
+    ("neighbours", "neighbors"),
+    ("Neighbour", "Neighbor"),
+    ("neighbour", "neighbor"),
+    ("programme", "program"),
+    ("favourably", "favorably"),
+    ("favourable", "favorable"),
+    ("behaviour", "behavior"),
+    ("colour", "color"),
+    ("optimise", "optimize"),
+    ("Optimise", "Optimize"),
+    ("maximise", "maximize"),
+    ("prioritise", "prioritize"),
+    ("realise", "realize"),
+    ("analyse", "analyze"),
+    ("specialise", "specialize"),
+    ("centre", "center"),
+    ("Enquiries", "Inquiries"),
+    ("enquiries", "inquiries"),
+    ("Enquiry", "Inquiry"),
+    ("enquiry", "inquiry"),
+    ("under offer", "pending"),
+    ("Viewings", "Showings"),
+    ("viewings", "showings"),
+    ("Viewing", "Showing"),
+    ("viewing", "showing"),
+)
+
+
+def _us_text(text: str) -> str:
+    if not text:
+        return text
+    for needle, replacement in _US_TEXT_REPLACEMENTS:
+        if needle in text:
+            text = text.replace(needle, replacement)
+    return text
+
+
+def _localize_us(node: Any) -> Any:
+    if isinstance(node, str):
+        return _us_text(node)
+    if isinstance(node, list):
+        return [_localize_us(item) for item in node]
+    if isinstance(node, dict):
+        return {key: _localize_us(value) for key, value in node.items()}
+    return node
+
+
+US_MARKET_OVERRIDE = """
+
+MARKET OVERRIDE, UNITED STATES: this property is a US home listed on Zillow. This
+override takes precedence over every UK reference anywhere above.
+- Currency is US dollars ($). Never use the pound sign or GBP. Sold prices look like "$412,500 sold".
+- Wherever the instructions mention Rightmove, Zoopla, OnTheMarket or "portals", say Zillow,
+  Redfin, Realtor.com and the MLS instead. Never mention Rightmove, Zoopla, OnTheMarket, Land
+  Registry, EPC, stamp duty, council tax, freehold/leasehold or postcodes.
+- Use US real-estate language: "listing agent" or "real estate agent" (never "estate agent"),
+  "showings" (not viewings), "pending" (not under offer), "closing costs", "comps", "price per
+  square foot", "days on Zillow", "ZIP code", "HOA", "yard".
+- Use US spelling (neighbor, color, analyze, program).
+- comparable_sales and active_competition entries must use realistic US street addresses (for
+  example "1418 Oak Ridge Dr") in the same city and ZIP area as the subject property, prices in US
+  dollars, and distances in miles."""
+
+
 async def generate_stale_listing_report(
     package: str,
     questions_data: dict,
@@ -308,6 +401,7 @@ async def generate_stale_listing_report(
     expand_report: bool = True,
     has_seller_survey: bool = True,
     base_report: dict | None = None,
+    market: str = "UK",
 ) -> dict:
     """
     Generate a structured stale listing analysis report using Groq LLM.
@@ -340,6 +434,8 @@ async def generate_stale_listing_report(
     """
     import asyncio as _aio
     import json
+
+    is_us = str(market or "UK").upper() == "US"
 
     # Discovery uses a product-facing package name that is not one of the
     # report-generation tiers. Normalize it before the shared prompt and
@@ -1115,6 +1211,9 @@ ABSOLUTE RULES — breaking any of these is a failure:
         )
 
     prompt = schema_block
+    if is_us:
+        prompt = _us_text(prompt) + US_MARKET_OVERRIDE
+        system_msg = _us_text(system_msg)
 
     def _call_groq() -> str:
         client = _get_client()
@@ -1216,13 +1315,15 @@ Return this exact shape:
   "action_plan_addenda": ["one paragraph for each action, in the same order"]
 }}
 """
+        if is_us:
+            expansion_prompt = _us_text(expansion_prompt) + US_MARKET_OVERRIDE
         client = _get_client()
         response = client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": (
+                    "content": (_us_text if is_us else str)(
                         "You are a senior UK property sales consultant. "
                         "Return only valid JSON and add useful detail without filler."
                         if has_seller_survey
@@ -1566,10 +1667,12 @@ Return this exact shape:
                     expansion_exc,
                 )
         logger.info("Stale listing report generated successfully (package=%s)", package)
-        return _normalise_report_output(parsed)
+        report_out = _normalise_report_output(parsed)
+        return _localize_us(report_out) if is_us else report_out
     except Exception as exc:
         logger.error("Stale listing report generation failed, using fallback: %s", exc)
         # If we had an existing report to enrich, fall back to it unchanged
         # rather than _default_report — that at least keeps the full report
         # consistent with whatever the homeowner already saw in the preview.
-        return _normalise_report_output(deepcopy(base_report) if base_report is not None else deepcopy(_default_report))
+        fallback_out = _normalise_report_output(deepcopy(base_report) if base_report is not None else deepcopy(_default_report))
+        return _localize_us(fallback_out) if is_us else fallback_out

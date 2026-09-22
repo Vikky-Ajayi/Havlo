@@ -235,7 +235,12 @@ async def _process_bulk_upload_row(
                 "address": address, "reason": str(exc)[:240]}
 
 
-async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]], override_duration_check: bool = False) -> None:
+async def run_bulk_csv_upload(
+    run_id: str,
+    rows: list[dict[str, str]],
+    override_duration_check: bool = False,
+    country: str = "UK",
+) -> None:
     """Background job behind the console's CSV-upload field: run every row
     through the exact same scrape -> validate -> create-prospect -> letter
     pipeline as the single manual-add endpoint, tracked via the existing
@@ -246,6 +251,17 @@ async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]], override_
     lock = asyncio.Lock()
     results: dict[str, list[dict[str, Any]]] = {"created": [], "skipped": [], "failed": []}
     counts = {"candidates_seen": 0, "created_prospects_count": 0, "skipped_count": 0, "failed_count": 0}
+
+    # One shared scraping identity for the WHOLE upload, not one per row --
+    # a CSV of hundreds of Zillow URLs processed concurrently under `sem`
+    # would otherwise open that many brand-new, cookie-less sessions at
+    # once, which is both slower to warm up and a much stronger bot signal
+    # than one visitor working through a list. See ZillowSession.
+    us_session = None
+    if country == "US":
+        from app.services import zillow_scraper as zillow
+
+        us_session = zillow.open_session()
 
     async def _flush() -> None:
         async with AsyncSessionLocal() as db:
@@ -260,7 +276,14 @@ async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]], override_
 
     async def _run_one(row: dict[str, str], row_num: int) -> None:
         async with sem:
-            outcome = await _process_bulk_upload_row(row, row_num, override_duration_check=override_duration_check)
+            if country == "US":
+                from app.services.us_stale_discovery import process_us_bulk_upload_row
+
+                outcome = await process_us_bulk_upload_row(
+                    row, row_num, override_duration_check=override_duration_check, session=us_session
+                )
+            else:
+                outcome = await _process_bulk_upload_row(row, row_num, override_duration_check=override_duration_check)
         async with lock:
             counts["candidates_seen"] += 1
             bucket = outcome["outcome"] + ("_prospects_count" if outcome["outcome"] == "created" else "_count")
@@ -286,6 +309,9 @@ async def run_bulk_csv_upload(run_id: str, rows: list[dict[str, str]], override_
                 run.completed_at = datetime.now(timezone.utc)
                 await db.commit()
         return
+    finally:
+        if us_session is not None:
+            await us_session.aclose()
 
     # Auto-build a letters ZIP for whatever this run actually created, so
     # the admin doesn't have to separately re-select the same rows on the
@@ -922,7 +948,7 @@ async def _bulk_existing_prospects(db, candidates: list[Candidate]) -> dict[str,
             StaleListingProspect.rightmove_id,
             StaleListingProspect.rightmove_url,
             StaleListingProspect.property_code,
-        ).where(or_(*conditions))
+        ).where(StaleListingProspect.country == "UK", or_(*conditions))
     )
     matches: dict[str, str] = {}
     for rightmove_id, rightmove_url, property_code in result.all():
@@ -1098,6 +1124,7 @@ def serialize_discovery_run(run: StaleListingDiscoveryRun) -> dict[str, Any]:
     return {
         "run_id": str(run.id),
         "status": run.status,
+        "country": run.country or "UK",
         "dry_run": run.dry_run,
         "location_names": locations,
         "min_price": run.min_price,

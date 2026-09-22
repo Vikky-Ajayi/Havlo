@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -576,6 +576,7 @@ class StaleProspectAdminCreateRequest(BaseModel):
     duplicate what the listing already states."""
     rightmove_url: str = Field(..., min_length=8, max_length=2000)
     address: str = Field(..., min_length=5, max_length=500)
+    country: Literal["UK", "US"] = "UK"
 
 
 class StaleProspectPreviewResponse(BaseModel):
@@ -734,9 +735,20 @@ class StaleProspectDiscoveryRunRequest(BaseModel):
     min_days_on_market: int = Field(180, ge=180)
 
 
+class StaleProspectUsScanRequest(BaseModel):
+    """America console 'Scan Zillow' button: one on-demand discovery run."""
+    dry_run: bool = False
+    location_names: Optional[list[str]] = None
+    max_candidates: int = Field(40, ge=1, le=100)
+    max_tail_pages: int = Field(4, ge=1, le=20)
+    min_price: int = Field(500000, ge=100000)
+    min_days_on_market: int = Field(180, ge=30)
+
+
 class StaleProspectDiscoveryRunResponse(BaseModel):
     run_id: str
     status: str
+    country: str = "UK"
     dry_run: bool
     location_names: list[str] = Field(default_factory=list)
     min_price: int
