@@ -1190,7 +1190,11 @@ async def bulk_upload_stale_prospects(
                 detail="CSV must have 'rightmove_url' and 'address' columns.",
             )
         rows = [
-            {"rightmove_url": (row.get("rightmove_url") or "").strip(), "address": (row.get("address") or "").strip()}
+            {
+                "rightmove_url": (row.get("rightmove_url") or "").strip(),
+                "address": (row.get("address") or "").strip(),
+                "price": (row.get("price") or "").strip(),
+            }
             for row in reader
             if (row.get("rightmove_url") or "").strip()
         ]

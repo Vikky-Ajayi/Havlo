@@ -111,6 +111,10 @@ async def retry_pending_stale_prospect_emails(*, target: int) -> dict[str, int]:
     return {"attempted": attempted, "sent": sent}
 
 
+_MANUAL_ROW_DEFAULT_PRICE = 500000.0
+_MANUAL_ROW_DEFAULT_DURATION_DAYS = 180
+
+
 async def _process_bulk_upload_row(
     row: dict[str, str],
     row_num: int,
@@ -135,6 +139,15 @@ async def _process_bulk_upload_row(
     showing under 180 days (e.g. a price reduction reset the apparent
     listing age) -- price and property-type still have to pass normally,
     only the staleness check is skipped.
+
+    A row whose "rightmove_url" cell isn't an actual rightmove.co.uk URL
+    (blank, or placeholder text such as "n/a") is treated as a manually
+    supplied entry rather than a failed scrape: there's no listing to
+    validate against, so the price/property-type/staleness checks below are
+    skipped, and an optional "price" column (plain GBP number) is used if
+    present, otherwise a placeholder. This is how a real address that was
+    never actually listed -- e.g. a known-good test address -- gets a
+    prospect and letter generated for it inside an otherwise normal batch.
     """
     rightmove_url = (row.get("rightmove_url") or "").strip()
     address = (row.get("address") or "").strip()
@@ -142,19 +155,33 @@ async def _process_bulk_upload_row(
         return {"outcome": "failed", "row": row_num, "rightmove_url": rightmove_url,
                 "reason": "Row is missing rightmove_url or address."}
 
+    is_real_listing_url = rightmove_url.lower().startswith(("http://", "https://")) and "rightmove.co.uk" in rightmove_url.lower()
+    dedup_url = rightmove_url if is_real_listing_url else ""
+
     try:
         async with AsyncSessionLocal() as db:
-            existing = await db.execute(
-                select(StaleListingProspect).where(StaleListingProspect.rightmove_url == rightmove_url)
-            )
+            if is_real_listing_url:
+                existing = await db.execute(
+                    select(StaleListingProspect).where(StaleListingProspect.rightmove_url == rightmove_url)
+                )
+            else:
+                existing = await db.execute(
+                    select(StaleListingProspect).where(
+                        StaleListingProspect.rightmove_url == "",
+                        StaleListingProspect.property_address == address,
+                    )
+                )
             if existing.scalar_one_or_none():
                 return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
                         "address": address, "reason": "duplicate_prospect"}
 
-        try:
-            scraped = await scrape_single_listing(rightmove_url)
-        except Exception as exc:
-            logger.warning("Bulk-upload scrape failed for %s: %s", rightmove_url, exc)
+        if is_real_listing_url:
+            try:
+                scraped = await scrape_single_listing(rightmove_url)
+            except Exception as exc:
+                logger.warning("Bulk-upload scrape failed for %s: %s", rightmove_url, exc)
+                scraped = {}
+        else:
             scraped = {}
 
         snapshot = snapshot_from_scrape(scraped, rightmove_url)
@@ -173,59 +200,68 @@ async def _process_bulk_upload_row(
             else:
                 city = last
 
-        price = extract_price(snapshot.get("price"))
-        if price is None or price < 500000:
-            return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
-                    "address": address, "reason": "below_minimum_price_or_unscrapable"}
-        if not is_target_property_type(snapshot.get("property_type") or ""):
-            return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
-                    "address": address, "reason": "not_target_property_type"}
+        if is_real_listing_url:
+            price = extract_price(snapshot.get("price"))
+            if price is None or price < 500000:
+                return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                        "address": address, "reason": "below_minimum_price_or_unscrapable"}
+            if not is_target_property_type(snapshot.get("property_type") or ""):
+                return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                        "address": address, "reason": "not_target_property_type"}
 
-        listed_date = parse_listed_date(snapshot.get("listed_date"))
-        duration_days = (datetime.now(timezone.utc) - listed_date).days if listed_date else None
-        if not override_duration_check and (duration_days is None or duration_days < 180):
-            return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
-                    "address": address, "reason": "not_stale_enough_or_unscrapable"}
-        duration_days = duration_days if duration_days is not None else 0
+            listed_date = parse_listed_date(snapshot.get("listed_date"))
+            duration_days = (datetime.now(timezone.utc) - listed_date).days if listed_date else None
+            if not override_duration_check and (duration_days is None or duration_days < 180):
+                return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
+                        "address": address, "reason": "not_stale_enough_or_unscrapable"}
+            duration_days = duration_days if duration_days is not None else 0
+        else:
+            # No listing to validate against -- this row was deliberately
+            # hand-added (see docstring), so the automated-discovery
+            # eligibility checks above don't apply.
+            price = extract_price(row.get("price")) or _MANUAL_ROW_DEFAULT_PRICE
+            listed_date = None
+            duration_days = _MANUAL_ROW_DEFAULT_DURATION_DAYS
 
         async with AsyncSessionLocal() as db:
             prospect, token, letter_path = await create_prospect_from_listing_snapshot(
                 db,
-                rightmove_url=rightmove_url,
+                rightmove_url=dedup_url,
                 property_address=address,
                 listing_snapshot=snapshot,
                 asking_price=float(price),
                 listing_duration_days=duration_days,
                 listed_date=listed_date,
                 city=city,
-                is_manual=False,
+                is_manual=not is_real_listing_url,
             )
             await db.commit()
             property_code = prospect.property_code
             prospect_id = str(prospect.id)
 
-        try:
-            # record_stale_listing_address is a plain synchronous function
-            # that makes real (blocking) Google Sheets API calls -- run it in
-            # a thread so one slow/failing Sheets call can't stall this
-            # coroutine's event-loop turn for every other concurrent row.
-            await asyncio.to_thread(google_sheets.record_stale_listing_address, {
-                "rightmove_id": snapshot.get("rightmove_id"),
-                "property_code": property_code,
-                "property_address": address,
-                "postcode": postcode or "",
-                "city": city or "",
-                "asking_price": price,
-                "listed_date": listed_date,
-                "listing_duration_days": duration_days,
-                "property_type": snapshot.get("property_type"),
-                "bedrooms": snapshot.get("bedrooms") or "",
-                "bathrooms": snapshot.get("bathrooms") or "",
-                "listing_url": rightmove_url,
-                "source_status": "bulk_csv_upload",
-            })
-        except Exception as exc:
-            logger.warning("Bulk-upload Sheets sync failed for %s: %s", rightmove_url, exc)
+        if is_real_listing_url:
+            try:
+                # record_stale_listing_address is a plain synchronous function
+                # that makes real (blocking) Google Sheets API calls -- run it in
+                # a thread so one slow/failing Sheets call can't stall this
+                # coroutine's event-loop turn for every other concurrent row.
+                await asyncio.to_thread(google_sheets.record_stale_listing_address, {
+                    "rightmove_id": snapshot.get("rightmove_id"),
+                    "property_code": property_code,
+                    "property_address": address,
+                    "postcode": postcode or "",
+                    "city": city or "",
+                    "asking_price": price,
+                    "listed_date": listed_date,
+                    "listing_duration_days": duration_days,
+                    "property_type": snapshot.get("property_type"),
+                    "bedrooms": snapshot.get("bedrooms") or "",
+                    "bathrooms": snapshot.get("bathrooms") or "",
+                    "listing_url": rightmove_url,
+                    "source_status": "bulk_csv_upload",
+                })
+            except Exception as exc:
+                logger.warning("Bulk-upload Sheets sync failed for %s: %s", rightmove_url, exc)
 
         return {"outcome": "created", "row": row_num, "rightmove_url": rightmove_url,
                 "address": address, "property_code": property_code, "prospect_id": prospect_id}
