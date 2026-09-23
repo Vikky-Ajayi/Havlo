@@ -59,6 +59,7 @@ export const Footer: React.FC = () => {
     { name: 'Terms of Service', href: '/terms' },
     { name: 'Privacy Policy', href: '/privacy-policy' },
     { name: 'Cookie Policy', href: '/cookie-policy' },
+    { name: 'Refund Policy', href: '/refund-policy' },
   ];
 
   return (

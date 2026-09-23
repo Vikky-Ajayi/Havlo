@@ -34,6 +34,7 @@ const Onboarding = React.lazy(() => import('./pages/Onboarding').then(m => ({ de
 const TermsOfUse = React.lazy(() => import('./pages/TermsOfUse').then(m => ({ default: m.TermsOfUse })));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 const CookiePolicy = React.lazy(() => import('./pages/CookiePolicy').then(m => ({ default: m.CookiePolicy })));
+const RefundPolicy = React.lazy(() => import('./pages/RefundPolicy').then(m => ({ default: m.RefundPolicy })));
 const Referrals = React.lazy(() => import('./pages/Referrals').then(m => ({ default: m.Referrals })));
 const PropertyMatching = React.lazy(() => import('./pages/PropertyMatching').then(m => ({ default: m.PropertyMatching })));
 const BuyerNetwork = React.lazy(() => import('./pages/BuyerNetwork').then(m => ({ default: m.BuyerNetwork })));
@@ -271,7 +272,17 @@ const hasEmbeddedCountryBadge = (pathname: string) =>
   EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/uk/listings/');
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { pathname } = useLocation();
+  const { pathname: rawPathname } = useLocation();
+  // React Router's own route matching is case-insensitive by default, so
+  // e.g. /CHECK (as printed on a physical letter, or however a visitor
+  // types/pastes it) still renders StaleProspectWizard — but every check
+  // below used to compare against `pathname` directly, which is whatever
+  // case the browser's address bar actually has. /CHECK failed the
+  // case-sensitive `=== '/check'` check, fell through to the default
+  // branch, and wrapped the wizard's own header in the global Navbar too
+  // — two nav bars stacked. Normalizing once here fixes that for every
+  // path check below, not just /check.
+  const pathname = rawPathname.toLowerCase();
   const isOnboarding = pathname.startsWith('/get-started');
   const isDashboard = pathname.startsWith('/dashboard');
   const isAdmin = pathname.startsWith('/admin');
@@ -364,6 +375,7 @@ export default function App() {
               <Route path="/terms" element={<TermsOfUse />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/cookie-policy" element={<CookiePolicy />} />
+              <Route path="/refund-policy" element={<RefundPolicy />} />
               <Route path="/referrals" element={<Referrals />} />
               <Route path="/property-matching" element={<PropertyMatching />} />
               <Route path="/buyer-network" element={<BuyerNetwork />} />
