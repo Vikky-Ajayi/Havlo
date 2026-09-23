@@ -1982,7 +1982,7 @@ def generate_full_report_pdf(prospect: StaleListingProspect) -> str:
         Spacer(1, 4),
         Paragraph(_letter_esc(meta_line), styles["meta"]),
         Spacer(1, 8),
-        Paragraph(f'<font color="#A409D2" size="16"><b>{_report_money(prospect.asking_price, '$' if prospect_country(prospect) == 'US' else '£')}</b></font>'
+        Paragraph(f'<font color="#A409D2" size="16"><b>{_report_money(prospect.asking_price, "$" if prospect_country(prospect) == "US" else "£")}</b></font>'
                    f'  <font color="#6B7280" size="9">asking</font>', styles["body_left"]),
         Spacer(1, 3),
         Paragraph(_letter_esc(f'{prospect.listing_duration_days if prospect.listing_duration_days is not None else "—"} days on market'), styles["meta"]),
