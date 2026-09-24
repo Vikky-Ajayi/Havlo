@@ -670,6 +670,7 @@ const AssessmentStep = ({
             </div>
           ))}
         </div>
+        <button type="button" className="slw-btn-black slw-view-full-mobile-btn" onClick={onUnlock}>View Full Assessment</button>
         <div>
           <h3>{LOCKED_FINDING_LABELS.length} findings locked</h3>
           <div className="slw-locked-grid">
@@ -1625,6 +1626,7 @@ const WizardStyles = () => (
     .slw-assess-subheading{color:#4b5563;margin:0 0 28px;font-weight:700}
     .slw-assess-findings-grid{display:grid;grid-template-columns:1fr 1.45fr;gap:32px;margin-bottom:60px}
     .slw-assess-findings-grid h3{font-size:17px;margin:0 0 28px;font-weight:800}
+    .slw-view-full-mobile-btn{display:none}
     .slw-finding-card{display:flex;gap:16px;border:2px solid #edf0f4;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 0 rgba(15,23,42,.02)}
     .slw-finding-icon{font-size:20px;flex:none}
     .slw-finding-card b{display:block;margin-bottom:7px;font-size:17px;color:#202124}
@@ -1905,6 +1907,7 @@ const WizardStyles = () => (
       .slw-assess-facts{grid-template-columns:1fr 1fr;padding-top:0;border-top:0}
       .slw-assess-facts b{font-size:24px}
       .slw-assess-findings-grid{grid-template-columns:1fr;gap:28px}
+      .slw-view-full-mobile-btn{display:block}
       .slw-locked-grid{grid-template-columns:repeat(2,1fr)}
       .slw-locked-card{min-height:110px;gap:30px}
       .slw-unlock-cta{grid-template-columns:1fr;padding:10px;gap:14px}
