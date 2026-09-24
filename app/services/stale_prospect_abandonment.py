@@ -19,7 +19,7 @@ Per product decision, this only applies to prospects whose contact_details_
 submitted_at is set after this feature shipped — no backfill of prospects
 who already had contact details before then.
 
-Alongside the email ladder, a separate SMS ladder runs Day 0 -> Day 90 every
+Alongside the email ladder, a separate SMS ladder runs Day 1 -> Day 91 every
 3 days (see run_abandonment_sms_cycle below) — its own table
 (StaleProspectAbandonmentSms), its own opt-out (sms_unsubscribed_at, not
 unsubscribed_at), and a business-hours (8am-7pm Europe/London) send window.
@@ -187,7 +187,7 @@ async def start_abandonment_email_loop() -> None:
     )
 
 
-# Day 0 -> Day 90 SMS ladder, every 3 days (31 stages) — separate from the
+# Day 1 -> Day 91 SMS ladder, every 3 days (31 stages) — separate from the
 # 12-stage email ladder above: own table (StaleProspectAbandonmentSms), own
 # opt-out (sms_unsubscribed_at rather than unsubscribed_at), own channel.
 # Links via ?code={property_code} rather than a token — the same param the
@@ -198,7 +198,7 @@ async def start_abandonment_email_loop() -> None:
 # carries no less exposure than a reissued token would (both are already
 # shown/printed to the prospect).
 #
-# Stage numbers ARE the day number (0, 3, 6, ... 90) — see
+# Stage numbers ARE the day number (1, 4, 7, ... 91) — see
 # twilio_service.SMS_ABANDONMENT_STAGE_DAYS, the single source of truth for
 # both the cadence and the copy.
 _SMS_POLL_LIMIT = 500
