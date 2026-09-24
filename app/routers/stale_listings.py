@@ -120,25 +120,11 @@ SL_PACKAGES: dict[str, dict] = {
 
 
 def _stale_prospect_checkout_amount(asking_price: float | None) -> float:
-    """Full-report checkout price for a letter prospect, tiered by asking price.
-
-    - >= GBP 1,000,000: GBP 499.99
-    - GBP 700,001 - 999,999.99: GBP 399.99
-    - GBP 500,000 - 700,000: GBP 299.99
-    - below GBP 500,000: the original flat listing_recovery_assessment price.
-      Automated discovery no longer scrapes anything under GBP 500,000 (see
-      DiscoveryParams.min_price), so this only applies to prospects created
-      before that floor was raised — kept as-is rather than silently
-      repricing a backlog letter that already went out at the old price.
+    """Full-report checkout price for a letter prospect — flat GBP 299.99
+    regardless of asking price. Keeps the asking_price parameter so callers
+    don't need to change if per-price tiering is ever reintroduced.
     """
-    price = float(asking_price or 0)
-    if price >= 1_000_000:
-        return 499.99
-    if price > 700_000:
-        return 399.99
-    if price >= 500_000:
-        return 299.99
-    return float(SL_PACKAGES["listing_recovery_assessment"]["amount"])
+    return 299.99
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
 admin_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings Admin"])

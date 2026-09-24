@@ -1,6 +1,6 @@
-"""Regression tests for the property-targeting and tiered-checkout-price
-rules: minimum £500,000 asking price, detached/semi-detached/terrace houses
-only (no flats/apartments/etc.), and the £499.99 / £999.99 checkout tiers.
+"""Regression tests for the property-targeting rules (minimum £500,000
+asking price, detached/semi-detached/terrace houses only — no
+flats/apartments/etc.) and the flat £299.99 checkout price.
 """
 from __future__ import annotations
 
@@ -43,21 +43,11 @@ class PropertyTypeTargetingTest(unittest.TestCase):
         self.assertEqual(DiscoveryParams().min_price, 500000)
 
 
-class CheckoutPriceTierTest(unittest.TestCase):
-    def test_below_500k_keeps_legacy_price(self) -> None:
-        for price in [None, 0, 350000, 499999]:
+class CheckoutPriceTest(unittest.TestCase):
+    def test_flat_price_regardless_of_asking_price(self) -> None:
+        for price in [None, 0, 350000, 499999, 500000, 750000, 999999, 1000000, 5000000]:
             with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price), 149.99)
-
-    def test_500k_to_999k_tier(self) -> None:
-        for price in [500000, 750000, 999999]:
-            with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price), 499.99)
-
-    def test_1m_and_above_tier(self) -> None:
-        for price in [1000000, 1500000, 5000000]:
-            with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price), 999.99)
+                self.assertEqual(_stale_prospect_checkout_amount(price), 299.99)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 // Shared types for the QR-code letter-prospect wizard
-// (Landing -> Finding Property -> Confirm Property -> Your Details ->
-// Assessment -> Payment -> Full Report). Mirrors the backend schemas in
+// (Landing -> Finding Property -> Assessment -> Your Details ->
+// Payment -> Full Report). Mirrors the backend schemas in
 // app/schemas/schemas.py and the report shape produced by
 // app/services/groq_service.py.
 
@@ -127,7 +127,6 @@ export interface ProspectReport {
 export type WizardStep =
   | 'landing'
   | 'finding'
-  | 'confirm'
   | 'not_found'
   | 'details'
   | 'assessment'
@@ -138,9 +137,8 @@ export type WizardStep =
 export const STEPPER_ITEMS: { key: WizardStep | 'finding'; label: string }[] = [
   { key: 'landing', label: 'Enter Property ID' },
   { key: 'finding', label: 'Finding Property' },
-  { key: 'confirm', label: 'Confirm Property' },
-  { key: 'details', label: 'Your Details' },
   { key: 'assessment', label: 'Assessment' },
+  { key: 'details', label: 'Your Details' },
   { key: 'payment', label: 'Payment' },
   { key: 'report', label: 'Full Report' },
 ];
@@ -153,32 +151,27 @@ export function stepperIndexFor(step: WizardStep): number {
       return 0;
     case 'finding':
       return 1;
-    case 'confirm':
     case 'not_found':
+    case 'assessment':
       return 2;
     case 'details':
       return 3;
-    case 'assessment':
-      return 4;
     case 'payment':
-      return 5;
+      return 4;
     case 'success':
     case 'report':
-      return 6;
+      return 5;
     default:
       return 0;
   }
 }
 
 // Mirrors _stale_prospect_checkout_amount in app/routers/stale_listings.py —
-// keep the two in sync if the tiers ever change. Used to show the correct
-// price before the checkout call returns it authoritatively.
+// flat £299.99 regardless of asking price. Keeps the askingPrice parameter
+// so callers don't need to change if per-price tiering is ever
+// reintroduced.
 export function unlockPrice(askingPrice?: number | null): number {
-  const price = askingPrice || 0;
-  if (price >= 1_000_000) return 499.99;
-  if (price > 700_000) return 399.99;
-  if (price >= 500_000) return 299.99;
-  return 149.99;
+  return 299.99;
 }
 
 export function formatGbp(value?: number | null, opts?: Intl.NumberFormatOptions): string {
