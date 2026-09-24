@@ -696,7 +696,7 @@ const AssessmentStep = ({
           <h2>See your complete property assessment</h2>
           <p>A detailed analysis of your property and practical recommendations for why it may be taking longer to sell &mdash; pricing, competition, listing performance and a step-by-step action plan.</p>
           <div className="slw-price-box">
-            <button type="button" className="slw-btn-white" onClick={onUnlock}>Unlock Full Assessment</button>
+            <button type="button" className="slw-btn-white" onClick={onUnlock}>View Full Assessment</button>
           </div>
         </div>
         <div className="slw-unlock-cta-includes">
