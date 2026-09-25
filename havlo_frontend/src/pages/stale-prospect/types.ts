@@ -1,6 +1,6 @@
 // Shared types for the QR-code letter-prospect wizard
-// (Landing -> Finding Property -> Assessment -> Your Details ->
-// Payment -> Full Report). Mirrors the backend schemas in
+// (Landing -> Finding Property -> Confirm Property (with the details form)
+// -> Assessment -> Payment -> Full Report). Mirrors the backend schemas in
 // app/schemas/schemas.py and the report shape produced by
 // app/services/groq_service.py.
 
@@ -49,6 +49,7 @@ export interface ProspectPreview {
   is_unlocked: boolean;
   property_confirmed: boolean;
   has_contact_details: boolean;
+  checkout_started?: boolean;
 }
 
 export interface ReportFinding {
@@ -127,8 +128,8 @@ export interface ProspectReport {
 export type WizardStep =
   | 'landing'
   | 'finding'
+  | 'confirm'
   | 'not_found'
-  | 'details'
   | 'assessment'
   | 'payment'
   | 'success'
@@ -137,8 +138,8 @@ export type WizardStep =
 export const STEPPER_ITEMS: { key: WizardStep | 'finding'; label: string }[] = [
   { key: 'landing', label: 'Enter Property ID' },
   { key: 'finding', label: 'Finding Property' },
+  { key: 'confirm', label: 'Confirm Property' },
   { key: 'assessment', label: 'Assessment' },
-  { key: 'details', label: 'Your Details' },
   { key: 'payment', label: 'Payment' },
   { key: 'report', label: 'Full Report' },
 ];
@@ -151,10 +152,10 @@ export function stepperIndexFor(step: WizardStep): number {
       return 0;
     case 'finding':
       return 1;
+    case 'confirm':
     case 'not_found':
-    case 'assessment':
       return 2;
-    case 'details':
+    case 'assessment':
       return 3;
     case 'payment':
       return 4;

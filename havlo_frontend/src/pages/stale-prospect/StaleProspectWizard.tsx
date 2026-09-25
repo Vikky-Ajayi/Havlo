@@ -278,17 +278,23 @@ const NotFoundStep = ({ onTryAgain }: { onTryAgain: () => void }) => (
   </section>
 );
 
-// ── Step: Your Details ─────────────────────────────────────────────────────
+// ── Step: Confirm Property ──────────────────────────────────────────────────
+// The property found for their code, with the details form where a yes/no
+// question used to be: submitting it is what opens the assessment.
 
-const DetailsStep = ({
+const ConfirmStep = ({
+  prospect,
   onSubmit,
   loading,
   error,
 }: {
+  prospect: ProspectPreview;
   onSubmit: (fields: { full_name: string; email: string; confirm_email: string; mobile_number: string }) => void;
   loading: boolean;
   error: string;
 }) => {
+  const snapshot = prospect.listing_snapshot || {};
+  const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -312,48 +318,74 @@ const DetailsStep = ({
   };
 
   return (
-    <section className="slw-details">
-      <h1>Your Property Assessment Is Ready</h1>
-      <p>
-        We&rsquo;ve analysed your property and its position in the market to identify what may be
-        affecting its ability to sell &mdash; and what could help attract more interest.
-      </p>
-      <p>
-        No agent switching required. Your Havlo recommendations can be implemented alongside your
-        current agent.
-      </p>
-      <p>Sellers who implement our recommendations typically see results within 4&ndash;6 weeks.</p>
-      <p className="slw-accent-line">Enter your details to view your initial findings.</p>
-
-      <form className="slw-details-form" onSubmit={handleSubmit}>
-        <label>
-          Full Name
-          <input type="text" placeholder="e.g John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        </label>
-        <label>
-          Email Address
-          <input type="email" placeholder="name@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Confirm Email Address
-          <input type="email" placeholder="name@email.com" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} required />
-        </label>
-        <label>
-          Mobile Number
-          <div className="slw-phone-input">
-            <CountryCodeSelect value={dialCode} onChange={setDialCode} />
-            <input type="tel" placeholder="0000 000 0000 .000" value={mobile} onChange={(e) => setMobile(e.target.value)} required />
+    <section className="slw-confirm">
+      <h1>We Found Your Property</h1>
+      <p className="slw-confirm-copy">We&rsquo;ve used your Property ID to find a match. Enter your details to see your property assessment.</p>
+      <div className="slw-confirm-card">
+        <div className="slw-confirm-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
+        <div className="slw-confirm-details">
+          <h2>{prospect.property_address}</h2>
+          {prospect.asking_price ? (
+            <>
+              <div className="slw-confirm-price">{formatGbp(prospect.asking_price)}</div>
+              <span className="slw-badge">Asking Price</span>
+            </>
+          ) : null}
+          <div className="slw-confirm-facts">
+            {prospect.bedrooms ? (
+              <span>
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M29.3332 23.334H2.6665" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M29.3332 28V21.3333C29.3332 18.8192 29.3332 17.5621 28.5521 16.7811C27.771 16 26.514 16 23.9998 16H7.99984C5.48568 16 4.2286 16 3.44756 16.7811C2.6665 17.5621 2.6665 18.8192 2.6665 21.3333V28" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M14.6667 16V13.6179C14.6667 13.1103 14.5904 12.9405 14.1996 12.7405C13.386 12.3239 12.3982 12 11.3333 12C10.2685 12 9.28073 12.3239 8.467 12.7405C8.07628 12.9405 8 13.1103 8 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                  <path d="M24.0002 16V13.6179C24.0002 13.1103 23.9239 12.9405 23.5331 12.7405C22.7195 12.3239 21.7318 12 20.6668 12C19.6019 12 18.6142 12.3239 17.8006 12.7405C17.4098 12.9405 17.3335 13.1103 17.3335 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                  <path d="M28 16V9.81409C28 8.89191 28 8.43081 27.7439 7.99537C27.4876 7.55993 27.1227 7.33455 26.3925 6.88377C23.4492 5.06637 19.8657 4 16 4C12.1342 4 8.55085 5.06637 5.60744 6.88377C4.87739 7.33455 4.51236 7.55993 4.25617 7.99537C4 8.43081 4 8.89191 4 9.81409V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                </svg>
+                {prospect.bedrooms} Bedrooms
+              </span>
+            ) : null}
+            {prospect.bathrooms ? (
+              <span>
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M25.3333 13.334H6.66667C5.19391 13.334 4 14.5279 4 16.0007C4 20.4189 7.58172 24.0007 12 24.0007H20C24.4183 24.0007 28 20.4189 28 16.0007C28 14.5279 26.8061 13.334 25.3333 13.334Z" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6.6665 13.3327V8.66602C6.6665 7.56144 7.56193 6.66602 8.6665 6.66602C9.77108 6.66602 10.6665 7.56144 10.6665 8.66602V9.33268" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M9.33333 24L8 25.3333M22.6667 24L24 25.3333" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {prospect.bathrooms} Bathrooms
+              </span>
+            ) : null}
           </div>
-        </label>
-        <p className="slw-consent">
-          <span className="slw-info-dot">i</span> Your details help us personalise your assessment and send you your property
-          insights. We may also contact you with recommendations relevant to your property.
-        </p>
-        {(localError || error) && <p className="slw-error">{localError || error}</p>}
-        <button type="submit" className="slw-btn-black" disabled={loading}>
-          {loading ? 'Saving…' : 'Reveal My Assessment'}
-        </button>
-      </form>
+          <form className="slw-details-form slw-confirm-form" onSubmit={handleSubmit}>
+            <label>
+              Full Name
+              <input type="text" placeholder="e.g John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            </label>
+            <label>
+              Email Address
+              <input type="email" placeholder="name@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </label>
+            <label>
+              Confirm Email Address
+              <input type="email" placeholder="name@email.com" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} required />
+            </label>
+            <label>
+              Mobile Number
+              <div className="slw-phone-input">
+                <CountryCodeSelect value={dialCode} onChange={setDialCode} />
+                <input type="tel" placeholder="0000 000 0000 .000" value={mobile} onChange={(e) => setMobile(e.target.value)} required />
+              </div>
+            </label>
+            <p className="slw-consent">
+              <span className="slw-info-dot">i</span> Your details help us personalise your assessment and send you your property
+              insights. We may also contact you with recommendations relevant to your property.
+            </p>
+            {(localError || error) && <p className="slw-error">{localError || error}</p>}
+            <button type="submit" className="slw-btn-black" disabled={loading}>
+              {loading ? 'Saving…' : 'Reveal My Assessment'}
+            </button>
+          </form>
+        </div>
+      </div>
     </section>
   );
 };
@@ -1188,8 +1220,9 @@ export const StaleProspectWizard = () => {
   // Resume mid-flow on reload (or land straight into the right step after a
   // SumUp/bank-transfer redirect back to /stale-listings/prospect/complete)
   // using the has_contact_details/payment_status/is_unlocked flags the
-  // backend already tracks — always resumes at Assessment unless a
-  // checkout is already in progress.
+  // backend already tracks: no details yet -> Confirm Property (where the
+  // details form lives), details on file -> Assessment, or Payment only if
+  // a checkout was actually started.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1219,16 +1252,14 @@ export const StaleProspectWizard = () => {
           if (cancelled) return;
           setReport(reportData);
           setStep('report');
-        } else if (data.has_contact_details && data.payment_status === 'pending' && query.forceStep !== 'assessment') {
-          // Already has contact details on file and isn't unlocked yet -
-          // either landed back from a SumUp/bank-transfer redirect while
-          // still checking out, or is simply revisiting the same link after
-          // already reaching Payment - either way, resume the same polling
-          // the payment step itself would run. Skipped when forceStep asks
-          // for the assessment snippet instead (see the query useMemo).
-          // Everyone else not yet unlocked — including anyone who hasn't
-          // submitted contact details yet — lands on Assessment first; see
-          // the `else` below.
+        } else if (data.has_contact_details && data.checkout_started && data.payment_status === 'pending' && query.forceStep !== 'assessment') {
+          // Started a checkout and isn't unlocked yet - either landed back
+          // from a SumUp redirect while still checking out, or is revisiting
+          // the same link after reaching Payment - either way, resume the
+          // same polling the payment step itself would run. Contact details
+          // alone aren't enough: they're collected on Confirm Property,
+          // before the Assessment. Skipped when forceStep asks for the
+          // assessment snippet instead (see the query useMemo).
           setStep('payment');
           const handle = window.setInterval(async () => {
             try {
@@ -1245,7 +1276,7 @@ export const StaleProspectWizard = () => {
           }, 4000);
           setPollHandle(handle);
         } else {
-          setStep('assessment');
+          setStep(data.has_contact_details ? 'assessment' : 'confirm');
         }
       } catch {
         if (!cancelled) setStep('landing');
@@ -1260,7 +1291,7 @@ export const StaleProspectWizard = () => {
   }, []);
 
   // Keep the URL's token/code in sync with access as the user progresses
-  // through the wizard, so refreshing on any step (assessment, details,
+  // through the wizard, so refreshing on any step (confirm, assessment,
   // payment...) has something for the resume-on-reload effect above to key
   // off — otherwise a refresh always lands back on 'landing'.
   useEffect(() => {
@@ -1277,9 +1308,9 @@ export const StaleProspectWizard = () => {
   }, [access.token, access.code, setSearchParams]);
 
   const handleGoBack = () => {
-    if (step === 'not_found' || step === 'assessment') setStep('landing');
-    else if (step === 'details') setStep('assessment');
-    else if (step === 'payment') setStep('details');
+    if (step === 'not_found' || step === 'confirm') setStep('landing');
+    else if (step === 'assessment') setStep('confirm');
+    else if (step === 'payment') setStep('assessment');
     else if (step === 'success') setStep('payment');
     else if (step === 'report') setStep('success');
     else navigate(-1);
@@ -1294,7 +1325,16 @@ export const StaleProspectWizard = () => {
       setProspect(data);
       fireProspectLeadPixel(data);
       setAccess({ code: data.property_code });
-      setStep('assessment');
+      if (data.is_unlocked) {
+        try {
+          setReport(await getProspectReport({ code: data.property_code }));
+          setStep('report');
+        } catch {
+          setStep('assessment');
+        }
+      } else {
+        setStep(data.has_contact_details ? 'assessment' : 'confirm');
+      }
     } catch {
       setStep('not_found');
     } finally {
@@ -1308,7 +1348,7 @@ export const StaleProspectWizard = () => {
     try {
       await submitProspectDetails({ ...fields, token: access.token, property_code: access.code });
       if (prospect) setProspect({ ...prospect, has_contact_details: true });
-      setStep('payment');
+      setStep('assessment');
     } catch (e: any) {
       setError(e?.message === 'Email and confirm email must match.' ? e.message : 'We could not save your details. Please check them and try again.');
     } finally {
@@ -1463,10 +1503,12 @@ export const StaleProspectWizard = () => {
           {step === 'landing' && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
           {step === 'finding' && <FindingStep />}
           {step === 'not_found' && <NotFoundStep onTryAgain={() => setStep('landing')} />}
-          {step === 'assessment' && prospect && (
-            <AssessmentStep prospect={prospect} onUnlock={() => setStep('details')} />
+          {step === 'confirm' && prospect && (
+            <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} />
           )}
-          {step === 'details' && <DetailsStep onSubmit={handleDetailsSubmit} loading={loading} error={error} />}
+          {step === 'assessment' && prospect && (
+            <AssessmentStep prospect={prospect} onUnlock={() => setStep('payment')} />
+          )}
           {step === 'payment' && prospect && (
             <PaymentStep
               prospect={prospect}
@@ -1581,6 +1623,21 @@ const WizardStyles = () => (
     .slw-spinner{width:40px;height:40px;border-radius:50%;border:3px solid #eee;border-top-color:#A409D2;animation:slw-spin 0.8s linear infinite}
     @keyframes slw-spin{to{transform:rotate(360deg)}}
 
+    .slw-confirm{max-width:none;margin:0 auto;text-align:center}
+    .slw-confirm h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:40px;line-height:100%;letter-spacing:-0.03em;text-align:center;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 12px;color:#202124}
+    .slw-confirm-copy{font-family:'Inter',sans-serif;font-weight:500;color:#334155;margin:0 0 38px;font-size:20px;line-height:150%;letter-spacing:-0.02em;text-box-trim:both;text-box-edge:cap alphabetic}
+    .slw-confirm-card{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #eee;border-radius:16px;overflow:hidden;text-align:left;background:#fff}
+    .slw-confirm-image{min-height:542px;background-size:cover;background-position:center;background-color:#e5e7eb}
+    .slw-confirm-details{padding:36px 40px;display:flex;flex-direction:column;justify-content:center}
+    .slw-confirm-details h2{font-family:'Bricolage Grotesque',sans-serif;font-size:40px;font-weight:300;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
+    .slw-confirm-price{font-family:'Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
+    .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
+    .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
+    .slw-confirm-facts span{display:flex;align-items:center;gap:8px}
+    .slw-confirm-facts svg{color:#A409D2}
+    .slw-details-form.slw-confirm-form{margin:0;padding:0;border:0;box-shadow:none;max-width:none;background:none}
+    .slw-details-form.slw-confirm-form .slw-btn-black{max-width:none;width:100%}
+
     .slw-btn-black{background:#0a0a0a;color:#fff;border:none;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
     .slw-btn-black:disabled{opacity:0.6;cursor:default}
     .slw-btn-outline{background:#fff;color:#111;border:1px solid #ddd;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;margin-top:12px}
@@ -1592,10 +1649,6 @@ const WizardStyles = () => (
     .slw-not-found p{color:#334155;margin:0 0 36px;font-size:16px;line-height:1.45}
     .slw-help-link{display:block;margin-top:18px;color:#A409D2;font-weight:700;text-decoration:none}
 
-    .slw-details{max-width:640px;margin:0 auto;text-align:center}
-    .slw-details h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:40px;line-height:100%;letter-spacing:-0.03em;text-align:center;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 18px;color:#202124}
-    .slw-details p{color:#334155;line-height:1.55;margin:0 auto 26px;max-width:550px;font-size:16px}
-    .slw-details p.slw-accent-line{color:#A409D2;font-weight:700}
     .slw-details-form{text-align:left;background:#fff;border:1px solid #eee;border-radius:12px;padding:26px;margin:34px auto 0;box-shadow:0 16px 40px rgba(15,23,42,.08);max-width:891px}
     .slw-details-form label{display:block;font-size:12px;font-weight:600;margin-bottom:20px;color:#111}
     .slw-details-form input{width:100%;margin-top:8px;background:#f1f2f4;border:none;border-radius:12px;padding:18px 18px;font-size:15px;font-family:inherit;outline:none}
@@ -1894,7 +1947,12 @@ const WizardStyles = () => (
       .slw-value-section h2{font-size:31px;line-height:1.18;margin-bottom:44px}
       .slw-finding{padding:90px 0}
 
-      .slw-details h1,.slw-payment h1,.slw-report h1{font-size:34px}
+      .slw-confirm h1,.slw-payment h1,.slw-report h1{font-size:34px}
+      .slw-confirm-card{grid-template-columns:1fr}
+      .slw-confirm-image{min-height:220px}
+      .slw-confirm-details{padding:24px}
+      .slw-confirm-details h2{font-size:30px}
+      .slw-confirm-facts{margin-bottom:28px;flex-direction:column;gap:14px}
       .slw-not-found{margin-top:32px}
       .slw-not-found-illustration{width:240px}
       .slw-not-found h1{font-size:34px}

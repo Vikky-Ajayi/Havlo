@@ -39,8 +39,8 @@ from app.services.stale_prospect_service import (
     create_prospect_from_listing_snapshot,
     extract_price,
     generate_letter_pdf,
-    hash_access_token,
     is_specific_address,
+    record_qr_token,
     parse_listed_date,
     snapshot_from_scrape,
     create_access_token,
@@ -100,7 +100,7 @@ async def retry_pending_stale_prospect_emails(*, target: int) -> dict[str, int]:
         async with AsyncSessionLocal() as db:
             prospect = await db.get(StaleListingProspect, candidate.id)
             if prospect:
-                prospect.qr_token_hash = hash_access_token(token)
+                record_qr_token(prospect, token)
                 prospect.letter_pdf_path = pdf_path
                 prospect.processing_status = "email_sent" if email_sent else "email_failed"
                 prospect.letter_sent_at = datetime.now(timezone.utc) if email_sent else None
@@ -398,7 +398,7 @@ async def ensure_letter_pdf_path(db: AsyncSession, prospect: StaleListingProspec
     path = Path(prospect.letter_pdf_path) if prospect.letter_pdf_path else None
     if not path or not path.is_file() or first_download:
         new_token = create_access_token()
-        prospect.qr_token_hash = hash_access_token(new_token)
+        record_qr_token(prospect, new_token)
         prospect.letter_pdf_path = await asyncio.wait_for(
             asyncio.to_thread(generate_letter_pdf, prospect, new_token, _letters_zip_frontend_base_url()),
             timeout=20.0,

@@ -60,11 +60,10 @@ const STATUS_LABELS: Record<string, string> = {
 
 // Follow Up tab funnel stages — furthest one each prospect reached.
 const STAGE_LABELS: Record<string, string> = {
-  looked_up: 'Looked up', confirmed: 'Confirmed', details_submitted: 'Details submitted', paid: 'Paid',
+  looked_up: 'Looked up', details_submitted: 'Details submitted', paid: 'Paid',
 };
 const STAGE_COLORS: Record<string, { background: string; color: string }> = {
   looked_up: { background: '#F1F5F9', color: '#475569' },
-  confirmed: { background: '#DBEAFE', color: '#1D4ED8' },
   details_submitted: { background: '#FEF3C7', color: '#92400E' },
   paid: { background: '#DCFCE7', color: '#15803D' },
 };
@@ -190,18 +189,19 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters'>('prospects');
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
+  const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
   const [abandonedLoading, setAbandonedLoading] = useState(false);
   const [abandonedError, setAbandonedError] = useState('');
   const [abandonedSearchRaw, setAbandonedSearchRaw] = useState('');
   const [includeUnsubscribedRaw, setIncludeUnsubscribedRaw] = useState(false);
-  const [stageFilterRaw, setStageFilterRaw] = useState<'' | 'looked_up' | 'confirmed' | 'details_submitted' | 'paid'>('');
+  const [stageFilterRaw, setStageFilterRaw] = useState<'' | 'looked_up' | 'details_submitted' | 'paid'>('');
   const [abandonedPage, setAbandonedPage] = useState(0);
   const abandonedSearch = abandonedSearchRaw;
   const includeUnsubscribed = includeUnsubscribedRaw;
   const stageFilter = stageFilterRaw;
   const setAbandonedSearch = (v: string) => { setAbandonedSearchRaw(v); setAbandonedPage(0); };
   const setIncludeUnsubscribed = (v: boolean) => { setIncludeUnsubscribedRaw(v); setAbandonedPage(0); };
-  const setStageFilter = (v: '' | 'looked_up' | 'confirmed' | 'details_submitted' | 'paid') => { setStageFilterRaw(v); setAbandonedPage(0); };
+  const setStageFilter = (v: '' | 'looked_up' | 'details_submitted' | 'paid') => { setStageFilterRaw(v); setAbandonedPage(0); };
 
   const loadAbandoned = useCallback(async () => {
     setAbandonedLoading(true);
@@ -217,6 +217,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
       });
       setAbandonedItems(res.items);
       setAbandonedTotal(res.total);
+      setStageCounts(res.stage_counts || {});
     } catch (e) {
       setAbandonedError(e instanceof Error ? e.message : 'Could not load follow-up list.');
     } finally {
@@ -641,6 +642,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         .spc-badge{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:4px 8px;border-radius:999px;background:rgba(17,17,17,.72);color:#fff}
         .spc-badge.manual{background:#7C3AED}
         .spc-badge.treated{background:#059669}
+        .spc-badge.looked-up{background:#A409D2}
         .spc-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
         .spc-addr{font-weight:800;font-size:14.5px;line-height:1.35;margin:0}
         .spc-meta{color:#6B7280;font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 10px}
@@ -888,6 +890,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                     <div className="spc-badges">
                       {item.is_manual && <span className="spc-badge manual">Manual</span>}
                       {treated && <span className="spc-badge treated">Treated</span>}
+                      {item.code_looked_up_at && <span className="spc-badge looked-up">Looked up {fmtDate(item.code_looked_up_at)}</span>}
                     </div>
                   </div>
                   <div className="spc-card-body">
@@ -923,7 +926,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
             <div className="spc-filters" style={{ flexWrap: 'wrap' }}>
               <input className="spc-input" placeholder="Search address, property code, contact name or email..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
               <div style={{ display: 'flex', gap: 6 }}>
-                {(['', 'looked_up', 'confirmed', 'details_submitted', 'paid'] as const).map(s => (
+                {(['', 'looked_up', 'details_submitted', 'paid'] as const).map(s => (
                   <button
                     key={s || 'all'}
                     type="button"
@@ -936,6 +939,9 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                     }}
                   >
                     {s ? STAGE_LABELS[s] : 'All'}
+                    {s in stageCounts || (!s && Object.keys(stageCounts).length > 0)
+                      ? ` · ${s ? stageCounts[s] : Object.keys(stageCounts).reduce((sum, k) => sum + stageCounts[k], 0)}`
+                      : ''}
                   </button>
                 ))}
               </div>
@@ -956,7 +962,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
-                      {['Property', 'Contact', 'Price', 'Stage', 'Confirmed', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status'].map(h => (
+                      {['Property', 'Contact', 'Price', 'Stage', 'First looked up', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status'].map(h => (
                         <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                       ))}
                     </tr>
@@ -979,7 +985,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                             {STAGE_LABELS[item.status]}
                           </span>
                         </td>
-                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.property_confirmed_at)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.code_looked_up_at)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.contact_details_submitted_at)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{item.payment_status}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
@@ -1204,6 +1210,11 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                   </p>
                 )}
                 <p className="sub">{detail.postcode || (isUS ? 'No ZIP' : 'No postcode')} · {detail.city || 'Unknown location'} · {money(detail.asking_price)} · {detail.listing_duration_days ?? '?'} days on market</p>
+                <p className="sub">
+                  {detail.code_looked_up_at
+                    ? `Owner first entered their code ${new Date(detail.code_looked_up_at).toLocaleString(isUS ? 'en-US' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Owner hasn’t entered their code yet'}
+                </p>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 8 }}>
                   <a className="spc-link" href={detail.rightmove_url} target="_blank" rel="noreferrer">View on {sourceName} →</a>
                   {detail.letter_pdf_path && (

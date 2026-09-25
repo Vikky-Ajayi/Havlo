@@ -490,6 +490,13 @@ class StaleListingProspect(Base):
     )
     property_code: Mapped[str] = mapped_column(String(4), nullable=False, index=True)
     qr_token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    # Every token ever issued for this prospect, current one included. Each
+    # is printed on a letter that may already be in the post, and letters
+    # get regenerated long after that (admin-email loop, re-downloads after
+    # a deploy wipes the files), so none may ever stop working.
+    qr_token_hashes: Mapped[list[str]] = mapped_column(
+        ARRAY(String(64)), nullable=False, default=list, server_default="{}"
+    )
     property_address: Mapped[str] = mapped_column(String(500), nullable=False)
     # Rightmove's displayAddress never includes the full postcode (only the
     # outcode, if that) — this is combined from the address object's

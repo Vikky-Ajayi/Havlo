@@ -596,6 +596,9 @@ class StaleProspectPreviewResponse(BaseModel):
     # forcing every visit back through Confirm Property / Your Details.
     property_confirmed: bool = False
     has_contact_details: bool = False
+    # Details are now collected before the Assessment, so having them no
+    # longer means the owner reached Payment - only an actual checkout does.
+    checkout_started: bool = False
 
 
 class StaleProspectCheckoutResponse(BaseModel):
@@ -665,6 +668,9 @@ class StaleProspectConsoleListItem(BaseModel):
     is_manual: bool = False
     treated_at: Optional[str] = None
     created_at: str
+    # When the customer first entered this property's code or opened its
+    # QR link -- None if they never have.
+    code_looked_up_at: Optional[str] = None
 
 
 class StaleProspectConsoleListResponse(BaseModel):
@@ -687,7 +693,7 @@ class StaleProspectAbandonedItem(BaseModel):
     """One prospect a customer actually interacted with by code/token — the
     Follow Up console worklist, spanning the full funnel from "just looked
     up the code" through to paid. `status` is the furthest stage reached:
-    "looked_up" | "confirmed" | "details_submitted" | "paid"."""
+    "looked_up" | "details_submitted" | "paid"."""
     prospect_id: str
     property_code: str
     property_address: str
@@ -712,6 +718,7 @@ class StaleProspectAbandonedItem(BaseModel):
 class StaleProspectAbandonedResponse(BaseModel):
     items: list[StaleProspectAbandonedItem]
     total: int
+    stage_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class StaleProspectConsoleEditRequest(BaseModel):

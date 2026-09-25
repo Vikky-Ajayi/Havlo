@@ -85,6 +85,7 @@ export interface StaleProspectConsoleListItem {
   is_manual: boolean;
   treated_at?: string | null;
   created_at: string;
+  code_looked_up_at?: string | null;
 }
 
 export interface StaleProspectConsoleDetail extends StaleProspectConsoleListItem {
@@ -128,6 +129,7 @@ export interface StaleProspectAbandonedItem {
 export interface StaleProspectAbandonedResponse {
   items: StaleProspectAbandonedItem[];
   total: number;
+  stage_counts?: Record<string, number>;
 }
 
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */

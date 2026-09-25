@@ -77,6 +77,7 @@ from app.services.stale_prospect_service import (
     generate_full_report_pdf,
     generate_letter_pdf,
     hash_access_token,
+    record_qr_token,
     is_report_expanded,
     normalize_property_code,
     parse_listed_date,
@@ -628,8 +629,12 @@ async def _get_prospect_by_access(
 ) -> StaleListingProspect:
     stmt = None
     if token and token.strip():
+        token_hash = hash_access_token(token.strip())
         stmt = select(StaleListingProspect).where(
-            StaleListingProspect.qr_token_hash == hash_access_token(token.strip())
+            or_(
+                StaleListingProspect.qr_token_hash == token_hash,
+                StaleListingProspect.qr_token_hashes.contains([token_hash]),
+            )
         )
     else:
         code = normalize_property_code(property_code)
@@ -1307,6 +1312,7 @@ def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleLi
         is_manual=prospect.is_manual,
         treated_at=prospect.treated_at.isoformat() if prospect.treated_at else None,
         created_at=prospect.created_at.isoformat(),
+        code_looked_up_at=prospect.code_looked_up_at.isoformat() if prospect.code_looked_up_at else None,
     )
 
 
@@ -1397,23 +1403,21 @@ async def list_console_prospects(
 
 
 def _prospect_funnel_status(p: StaleListingProspect) -> str:
-    """Furthest stage this prospect actually reached, in priority order —
-    a prospect that paid is "paid" even though it also has a confirmed_at
-    and a contact_details_submitted_at."""
+    """Furthest stage this prospect reached. Must stay in step with
+    _FUNNEL_STATUS_FILTERS, which partition the same prospects the same way."""
     if p.payment_status == "completed":
         return "paid"
     if p.contact_details_submitted_at is not None:
         return "details_submitted"
-    if p.property_confirmed_at is not None:
-        return "confirmed"
     return "looked_up"
 
 
+# Mutually exclusive and together exhaustive: every looked-up prospect is in
+# exactly one, so the stage counts add up to the funnel total.
 _FUNNEL_STATUS_FILTERS = {
-    "looked_up": lambda: StaleListingProspect.property_confirmed_at.is_(None),
-    "confirmed": lambda: and_(
-        StaleListingProspect.property_confirmed_at.is_not(None),
+    "looked_up": lambda: and_(
         StaleListingProspect.contact_details_submitted_at.is_(None),
+        StaleListingProspect.payment_status != "completed",
     ),
     "details_submitted": lambda: and_(
         StaleListingProspect.contact_details_submitted_at.is_not(None),
@@ -1429,7 +1433,7 @@ async def list_abandoned_prospects(
     include_unsubscribed: bool = Query(default=False),
     stage: str | None = Query(
         default=None,
-        description="Funnel stage to filter to: looked_up | confirmed | details_submitted | paid. Omit for every stage.",
+        description="Funnel stage to filter to: looked_up | details_submitted | paid. Omit for every stage.",
     ),
     q: str | None = Query(default=None, description="Search property address, property code, contact name, or contact email"),
     country: str = Query(default="UK", pattern="^(UK|US)$"),
@@ -1438,17 +1442,15 @@ async def list_abandoned_prospects(
 ) -> StaleProspectAbandonedResponse:
     """Every prospect a customer actually interacted with by code/token —
     the Follow Up console worklist. Covers the full funnel from "just
-    looked up the code" (code_looked_up_at set, nothing else) through
-    confirmed, details-submitted-but-unpaid, and paid; `stage` narrows to
-    one of those. Excludes anyone who's unsubscribed unless
-    include_unsubscribed is set, since they've explicitly opted out of
-    further contact."""
+    looked up the code" through details-submitted-but-unpaid and paid;
+    `stage` narrows to one of those, and stage_counts gives every stage's
+    size under the same search/unsubscribe filters. Excludes anyone who's
+    unsubscribed unless include_unsubscribed is set, since they've
+    explicitly opted out of further contact."""
     if stage is not None and stage not in _FUNNEL_STATUS_FILTERS:
         raise HTTPException(status_code=422, detail=f"stage must be one of {sorted(_FUNNEL_STATUS_FILTERS)}.")
 
     filters = [StaleListingProspect.code_looked_up_at.is_not(None), StaleListingProspect.country == country]
-    if stage:
-        filters.append(_FUNNEL_STATUS_FILTERS[stage]())
     if not include_unsubscribed:
         filters.append(StaleListingProspect.unsubscribed_at.is_(None))
     if q:
@@ -1462,6 +1464,15 @@ async def list_abandoned_prospects(
             )
         )
 
+    stage_counts = {name: 0 for name in _FUNNEL_STATUS_FILTERS}
+    for name, stage_filter in _FUNNEL_STATUS_FILTERS.items():
+        stage_result = await db.execute(
+            select(func.count()).select_from(StaleListingProspect).where(*filters, stage_filter())
+        )
+        stage_counts[name] = int(stage_result.scalar() or 0)
+
+    if stage:
+        filters.append(_FUNNEL_STATUS_FILTERS[stage]())
     count_result = await db.execute(
         select(func.count()).select_from(StaleListingProspect).where(*filters)
     )
@@ -1520,7 +1531,7 @@ async def list_abandoned_prospects(
         )
         for p, emails_sent, sms_sent in result.all()
     ]
-    return StaleProspectAbandonedResponse(items=items, total=total)
+    return StaleProspectAbandonedResponse(items=items, total=total, stage_counts=stage_counts)
 
 
 @public_router.get("/prospects-console/prospects/{prospect_id}", response_model=StaleProspectConsoleDetail)
@@ -1563,15 +1574,11 @@ async def update_console_prospect_report(
 
     prospect.agent_edited_report_json = json.dumps(payload.report_data, ensure_ascii=False)
     try:
-        # generate_letter_pdf needs the raw QR token, not its stored hash —
-        # the raw token is only ever returned once, at creation, and never
-        # persisted (standard hash-only storage). Regenerating the letter
-        # after an edit means issuing a fresh one; the old QR code (if
-        # already printed/sent) stops working once this replaces the
-        # stored hash, which is fine for the pre-send edit-and-fix case
-        # this is for.
+        # generate_letter_pdf needs the raw QR token, and only hashes are
+        # stored, so regenerating means issuing a fresh one. Any earlier
+        # token keeps working -- see StaleListingProspect.qr_token_hashes.
         new_token = create_access_token()
-        prospect.qr_token_hash = hash_access_token(new_token)
+        record_qr_token(prospect, new_token)
         # generate_letter_pdf is synchronous (ReportLab drawing plus a
         # blocking httpx.get for the listing photo) — running it directly
         # in this async endpoint blocks the whole worker's event loop for
@@ -1645,7 +1652,7 @@ async def update_console_prospect_address(
 
     try:
         new_token = create_access_token()
-        prospect.qr_token_hash = hash_access_token(new_token)
+        record_qr_token(prospect, new_token)
         letter_path = await asyncio.wait_for(
             asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
             timeout=20.0,
@@ -2145,7 +2152,7 @@ async def regenerate_all_stale_prospect_letters(
         async with semaphore:
             try:
                 new_token = create_access_token()
-                prospect.qr_token_hash = hash_access_token(new_token)
+                record_qr_token(prospect, new_token)
                 prospect.letter_pdf_path = await asyncio.wait_for(
                     asyncio.to_thread(generate_letter_pdf, prospect, new_token, _frontend_base_url()),
                     timeout=20.0,

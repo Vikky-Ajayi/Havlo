@@ -121,6 +121,16 @@ def hash_access_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+def record_qr_token(prospect: StaleListingProspect, token: str) -> None:
+    """Make `token` the prospect's current QR token without retiring any
+    earlier one -- see StaleListingProspect.qr_token_hashes."""
+    token_hash = hash_access_token(token)
+    prospect.qr_token_hash = token_hash
+    existing = list(prospect.qr_token_hashes or [])
+    if token_hash not in existing:
+        prospect.qr_token_hashes = [*existing, token_hash]
+
+
 def unsubscribe_token(prospect_id: str) -> str:
     """Deterministic per-prospect unsubscribe token — no extra DB column
     needed, just an HMAC of the prospect id keyed on the app secret. Used to
@@ -371,6 +381,7 @@ async def create_prospect_from_listing_snapshot(
         country=country,
         property_code=property_code,
         qr_token_hash=hash_access_token(token),
+        qr_token_hashes=[hash_access_token(token)],
         property_address=property_address,
         postcode=listing_snapshot.get("postcode") or None,
         city=city or listing_snapshot.get("city") or None,
@@ -596,6 +607,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "is_unlocked": prospect.payment_status == "completed",
         "property_confirmed": prospect.property_confirmed_at is not None,
         "has_contact_details": bool(prospect.contact_email),
+        "checkout_started": bool(prospect.sumup_checkout_id or prospect.bank_transfer_reference),
     }
 
 
