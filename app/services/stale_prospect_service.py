@@ -1357,7 +1357,16 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
     for line in ["Regarding your property for sale"] + capped_address_lines:
         page.drawString(address_x, y, line)
         y -= address_line_h
-    y -= g(22)
+    # The mail house overlays its own code above the address block and a
+    # barcode below it on the printed piece -- neither exists in this PDF,
+    # so there's nothing to measure them against here. Confirmed live: the
+    # old 22pt gap wasn't enough clearance, and their barcode printed over
+    # the top of the headline below. Widened well past what a standard
+    # barcode zone needs; gap_scale (see this function's docstring) still
+    # compresses this along with every other gap here for a long address,
+    # floored at 55% of the value below -- i.e. never below ~50pt even in
+    # the most compressed case, comfortably more than the old fixed 22pt.
+    y -= g(90)
 
     headline_style = ParagraphStyle("LetterHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=_LETTER_ACCENT)
     y = _letter_para(page, "Your property has been on the market for more than six months.", M, y, width - 2 * M, headline_style)
