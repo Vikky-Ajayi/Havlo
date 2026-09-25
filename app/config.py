@@ -126,7 +126,8 @@ class Settings(BaseSettings):
         Priority:
         - In development (APP_ENV != production): prefer the existing
           DATABASE_URL (e.g. Replit local DB) if it points to a local host.
-        - In production or when no local DB is available: build the Supabase URL.
+        - A DATABASE_URL that isn't a Supabase URL is used as-is.
+        - Otherwise: build the Supabase URL.
         """
         import os
         is_local_db = (
@@ -136,6 +137,13 @@ class Settings(BaseSettings):
         )
 
         if is_local_db and self.APP_ENV != "production":
+            return self
+
+        # An explicit non-Supabase DATABASE_URL (e.g. Railway Postgres) always
+        # wins. Without this, a leftover SUPABASE_DB_PASSWORD would silently
+        # keep the app on Supabase while alembic/env.py, which reads
+        # DATABASE_URL directly, migrates the other database.
+        if self.DATABASE_URL and "supabase" not in self.DATABASE_URL:
             return self
 
         password = self.SUPABASE_DB_PASSWORD
