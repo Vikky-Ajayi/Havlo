@@ -48,7 +48,7 @@ export async function submitProspectDetails(payload: {
   property_code?: string;
   full_name: string;
   email: string;
-  confirm_email: string;
+  confirm_email?: string;
   mobile_number: string;
 }): Promise<{ contact_name: string }> {
   const response = await fetch(`${API_BASE}/stale-listings/prospects/details`, {

@@ -289,7 +289,7 @@ const ConfirmStep = ({
   error,
 }: {
   prospect: ProspectPreview;
-  onSubmit: (fields: { full_name: string; email: string; confirm_email: string; mobile_number: string }) => void;
+  onSubmit: (fields: { full_name: string; email: string; mobile_number: string }) => void;
   loading: boolean;
   error: string;
 }) => {
@@ -298,22 +298,14 @@ const ConfirmStep = ({
   const totalFactors = totalFactorsFor(prospect);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [confirmEmail, setConfirmEmail] = useState('');
   const [dialCode, setDialCode] = useState('+44');
   const [mobile, setMobile] = useState('');
-  const [localError, setLocalError] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
-      setLocalError('Email and confirm email must match.');
-      return;
-    }
-    setLocalError('');
     onSubmit({
       full_name: fullName.trim(),
       email: email.trim(),
-      confirm_email: confirmEmail.trim(),
       mobile_number: `${dialCode} ${mobile.trim()}`.trim(),
     });
   };
@@ -375,17 +367,14 @@ const ConfirmStep = ({
             ) : null}
           </div>
           <form className="slw-details-form slw-confirm-form" onSubmit={handleSubmit}>
+            <h3 className="slw-confirm-form-heading">Where should we send your assessment, and what should we call you?</h3>
             <label>
-              Full Name
+              Name
               <input type="text" placeholder="e.g John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             </label>
             <label>
-              Email Address
+              Email
               <input type="email" placeholder="name@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </label>
-            <label>
-              Confirm Email Address
-              <input type="email" placeholder="name@email.com" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} required />
             </label>
             <label>
               Mobile Number
@@ -398,7 +387,7 @@ const ConfirmStep = ({
               <span className="slw-info-dot">i</span> Your details help us personalise your assessment and send you your property
               insights. We may also contact you with recommendations relevant to your property.
             </p>
-            {(localError || error) && <p className="slw-error">{localError || error}</p>}
+            {error && <p className="slw-error">{error}</p>}
             <button type="submit" className="slw-btn-black" disabled={loading}>
               {loading ? 'Saving…' : 'Reveal My Assessment'}
             </button>
@@ -1366,7 +1355,7 @@ export const StaleProspectWizard = () => {
     }
   };
 
-  const handleDetailsSubmit = async (fields: { full_name: string; email: string; confirm_email: string; mobile_number: string }) => {
+  const handleDetailsSubmit = async (fields: { full_name: string; email: string; mobile_number: string }) => {
     setLoading(true);
     setError('');
     try {
@@ -1374,7 +1363,7 @@ export const StaleProspectWizard = () => {
       if (prospect) setProspect({ ...prospect, has_contact_details: true });
       setStep('assessment');
     } catch (e: any) {
-      setError(e?.message === 'Email and confirm email must match.' ? e.message : 'We could not save your details. Please check them and try again.');
+      setError('We could not save your details. Please check them and try again.');
     } finally {
       setLoading(false);
     }
@@ -1665,6 +1654,7 @@ const WizardStyles = () => (
     .slw-confirm-facts svg{color:#A409D2}
     .slw-details-form.slw-confirm-form{margin:0;padding:0;border:0;box-shadow:none;max-width:none;background:none}
     .slw-details-form.slw-confirm-form .slw-btn-black{max-width:none;width:100%}
+    .slw-confirm-form-heading{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:500;line-height:125%;letter-spacing:-0.02em;color:#202124;margin:0 0 22px}
 
     .slw-btn-black{background:#0a0a0a;color:#fff;border:none;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
     .slw-btn-black:disabled{opacity:0.6;cursor:default}
@@ -1982,6 +1972,7 @@ const WizardStyles = () => (
       .slw-confirm-details h2{font-size:30px}
       .slw-confirm-facts{margin-bottom:28px;flex-direction:column;gap:14px}
       .slw-confirm-signals{font-size:16px;padding:14px 16px}
+      .slw-confirm-form-heading{font-size:21px;margin-bottom:18px}
       .slw-not-found{margin-top:32px}
       .slw-not-found-illustration{width:240px}
       .slw-not-found h1{font-size:34px}

@@ -561,7 +561,8 @@ class StaleProspectDetailsRequest(BaseModel):
     property_code: Optional[str] = Field(None, min_length=4, max_length=12)
     full_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
-    confirm_email: EmailStr
+    # The form no longer asks for it; still checked when a client sends it.
+    confirm_email: Optional[EmailStr] = None
     mobile_number: str = Field(..., min_length=5, max_length=50)
 
 

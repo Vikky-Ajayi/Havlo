@@ -695,10 +695,9 @@ async def submit_stale_prospect_details(
     payload: StaleProspectDetailsRequest,
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectDetailsResponse:
-    """The "Your Details" step. Re-checks email/confirm-email match
-    server-side even though the frontend already does — never trust a
-    client-side-only check for data we're about to store and email."""
-    if payload.email.lower() != payload.confirm_email.lower():
+    """The details form on Confirm Property. confirm_email is optional (the
+    form no longer asks for it), but when a client sends one it must match."""
+    if payload.confirm_email is not None and payload.email.lower() != payload.confirm_email.lower():
         raise HTTPException(status_code=400, detail="Email and confirm email must match.")
     prospect = await _get_prospect_by_access(
         db, token=payload.token, property_code=payload.property_code
