@@ -295,6 +295,7 @@ const ConfirmStep = ({
 }) => {
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
+  const totalFactors = totalFactorsFor(prospect);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -320,7 +321,7 @@ const ConfirmStep = ({
   return (
     <section className="slw-confirm">
       <h1>We Found Your Property</h1>
-      <p className="slw-confirm-copy">We&rsquo;ve used your Property ID to find a match. Enter your details to see your property assessment.</p>
+      <p className="slw-confirm-copy">See what may be holding your property back. Share our recommendations with your agent or implement them yourself.</p>
       <div className="slw-confirm-card">
         <div className="slw-confirm-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
         <div className="slw-confirm-details">
@@ -331,6 +332,24 @@ const ConfirmStep = ({
               <span className="slw-badge">Asking Price</span>
             </>
           ) : null}
+          <div className="slw-confirm-signals">
+            <div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <path d="M12 9v4M12 17h.01" />
+              </svg>
+              <span>We found <b>{totalFactors} factors</b> that might be delaying the sale</span>
+            </div>
+            {prospect.listing_duration_days ? (
+              <div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                <span><b>{prospect.listing_duration_days} days</b> on the market</span>
+              </div>
+            ) : null}
+          </div>
           <div className="slw-confirm-facts">
             {prospect.bedrooms ? (
               <span>
@@ -645,6 +664,11 @@ const LOCKED_FINDING_LABELS = [
   'Recommended Changes',
 ];
 
+// The Assessment page's headline count ("We've identified N potential
+// factors"); Confirm Property quotes the same number.
+const totalFactorsFor = (prospect: ProspectPreview) =>
+  (prospect.preview?.key_issues || []).length + LOCKED_FINDING_LABELS.length;
+
 const FULL_REPORT_INCLUDES = [
   'Detailed property analysis', 'Pricing analysis', 'Comparable property analysis',
   'Local competition', 'Listing assessment', 'Buyer appeal analysis',
@@ -663,7 +687,7 @@ const AssessmentStep = ({
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const preview = prospect.preview || {};
   const revealed = preview.key_issues || [];
-  const totalFactors = revealed.length + LOCKED_FINDING_LABELS.length;
+  const totalFactors = totalFactorsFor(prospect);
 
   return (
     <section className="slw-assessment">
@@ -1632,6 +1656,10 @@ const WizardStyles = () => (
     .slw-confirm-details h2{font-family:'Bricolage Grotesque',sans-serif;font-size:40px;font-weight:300;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic;margin:0 0 14px;line-height:100%;color:#202124}
     .slw-confirm-price{font-family:'Bricolage Grotesque',sans-serif;color:#A409D2;font-size:32px;font-weight:500;line-height:100%;letter-spacing:-0.03em;text-box-trim:both;text-box-edge:cap alphabetic}
     .slw-badge{display:inline-block;align-self:flex-start;background:#fbeaff;color:#A409D2;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;margin-top:8px}
+    .slw-confirm-signals{display:flex;flex-direction:column;gap:12px;margin-top:22px;padding:16px 18px;background:#fdf6ff;border:1px solid #f3d9fb;border-radius:12px;color:#202124;font-family:'Inter',sans-serif;font-weight:500;font-size:17px;line-height:140%;letter-spacing:-0.01em}
+    .slw-confirm-signals div{display:flex;align-items:flex-start;gap:10px}
+    .slw-confirm-signals svg{flex:none;margin-top:1px;color:#A409D2}
+    .slw-confirm-signals b{color:#A409D2;font-weight:700}
     .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
     .slw-confirm-facts span{display:flex;align-items:center;gap:8px}
     .slw-confirm-facts svg{color:#A409D2}
@@ -1953,6 +1981,7 @@ const WizardStyles = () => (
       .slw-confirm-details{padding:24px}
       .slw-confirm-details h2{font-size:30px}
       .slw-confirm-facts{margin-bottom:28px;flex-direction:column;gap:14px}
+      .slw-confirm-signals{font-size:16px;padding:14px 16px}
       .slw-not-found{margin-top:32px}
       .slw-not-found-illustration{width:240px}
       .slw-not-found h1{font-size:34px}
