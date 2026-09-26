@@ -679,6 +679,17 @@ const FULL_REPORT_INCLUDES = [
   'Supporting data and evidence',
 ];
 
+// "Prepared specifically for <address>." under the unlock and pay buttons.
+const PreparedFor = ({ address }: { address: string }) => (
+  <p className="slw-prepared-for">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+    <span>Prepared specifically for <b>{address.replace(/\.$/, '')}</b>.</span>
+  </p>
+);
+
 // Recorded sales from HM Land Registry (never AI-written). The attribution
 // is required by the data's licence wherever the sales are shown.
 const SoldPricesList = ({ sales, attribution, loading = false }: { sales: SoldComparable[]; attribution?: string | null; loading?: boolean }) => (
@@ -751,9 +762,9 @@ const AssessmentStep = ({
             <div className="slw-assess-facts">
               <div><span>Asking Price</span><b className="slw-accent">{formatGbp(prospect.asking_price)}</b></div>
               {prospect.reduced_date != null ? (
-                <div><span>Date Reduced</span><b className="slw-fact-date">{formatReducedDate(prospect.reduced_date)}</b></div>
+                <div><span>Date Reduced</span><b className="slw-fact-date slw-hl">{formatReducedDate(prospect.reduced_date)}</b></div>
               ) : (
-                <div><span>Days on Market</span><b>{prospect.listing_duration_days ?? '—'} days</b></div>
+                <div><span>Days on Market</span><b className="slw-hl">{prospect.listing_duration_days ?? '—'} days</b></div>
               )}
             </div>
           </div>
@@ -766,7 +777,7 @@ const AssessmentStep = ({
       </div>
 
       <h2 className="slw-assess-heading">We&rsquo;ve identified {totalFactors} potential factors</h2>
-      <p className="slw-assess-subheading">{revealed.length} revealed &middot; {LOCKED_FINDINGS.length} remain locked in your full report.</p>
+      <p className="slw-assess-subheading"><span className="slw-hl">{revealed.length}</span> revealed &middot; <span className="slw-hl">{LOCKED_FINDINGS.length}</span> remain locked in your full report.</p>
 
       <div className="slw-assess-findings-grid">
         <div>
@@ -832,17 +843,13 @@ const AssessmentStep = ({
           </div>
           <SoldComparablesCard access={access} />
           <h2>Unlock the complete assessment for your property</h2>
-          <p>You&rsquo;ve seen <b>{revealed.length}</b> of the <b>{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
+          <p>You&rsquo;ve seen <b className="slw-hl">{revealed.length}</b> of the <b className="slw-hl">{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
-            <button type="button" className="slw-btn-white" onClick={onUnlock}>View Full Assessment</button>
+            <button type="button" className="slw-btn-white" onClick={onUnlock}>
+              View Full Assessment &ndash; {formatGbp(unlockPrice(prospect.asking_price), { maximumFractionDigits: 2 })}
+            </button>
           </div>
-          <p className="slw-prepared-for">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
-            <span>Prepared specifically for <b>{prospect.property_address.replace(/\.$/, '')}</b>.</span>
-          </p>
+          <PreparedFor address={prospect.property_address} />
         </div>
         <div className="slw-unlock-cta-includes">
           <b>Full report includes</b>
@@ -983,6 +990,7 @@ const PaymentStep = ({
                 ? `Pay ${formatGbp(price, { maximumFractionDigits: 2 })} & View My Report`
                 : 'Apply Code & View My Report'}
           </button>
+          <PreparedFor address={prospect.property_address} />
         </>
       )}
     </section>
@@ -1865,7 +1873,9 @@ const WizardStyles = () => (
     .slw-market-alert strong{display:block;font-size:16px;font-weight:700;color:#b42318;margin-bottom:4px}
     .slw-unlock-cta-copy .slw-market-alert p{margin:0;font-size:14px;line-height:1.5;color:#5f5557}
     .slw-price-box{background:#0a0a0a;color:#fff;border-radius:18px;padding:28px}
-    .slw-unlock-cta-copy .slw-prepared-for{display:flex;align-items:flex-start;gap:8px;margin:14px 0 0;font-size:14px;line-height:1.5;color:#5f6368}
+    .slw-prepared-for,.slw-unlock-cta-copy .slw-prepared-for{display:flex;align-items:flex-start;gap:8px;margin:14px 0 0;font-size:14px;line-height:1.5;color:#5f6368}
+    .slw-prepared-for b{color:#202124}
+    .slw-hl,.slw-assess-facts b.slw-hl,.slw-unlock-cta-copy p b.slw-hl{color:#EA580C}
     .slw-prepared-for svg{flex:none;width:18px;height:18px;margin-top:1px;color:#A409D2}
     .slw-price-box>div{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
     .slw-price-box span{font-size:14px;color:#ccc}
