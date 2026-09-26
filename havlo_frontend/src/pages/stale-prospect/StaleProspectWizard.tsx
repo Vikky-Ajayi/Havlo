@@ -834,6 +834,13 @@ const AssessmentStep = ({
           <div className="slw-price-box">
             <button type="button" className="slw-btn-white" onClick={onUnlock}>View Full Assessment</button>
           </div>
+          <p className="slw-prepared-for">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+            <span>Prepared specifically for <b>{prospect.property_address.replace(/\.$/, '')}</b>.</span>
+          </p>
         </div>
         <div className="slw-unlock-cta-includes">
           <b>Full report includes</b>
@@ -1854,6 +1861,8 @@ const WizardStyles = () => (
     .slw-market-alert strong{display:block;font-size:16px;font-weight:700;color:#b42318;margin-bottom:4px}
     .slw-unlock-cta-copy .slw-market-alert p{margin:0;font-size:14px;line-height:1.5;color:#5f5557}
     .slw-price-box{background:#0a0a0a;color:#fff;border-radius:18px;padding:28px}
+    .slw-unlock-cta-copy .slw-prepared-for{display:flex;align-items:flex-start;gap:8px;margin:14px 0 0;font-size:14px;line-height:1.5;color:#5f6368}
+    .slw-prepared-for svg{flex:none;width:18px;height:18px;margin-top:1px;color:#A409D2}
     .slw-price-box>div{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
     .slw-price-box span{font-size:14px;color:#ccc}
     .slw-price-box b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px}
@@ -2154,6 +2163,7 @@ const WizardStyles = () => (
       .slw-report-callout{padding:16px;gap:14px}
       .slw-report-callout svg{width:36px;height:40px}
       .slw-price-box{order:3;padding:20px}
+      .slw-unlock-cta-copy .slw-prepared-for{order:3;margin:-2px 10px 8px;font-size:13.5px}
       .slw-price-box>div{align-items:flex-start}
       .slw-price-box b{font-size:34px}
 
