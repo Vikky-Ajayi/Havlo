@@ -772,8 +772,18 @@ const AssessmentStep = ({
 
       <div className="slw-unlock-cta">
         <div className="slw-unlock-cta-copy">
-          <h2>See your complete property assessment</h2>
-          <p>A detailed analysis of your property and practical recommendations for why it may be taking longer to sell &mdash; pricing, competition, listing performance and a step-by-step action plan.</p>
+          <div className="slw-market-alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="13" r="8" />
+              <path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3M6.4 18.7 4 21M17.6 18.7 20 21" />
+            </svg>
+            <div>
+              <strong>Your property is currently on the market.</strong>
+              <p>The sooner you understand what&rsquo;s potentially limiting buyer appeal, the sooner you and your agent can decide which changes are worth making.</p>
+            </div>
+          </div>
+          <h2>Unlock the complete assessment for your property</h2>
+          <p>You&rsquo;ve seen <b>{revealed.length}</b> of the <b>{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
             <button type="button" className="slw-btn-white" onClick={onUnlock}>View Full Assessment</button>
           </div>
@@ -1774,6 +1784,11 @@ const WizardStyles = () => (
     .slw-unlock-cta{background:#f5f6f8;border-radius:18px;padding:32px;display:grid;grid-template-columns:1fr 1.08fr;gap:32px;align-items:center}
     .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1.05;margin:0 0 20px;color:#202124}
     .slw-unlock-cta-copy p{color:#475467;line-height:1.55;margin:0 0 34px;font-size:16px}
+    .slw-unlock-cta-copy p b{color:#202124}
+    .slw-market-alert{display:flex;align-items:flex-start;gap:16px;background:#fdecee;border:1px solid #f9d7db;border-radius:14px;padding:18px 20px;margin:0 0 28px;color:#c0262d}
+    .slw-market-alert svg{flex:none;width:34px;height:34px;margin-top:2px}
+    .slw-market-alert strong{display:block;font-size:16px;font-weight:700;color:#b42318;margin-bottom:4px}
+    .slw-unlock-cta-copy .slw-market-alert p{margin:0;font-size:14px;line-height:1.5;color:#5f5557}
     .slw-price-box{background:#0a0a0a;color:#fff;border-radius:18px;padding:28px}
     .slw-price-box>div{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px}
     .slw-price-box span{font-size:14px;color:#ccc}
@@ -2065,6 +2080,9 @@ const WizardStyles = () => (
       .slw-agent-note p{font-size:15px}
       .slw-unlock-cta{grid-template-columns:1fr;padding:10px;gap:14px}
       .slw-unlock-cta-copy{display:contents}
+      .slw-market-alert{margin:10px 10px 4px;padding:16px;gap:12px}
+      .slw-market-alert svg{width:28px;height:28px}
+      .slw-unlock-cta-copy .slw-market-alert p{margin:0}
       .slw-unlock-cta-copy h2{font-size:26px;order:1;margin:10px 10px 0}
       .slw-unlock-cta-copy p{order:1;margin:0 10px 6px}
       .slw-unlock-cta-includes{order:2}
