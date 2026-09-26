@@ -16,7 +16,7 @@ import uuid
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from xml.sax.saxutils import escape as _xml_escape
 
 from sqlalchemy import select
@@ -591,7 +591,27 @@ def _isolate_postcode_line(lines: list[str], max_width: float | None = None, fon
     return [*lines[:-1], prefix, postcode]
 
 
+def reduced_date_info(prospect: StaleListingProspect, snapshot: dict[str, Any]) -> str | None:
+    """The price-reduction date (YYYY-MM-DD) when the only date Rightmove
+    gave us is "Reduced on ..." rather than when the listing was added.
+    listing_duration_days is then counted from the reduction, so pages label
+    it "Date Reduced" instead of calling it days on market. None otherwise."""
+    text = str(snapshot.get("listed_date") or "").strip()
+    if not re.match(r"reduced\b", text, re.IGNORECASE):
+        return None
+    when = prospect.listed_date or parse_listed_date(text)
+    if when is None and prospect.created_at is not None:
+        # "Reduced today" / "Reduced yesterday": relative to when we scraped it.
+        if re.search(r"\btoday\b", text, re.IGNORECASE):
+            when = prospect.created_at
+        elif re.search(r"\byesterday\b", text, re.IGNORECASE):
+            when = prospect.created_at - timedelta(days=1)
+    # An unparseable "Reduced ..." still isn't days on market; "" says so.
+    return when.date().isoformat() if when else ""
+
+
 def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
+    snapshot = _safe_json(prospect.listing_snapshot_json)
     return {
         "prospect_id": str(prospect.id),
         "property_code": prospect.property_code,
@@ -601,7 +621,8 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "listing_duration_days": prospect.listing_duration_days,
         "bedrooms": prospect.bedrooms,
         "bathrooms": prospect.bathrooms,
-        "listing_snapshot": _safe_json(prospect.listing_snapshot_json),
+        "listing_snapshot": snapshot,
+        "reduced_date": reduced_date_info(prospect, snapshot),
         "preview": _safe_json(prospect.preview_json),
         "payment_status": prospect.payment_status,
         "is_unlocked": prospect.payment_status == "completed",
@@ -620,6 +641,7 @@ def current_report_json(prospect: StaleListingProspect) -> str | None:
 
 
 def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
+    snapshot = _safe_json(prospect.listing_snapshot_json)
     return {
         "prospect_id": str(prospect.id),
         "property_code": prospect.property_code,
@@ -628,7 +650,8 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "asking_price": prospect.asking_price,
         "listing_duration_days": prospect.listing_duration_days,
         "contact_name": prospect.contact_name,
-        "listing_snapshot": _safe_json(prospect.listing_snapshot_json),
+        "listing_snapshot": snapshot,
+        "reduced_date": reduced_date_info(prospect, snapshot),
         "report_data": _safe_json(current_report_json(prospect)),
         "payment_status": prospect.payment_status,
     }

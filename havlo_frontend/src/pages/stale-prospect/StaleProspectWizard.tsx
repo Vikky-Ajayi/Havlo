@@ -13,6 +13,7 @@ import {
 } from './api';
 import {
   formatGbp,
+  formatReducedDate,
   stepperIndexFor,
   unlockPrice,
   STEPPER_ITEMS,
@@ -332,7 +333,19 @@ const ConfirmStep = ({
               </svg>
               <span>We found <b>{totalFactors} factors</b> that might be delaying the sale</span>
             </div>
-            {prospect.listing_duration_days ? (
+            {prospect.reduced_date != null ? (
+              <div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                {prospect.reduced_date ? (
+                  <span>Price reduced on <b>{formatReducedDate(prospect.reduced_date)}</b></span>
+                ) : (
+                  <span>Price <b>recently reduced</b></span>
+                )}
+              </div>
+            ) : prospect.listing_duration_days ? (
               <div>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="9" />
@@ -688,7 +701,11 @@ const AssessmentStep = ({
             <h2>{prospect.property_address}</h2>
             <div className="slw-assess-facts">
               <div><span>Asking Price</span><b className="slw-accent">{formatGbp(prospect.asking_price)}</b></div>
-              <div><span>Days on Market</span><b>{prospect.listing_duration_days ?? '—'} days</b></div>
+              {prospect.reduced_date != null ? (
+                <div><span>Date Reduced</span><b className="slw-fact-date">{formatReducedDate(prospect.reduced_date)}</b></div>
+              ) : (
+                <div><span>Days on Market</span><b>{prospect.listing_duration_days ?? '—'} days</b></div>
+              )}
             </div>
           </div>
         </div>
@@ -973,7 +990,11 @@ const FullReportStep = ({
             <h2>{report.property_address}</h2>
             <div className="slw-assess-facts">
               <div><span>Asking Price</span><b className="slw-accent">{formatGbp(report.asking_price)}</b></div>
-              <div><span>Days on Market</span><b>{report.listing_duration_days ?? '—'} days</b></div>
+              {report.reduced_date != null ? (
+                <div><span>Date Reduced</span><b className="slw-fact-date">{formatReducedDate(report.reduced_date)}</b></div>
+              ) : (
+                <div><span>Days on Market</span><b>{report.listing_duration_days ?? '—'} days</b></div>
+              )}
             </div>
           </div>
         </div>
@@ -1686,6 +1707,7 @@ const WizardStyles = () => (
     .slw-assess-facts div{display:flex;flex-direction:column;gap:4px}
     .slw-assess-facts span{color:#111;font-size:15px}
     .slw-assess-facts b{font-size:30px;line-height:1}
+    .slw-assess-facts b.slw-fact-date{font-size:26px;white-space:nowrap}
     .slw-assess-gauge-card{background:#fff;border-radius:14px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
     .slw-assess-gauge-card b{margin-top:6px;font-size:16px}
     .slw-assess-gauge-card p{color:#667085;font-size:13px;line-height:1.45;margin:8px 0 0;max-width:250px}
@@ -1984,6 +2006,7 @@ const WizardStyles = () => (
       .slw-assess-image{min-height:182px}
       .slw-assess-facts{grid-template-columns:1fr 1fr;padding-top:0;border-top:0}
       .slw-assess-facts b{font-size:24px}
+      .slw-assess-facts b.slw-fact-date{font-size:20px}
       .slw-assess-findings-grid{grid-template-columns:1fr;gap:28px}
       .slw-view-full-mobile-btn{display:block}
       .slw-locked-grid{grid-template-columns:repeat(2,1fr)}

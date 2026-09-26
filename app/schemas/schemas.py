@@ -590,6 +590,10 @@ class StaleProspectPreviewResponse(BaseModel):
     bedrooms: Optional[int] = None
     bathrooms: Optional[int] = None
     listing_snapshot: dict = Field(default_factory=dict)
+    # Set when Rightmove only gave a "Reduced on" date: YYYY-MM-DD, or "" if
+    # that date couldn't be read. listing_duration_days then counts from the
+    # reduction, so it's shown as "Date Reduced" rather than days on market.
+    reduced_date: Optional[str] = None
     preview: dict = Field(default_factory=dict)
     payment_status: str
     is_unlocked: bool
@@ -638,6 +642,7 @@ class StaleProspectReportResponse(BaseModel):
     listing_duration_days: Optional[int] = None
     contact_name: Optional[str] = None
     listing_snapshot: dict = Field(default_factory=dict)
+    reduced_date: Optional[str] = None  # see StaleProspectPreviewResponse
     report_data: dict = Field(default_factory=dict)
     payment_status: str
 

@@ -41,6 +41,9 @@ export interface ProspectPreview {
   rightmove_url: string;
   asking_price?: number | null;
   listing_duration_days?: number | null;
+  /** Set when Rightmove only gave a "Reduced on" date (YYYY-MM-DD, or "" if
+   * unreadable): listing_duration_days then counts from the reduction. */
+  reduced_date?: string | null;
   bedrooms?: number | null;
   bathrooms?: number | null;
   listing_snapshot: ListingSnapshot;
@@ -119,6 +122,7 @@ export interface ProspectReport {
   rightmove_url: string;
   asking_price?: number | null;
   listing_duration_days?: number | null;
+  reduced_date?: string | null;
   contact_name?: string | null;
   listing_snapshot: ListingSnapshot;
   report_data: FullReportData;
@@ -173,6 +177,13 @@ export function stepperIndexFor(step: WizardStep): number {
 // reintroduced.
 export function unlockPrice(askingPrice?: number | null): number {
   return 299.99;
+}
+
+/** "12 Aug 2026" for a reduced_date; "Recently" when the date couldn't be read. */
+export function formatReducedDate(iso: string): string {
+  const date = iso ? new Date(`${iso}T00:00:00`) : null;
+  if (!date || Number.isNaN(date.getTime())) return 'Recently';
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function formatGbp(value?: number | null, opts?: Intl.NumberFormatOptions): string {
