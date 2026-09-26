@@ -19,6 +19,7 @@ import asyncio
 import logging
 import math
 import re
+import time
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -43,6 +44,11 @@ PREFERRED_MONTHS = 24
 _LR_CONCURRENCY = asyncio.Semaphore(2)
 USER_AGENT = "Havlo/1.0 (+https://www.heyhavlo.com; sold-price comparables)"
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
+# A 403, or a 429 that outlasts the retries, means the service is refusing
+# us. Carrying on with the next lookup only keeps the block in place, so a
+# refusal pauses every request to that host from this worker for an hour.
+REFUSED_PAUSE_SECONDS = 3600
+_paused_until: dict[str, float] = {}
 
 
 class LookupUnavailable(RuntimeError):
@@ -50,9 +56,22 @@ class LookupUnavailable(RuntimeError):
     "no sales" -- the lookup is simply tried again later."""
 
 
+def _host(url: str) -> str:
+    return httpx.URL(url).host
+
+
+def paused_for(url: str = LR_SPARQL) -> float:
+    """Seconds this worker is still holding off url's host after a refusal."""
+    return max(0.0, _paused_until.get(_host(url), 0.0) - time.monotonic())
+
+
 async def _request(client: httpx.AsyncClient, method: str, url: str, **kwargs: Any) -> httpx.Response:
     """One request with a couple of retries for rate limits, 5xx and network
     errors. Returns 200/404 responses; anything else raises LookupUnavailable."""
+    host = _host(url)
+    wait = paused_for(url)
+    if wait:
+        raise LookupUnavailable(f"{host} refused our requests; paused for another {wait / 60:.0f} min")
     last: str = ""
     for attempt in range(3):
         try:
@@ -63,6 +82,10 @@ async def _request(client: httpx.AsyncClient, method: str, url: str, **kwargs: A
             if r.status_code in (200, 404):
                 return r
             last = f"HTTP {r.status_code} from {url.split('?')[0]}: {r.text[:160]!r}"
+            if r.status_code == 403 or (r.status_code == 429 and attempt == 2):
+                _paused_until[host] = time.monotonic() + REFUSED_PAUSE_SECONDS
+                logger.warning("%s; pausing requests to %s for %d min", last, host, REFUSED_PAUSE_SECONDS // 60)
+                break
             if r.status_code not in _RETRY_STATUSES:
                 break
         await asyncio.sleep(2 * (attempt + 1))
@@ -282,9 +305,8 @@ def _client() -> httpx.AsyncClient:
 async def check_services() -> dict[str, Any]:
     """Can this server reach postcodes.io and Land Registry right now? One
     small request each, for diagnosing lookups that fail on a server but not
-    locally. Returns status codes and error types only."""
-    import time
-
+    locally. Returns status codes, error types, and the start of any error
+    page (which usually says why a request was refused)."""
     results: dict[str, Any] = {}
     async with _client() as client:
         for name, method, url, kwargs in (
@@ -299,6 +321,8 @@ async def check_services() -> dict[str, Any]:
             try:
                 r = await client.request(method, url, **kwargs)
                 results[name] = {"status": r.status_code, "ms": int((time.monotonic() - started) * 1000)}
+                if r.status_code != 200:
+                    results[name]["body"] = " ".join(r.text.split())[:300]
             except Exception as exc:  # noqa: BLE001 -- reporting it is the point
                 results[name] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}", "ms": int((time.monotonic() - started) * 1000)}
     return results

@@ -734,11 +734,18 @@ async def refresh_sold_comparables_in_background(prospect_id: str) -> None:
         logger.warning("Background Land Registry refresh failed for %s: %s", prospect_id, exc)
 
 
-async def backfill_sold_comparables(limit: int = 120) -> dict[str, int]:
+async def backfill_sold_comparables(limit: int = 20) -> dict[str, int]:
     """One cycle of filling in Land Registry comparables for UK prospects that
     don't have any yet (created before this existed, or whose creation-time
-    lookup failed), two at a time to stay gentle on the public services.
-    Owners who've entered their code go first, then the newest prospects."""
+    lookup failed). Owners who've entered their code go first, then the
+    newest prospects.
+
+    One lookup at a time, a small batch per cycle, and the cycle stops as
+    soon as Land Registry refuses a request: its SPARQL endpoint is a free
+    public service, and 120 lookups every few minutes, two at a time,
+    around the clock got the server's address refused (HTTP 403)."""
+    if land_registry.paused_for():
+        return {"attempted": 0, "paused_minutes": round(land_registry.paused_for() / 60)}
     async with AsyncSessionLocal() as db:
         ids = (await db.execute(
             select(StaleListingProspect.id)
@@ -747,15 +754,14 @@ async def backfill_sold_comparables(limit: int = 120) -> dict[str, int]:
             .order_by(StaleListingProspect.code_looked_up_at.desc().nulls_last(), StaleListingProspect.created_at.desc())
             .limit(limit)
         )).scalars().all()
-    pair = asyncio.Semaphore(2)
-
-    async def one(prospect_id: Any) -> None:
-        async with pair:
-            await refresh_sold_comparables_in_background(str(prospect_id))
-            await asyncio.sleep(0.5)
-
-    await asyncio.gather(*(one(prospect_id) for prospect_id in ids))
-    return {"attempted": len(ids)}
+    attempted = 0
+    for prospect_id in ids:
+        if land_registry.paused_for():
+            break
+        await refresh_sold_comparables_in_background(str(prospect_id))
+        attempted += 1
+        await asyncio.sleep(2)
+    return {"attempted": attempted, "paused_minutes": round(land_registry.paused_for() / 60)}
 
 
 def report_comparable_rows(prospect: StaleListingProspect) -> list[dict[str, Any]]:

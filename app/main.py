@@ -150,6 +150,10 @@ async def startup() -> None:
     global DB_READY, DB_ERROR
     logger.info("Starting Havlo API … (env=%s)", settings.APP_ENV)
 
+    # First, so stalls during startup are caught too.
+    from app.services import loop_monitor
+    loop_monitor.start()
+
     if HAS_DATABASE:
         try:
             from app.db.database import DATABASE_URL as _RESOLVED_URL
@@ -660,14 +664,14 @@ async def startup() -> None:
     # ── HM Land Registry comparable sold prices backfill ──────────────────
     # Looks up recorded sales for UK prospects that don't have them yet
     # (created before this existed, or whose creation-time lookup timed out),
-    # in batches every few minutes, two at a time. run_scraper_loop's
+    # a small batch every 15 minutes, one at a time. run_scraper_loop's
     # advisory lock keeps it to a single worker.
     if HAS_DATABASE and _env_enabled("ENABLE_SOLD_COMPARABLES_BACKFILL", True):
         from app.services.scraper_base import run_scraper_loop
         from app.services.stale_prospect_service import backfill_sold_comparables
 
         app.state.scraper_tasks.append(asyncio.create_task(
-            run_scraper_loop("Sold comparables backfill", backfill_sold_comparables, 0.05, initial_delay_seconds=120)
+            run_scraper_loop("Sold comparables backfill", backfill_sold_comparables, 0.25, initial_delay_seconds=120)
         ))
         logger.info("Land Registry sold-comparables backfill loop scheduled.")
     elif HAS_DATABASE:
@@ -696,6 +700,8 @@ async def shutdown() -> None:
 
 @app.get("/health", tags=["Health"])
 async def health() -> JSONResponse:
+    from app.services import loop_monitor
+
     return JSONResponse({
         "status": "ok",
         "service": "havlo-api",
@@ -703,11 +709,14 @@ async def health() -> JSONResponse:
         "db_ready": DB_READY,
         "db_error": DB_ERROR,
         "db_configured": HAS_DATABASE,
+        "event_loop": loop_monitor.stats(),
     })
 
 
 @app.get("/api/v1/health", tags=["Health"])
 async def health_v1() -> JSONResponse:
+    from app.services import loop_monitor
+
     return JSONResponse({
         "status": "ok",
         "service": "havlo-api",
@@ -715,6 +724,7 @@ async def health_v1() -> JSONResponse:
         "db_ready": DB_READY,
         "db_error": DB_ERROR,
         "db_configured": HAS_DATABASE,
+        "event_loop": loop_monitor.stats(),
     })
 
 

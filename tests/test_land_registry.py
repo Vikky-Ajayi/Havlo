@@ -182,10 +182,12 @@ class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
         ]
         for p in self.patches:
             p.start()
+        lr._paused_until.clear()
 
     def tearDown(self):
         for p in self.patches:
             p.stop()
+        lr._paused_until.clear()
 
     async def _no_sleep(self, *_):
         return None
@@ -240,3 +242,40 @@ class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
         p = make_prospect()
         self.assertIsNone(await refresh_sold_comparables(p))
         self.assertIsNone(p.sold_comparables_at)
+
+    async def test_refusal_pauses_the_host_instead_of_hammering_it(self):
+        location = {"result": {"latitude": 51.5, "longitude": -3.16}}
+        self.responses = {
+            "GET /postcodes/CF235JP": [(200, location)],
+            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
+            "POST /landregistry/query": [(403, {"error": "forbidden"})],
+        }
+        with self.assertRaises(lr.LookupUnavailable):
+            await self.lookup()
+        self.assertEqual(self.calls.count("POST /landregistry/query"), 1)  # a 403 isn't retried
+        self.assertGreater(lr.paused_for(), 3000)
+        self.calls.clear()
+        with self.assertRaises(lr.LookupUnavailable):
+            await self.lookup()
+        self.assertNotIn("POST /landregistry/query", self.calls)  # paused: not asked again
+
+    async def test_persistent_rate_limit_pauses_after_retries(self):
+        location = {"result": {"latitude": 51.5, "longitude": -3.16}}
+        self.responses = {
+            "GET /postcodes/CF235JP": [(200, location)],
+            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
+            "POST /landregistry/query": [(429, {})],
+        }
+        with self.assertRaises(lr.LookupUnavailable):
+            await self.lookup()
+        self.assertEqual(self.calls.count("POST /landregistry/query"), 3)
+        self.assertGreater(lr.paused_for(), 3000)
+
+    async def test_backfill_skips_the_cycle_while_paused(self):
+        import time
+        from app.services.stale_prospect_service import backfill_sold_comparables
+
+        lr._paused_until[lr._host(lr.LR_SPARQL)] = time.monotonic() + 600
+        result = await backfill_sold_comparables()  # returns before touching the database
+        self.assertEqual(result["attempted"], 0)
+        self.assertEqual(result["paused_minutes"], 10)
