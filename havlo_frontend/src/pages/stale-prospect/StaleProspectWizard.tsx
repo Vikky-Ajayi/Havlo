@@ -756,6 +756,19 @@ const AssessmentStep = ({
         </div>
       </div>
 
+      <div className="slw-agent-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="7.5" cy="6.5" r="3" />
+          <circle cx="16.5" cy="8.5" r="2.4" />
+          <path d="M2.5 20.5v-1.6a4.4 4.4 0 0 1 4.4-4.4h1.2a4.4 4.4 0 0 1 4.4 4.4v1.6z" />
+          <path d="M13.4 14.6a4 4 0 0 1 2.3-.7h1.6a4.2 4.2 0 0 1 4.2 4.2v2.4h-9" />
+        </svg>
+        <div>
+          <h3>Keep your estate agent.</h3>
+          <p>Havlo works alongside your existing agent &mdash; not instead of them. Share your assessment and recommendations with your agent, or implement the changes yourself.</p>
+        </div>
+      </div>
+
       <div className="slw-unlock-cta">
         <div className="slw-unlock-cta-copy">
           <h2>See your complete property assessment</h2>
@@ -1735,6 +1748,10 @@ const WizardStyles = () => (
     .slw-locked-card svg{flex:none;margin-top:1px}
     .slw-locked-grid + .slw-rating{margin:24px 0 0}
 
+    .slw-agent-note{display:flex;align-items:center;gap:36px;background:#f7f3ff;border:1px solid #efe7fc;border-radius:18px;padding:32px 56px;margin:0 0 40px;color:#A409D2}
+    .slw-agent-note svg{flex:none;width:64px;height:64px}
+    .slw-agent-note h3{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;font-weight:900;line-height:1.1;letter-spacing:-0.01em;margin:0 0 10px;color:#14121a}
+    .slw-agent-note p{margin:0;color:#475467;font-size:17px;line-height:1.55;max-width:780px}
     .slw-unlock-cta{background:#f5f6f8;border-radius:18px;padding:32px;display:grid;grid-template-columns:1fr 1.08fr;gap:32px;align-items:center}
     .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1.05;margin:0 0 20px;color:#202124}
     .slw-unlock-cta-copy p{color:#475467;line-height:1.55;margin:0 0 34px;font-size:16px}
@@ -2017,6 +2034,10 @@ const WizardStyles = () => (
       .slw-view-full-mobile-btn{display:block}
       .slw-locked-grid{grid-template-columns:repeat(2,1fr)}
       .slw-locked-card{min-height:110px;gap:22px}
+      .slw-agent-note{flex-direction:column;align-items:flex-start;gap:14px;padding:22px 20px;margin-bottom:28px}
+      .slw-agent-note svg{width:44px;height:44px}
+      .slw-agent-note h3{font-size:22px}
+      .slw-agent-note p{font-size:15px}
       .slw-unlock-cta{grid-template-columns:1fr;padding:10px;gap:14px}
       .slw-unlock-cta-copy{display:contents}
       .slw-unlock-cta-copy h2{font-size:26px;order:1;margin:10px 10px 0}
