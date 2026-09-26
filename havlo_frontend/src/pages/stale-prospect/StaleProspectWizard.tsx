@@ -675,7 +675,8 @@ const FULL_REPORT_INCLUDES = [
   'Detailed property analysis', 'Pricing analysis', 'Comparable property analysis',
   'Local competition', 'Listing assessment', 'Buyer appeal analysis',
   'Photography and presentation assessment', 'Key issues affecting the listing',
-  'Recommended improvements', 'Recommended positioning', 'Action plan',
+  'Recommended improvements', 'Recommended positioning', '30-day action plan',
+  'Supporting data and evidence',
 ];
 
 const AssessmentStep = ({
@@ -779,7 +780,25 @@ const AssessmentStep = ({
         </div>
         <div className="slw-unlock-cta-includes">
           <b>Full report includes</b>
-          <ul>{FULL_REPORT_INCLUDES.map((item) => <li key={item}>{item}</li>)}</ul>
+          <ul>
+            {FULL_REPORT_INCLUDES.map((item) => (
+              <li key={item}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7" /></svg>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="slw-report-callout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14 2.5H7A2.5 2.5 0 0 0 4.5 5v14A2.5 2.5 0 0 0 7 21.5h10a2.5 2.5 0 0 0 2.5-2.5V8z" />
+              <path d="M14 2.5V8h5.5" />
+              <path d="M8.5 9h2M8.5 12.5h7M8.5 16h7" />
+            </svg>
+            <div>
+              <strong>A detailed, actionable report</strong>
+              <p>Practical recommendations so you can make informed decisions and help attract the right buyers.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1761,8 +1780,14 @@ const WizardStyles = () => (
     .slw-price-box b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:42px}
     .slw-btn-white{background:#fff;color:#111;border:none;border-radius:7px;padding:16px 24px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%}
     .slw-unlock-cta-includes{background:#fff;border-radius:16px;padding:28px}
-    .slw-unlock-cta-includes b{display:block;margin-bottom:14px;font-size:16px}
-    .slw-unlock-cta-includes ul{margin:0;padding-left:20px;color:#444;font-size:14px;line-height:2}
+    .slw-unlock-cta-includes b{display:block;margin-bottom:18px;font-size:18px;color:#111}
+    .slw-unlock-cta-includes ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;color:#4b5563;font-size:14px;line-height:1.4}
+    .slw-unlock-cta-includes li{display:flex;align-items:center;gap:12px}
+    .slw-unlock-cta-includes li svg{flex:none;color:#A409D2}
+    .slw-report-callout{display:flex;align-items:center;gap:18px;margin-top:28px;background:#f6f1ff;border:1px solid #eee5fc;border-radius:14px;padding:18px 20px}
+    .slw-report-callout svg{flex:none;width:44px;height:48px;color:#A409D2}
+    .slw-report-callout strong{display:block;font-size:15px;font-weight:800;color:#1f1235}
+    .slw-report-callout p{margin:4px 0 0;font-size:13px;line-height:1.5;color:#6b7280}
 
     /* Payment step */
     .slw-payment h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0 0 54px;color:#202124}
@@ -2043,6 +2068,8 @@ const WizardStyles = () => (
       .slw-unlock-cta-copy h2{font-size:26px;order:1;margin:10px 10px 0}
       .slw-unlock-cta-copy p{order:1;margin:0 10px 6px}
       .slw-unlock-cta-includes{order:2}
+      .slw-report-callout{padding:16px;gap:14px}
+      .slw-report-callout svg{width:36px;height:40px}
       .slw-price-box{order:3;padding:20px}
       .slw-price-box>div{align-items:flex-start}
       .slw-price-box b{font-size:34px}
