@@ -655,21 +655,21 @@ function deriveThirtyDayPlanFromActions(actions?: ReportAction[]): ThirtyDayPlan
 
 // ── Step: Assessment (locked preview) ──────────────────────────────────────
 
-const LOCKED_FINDING_LABELS = [
-  'Recommended Pricing Range',
-  'Detailed Competitor Analysis',
-  'Buyer Perception Analysis',
-  'Listing Performance Analysis',
-  'Photography Assessment',
-  '30-Day Action Plan',
-  'Property Positioning Strategy',
-  'Recommended Changes',
+const LOCKED_FINDINGS = [
+  { title: 'Recommended Pricing Range', description: 'See the optimal price range for your market.' },
+  { title: 'Detailed Competitor Analysis', description: 'Understand how your listing compares.' },
+  { title: 'Buyer Perception Analysis', description: 'See how buyers may perceive your property online.' },
+  { title: 'Listing Performance Analysis', description: 'A full review of your portal performance and visibility.' },
+  { title: 'Photography Assessment', description: 'In-depth review with examples.' },
+  { title: '30-Day Action Plan', description: 'A step-by-step plan to improve buyer interest.' },
+  { title: 'Property Positioning Strategy', description: 'How to position your property for the right buyers.' },
+  { title: 'Recommended Changes', description: 'Practical recommendations you can share with your agent or implement yourself.' },
 ];
 
 // The Assessment page's headline count ("We've identified N potential
 // factors"); Confirm Property quotes the same number.
 const totalFactorsFor = (prospect: ProspectPreview) =>
-  (prospect.preview?.key_issues || []).length + LOCKED_FINDING_LABELS.length;
+  (prospect.preview?.key_issues || []).length + LOCKED_FINDINGS.length;
 
 const FULL_REPORT_INCLUDES = [
   'Detailed property analysis', 'Pricing analysis', 'Comparable property analysis',
@@ -717,7 +717,7 @@ const AssessmentStep = ({
       </div>
 
       <h2 className="slw-assess-heading">We&rsquo;ve identified {totalFactors} potential factors</h2>
-      <p className="slw-assess-subheading">{revealed.length} revealed &middot; {LOCKED_FINDING_LABELS.length} remain locked in your full report.</p>
+      <p className="slw-assess-subheading">{revealed.length} revealed &middot; {LOCKED_FINDINGS.length} remain locked in your full report.</p>
 
       <div className="slw-assess-findings-grid">
         <div>
@@ -734,12 +734,15 @@ const AssessmentStep = ({
         </div>
         <button type="button" className="slw-btn-black slw-view-full-mobile-btn" onClick={onUnlock}>View Full Assessment</button>
         <div>
-          <h3>{LOCKED_FINDING_LABELS.length} findings locked</h3>
+          <h3>{LOCKED_FINDINGS.length} findings locked</h3>
           <div className="slw-locked-grid">
-            {LOCKED_FINDING_LABELS.map((label) => (
-              <div className="slw-locked-card" key={label}>
+            {LOCKED_FINDINGS.map((finding) => (
+              <div className="slw-locked-card" key={finding.title}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-                <span>{label}</span>
+                <div className="slw-locked-text">
+                  <span className="slw-locked-title">{finding.title}</span>
+                  <span className="slw-locked-desc">{finding.description}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -1725,7 +1728,10 @@ const WizardStyles = () => (
     .slw-finding-card b{display:block;margin-bottom:7px;font-size:17px;color:#202124}
     .slw-finding-card p{color:#475467;font-size:14px;line-height:1.42;margin:0}
     .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-    .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:36px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}
+    .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:28px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}
+    .slw-locked-text{display:flex;flex-direction:column;gap:8px}
+    .slw-locked-title{color:#2b2f36;font-size:15px;font-weight:500;line-height:1.3}
+    .slw-locked-desc{color:#8a9099;font-size:13px;line-height:1.45}
     .slw-locked-card svg{flex:none;margin-top:1px}
     .slw-locked-grid + .slw-rating{margin:24px 0 0}
 
@@ -2010,7 +2016,7 @@ const WizardStyles = () => (
       .slw-assess-findings-grid{grid-template-columns:1fr;gap:28px}
       .slw-view-full-mobile-btn{display:block}
       .slw-locked-grid{grid-template-columns:repeat(2,1fr)}
-      .slw-locked-card{min-height:110px;gap:30px}
+      .slw-locked-card{min-height:110px;gap:22px}
       .slw-unlock-cta{grid-template-columns:1fr;padding:10px;gap:14px}
       .slw-unlock-cta-copy{display:contents}
       .slw-unlock-cta-copy h2{font-size:26px;order:1;margin:10px 10px 0}
