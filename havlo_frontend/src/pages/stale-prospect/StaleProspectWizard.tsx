@@ -321,12 +321,38 @@ const ConfirmStep = ({
         <div className="slw-confirm-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
         <div className="slw-confirm-details">
           <h2>{prospect.property_address}</h2>
-          {prospect.asking_price ? (
-            <>
-              <div className="slw-confirm-price">{formatGbp(prospect.asking_price)}</div>
-              <span className="slw-badge">Asking Price</span>
-            </>
-          ) : null}
+          <div className="slw-confirm-price-row">
+            {prospect.asking_price ? (
+              <div>
+                <div className="slw-confirm-price">{formatGbp(prospect.asking_price)}</div>
+                <span className="slw-badge">Asking Price</span>
+              </div>
+            ) : null}
+            <div className="slw-confirm-facts">
+              {prospect.bedrooms ? (
+                <span>
+                  <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M29.3332 23.334H2.6665" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M29.3332 28V21.3333C29.3332 18.8192 29.3332 17.5621 28.5521 16.7811C27.771 16 26.514 16 23.9998 16H7.99984C5.48568 16 4.2286 16 3.44756 16.7811C2.6665 17.5621 2.6665 18.8192 2.6665 21.3333V28" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M14.6667 16V13.6179C14.6667 13.1103 14.5904 12.9405 14.1996 12.7405C13.386 12.3239 12.3982 12 11.3333 12C10.2685 12 9.28073 12.3239 8.467 12.7405C8.07628 12.9405 8 13.1103 8 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                    <path d="M24.0002 16V13.6179C24.0002 13.1103 23.9239 12.9405 23.5331 12.7405C22.7195 12.3239 21.7318 12 20.6668 12C19.6019 12 18.6142 12.3239 17.8006 12.7405C17.4098 12.9405 17.3335 13.1103 17.3335 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                    <path d="M28 16V9.81409C28 8.89191 28 8.43081 27.7439 7.99537C27.4876 7.55993 27.1227 7.33455 26.3925 6.88377C23.4492 5.06637 19.8657 4 16 4C12.1342 4 8.55085 5.06637 5.60744 6.88377C4.87739 7.33455 4.51236 7.55993 4.25617 7.99537C4 8.43081 4 8.89191 4 9.81409V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
+                  </svg>
+                  {prospect.bedrooms} Bedrooms
+                </span>
+              ) : null}
+              {prospect.bathrooms ? (
+                <span>
+                  <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M25.3333 13.334H6.66667C5.19391 13.334 4 14.5279 4 16.0007C4 20.4189 7.58172 24.0007 12 24.0007H20C24.4183 24.0007 28 20.4189 28 16.0007C28 14.5279 26.8061 13.334 25.3333 13.334Z" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M6.6665 13.3327V8.66602C6.6665 7.56144 7.56193 6.66602 8.6665 6.66602C9.77108 6.66602 10.6665 7.56144 10.6665 8.66602V9.33268" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M9.33333 24L8 25.3333M22.6667 24L24 25.3333" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {prospect.bathrooms} Bathrooms
+                </span>
+              ) : null}
+            </div>
+          </div>
           <div className="slw-confirm-signals">
             <div>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -342,9 +368,9 @@ const ConfirmStep = ({
                   <path d="M12 7v5l3 2" />
                 </svg>
                 {prospect.reduced_date ? (
-                  <span>Price reduced on <b>{formatReducedDate(prospect.reduced_date)}</b></span>
+                  <span>Price reduced on <b className="slw-days">{formatReducedDate(prospect.reduced_date)}</b></span>
                 ) : (
-                  <span>Price <b>recently reduced</b></span>
+                  <span>Price <b className="slw-days">recently reduced</b></span>
                 )}
               </div>
             ) : prospect.listing_duration_days ? (
@@ -353,32 +379,8 @@ const ConfirmStep = ({
                   <circle cx="12" cy="12" r="9" />
                   <path d="M12 7v5l3 2" />
                 </svg>
-                <span><b>{prospect.listing_duration_days} days</b> on the market</span>
+                <span><b className="slw-days">{prospect.listing_duration_days} days</b> on the market</span>
               </div>
-            ) : null}
-          </div>
-          <div className="slw-confirm-facts">
-            {prospect.bedrooms ? (
-              <span>
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M29.3332 23.334H2.6665" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M29.3332 28V21.3333C29.3332 18.8192 29.3332 17.5621 28.5521 16.7811C27.771 16 26.514 16 23.9998 16H7.99984C5.48568 16 4.2286 16 3.44756 16.7811C2.6665 17.5621 2.6665 18.8192 2.6665 21.3333V28" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M14.6667 16V13.6179C14.6667 13.1103 14.5904 12.9405 14.1996 12.7405C13.386 12.3239 12.3982 12 11.3333 12C10.2685 12 9.28073 12.3239 8.467 12.7405C8.07628 12.9405 8 13.1103 8 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
-                  <path d="M24.0002 16V13.6179C24.0002 13.1103 23.9239 12.9405 23.5331 12.7405C22.7195 12.3239 21.7318 12 20.6668 12C19.6019 12 18.6142 12.3239 17.8006 12.7405C17.4098 12.9405 17.3335 13.1103 17.3335 13.6179V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
-                  <path d="M28 16V9.81409C28 8.89191 28 8.43081 27.7439 7.99537C27.4876 7.55993 27.1227 7.33455 26.3925 6.88377C23.4492 5.06637 19.8657 4 16 4C12.1342 4 8.55085 5.06637 5.60744 6.88377C4.87739 7.33455 4.51236 7.55993 4.25617 7.99537C4 8.43081 4 8.89191 4 9.81409V16" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" />
-                </svg>
-                {prospect.bedrooms} Bedrooms
-              </span>
-            ) : null}
-            {prospect.bathrooms ? (
-              <span>
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M25.3333 13.334H6.66667C5.19391 13.334 4 14.5279 4 16.0007C4 20.4189 7.58172 24.0007 12 24.0007H20C24.4183 24.0007 28 20.4189 28 16.0007C28 14.5279 26.8061 13.334 25.3333 13.334Z" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M6.6665 13.3327V8.66602C6.6665 7.56144 7.56193 6.66602 8.6665 6.66602C9.77108 6.66602 10.6665 7.56144 10.6665 8.66602V9.33268" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M9.33333 24L8 25.3333M22.6667 24L24 25.3333" stroke="#A409D2" strokeWidth="2.66667" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {prospect.bathrooms} Bathrooms
-              </span>
             ) : null}
           </div>
           <form className="slw-details-form slw-confirm-form" onSubmit={handleSubmit}>
@@ -1772,10 +1774,12 @@ const WizardStyles = () => (
     .slw-confirm-signals div{display:flex;align-items:flex-start;gap:10px}
     .slw-confirm-signals svg{flex:none;margin-top:1px;color:#A409D2}
     .slw-confirm-signals b{color:#A409D2;font-weight:700}
-    .slw-confirm-facts{display:flex;gap:34px;margin:28px 0 44px;padding-top:28px;border-top:1px solid #eee;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:20px;line-height:150%;letter-spacing:-0.02em}
-    .slw-confirm-facts span{display:flex;align-items:center;gap:8px}
-    .slw-confirm-facts svg{color:#A409D2}
-    .slw-details-form.slw-confirm-form{margin:0;padding:0;border:0;box-shadow:none;max-width:none;background:none}
+    .slw-confirm-signals b.slw-days{color:#EA580C}
+    .slw-confirm-price-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 20px}
+    .slw-confirm-facts{display:flex;flex-direction:column;gap:8px;color:#333;font-family:'Inter',sans-serif;font-weight:500;font-size:15px;line-height:1.3;letter-spacing:-0.01em}
+    .slw-confirm-facts span{display:flex;align-items:center;gap:7px;white-space:nowrap}
+    .slw-confirm-facts svg{flex:none;width:17px;height:17px;color:#A409D2}
+    .slw-details-form.slw-confirm-form{margin:28px 0 0;padding:28px 0 0;border:0;border-top:1px solid #eee;border-radius:0;box-shadow:none;max-width:none;background:none}
     .slw-details-form.slw-confirm-form .slw-btn-black{max-width:none;width:100%}
     .slw-confirm-form-heading{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:500;line-height:125%;letter-spacing:-0.02em;color:#202124;margin:0 0 22px}
 
@@ -2128,7 +2132,8 @@ const WizardStyles = () => (
       .slw-confirm-image{min-height:220px}
       .slw-confirm-details{padding:24px}
       .slw-confirm-details h2{font-size:30px}
-      .slw-confirm-facts{margin-bottom:28px;flex-direction:column;gap:14px}
+      .slw-confirm-facts{font-size:14px;gap:6px}
+      .slw-details-form.slw-confirm-form{margin-top:24px;padding-top:24px}
       .slw-confirm-signals{font-size:16px;padding:14px 16px}
       .slw-confirm-form-heading{font-size:21px;margin-bottom:18px}
       .slw-not-found{margin-top:32px}
