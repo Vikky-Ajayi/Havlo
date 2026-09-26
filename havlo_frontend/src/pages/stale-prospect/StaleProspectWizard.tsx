@@ -95,7 +95,7 @@ const Header = () => {
 // the "Download PDF Report" print output, only on the live wizard pages.
 const Footer = () => (
   <div className="slw-noprint">
-    <SiteFooter />
+    <SiteFooter hideNewsletter />
   </div>
 );
 

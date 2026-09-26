@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
 
-export const Footer: React.FC = () => {
+// hideNewsletter: the stale-prospect wizard hides the sign-up, because
+// owners were typing their details into it instead of the assessment form.
+export const Footer: React.FC<{ hideNewsletter?: boolean }> = ({ hideNewsletter = false }) => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
@@ -67,6 +69,7 @@ export const Footer: React.FC = () => {
       <div className="w-full max-w-[1600px] px-4 lg:px-14 pt-10 lg:pt-14 pb-6 rounded-[32px] bg-[#050505] flex flex-col gap-10 lg:gap-14 mx-2 lg:mx-auto">
         {/* Top Row: Newsletter & Socials */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10">
+          {!hideNewsletter && (
           <form
             onSubmit={handleNewsletterSubmit}
             className="relative flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto"
@@ -101,6 +104,7 @@ export const Footer: React.FC = () => {
               </div>
             )}
           </form>
+          )}
 
           <div className="flex items-center gap-7">
             {[
