@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing, StaleListingProspect
+from app.services import land_registry
 from app.services.groq_service import generate_stale_listing_report
 
 logger = logging.getLogger(__name__)
@@ -367,13 +368,28 @@ async def create_prospect_from_listing_snapshot(
     """Create a fully processed prospect, report, preview and letter PDF."""
     token = create_access_token()
     property_code = await make_property_code(db)
-    report = await generate_prospect_report(
-        property_address=property_address,
-        rightmove_url=rightmove_url,
-        snapshot=listing_snapshot,
-        listing_duration_days=listing_duration_days,
-        expand_report=expand_report,
-        market=country,
+    # Recorded sales are looked up alongside the report so creation takes no
+    # longer; a failed lookup leaves them to be fetched on first view.
+    report, sold_comparables = await asyncio.gather(
+        generate_prospect_report(
+            property_address=property_address,
+            rightmove_url=rightmove_url,
+            snapshot=listing_snapshot,
+            listing_duration_days=listing_duration_days,
+            expand_report=expand_report,
+            market=country,
+        ),
+        _lookup_sold_comparables(
+            country=country,
+            postcode=listing_snapshot.get("postcode"),
+            address=property_address,
+            property_type=listing_snapshot.get("property_type"),
+            asking_price=asking_price,
+            # Bulk runs create several prospects at once and the lookups are
+            # rate-limited, so don't let them hold creation up; anything that
+            # misses this is filled in by backfill_sold_comparables.
+            timeout=20,
+        ),
     )
     preview = build_preview(report, listing_snapshot, property_address)
     now = datetime.now(timezone.utc)
@@ -403,6 +419,8 @@ async def create_prospect_from_listing_snapshot(
         processed_at=now,
         processing_status="report_ready",
         payment_status="pending",
+        sold_comparables_json=json.dumps(sold_comparables) if sold_comparables is not None else None,
+        sold_comparables_at=now if sold_comparables is not None else None,
     )
     db.add(prospect)
     await db.flush()
@@ -640,8 +658,142 @@ def current_report_json(prospect: StaleListingProspect) -> str | None:
     return prospect.agent_edited_report_json or prospect.report_json
 
 
+SOLD_COMPARABLES_MAX_AGE_DAYS = 30
+
+
+async def _lookup_sold_comparables(
+    *, country: str, postcode: str | None, address: str, property_type: str | None, asking_price: float | None,
+    timeout: float | None = None,
+) -> list[dict[str, Any]] | None:
+    """Land Registry comparables for a property, or None if the lookup failed
+    or took longer than `timeout` (so it's retried later rather than cached
+    as "none found"). Only England and Wales are covered; other markets get []."""
+    if str(country or "UK").upper() != "UK":
+        return []
+    try:
+        return await asyncio.wait_for(
+            land_registry.find_sold_comparables(
+                postcode=postcode, address=address, property_type=property_type, asking_price=asking_price
+            ),
+            timeout,
+        )
+    except Exception as exc:  # noqa: BLE001 -- a public service; never block the caller
+        logger.warning("Land Registry lookup failed for %s: %s: %s", address, type(exc).__name__, exc)
+        return None
+
+
+def cached_sold_comparables(prospect: StaleListingProspect) -> list[dict[str, Any]] | None:
+    """The Land Registry comparables saved on the prospect; None if never looked up."""
+    if prospect.sold_comparables_at is None:
+        return None
+    try:
+        rows = json.loads(prospect.sold_comparables_json or "[]")
+    except ValueError:
+        return None
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else None
+
+
+async def refresh_sold_comparables(prospect: StaleListingProspect) -> list[dict[str, Any]] | None:
+    """Look up the prospect's comparables if it has none yet or they're over
+    SOLD_COMPARABLES_MAX_AGE_DAYS old, and store them on it (the caller
+    commits). Returns what's stored, or None if never successfully looked up."""
+    cached = cached_sold_comparables(prospect)
+    at = prospect.sold_comparables_at
+    if cached is not None and at is not None and (datetime.now(timezone.utc) - at).days < SOLD_COMPARABLES_MAX_AGE_DAYS:
+        return cached
+    snapshot = _safe_json(prospect.listing_snapshot_json)
+    rows = await _lookup_sold_comparables(
+        country=prospect_country(prospect),
+        postcode=prospect.postcode or snapshot.get("postcode"),
+        address=prospect.property_address,
+        property_type=prospect.property_type or snapshot.get("property_type"),
+        asking_price=prospect.asking_price,
+    )
+    if rows is None:
+        return cached
+    prospect.sold_comparables_json = json.dumps(rows)
+    prospect.sold_comparables_at = datetime.now(timezone.utc)
+    return rows
+
+
+async def refresh_sold_comparables_in_background(prospect_id: str) -> None:
+    """Fire-and-forget refresh_sold_comparables, for pages that mustn't wait on it."""
+    import uuid
+
+    try:
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, uuid.UUID(str(prospect_id)))
+            if prospect is None:
+                return
+            await db.commit()  # don't hold a pooled connection through the lookup
+            before = prospect.sold_comparables_at
+            await refresh_sold_comparables(prospect)
+            if prospect.sold_comparables_at != before:
+                await db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Background Land Registry refresh failed for %s: %s", prospect_id, exc)
+
+
+async def backfill_sold_comparables(limit: int = 60) -> dict[str, int]:
+    """One cycle of filling in Land Registry comparables for UK prospects that
+    don't have any yet (created before this existed, or whose creation-time
+    lookup timed out), one at a time to stay gentle on the public service.
+    Owners who've entered their code go first."""
+    async with AsyncSessionLocal() as db:
+        ids = (await db.execute(
+            select(StaleListingProspect.id)
+            .where(StaleListingProspect.sold_comparables_at.is_(None))
+            .where(StaleListingProspect.country == "UK")
+            .order_by(StaleListingProspect.code_looked_up_at.desc().nulls_last(), StaleListingProspect.created_at.desc())
+            .limit(limit)
+        )).scalars().all()
+    for prospect_id in ids:
+        await refresh_sold_comparables_in_background(str(prospect_id))
+        await asyncio.sleep(1)
+    return {"attempted": len(ids)}
+
+
+def report_comparable_rows(prospect: StaleListingProspect) -> list[dict[str, Any]]:
+    """The comparable-sales table used by the report page, report PDF and
+    letter: recorded Land Registry sales plus the subject's own asking price,
+    in the report's existing row shape. [] when there are no recorded sales,
+    so nothing invented is ever shown (reports generated before this carry
+    AI-written comparables in report_json; those are never displayed)."""
+    sales = cached_sold_comparables(prospect) or []
+    if not sales:
+        return []
+    rows: list[dict[str, Any]] = []
+    for sale in sales:
+        try:
+            when = datetime.strptime(sale["date"], "%Y-%m-%d").strftime("%b %Y")
+            rows.append({
+                "address": sale["address"],
+                "beds": "—",
+                "property_type": sale["property_type"],
+                "sold_asking": f"£{int(sale['price']):,} sold {when}",
+                "sold_price": int(sale["price"]),
+                "sold_date": sale["date"],
+                "is_subject": False,
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not rows:
+        return []
+    lr_type = land_registry.lr_property_type(prospect.property_type)
+    rows.append({
+        "address": address_with_full_postcode(prospect.property_address, prospect.postcode),
+        "beds": prospect.bedrooms or "—",
+        "property_type": land_registry.LR_TYPE_LABELS.get(lr_type or "", prospect.property_type or ""),
+        "sold_asking": f"£{prospect.asking_price:,.0f} asking" if prospect.asking_price else "Asking price",
+        "is_subject": True,
+    })
+    return rows
+
+
 def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
     snapshot = _safe_json(prospect.listing_snapshot_json)
+    report_data = _safe_json(current_report_json(prospect))
+    report_data["comparable_sales"] = report_comparable_rows(prospect)
     return {
         "prospect_id": str(prospect.id),
         "property_code": prospect.property_code,
@@ -652,7 +804,8 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "contact_name": prospect.contact_name,
         "listing_snapshot": snapshot,
         "reduced_date": reduced_date_info(prospect, snapshot),
-        "report_data": _safe_json(current_report_json(prospect)),
+        "report_data": report_data,
+        "sold_comparables_attribution": land_registry.attribution() if report_data["comparable_sales"] else None,
         "payment_status": prospect.payment_status,
     }
 
@@ -713,6 +866,12 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
     if report.get("_expanded"):
         return report
     snapshot = _safe_json(prospect.listing_snapshot_json)
+    recorded = await refresh_sold_comparables(prospect)
+    if recorded:
+        # Real sales the AI may cite; it's told never to invent any others.
+        snapshot["recorded_sales_nearby"] = [
+            f"{s['address']} ({s['property_type']}) sold for £{s['price']:,} on {s['date']}" for s in recorded
+        ]
     expanded = await generate_prospect_report(
         property_address=prospect.property_address,
         rightmove_url=prospect.rightmove_url,
@@ -1320,12 +1479,11 @@ def _letter_parse_money(text: Any) -> float | None:
 
 
 def _letter_price_position(asking_price: float | None, comparable_sales: list[dict]) -> tuple[str, str, str, Any]:
-    """Compares asking_price to the average of the comparable SOLD prices
-    (comparable_sales always has exactly 4 entries per the Groq schema —
-    3 sold comps + 1 is_subject entry, which is excluded) to produce a
-    factual above/in-line/below verdict, rather than guessing a direction
-    from the abstract 0-100 pricing score."""
-    sold = [v for s in comparable_sales if not s.get("is_subject") for v in [_letter_parse_money(s.get("sold_asking"))] if v]
+    """Compares asking_price to the average of the recorded SOLD prices in
+    report_comparable_rows (HM Land Registry sales; the is_subject row is
+    excluded) to produce a factual above/in-line/below verdict, rather than
+    guessing a direction from the abstract 0-100 pricing score."""
+    sold = [v for s in comparable_sales if not s.get("is_subject") for v in [s.get("sold_price") or _letter_parse_money(s.get("sold_asking"))] if v]
     if not asking_price or not sold:
         return "In Line with Market", "in line with", "Fairly positioned", _LETTER_ORANGE
     avg = sum(sold) / len(sold)
@@ -1612,7 +1770,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     snapshot = _safe_json(prospect.listing_snapshot_json)
     scores = report.get("scores") or {}
     active_competition = report.get("active_competition") or []
-    comparable_sales = report.get("comparable_sales") or []
+    comparable_sales = report_comparable_rows(prospect)
     photo_url = snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
     photo_reader = _letter_fetch_photo(photo_url)
     # Rightmove's displayAddress (prospect.property_address) truncates the
@@ -2131,7 +2289,7 @@ def generate_full_report_pdf(prospect: StaleListingProspect) -> str:
         story.append(Spacer(1, 16))
 
     # ── Comparable sold prices ──────────────────────────────────────────────
-    comps = report.get("comparable_sales") or []
+    comps = report_comparable_rows(prospect)
     if comps:
         story.append(Paragraph("Comparable sold prices", styles["h2"]))
         rows = [["Address", "Beds", "Type", "Price"]]
@@ -2155,7 +2313,8 @@ def generate_full_report_pdf(prospect: StaleListingProspect) -> str:
                        ("FONTNAME", (0, highlight_row), (-1, highlight_row), _LETTER_FONT_BOLD)]
         t.setStyle(TableStyle(tstyle))
         story.append(t)
-        story.append(Paragraph("Highlighted row is the subject property.", styles["muted"]))
+        story.append(Paragraph("Highlighted row is the subject property. Recent recorded sales nearby.", styles["muted"]))
+        story.append(Paragraph(_letter_esc(land_registry.attribution()), styles["muted"]))
         story.append(Spacer(1, 16))
 
     if findings or competitors or comps:

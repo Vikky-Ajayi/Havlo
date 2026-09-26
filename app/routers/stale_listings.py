@@ -52,6 +52,7 @@ from app.schemas.schemas import (
     StaleProspectLookupRequest,
     StaleProspectPreviewResponse,
     StaleProspectReportResponse,
+    StaleProspectSoldComparablesResponse,
     StaleProspectUsScanRequest,
     StaleListingAdminFinalizeRequest,
     StaleListingAdminItem,
@@ -67,8 +68,12 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
+from app.services import land_registry
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
+    cached_sold_comparables,
+    refresh_sold_comparables,
+    refresh_sold_comparables_in_background,
     create_access_token,
     create_prospect_from_listing_snapshot,
     current_report_json,
@@ -652,22 +657,33 @@ async def _get_prospect_by_access(
     return prospect
 
 
+def _prefetch_sold_comparables(prospect: StaleListingProspect, background_tasks: BackgroundTasks) -> None:
+    """Start the Land Registry lookup as soon as the owner arrives (it takes
+    seconds), so it's usually saved by the time the Assessment asks for it."""
+    if cached_sold_comparables(prospect) is None:
+        background_tasks.add_task(refresh_sold_comparables_in_background, str(prospect.id))
+
+
 @public_router.post("/prospects/lookup", response_model=StaleProspectPreviewResponse)
 async def lookup_stale_prospect(
     payload: StaleProspectLookupRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectPreviewResponse:
     prospect = await _get_prospect_by_access(db, property_code=payload.property_code)
+    _prefetch_sold_comparables(prospect, background_tasks)
     return StaleProspectPreviewResponse(**serialize_preview(prospect))
 
 
 @public_router.get("/prospects/preview", response_model=StaleProspectPreviewResponse)
 async def get_stale_prospect_preview(
+    background_tasks: BackgroundTasks,
     token: str | None = Query(default=None),
     code: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectPreviewResponse:
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    _prefetch_sold_comparables(prospect, background_tasks)
     return StaleProspectPreviewResponse(**serialize_preview(prospect))
 
 
@@ -877,8 +893,38 @@ async def get_stale_prospect_report(
     # different device/session that never scheduled it), schedule it in the
     # background and let the next load/refresh pick up the richer version.
     if not is_report_expanded(prospect):
+        # Expansion also looks up the recorded sales (ensure_expanded_report).
         background_tasks.add_task(expand_report_in_background, str(prospect.id))
+    elif cached_sold_comparables(prospect) is None:
+        background_tasks.add_task(refresh_sold_comparables_in_background, str(prospect.id))
     return StaleProspectReportResponse(**serialize_report(prospect))
+
+
+# One lookup at a time per prospect (per worker), so a double-loaded page
+# doesn't hit Land Registry twice.
+_comparables_locks: dict[str, asyncio.Lock] = {}
+
+
+@public_router.get("/prospects/comparables", response_model=StaleProspectSoldComparablesResponse)
+async def get_stale_prospect_comparables(
+    token: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectSoldComparablesResponse:
+    """Recent recorded sales near the property (HM Land Registry) for the
+    assessment page. The first request looks them up, which takes several
+    seconds, and saves them on the prospect; later ones are served from that."""
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    async with _comparables_locks.setdefault(str(prospect.id), asyncio.Lock()):
+        await db.refresh(prospect, attribute_names=["sold_comparables_json", "sold_comparables_at"])
+        await db.commit()  # expire_on_commit=False: release the connection during the lookup
+        before = prospect.sold_comparables_at
+        rows = await refresh_sold_comparables(prospect) or []
+        if prospect.sold_comparables_at != before:
+            await db.commit()
+    return StaleProspectSoldComparablesResponse(
+        sales=rows, attribution=land_registry.attribution() if rows else None
+    )
 
 
 _OUTCODE_ONLY_RE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]?$", re.IGNORECASE)

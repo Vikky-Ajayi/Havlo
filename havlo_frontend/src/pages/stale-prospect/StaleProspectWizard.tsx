@@ -5,6 +5,7 @@ import { Footer as SiteFooter } from '../../components/shared/Footer';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import {
   createProspectCheckout,
+  getProspectComparables,
   getProspectPaymentStatus,
   getProspectPreview,
   getProspectReport,
@@ -23,6 +24,7 @@ import {
   type ProspectPreview,
   type ProspectReport,
   type ReportAction,
+  type SoldComparable,
   type ThirtyDayPlanWeek,
   type WizardStep,
 } from './types';
@@ -609,20 +611,16 @@ function firstSentence(text: string): string {
   return (match ? match[0] : clean).trim();
 }
 
-// Older reports never generated active_competition (currently-listed
-// properties competing for the same buyers), but they do have
-// comparable_sales (recently sold nearby properties) — real, sourced data,
-// just a different kind of comparison. Reusing it keeps the section always
-// populated with something true rather than inventing competitor listings
-// that were never actually found.
-function deriveCompetitionFromComparables(comparableSales?: ComparableSale[]): ActiveCompetitor[] {
+// comparable_sales now only ever holds HM Land Registry sales (the backend's
+// report_comparable_rows), shown in their own "Comparable sold prices" card.
+function soldComparablesFrom(comparableSales?: ComparableSale[]): SoldComparable[] {
   return (comparableSales || [])
-    .filter((sale) => !sale.is_subject)
+    .filter((sale) => !sale.is_subject && sale.sold_price && sale.sold_date)
     .map((sale) => ({
-      address: sale.address,
-      price: sale.sold_asking,
-      beds: typeof sale.beds === 'number' ? sale.beds : undefined,
-      differentiator: sale.property_type,
+      address: sale.address || '',
+      property_type: sale.property_type || '',
+      price: sale.sold_price as number,
+      date: sale.sold_date as string,
     }));
 }
 
@@ -679,11 +677,59 @@ const FULL_REPORT_INCLUDES = [
   'Supporting data and evidence',
 ];
 
+// Recorded sales from HM Land Registry (never AI-written). The attribution
+// is required by the data's licence wherever the sales are shown.
+const SoldPricesList = ({ sales, attribution, loading = false }: { sales: SoldComparable[]; attribution?: string | null; loading?: boolean }) => (
+  <div className="slw-sold-comps">
+    <div className="slw-sold-comps-head">
+      <b>Comparable sold prices</b>
+      <span>Recent sales of similar homes nearby</span>
+    </div>
+    {loading ? (
+      <p className="slw-sold-comps-loading">Checking recent sales near you&hellip;</p>
+    ) : (
+      <ul>
+        {sales.map((sale) => (
+          <li key={`${sale.address}-${sale.date}`}>
+            <div>
+              {/* Keep the postcode on one line: "CF23 5JL", never "CF23 / 5JL". */}
+              <span className="slw-sold-comps-addr">{sale.address.replace(/ (\d[A-Z]{2})$/, '\u00a0$1')}</span>
+              <span className="slw-sold-comps-meta">
+                {sale.property_type} &middot; Sold {new Date(`${sale.date}T00:00:00`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+            <b>{formatGbp(sale.price)}</b>
+          </li>
+        ))}
+      </ul>
+    )}
+    {attribution && <small>{attribution}</small>}
+  </div>
+);
+
+const SoldComparablesCard = ({ access }: { access: { token?: string; code?: string } }) => {
+  const [state, setState] = useState<{ loading: boolean; sales: SoldComparable[]; attribution: string | null }>({
+    loading: true, sales: [], attribution: null,
+  });
+  useEffect(() => {
+    if (!access.token && !access.code) return;
+    let cancelled = false;
+    getProspectComparables(access)
+      .then((res) => { if (!cancelled) setState({ loading: false, sales: res.sales || [], attribution: res.attribution ?? null }); })
+      .catch(() => { if (!cancelled) setState({ loading: false, sales: [], attribution: null }); });
+    return () => { cancelled = true; };
+  }, [access.token, access.code]);
+  if (!state.loading && state.sales.length === 0) return null;
+  return <SoldPricesList sales={state.sales} attribution={state.attribution} loading={state.loading} />;
+};
+
 const AssessmentStep = ({
   prospect,
+  access,
   onUnlock,
 }: {
   prospect: ProspectPreview;
+  access: { token?: string; code?: string };
   onUnlock: () => void;
 }) => {
   const snapshot = prospect.listing_snapshot || {};
@@ -782,6 +828,7 @@ const AssessmentStep = ({
               <p>The sooner you understand what&rsquo;s potentially limiting buyer appeal, the sooner you and your agent can decide which changes are worth making.</p>
             </div>
           </div>
+          <SoldComparablesCard access={access} />
           <h2>Unlock the complete assessment for your property</h2>
           <p>You&rsquo;ve seen <b>{revealed.length}</b> of the <b>{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
@@ -1002,14 +1049,11 @@ const FullReportStep = ({
     }
   }
 
-  // Competition analysis and the 30-day plan must always have something —
-  // older reports never generated active_competition/thirty_day_plan, so
-  // fall back to real data the report does have (comparable_sales,
-  // action_plan) rather than showing an empty section.
-  const hasRealCompetition = (data.active_competition || []).length > 0;
-  const competitionItems = hasRealCompetition
-    ? (data.active_competition as ActiveCompetitor[])
-    : deriveCompetitionFromComparables(data.comparable_sales);
+  // Older reports never generated thirty_day_plan, so fall back to the
+  // report's own action_plan rather than showing an empty section. Sold
+  // prices are not competition, so they're no longer borrowed for it.
+  const competitionItems = (data.active_competition || []) as ActiveCompetitor[];
+  const soldComparables = soldComparablesFrom(data.comparable_sales);
   const thirtyDayPlan = (data.thirty_day_plan || []).length > 0
     ? (data.thirty_day_plan as ThirtyDayPlanWeek[])
     : deriveThirtyDayPlanFromActions(data.action_plan);
@@ -1088,7 +1132,7 @@ const FullReportStep = ({
         {competitionItems.length > 0 && (
           <div className="slw-competition-card">
             <b>Competition analysis</b>
-            <p>{hasRealCompetition ? 'Properties currently competing for the same buyers:' : 'Recent comparable sales in the area:'}</p>
+            <p>Properties currently competing for the same buyers:</p>
             {competitionItems.map((c, i) => (
               <div className="slw-competitor-row" key={i}>
                 <div>
@@ -1127,6 +1171,12 @@ const FullReportStep = ({
           )}
         </div>
       </div>
+
+      {soldComparables.length > 0 && (
+        <div className="slw-report-sold-comps">
+          <SoldPricesList sales={soldComparables} attribution={report.sold_comparables_attribution} />
+        </div>
+      )}
 
       {thirtyDayPlan.length > 0 && (
         <>
@@ -1586,7 +1636,7 @@ export const StaleProspectWizard = () => {
             <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} />
           )}
           {step === 'assessment' && prospect && (
-            <AssessmentStep prospect={prospect} onUnlock={() => setStep('payment')} />
+            <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} />
           )}
           {step === 'payment' && prospect && (
             <PaymentStep
@@ -1785,6 +1835,20 @@ const WizardStyles = () => (
     .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1.05;margin:0 0 20px;color:#202124}
     .slw-unlock-cta-copy p{color:#475467;line-height:1.55;margin:0 0 34px;font-size:16px}
     .slw-unlock-cta-copy p b{color:#202124}
+    .slw-sold-comps{background:#fff;border:1px solid #e7e8ec;border-radius:14px;padding:18px 20px;margin:0 0 28px}
+    .slw-sold-comps-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+    .slw-sold-comps-head b{font-size:16px;color:#202124}
+    .slw-sold-comps-head span{font-size:13px;color:#6b7280}
+    .slw-sold-comps ul{list-style:none;margin:0;padding:0}
+    .slw-sold-comps li{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 0;border-top:1px solid #f0f1f3}
+    .slw-sold-comps li>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .slw-sold-comps-addr{font-size:14px;font-weight:600;color:#202124}
+    .slw-sold-comps-meta{font-size:12.5px;color:#6b7280}
+    .slw-sold-comps li>b{font-size:15px;color:#202124;white-space:nowrap}
+    .slw-sold-comps .slw-sold-comps-loading{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:#6b7280}
+    .slw-sold-comps small{display:block;margin-top:10px;font-size:11px;line-height:1.45;color:#9aa0a6}
+    .slw-report-sold-comps{margin:28px 0 36px}
+    .slw-report-sold-comps .slw-sold-comps{margin:0}
     .slw-market-alert{display:flex;align-items:flex-start;gap:16px;background:#fdecee;border:1px solid #f9d7db;border-radius:14px;padding:18px 20px;margin:0 0 28px;color:#c0262d}
     .slw-market-alert svg{flex:none;width:34px;height:34px;margin-top:2px}
     .slw-market-alert strong{display:block;font-size:16px;font-weight:700;color:#b42318;margin-bottom:4px}
@@ -2081,6 +2145,7 @@ const WizardStyles = () => (
       .slw-unlock-cta{grid-template-columns:1fr;padding:10px;gap:14px}
       .slw-unlock-cta-copy{display:contents}
       .slw-market-alert{margin:10px 10px 4px;padding:16px;gap:12px}
+      .slw-unlock-cta-copy .slw-sold-comps{margin:6px 10px 4px;padding:16px}
       .slw-market-alert svg{width:28px;height:28px}
       .slw-unlock-cta-copy .slw-market-alert p{margin:0}
       .slw-unlock-cta-copy h2{font-size:26px;order:1;margin:10px 10px 0}

@@ -1,5 +1,5 @@
 import { API_BASE } from '../../lib/api';
-import type { ProspectPreview, ProspectReport } from './types';
+import type { ProspectPreview, ProspectReport, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
@@ -31,6 +31,16 @@ export async function getProspectPreview(params: { token?: string; code?: string
   if (params.token) query.set('token', params.token);
   if (params.code) query.set('code', params.code);
   const response = await fetch(`${API_BASE}/stale-listings/prospects/preview?${query.toString()}`);
+  return parseJsonOrThrow(response);
+}
+
+/** Recent recorded sales near the property (HM Land Registry). The first call
+ * for a property can take several seconds while they're looked up. */
+export async function getProspectComparables(params: { token?: string; code?: string }): Promise<{ sales: SoldComparable[]; attribution?: string | null }> {
+  const query = new URLSearchParams();
+  if (params.token) query.set('token', params.token);
+  if (params.code) query.set('code', params.code);
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/comparables?${query.toString()}`);
   return parseJsonOrThrow(response);
 }
 

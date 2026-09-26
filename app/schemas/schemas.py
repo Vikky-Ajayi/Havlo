@@ -644,7 +644,24 @@ class StaleProspectReportResponse(BaseModel):
     listing_snapshot: dict = Field(default_factory=dict)
     reduced_date: Optional[str] = None  # see StaleProspectPreviewResponse
     report_data: dict = Field(default_factory=dict)
+    # Set whenever report_data.comparable_sales holds HM Land Registry sales;
+    # must be shown alongside them (Open Government Licence).
+    sold_comparables_attribution: Optional[str] = None
     payment_status: str
+
+
+class StaleProspectSoldComparable(BaseModel):
+    address: str
+    property_type: str
+    price: int
+    date: str  # YYYY-MM-DD
+
+
+class StaleProspectSoldComparablesResponse(BaseModel):
+    """Recent recorded sales near the property (HM Land Registry); empty when
+    none are found or the area isn't covered."""
+    sales: list[StaleProspectSoldComparable] = Field(default_factory=list)
+    attribution: Optional[str] = None
 
 
 class StaleProspectAdminCreateResponse(BaseModel):

@@ -79,6 +79,17 @@ export interface ComparableSale {
   property_type?: string;
   sold_asking?: string;
   is_subject?: boolean;
+  /** Land Registry rows only (report_comparable_rows on the backend). */
+  sold_price?: number;
+  sold_date?: string;
+}
+
+/** A recorded sale near the property, from HM Land Registry. */
+export interface SoldComparable {
+  address: string;
+  property_type: string;
+  price: number;
+  date: string; // YYYY-MM-DD
 }
 
 export interface ActiveCompetitor {
@@ -126,6 +137,8 @@ export interface ProspectReport {
   contact_name?: string | null;
   listing_snapshot: ListingSnapshot;
   report_data: FullReportData;
+  /** Present whenever report_data.comparable_sales holds Land Registry sales. */
+  sold_comparables_attribution?: string | null;
   payment_status: string;
 }
 

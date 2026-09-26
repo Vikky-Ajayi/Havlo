@@ -497,6 +497,12 @@ class StaleListingProspect(Base):
     qr_token_hashes: Mapped[list[str]] = mapped_column(
         ARRAY(String(64)), nullable=False, default=list, server_default="{}"
     )
+    # Recent recorded sales near the property from HM Land Registry (see
+    # app/services/land_registry.py), as a JSON list of {address,
+    # property_type, price, date}. NULL = not looked up yet; "[]" = looked up,
+    # none found. Refreshed when older than SOLD_COMPARABLES_MAX_AGE_DAYS.
+    sold_comparables_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    sold_comparables_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     property_address: Mapped[str] = mapped_column(String(500), nullable=False)
     # Rightmove's displayAddress never includes the full postcode (only the
     # outcode, if that) — this is combined from the address object's

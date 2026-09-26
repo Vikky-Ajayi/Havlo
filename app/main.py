@@ -657,6 +657,22 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Stale-prospect post-purchase emails disabled by ENABLE_STALE_PROSPECT_POST_PURCHASE_EMAILS.")
 
+    # ── HM Land Registry comparable sold prices backfill ──────────────────
+    # Looks up recorded sales for UK prospects that don't have them yet
+    # (created before this existed, or whose creation-time lookup timed out),
+    # every 15 minutes, one prospect at a time. run_scraper_loop's advisory
+    # lock keeps it to a single worker.
+    if HAS_DATABASE and _env_enabled("ENABLE_SOLD_COMPARABLES_BACKFILL", True):
+        from app.services.scraper_base import run_scraper_loop
+        from app.services.stale_prospect_service import backfill_sold_comparables
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Sold comparables backfill", backfill_sold_comparables, 0.25, initial_delay_seconds=120)
+        ))
+        logger.info("Land Registry sold-comparables backfill loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Sold-comparables backfill disabled by ENABLE_SOLD_COMPARABLES_BACKFILL.")
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:

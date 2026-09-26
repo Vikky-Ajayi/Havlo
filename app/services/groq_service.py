@@ -387,7 +387,7 @@ override takes precedence over every UK reference anywhere above.
   "showings" (not viewings), "pending" (not under offer), "closing costs", "comps", "price per
   square foot", "days on Zillow", "ZIP code", "HOA", "yard".
 - Use US spelling (neighbor, color, analyze, program).
-- comparable_sales and active_competition entries must use realistic US street addresses (for
+- active_competition entries must use realistic US street addresses (for
   example "1418 Oak Ridge Dr") in the same city and ZIP area as the subject property, prices in US
   dollars, and distances in miles."""
 
@@ -512,6 +512,12 @@ async def generate_stale_listing_report(
         f"Bedrooms: {snapshot.get('bedrooms')}" if snapshot.get("bedrooms") else "",
         f"Bathrooms: {snapshot.get('bathrooms')}" if snapshot.get("bathrooms") else "",
         f"Listed date: {snapshot.get('listed_date')}" if snapshot.get("listed_date") else "",
+        (
+            "Recorded sold prices nearby (HM Land Registry, genuine completed sales; the only sales you may cite): "
+            + "; ".join(str(line) for line in snapshot.get("recorded_sales_nearby") or [])
+        )
+        if snapshot.get("recorded_sales_nearby")
+        else "",
         (
             "Key features from listing: "
             + ", ".join(str(feature).strip() for feature in (snapshot.get("features") or []) if str(feature).strip())
@@ -915,7 +921,7 @@ QUICK INSIGHT format rules:
   Each action description should be at least 300 characters and explain what to do, why it matters now, and what change the seller should expect to see.
   Each bullet must be a complete sentence with a concrete instruction and a practical outcome.
   Also fill why_it_matters — one short sentence, not a repeat of the description.
-- comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Keep street names realistic for the area given.
+- comparable_sales: always an empty list []. Recorded sold prices are added separately from HM Land Registry.
  - pricing_recommendation_detail: give a commercially sharp explanation that references the actual price range, likely buyer reaction, and what a reset should unlock within the next fortnight.
  - executive_summary: write a short human mini-brief that clearly states the main blocker, how buyers are reading the listing, and what to change first this week.
   Be direct, commercial, specific, and natural. Never use em dashes."""
@@ -983,8 +989,7 @@ PREMIUM STRATEGY format rules:
   Each action description should be at least 300 characters and include sequencing, strategic framing, and the commercial logic behind the recommendation.
   Each bullet must be a complete, specific instruction of at least 16 words with a measurable or observable outcome.
   Also fill why_it_matters — one short, sharp sentence, not a repeat of the description.
-- comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Include sold dates (within 90 days).
-  Comp selection must reflect the specific property type and price range from q9_asking_price.
+- comparable_sales: always an empty list []. Recorded sold prices are added separately from HM Land Registry.
 - pricing_recommendation: One decisive sentence. Include the exact adjusted price or percentage.
 - pricing_recommendation_detail: provide a premium-level pricing note that covers current position versus market, the psychological effect of the current number, what a reset unlocks on Rightmove, and what timeline to expect after the change.
 - executive_summary: write a consultant briefing for the homeowner covering why the property is stale, the biggest opportunity, the biggest risk, the recommended first action this week, and the likely outcome if the strategy is followed. It must sound human, commercially sharp, and contain no em dashes."""
@@ -1055,7 +1060,7 @@ PROFESSIONAL REVIEW format rules:
   Each action description should be at least 300 characters and should explain what to do, why it matters, how it should be executed, and what success signal to watch for.
   Each bullet must be a complete, specific instruction with a measurable outcome or clear success signal.
   Also fill why_it_matters — one short sentence, not a repeat of the description.
-- comparable_sales: EXACTLY 4 entries (3 sold comps + 1 subject). Note sold dates where possible.
+- comparable_sales: always an empty list []. Recorded sold prices are added separately from HM Land Registry.
 - pricing_recommendation: One specific sentence including the recommended adjusted price or range.
 - pricing_recommendation_detail: give a fuller pricing note that references current position, likely buyer interpretation, portal search bands, and the expected effect on enquiry levels within 14 days.
 - executive_summary: write a concise but authoritative consultant summary that references viewings, feedback, marketing gaps, and the single most impactful next move. It must sound human and commercially aware, never robotic, and never use em dashes."""
@@ -1156,18 +1161,10 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
       ]
     }}
   ],
-  "comparable_sales": [
-    {{
-      "address": "<plausible street address in the same area as property_address — use real-sounding UK street names>",
-      "beds": <integer matching the property type>,
-      "property_type": "<Semi-det. | Terrace | Detached | Flat | Bungalow>",
-      "sold_asking": "<realistic sold price, e.g. £362,500 sold>",
-      "is_subject": false
-    }}
-  ],
+  "comparable_sales": [],
   "active_competition": [
     {{
-      "address": "<plausible nearby street address, different from comparable_sales and property_address>",
+      "address": "<plausible nearby street address, different from property_address>",
       "price": "<realistic current asking price, e.g. £269,950>",
       "beds": <integer, generally close to the subject property's bedroom count>,
       "distance": "<short distance string, e.g. 0.3mi>",
@@ -1193,7 +1190,7 @@ ABSOLUTE RULES — breaking any of these is a failure:
 - {absolute_rule_1}
 - {absolute_rule_2}
 - All scores (pricing, listing_presentation, market_positioning, competition, buyer_appeal) must be individually calibrated to the available evidence, not averaged or approximated.
-- comparable_sales: always exactly 4 entries. Entry 4 must have is_subject: true and show the current asking price. The first 3 show sold prices (typically 3–12% below asking).
+- comparable_sales: always an empty list []. Never invent sales or sold prices for any property, anywhere in the report. The only sales you may mention are those listed under "Recorded sold prices nearby", quoted exactly; if none are listed, discuss pricing without citing specific sales.
 - active_competition: always exactly 3 entries, all currently-active listings (not sold), each with a distinct differentiator — do not repeat the same differentiator twice.
 - thirty_day_plan: always exactly 4 entries, weeks 1-4 in order, each theme building logically on the previous week.
 - key_findings icons: only use values from: price, photos, description, location, marketing, condition, timing.
@@ -1296,7 +1293,9 @@ before adding to each one. If you cannot find a genuinely new angle for a given
 item, write a shorter addendum rather than padding it with repeated content.
 Make every addition specific to the property and questionnaire context below.
 Use clear UK property language, buyer behaviour, market positioning, and
-commercial consequences. Never use em dashes.
+commercial consequences. Never use em dashes. Never invent sales or sold
+prices for any property; the only sales you may cite are any listed under
+"Recorded sold prices nearby" in the property context, quoted exactly.
 {override_note}
 Property context:
 {property_context[:2600]}
@@ -1466,12 +1465,7 @@ Return this exact shape:
                 ],
             },
         ],
-        "comparable_sales": [
-            {"address": "14 Maple Street, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£362,000", "is_subject": False},
-            {"address": "7 Oak Avenue, nearby area", "beds": 3, "property_type": "Terrace", "sold_asking": "£355,000", "is_subject": False},
-            {"address": "22 Birch Lane, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£368,000", "is_subject": False},
-            {"address": "Subject property", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£385,000 asking", "is_subject": True},
-        ],
+        "comparable_sales": [],
         "pricing_recommendation": "A targeted 3–5% reduction to align with recent comparables would re-enter the property into active buyer searches at a competitive price point.",
         "pricing_recommendation_detail": "A price change triggers a 'Price Reduced' flag on Rightmove, generating renewed attention from buyers who have already saved the listing. Properties that reduce by 3–5% and simultaneously refresh their photos consistently see a surge in enquiries within 2 weeks of relaunching.",
         "executive_summary": "Your property is showing the classic signs of a stale listing: declining portal visibility, discouraging or absent buyer feedback, and presentation that isn't converting views into viewings. The good news is that all of these issues are fixable — and quickly. A combination of fresh photography, a realistic price adjustment, and an updated description can reignite genuine buyer interest within 2–3 weeks.",
@@ -1564,12 +1558,7 @@ Return this exact shape:
                 ],
             },
         ],
-        "comparable_sales": [
-            {"address": "14 Maple Street, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£362,000", "is_subject": False},
-            {"address": "7 Oak Avenue, nearby area", "beds": 3, "property_type": "Terrace", "sold_asking": "£355,000", "is_subject": False},
-            {"address": "22 Birch Lane, nearby area", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£368,000", "is_subject": False},
-            {"address": "Subject property", "beds": 3, "property_type": "Semi-det.", "sold_asking": "£385,000 asking", "is_subject": True},
-        ],
+        "comparable_sales": [],
         "pricing_recommendation": "A targeted 3–5% reduction to align with recent comparables would re-enter the property into active buyer searches at a competitive price point.",
         "pricing_recommendation_detail": "A price change triggers a 'Price Reduced' flag on Rightmove, generating renewed attention from buyers who have already saved the listing. Properties that reduce by 3–5% and simultaneously refresh their photos consistently see a surge in enquiries within 2 weeks of relaunching.",
         "executive_summary": "This property is showing the classic signs of a stale listing: a long stretch on the market, presentation that may not be converting portal views, and a price position worth re-testing against recent comparables. The good news is that these issues are fixable — and quickly. A combination of fresh photography, a realistic price adjustment, and an updated description can reignite genuine buyer interest within 2–3 weeks.",
