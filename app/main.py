@@ -465,36 +465,14 @@ async def startup() -> None:
                             ADD COLUMN IF NOT EXISTS scraped_at TIMESTAMPTZ DEFAULT NOW(),
                             ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
                     """))
-                    await conn.execute(text("""
-                        UPDATE rightmove_listings
-                        SET
-                            country = CASE
-                                WHEN lower(coalesce(country, '')) IN ('america', 'usa', 'us') THEN 'america'
-                                WHEN lower(coalesce(country, '')) IN ('dubai', 'uae') THEN 'dubai'
-                                WHEN lower(coalesce(country, '')) = 'canada' THEN 'canada'
-                                WHEN lower(coalesce(region, '')) IN ('america', 'usa', 'us') THEN 'america'
-                                WHEN lower(coalesce(region, '')) IN ('dubai', 'uae') THEN 'dubai'
-                                WHEN lower(coalesce(region, '')) = 'canada' THEN 'canada'
-                                WHEN url ILIKE '%bayut%' OR url ILIKE '%propertyfinder%' THEN 'dubai'
-                                WHEN url ILIKE '%realtor.ca%' THEN 'canada'
-                                WHEN url ILIKE '%realtor.com%' OR url ILIKE '%zillow%' OR url ILIKE '%redfin%' THEN 'america'
-                                ELSE 'uk'
-                            END,
-                            source = CASE
-                                WHEN url ILIKE '%bayut%' THEN 'bayut'
-                                WHEN url ILIKE '%realtor.ca%' THEN 'realtor_ca'
-                                WHEN url ILIKE '%realtor.com%' THEN 'realtor_com'
-                                ELSE source
-                            END,
-                            price_native = CASE WHEN price_native = 0 THEN price_gbp ELSE price_native END,
-                            price_currency = CASE
-                                WHEN url ILIKE '%bayut%' OR url ILIKE '%propertyfinder%' THEN 'AED'
-                                WHEN url ILIKE '%realtor.ca%' THEN 'CAD'
-                                WHEN url ILIKE '%realtor.com%' OR url ILIKE '%zillow%' OR url ILIKE '%redfin%' THEN 'USD'
-                                ELSE price_currency
-                            END
-                        WHERE country = 'uk' OR price_native = 0;
-                    """))
+                    # The one-off UPDATE that normalised country/source/price_native/
+                    # price_currency on rightmove_listings used to run here on every start.
+                    # It rewrote ~222k rows of a ~900 MB table each time, outlasted the
+                    # 30s command_timeout, and was cancelled -- rolling back this whole
+                    # schema step (db_ready stayed false) on every worker of every deploy,
+                    # while loading the database for the first minute or so. Checked on
+                    # the Railway database: 0 rows still differ from what it would set,
+                    # and the scrapers write these columns correctly, so it's gone.
                     await conn.execute(text(
                         "CREATE INDEX IF NOT EXISTS ix_rightmove_listings_city ON rightmove_listings (city);"
                     ))
