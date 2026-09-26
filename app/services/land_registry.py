@@ -41,6 +41,32 @@ PREFERRED_MONTHS = 24
 
 # The SPARQL endpoint is a shared public service: keep our load on it small.
 _LR_CONCURRENCY = asyncio.Semaphore(2)
+USER_AGENT = "Havlo/1.0 (+https://www.heyhavlo.com; sold-price comparables)"
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
+
+
+class LookupUnavailable(RuntimeError):
+    """postcodes.io or Land Registry didn't answer properly. Never cached as
+    "no sales" -- the lookup is simply tried again later."""
+
+
+async def _request(client: httpx.AsyncClient, method: str, url: str, **kwargs: Any) -> httpx.Response:
+    """One request with a couple of retries for rate limits, 5xx and network
+    errors. Returns 200/404 responses; anything else raises LookupUnavailable."""
+    last: str = ""
+    for attempt in range(3):
+        try:
+            r = await client.request(method, url, **kwargs)
+        except httpx.TransportError as exc:
+            last = f"{type(exc).__name__}: {exc}"
+        else:
+            if r.status_code in (200, 404):
+                return r
+            last = f"HTTP {r.status_code} from {url.split('?')[0]}: {r.text[:160]!r}"
+            if r.status_code not in _RETRY_STATUSES:
+                break
+        await asyncio.sleep(2 * (attempt + 1))
+    raise LookupUnavailable(last)
 
 _UK_POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b", re.IGNORECASE)
 _OUTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?)\b", re.IGNORECASE)
@@ -162,14 +188,15 @@ def select_comparables(
 
 
 async def _locate(client: httpx.AsyncClient, postcode: str | None, out: str | None) -> tuple[float, float] | None:
-    if postcode:
-        r = await client.get(f"{POSTCODES_IO}/postcodes/{postcode.replace(' ', '')}")
-        if r.status_code == 200:
-            result = r.json().get("result") or {}
-            if result.get("latitude") is not None:
-                return float(result["latitude"]), float(result["longitude"])
-    if out:
-        r = await client.get(f"{POSTCODES_IO}/outcodes/{out}")
+    """Latitude/longitude of the postcode, else of its outcode. None only when
+    postcodes.io genuinely doesn't know either (404); errors raise."""
+    for url in (
+        f"{POSTCODES_IO}/postcodes/{postcode.replace(' ', '')}" if postcode else None,
+        f"{POSTCODES_IO}/outcodes/{out}" if out else None,
+    ):
+        if not url:
+            continue
+        r = await _request(client, "GET", url)
         if r.status_code == 200:
             result = r.json().get("result") or {}
             if result.get("latitude") is not None:
@@ -178,8 +205,12 @@ async def _locate(client: httpx.AsyncClient, postcode: str | None, out: str | No
 
 
 async def _nearby_postcodes(client: httpx.AsyncClient, lat: float, lon: float, radius: int) -> list[str]:
-    r = await client.get(f"{POSTCODES_IO}/postcodes", params={"lat": lat, "lon": lon, "radius": radius, "limit": NEARBY_POSTCODES})
-    r.raise_for_status()
+    r = await _request(
+        client, "GET", f"{POSTCODES_IO}/postcodes",
+        params={"lat": lat, "lon": lon, "radius": radius, "limit": NEARBY_POSTCODES},
+    )
+    if r.status_code != 200:
+        raise LookupUnavailable(f"postcodes.io nearby search returned HTTP {r.status_code}")
     return [item["postcode"] for item in (r.json().get("result") or []) if item.get("postcode")]
 
 
@@ -230,13 +261,47 @@ def _parse_sales(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
 async def _recorded_sales(client: httpx.AsyncClient, postcodes: list[str], since: date) -> list[dict[str, Any]]:
     async with _LR_CONCURRENCY:
-        r = await client.post(
-            LR_SPARQL,
+        r = await _request(
+            client, "POST", LR_SPARQL,
             data={"query": _sparql(postcodes, since)},
             headers={"Accept": "application/sparql-results+json"},
         )
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise LookupUnavailable(f"Land Registry query returned HTTP {r.status_code}")
     return _parse_sales(r.json())
+
+
+def _client() -> httpx.AsyncClient:
+    # trust_env=False: never route these through a proxy configured for the
+    # marketplace scrapers; these are plain public APIs.
+    return httpx.AsyncClient(
+        timeout=httpx.Timeout(45.0, connect=10.0), headers={"User-Agent": USER_AGENT}, trust_env=False
+    )
+
+
+async def check_services() -> dict[str, Any]:
+    """Can this server reach postcodes.io and Land Registry right now? One
+    small request each, for diagnosing lookups that fail on a server but not
+    locally. Returns status codes and error types only."""
+    import time
+
+    results: dict[str, Any] = {}
+    async with _client() as client:
+        for name, method, url, kwargs in (
+            ("postcodes_io", "GET", f"{POSTCODES_IO}/postcodes/SW1A1AA", {}),
+            ("land_registry", "POST", LR_SPARQL, {
+                "data": {"query": 'PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/> '
+                                  'SELECT ?a WHERE { ?a lrcommon:postcode "SW1A 1AA" } LIMIT 1'},
+                "headers": {"Accept": "application/sparql-results+json"},
+            }),
+        ):
+            started = time.monotonic()
+            try:
+                r = await client.request(method, url, **kwargs)
+                results[name] = {"status": r.status_code, "ms": int((time.monotonic() - started) * 1000)}
+            except Exception as exc:  # noqa: BLE001 -- reporting it is the point
+                results[name] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}", "ms": int((time.monotonic() - started) * 1000)}
+    return results
 
 
 def to_stored(sale: dict[str, Any]) -> dict[str, Any]:
@@ -264,7 +329,7 @@ async def find_sold_comparables(
     lr_type = lr_property_type(property_type)
     today = datetime.now(timezone.utc).date()
     since = date(today.year - LOOKBACK_MONTHS // 12, today.month, 1)
-    async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=10.0)) as client:
+    async with _client() as client:
         location = await _locate(client, pc, out)
         if location is None:
             return []

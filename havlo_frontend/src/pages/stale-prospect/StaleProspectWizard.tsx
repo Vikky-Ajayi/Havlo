@@ -684,7 +684,7 @@ const FULL_REPORT_INCLUDES = [
 const SoldPricesList = ({ sales, attribution, loading = false }: { sales: SoldComparable[]; attribution?: string | null; loading?: boolean }) => (
   <div className="slw-sold-comps">
     <div className="slw-sold-comps-head">
-      <b>Comparable sold prices</b>
+      <b>Comparable sold properties</b>
       <span>Recent sales of similar homes nearby</span>
     </div>
     {loading ? (

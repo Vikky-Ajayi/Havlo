@@ -163,3 +163,80 @@ class ReportAndLetterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
+    """A service error must never be saved as "no sales" (it was, at first)."""
+
+    def setUp(self):
+        import httpx
+        from unittest.mock import patch
+
+        self.httpx = httpx
+        self.responses = {}
+        self.calls = []
+        transport = httpx.MockTransport(self._handle)
+        self.patches = [
+            patch.object(lr, "_client", lambda: httpx.AsyncClient(transport=transport)),
+            patch.object(lr.asyncio, "sleep", self._no_sleep),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+    async def _no_sleep(self, *_):
+        return None
+
+    def _handle(self, request):
+        key = f"{request.method} {request.url.path}"
+        self.calls.append(key)
+        queue = self.responses.get(key) or self.responses.get(request.method + " *")
+        status, body = queue.pop(0) if len(queue) > 1 else queue[0]
+        return self.httpx.Response(status, json=body)
+
+    async def lookup(self):
+        return await lr.find_sold_comparables(
+            postcode="CF23 5JP", address="6, Bronwydd Avenue, Penylan, Cardiff CF23 5JP",
+            property_type="Detached House", asking_price=895000,
+        )
+
+    async def test_blocked_postcode_service_raises_instead_of_none_found(self):
+        self.responses = {"GET *": [(403, {"error": "blocked"})]}
+        with self.assertRaises(lr.LookupUnavailable):
+            await self.lookup()
+
+    async def test_unknown_postcode_is_genuinely_none_found(self):
+        self.responses = {"GET *": [(404, {"error": "not found"})]}
+        self.assertEqual(await self.lookup(), [])
+
+    async def test_rate_limit_is_retried_then_succeeds(self):
+        location = {"result": {"latitude": 51.5, "longitude": -3.16}}
+        self.responses = {
+            "GET /postcodes/CF235JP": [(429, {}), (200, location)],
+            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
+            "POST /landregistry/query": [(200, SPARQL_PAYLOAD)],
+        }
+        rows = await self.lookup()
+        self.assertEqual(self.calls.count("GET /postcodes/CF235JP"), 2)
+        self.assertIn("5 Bronwydd Avenue, CF23 5JP", [r["address"] for r in rows])
+
+    async def test_land_registry_error_raises(self):
+        location = {"result": {"latitude": 51.5, "longitude": -3.16}}
+        self.responses = {
+            "GET /postcodes/CF235JP": [(200, location)],
+            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
+            "POST /landregistry/query": [(503, {})],
+        }
+        with self.assertRaises(lr.LookupUnavailable):
+            await self.lookup()
+
+    async def test_failed_lookup_is_not_cached_on_the_prospect(self):
+        from app.services.stale_prospect_service import refresh_sold_comparables
+
+        self.responses = {"GET *": [(403, {"error": "blocked"})]}
+        p = make_prospect()
+        self.assertIsNone(await refresh_sold_comparables(p))
+        self.assertIsNone(p.sold_comparables_at)

@@ -900,6 +900,24 @@ async def get_stale_prospect_report(
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 
+_land_registry_status: dict = {}
+
+
+@public_router.get("/land-registry/status")
+async def land_registry_status() -> dict:
+    """Whether this server can reach postcodes.io and HM Land Registry right
+    now (status codes / error types only), for diagnosing sold-property
+    lookups that fail on the server but not locally. Cached for a minute."""
+    import time
+
+    now = time.monotonic()
+    if _land_registry_status and now - _land_registry_status["at"] < 60:
+        return _land_registry_status["result"]
+    result = await land_registry.check_services()
+    _land_registry_status.update(at=now, result=result)
+    return result
+
+
 # One lookup at a time per prospect (per worker), so a double-loaded page
 # doesn't hit Land Registry twice.
 _comparables_locks: dict[str, asyncio.Lock] = {}

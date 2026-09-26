@@ -734,11 +734,11 @@ async def refresh_sold_comparables_in_background(prospect_id: str) -> None:
         logger.warning("Background Land Registry refresh failed for %s: %s", prospect_id, exc)
 
 
-async def backfill_sold_comparables(limit: int = 60) -> dict[str, int]:
+async def backfill_sold_comparables(limit: int = 120) -> dict[str, int]:
     """One cycle of filling in Land Registry comparables for UK prospects that
     don't have any yet (created before this existed, or whose creation-time
-    lookup timed out), one at a time to stay gentle on the public service.
-    Owners who've entered their code go first."""
+    lookup failed), two at a time to stay gentle on the public services.
+    Owners who've entered their code go first, then the newest prospects."""
     async with AsyncSessionLocal() as db:
         ids = (await db.execute(
             select(StaleListingProspect.id)
@@ -747,9 +747,14 @@ async def backfill_sold_comparables(limit: int = 60) -> dict[str, int]:
             .order_by(StaleListingProspect.code_looked_up_at.desc().nulls_last(), StaleListingProspect.created_at.desc())
             .limit(limit)
         )).scalars().all()
-    for prospect_id in ids:
-        await refresh_sold_comparables_in_background(str(prospect_id))
-        await asyncio.sleep(1)
+    pair = asyncio.Semaphore(2)
+
+    async def one(prospect_id: Any) -> None:
+        async with pair:
+            await refresh_sold_comparables_in_background(str(prospect_id))
+            await asyncio.sleep(0.5)
+
+    await asyncio.gather(*(one(prospect_id) for prospect_id in ids))
     return {"attempted": len(ids)}
 
 
@@ -2291,7 +2296,7 @@ def generate_full_report_pdf(prospect: StaleListingProspect) -> str:
     # ── Comparable sold prices ──────────────────────────────────────────────
     comps = report_comparable_rows(prospect)
     if comps:
-        story.append(Paragraph("Comparable sold prices", styles["h2"]))
+        story.append(Paragraph("Comparable sold properties", styles["h2"]))
         rows = [["Address", "Beds", "Type", "Price"]]
         highlight_row = None
         for i, comp in enumerate(comps):
