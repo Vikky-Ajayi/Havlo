@@ -85,16 +85,15 @@ if DATABASE_URL:
         echo=False,
         # NOTE: peak DB connections = pool_size + max_overflow per process,
         # and this runs as 4 uvicorn workers (Procfile) — each with its own
-        # separate engine/pool. The previous 10+15=25 per worker meant up to
-        # 100 possible connections against Supabase's pooler, which turned
-        # out to hard-cap session-mode connections at 40 total ("FATAL: max
-        # clients reached in session mode - max clients are limited to
-        # pool_size: 40" — hit directly while testing the DB migration).
-        # 5+3=8 per worker (+1 reserved for bulk_write_engine below) x 4
-        # workers = 36 max, leaving headroom under that ceiling for
-        # Supabase's own overhead.
-        pool_size=5,
-        max_overflow=3,
+        # separate engine/pool. On Supabase this had to be 5+3 (36 total
+        # with bulk_write_engine), under its pooler's hard cap of 40
+        # session-mode connections. Railway Postgres allows 500
+        # (max_connections), so: 10+10=20 per worker (+1 for
+        # bulk_write_engine below) x 4 workers = 84 max, leaving room for
+        # migrations and admin scripts. Each scraper/email loop also holds
+        # one pooled connection for its advisory lock while its cycle runs.
+        pool_size=10,
+        max_overflow=10,
         pool_pre_ping=True,
         # Recycle connections every 30 min instead of 5. With 5-min recycle the
         # pool routinely cycled to empty during low-traffic windows, so the
@@ -121,8 +120,8 @@ if DATABASE_URL:
     # narrow use case gets minutes instead. pool_size=1/no overflow is
     # deliberate -- this path isn't hit concurrently in practice (an
     # admin-triggered, occasional background job), and it's carved out of
-    # the same 9-per-worker connection budget above (5+3+1=9), not on top
-    # of it, so the 36-connection ceiling doesn't move.
+    # the same 21-per-worker connection budget above (10+10+1=21), not on
+    # top of it, so the 84-connection ceiling doesn't move.
     bulk_write_engine = create_async_engine(
         DATABASE_URL,
         echo=False,
