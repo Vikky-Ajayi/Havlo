@@ -9,9 +9,12 @@ under the Open Government Licence v3.0. The attribution must be shown wherever
 the data is.
 
 Lookup: postcodes.io turns the property's postcode (or, failing that, its
-outcode) into a location and the postcodes around it; one SPARQL query then
-pulls every standard sale in those postcodes over the last few years, and
-`select_comparables` keeps the few most similar to the subject property.
+outcode) into a location and the postcodes around it; one query of our own
+copy of the data (land_registry_sales, kept in step with Land Registry's
+yearly files by price_paid_data.py) then pulls every standard sale in those
+postcodes over the last few years, and `select_comparables` keeps the few
+most similar to the subject property. (Until September 2026 that query went
+to Land Registry's SPARQL endpoint, which started refusing the server.)
 """
 from __future__ import annotations
 
@@ -28,20 +31,17 @@ import httpx
 logger = logging.getLogger(__name__)
 
 POSTCODES_IO = "https://api.postcodes.io"
-LR_SPARQL = "https://landregistry.data.gov.uk/landregistry/query"
 
 COMPARABLE_COUNT = 4
 # Nearby-postcode search radii (metres, postcodes.io caps at 2000 / 100 postcodes),
 # widened only when the closer ring doesn't have enough similar sales.
 SEARCH_RADII = (600, 2000)
-# Nearest postcodes per radius: enough sales in towns, and keeps the SPARQL
-# query quick (100 postcodes took ~20s).
+# Nearest postcodes per radius: enough sales in towns without widening the
+# net to streets that aren't really comparable.
 NEARBY_POSTCODES = 60
 LOOKBACK_MONTHS = 36
 PREFERRED_MONTHS = 24
 
-# The SPARQL endpoint is a shared public service: keep our load on it small.
-_LR_CONCURRENCY = asyncio.Semaphore(2)
 USER_AGENT = "Havlo/1.0 (+https://www.heyhavlo.com; sold-price comparables)"
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 # A 403, or a 429 that outlasts the retries, means the service is refusing
@@ -52,15 +52,16 @@ _paused_until: dict[str, float] = {}
 
 
 class LookupUnavailable(RuntimeError):
-    """postcodes.io or Land Registry didn't answer properly. Never cached as
-    "no sales" -- the lookup is simply tried again later."""
+    """postcodes.io didn't answer properly, or our copy of Land Registry's
+    data is still loading. Never cached as "no sales" -- the lookup is
+    simply tried again later."""
 
 
 def _host(url: str) -> str:
     return httpx.URL(url).host
 
 
-def paused_for(url: str = LR_SPARQL) -> float:
+def paused_for(url: str = POSTCODES_IO) -> float:
     """Seconds this worker is still holding off url's host after a refusal."""
     return max(0.0, _paused_until.get(_host(url), 0.0) - time.monotonic())
 
@@ -237,61 +238,14 @@ async def _nearby_postcodes(client: httpx.AsyncClient, lat: float, lon: float, r
     return [item["postcode"] for item in (r.json().get("result") or []) if item.get("postcode")]
 
 
-def _sparql(postcodes: list[str], since: date) -> str:
-    values = " ".join('"' + pc.replace('"', "") + '"^^xsd:string' for pc in postcodes)
-    return f"""
-PREFIX lrppi: <http://landregistry.data.gov.uk/def/ppi/>
-PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
-PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-SELECT ?paon ?saon ?street ?postcode ?amount ?date ?ptype ?category
-WHERE {{
-  VALUES ?postcode {{ {values} }}
-  ?addr lrcommon:postcode ?postcode .
-  ?tx lrppi:propertyAddress ?addr ;
-      lrppi:pricePaid ?amount ;
-      lrppi:transactionDate ?date ;
-      lrppi:propertyType ?ptype ;
-      lrppi:transactionCategory ?category .
-  OPTIONAL {{ ?addr lrcommon:paon ?paon }}
-  OPTIONAL {{ ?addr lrcommon:saon ?saon }}
-  OPTIONAL {{ ?addr lrcommon:street ?street }}
-  FILTER (?date >= "{since.isoformat()}"^^xsd:date)
-}}
-ORDER BY DESC(?date)
-LIMIT 400
-"""
 
+async def _recorded_sales(postcodes: list[str], since: date) -> list[dict[str, Any]]:
+    from app.services import price_paid_data
 
-def _parse_sales(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    sales = []
-    for row in (payload.get("results") or {}).get("bindings") or []:
-        value = lambda key: (row.get(key) or {}).get("value", "")  # noqa: E731
-        try:
-            when = date.fromisoformat(value("date")[:10])
-            price = int(float(value("amount")))
-        except ValueError:
-            continue
-        category = value("category").rsplit("/", 1)[-1]
-        sales.append({
-            "address": format_address(value("saon"), value("paon"), value("street"), value("postcode")),
-            "type": value("ptype").rsplit("/", 1)[-1],
-            "price": price,
-            "date": when,
-            "category": "standard" if category.startswith("standard") else "additional",
-        })
-    return sales
-
-
-async def _recorded_sales(client: httpx.AsyncClient, postcodes: list[str], since: date) -> list[dict[str, Any]]:
-    async with _LR_CONCURRENCY:
-        r = await _request(
-            client, "POST", LR_SPARQL,
-            data={"query": _sparql(postcodes, since)},
-            headers={"Accept": "application/sparql-results+json"},
-        )
-    if r.status_code != 200:
-        raise LookupUnavailable(f"Land Registry query returned HTTP {r.status_code}")
-    return _parse_sales(r.json())
+    try:
+        return await price_paid_data.recorded_sales(postcodes, since)
+    except price_paid_data.PricePaidNotReady as exc:
+        raise LookupUnavailable(str(exc)) from exc
 
 
 def _client() -> httpx.AsyncClient:
@@ -303,28 +257,26 @@ def _client() -> httpx.AsyncClient:
 
 
 async def check_services() -> dict[str, Any]:
-    """Can this server reach postcodes.io and Land Registry right now? One
-    small request each, for diagnosing lookups that fail on a server but not
-    locally. Returns status codes, error types, and the start of any error
-    page (which usually says why a request was refused)."""
+    """Can this server reach postcodes.io right now, and is our copy of Land
+    Registry's data loaded? For diagnosing lookups that fail on a server but
+    not locally. Status codes, error types, the start of any error page, and
+    counts only."""
+    from app.services import price_paid_data
+
     results: dict[str, Any] = {}
-    async with _client() as client:
-        for name, method, url, kwargs in (
-            ("postcodes_io", "GET", f"{POSTCODES_IO}/postcodes/SW1A1AA", {}),
-            ("land_registry", "POST", LR_SPARQL, {
-                "data": {"query": 'PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/> '
-                                  'SELECT ?a WHERE { ?a lrcommon:postcode "SW1A 1AA" } LIMIT 1'},
-                "headers": {"Accept": "application/sparql-results+json"},
-            }),
-        ):
-            started = time.monotonic()
-            try:
-                r = await client.request(method, url, **kwargs)
-                results[name] = {"status": r.status_code, "ms": int((time.monotonic() - started) * 1000)}
-                if r.status_code != 200:
-                    results[name]["body"] = " ".join(r.text.split())[:300]
-            except Exception as exc:  # noqa: BLE001 -- reporting it is the point
-                results[name] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}", "ms": int((time.monotonic() - started) * 1000)}
+    started = time.monotonic()
+    try:
+        async with _client() as client:
+            r = await client.get(f"{POSTCODES_IO}/postcodes/SW1A1AA")
+        results["postcodes_io"] = {"status": r.status_code, "ms": int((time.monotonic() - started) * 1000)}
+        if r.status_code != 200:
+            results["postcodes_io"]["body"] = " ".join(r.text.split())[:300]
+    except Exception as exc:  # noqa: BLE001 -- reporting it is the point
+        results["postcodes_io"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}", "ms": int((time.monotonic() - started) * 1000)}
+    try:
+        results["price_paid_data"] = await price_paid_data.status()
+    except Exception as exc:  # noqa: BLE001
+        results["price_paid_data"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
     return results
 
 
@@ -348,6 +300,11 @@ async def find_sold_comparables(
     {address, property_type, price, date}. [] when the area has none (or
     isn't covered, e.g. Scotland). Raises on network/service failure so the
     caller can retry later instead of caching an empty result."""
+    from app.services import price_paid_data
+
+    if not await price_paid_data.ready():
+        # Before any postcodes.io calls: they'd be wasted.
+        raise LookupUnavailable("Land Registry price paid data is still loading")
     pc = full_postcode(postcode, address)
     out = outcode(postcode, address)
     lr_type = lr_property_type(property_type)
@@ -366,7 +323,7 @@ async def find_sold_comparables(
                 nearby.insert(0, pc)
             seen.update(nearby)
             if nearby:
-                sales += await _recorded_sales(client, nearby, since)
+                sales += await _recorded_sales(nearby, since)
             chosen = select_comparables(sales, asking_price=asking_price, lr_type=lr_type, subject_address=address, today=today)
             same_type = [s for s in chosen if not lr_type or s["type"] == lr_type]
             if len(same_type) >= COMPARABLE_COUNT:

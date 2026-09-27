@@ -7,6 +7,7 @@ from datetime import date, datetime, timezone
 
 from app.models.models import StaleListingProspect
 from app.services import land_registry as lr
+from app.services import price_paid_data as ppd
 from app.services.groq_service import generate_stale_listing_report  # noqa: F401  (import check)
 from app.services.stale_prospect_service import (
     _letter_price_position,
@@ -16,29 +17,13 @@ from app.services.stale_prospect_service import (
 
 TODAY = date(2026, 9, 26)
 
-# Trimmed from a real SPARQL response for CF23 5J* (Penylan, Cardiff).
-SPARQL_PAYLOAD = {
-    "results": {
-        "bindings": [
-            {"paon": {"value": "5"}, "street": {"value": "BRONWYDD AVENUE"}, "postcode": {"value": "CF23 5JP"},
-             "amount": {"value": "765500"}, "date": {"value": "2025-01-31"},
-             "ptype": {"value": "http://landregistry.data.gov.uk/def/common/detached"},
-             "category": {"value": "http://landregistry.data.gov.uk/def/ppi/standardPricePaidTransaction"}},
-            {"paon": {"value": "DYFED HOUSE"}, "saon": {"value": "FLAT 12"}, "street": {"value": "GLENSIDE COURT"},
-             "postcode": {"value": "CF23 5JS"}, "amount": {"value": "135000"}, "date": {"value": "2026-03-23"},
-             "ptype": {"value": "http://landregistry.data.gov.uk/def/common/flat-maisonette"},
-             "category": {"value": "http://landregistry.data.gov.uk/def/ppi/standardPricePaidTransaction"}},
-            {"paon": {"value": "57"}, "street": {"value": "TY-DRAW ROAD"}, "postcode": {"value": "CF23 5HD"},
-             "amount": {"value": "740000"}, "date": {"value": "2025-04-17"},
-             "ptype": {"value": "http://landregistry.data.gov.uk/def/common/semi-detached"},
-             "category": {"value": "http://landregistry.data.gov.uk/def/ppi/standardPricePaidTransaction"}},
-            {"paon": {"value": "THE STRAFFORD"}, "saon": {"value": "APARTMENT 3"}, "street": {"value": "BRONWYDD AVENUE"},
-             "postcode": {"value": "CF23 5JP"}, "amount": {"value": "340000"}, "date": {"value": "2024-11-18"},
-             "ptype": {"value": "http://landregistry.data.gov.uk/def/common/flat-maisonette"},
-             "category": {"value": "http://landregistry.data.gov.uk/def/ppi/additionalPricePaidTransaction"}},
-        ]
-    }
-}
+# Rows as stored in land_registry_sales (paon, saon, street, postcode, price,
+# sale_date, property_type): real sales in CF23 5J* (Penylan, Cardiff).
+SALE_ROWS = [
+    ("5", None, "BRONWYDD AVENUE", "CF23 5JP", 765500, date(2025, 1, 31), "D"),
+    ("DYFED HOUSE", "FLAT 12", "GLENSIDE COURT", "CF23 5JS", 135000, date(2026, 3, 23), "F"),
+    ("57", None, "TY-DRAW ROAD", "CF23 5HD", 740000, date(2025, 4, 17), "S"),
+]
 
 
 def sale(address, type_, price, when, category="standard"):
@@ -46,15 +31,25 @@ def sale(address, type_, price, when, category="standard"):
 
 
 class ParsingTests(unittest.TestCase):
-    def test_parses_real_response(self):
-        sales = lr._parse_sales(SPARQL_PAYLOAD)
-        self.assertEqual(len(sales), 4)
+    def test_stored_rows_become_sales(self):
+        sales = ppd.sales_from_rows(SALE_ROWS)
+        self.assertEqual(len(sales), 3)
         self.assertEqual(sales[0]["address"], "5 Bronwydd Avenue, CF23 5JP")
         self.assertEqual(sales[0]["type"], "detached")
         self.assertEqual(sales[0]["price"], 765500)
+        self.assertEqual(sales[0]["category"], "standard")
         self.assertEqual(sales[1]["address"], "Flat 12, Dyfed House, Glenside Court, CF23 5JS")
+        self.assertEqual(sales[1]["type"], "flat-maisonette")
         self.assertEqual(sales[2]["address"], "57 Ty-Draw Road, CF23 5HD")
-        self.assertEqual(sales[3]["category"], "additional")
+        self.assertEqual(sales[2]["type"], "semi-detached")
+
+    def test_years_cover_the_lookup_window(self):
+        self.assertEqual(ppd.years_needed(date(2026, 9, 27)), [2023, 2024, 2025, 2026])
+        self.assertEqual(ppd.years_needed(date(2027, 1, 5)), [2024, 2025, 2026, 2027])
+        state = {"years": {"2023": {"etag": "a"}, "2024": {"etag": "b"}, "2025": {"etag": "c"}}}
+        self.assertFalse(ppd._covered(state, date(2026, 9, 27)))
+        state["years"]["2026"] = {"missing": True}
+        self.assertTrue(ppd._covered(state, date(2026, 9, 27)))
 
     def test_title_casing(self):
         self.assertEqual(lr._tidy("ST JOHN'S ROAD"), "St John's Road")
@@ -176,9 +171,14 @@ class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
         self.responses = {}
         self.calls = []
         transport = httpx.MockTransport(self._handle)
+        self.data_ready = True
+        self.sale_rows = SALE_ROWS
+        self.queried_postcodes = []
         self.patches = [
             patch.object(lr, "_client", lambda: httpx.AsyncClient(transport=transport)),
             patch.object(lr.asyncio, "sleep", self._no_sleep),
+            patch.object(ppd, "ready", self._ready),
+            patch.object(ppd, "recorded_sales", self._recorded_sales),
         ]
         for p in self.patches:
             p.start()
@@ -191,6 +191,15 @@ class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
 
     async def _no_sleep(self, *_):
         return None
+
+    async def _ready(self):
+        return self.data_ready
+
+    async def _recorded_sales(self, postcodes, since):
+        if not self.data_ready:
+            raise ppd.PricePaidNotReady("still loading")
+        self.queried_postcodes.append(list(postcodes))
+        return ppd.sales_from_rows([r for r in self.sale_rows if r[3] in postcodes and r[5] >= since])
 
     def _handle(self, request):
         key = f"{request.method} {request.url.path}"
@@ -218,19 +227,24 @@ class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
         location = {"result": {"latitude": 51.5, "longitude": -3.16}}
         self.responses = {
             "GET /postcodes/CF235JP": [(429, {}), (200, location)],
-            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
-            "POST /landregistry/query": [(200, SPARQL_PAYLOAD)],
+            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}, {"postcode": "CF23 5HD"}]})],
         }
         rows = await self.lookup()
         self.assertEqual(self.calls.count("GET /postcodes/CF235JP"), 2)
         self.assertIn("5 Bronwydd Avenue, CF23 5JP", [r["address"] for r in rows])
 
-    async def test_land_registry_error_raises(self):
+    async def test_data_still_loading_raises_before_calling_postcodes_io(self):
+        self.data_ready = False
+        self.responses = {"GET *": [(200, {})]}
+        with self.assertRaises(lr.LookupUnavailable):
+            await self.lookup()
+        self.assertEqual(self.calls, [])
+
+    async def test_postcodes_io_server_error_raises(self):
         location = {"result": {"latitude": 51.5, "longitude": -3.16}}
         self.responses = {
             "GET /postcodes/CF235JP": [(200, location)],
-            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
-            "POST /landregistry/query": [(503, {})],
+            "GET /postcodes": [(503, {})],
         }
         with self.assertRaises(lr.LookupUnavailable):
             await self.lookup()
@@ -244,38 +258,39 @@ class FailureHandlingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(p.sold_comparables_at)
 
     async def test_refusal_pauses_the_host_instead_of_hammering_it(self):
-        location = {"result": {"latitude": 51.5, "longitude": -3.16}}
-        self.responses = {
-            "GET /postcodes/CF235JP": [(200, location)],
-            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
-            "POST /landregistry/query": [(403, {"error": "forbidden"})],
-        }
+        self.responses = {"GET *": [(403, {"error": "forbidden"})]}
         with self.assertRaises(lr.LookupUnavailable):
             await self.lookup()
-        self.assertEqual(self.calls.count("POST /landregistry/query"), 1)  # a 403 isn't retried
+        self.assertEqual(self.calls.count("GET /postcodes/CF235JP"), 1)  # a 403 isn't retried
         self.assertGreater(lr.paused_for(), 3000)
         self.calls.clear()
         with self.assertRaises(lr.LookupUnavailable):
             await self.lookup()
-        self.assertNotIn("POST /landregistry/query", self.calls)  # paused: not asked again
+        self.assertEqual(self.calls, [])  # paused: not asked again
 
     async def test_persistent_rate_limit_pauses_after_retries(self):
         location = {"result": {"latitude": 51.5, "longitude": -3.16}}
         self.responses = {
             "GET /postcodes/CF235JP": [(200, location)],
-            "GET /postcodes": [(200, {"result": [{"postcode": "CF23 5JP"}]})],
-            "POST /landregistry/query": [(429, {})],
+            "GET /postcodes": [(429, {})],
         }
         with self.assertRaises(lr.LookupUnavailable):
             await self.lookup()
-        self.assertEqual(self.calls.count("POST /landregistry/query"), 3)
+        self.assertEqual(self.calls.count("GET /postcodes"), 3)
         self.assertGreater(lr.paused_for(), 3000)
+
+    async def test_backfill_waits_for_the_data(self):
+        from app.services.stale_prospect_service import backfill_sold_comparables
+
+        self.data_ready = False
+        result = await backfill_sold_comparables()  # returns before touching the database
+        self.assertEqual(result["attempted"], 0)
 
     async def test_backfill_skips_the_cycle_while_paused(self):
         import time
         from app.services.stale_prospect_service import backfill_sold_comparables
 
-        lr._paused_until[lr._host(lr.LR_SPARQL)] = time.monotonic() + 600
+        lr._paused_until[lr._host(lr.POSTCODES_IO)] = time.monotonic() + 600
         result = await backfill_sold_comparables()  # returns before touching the database
         self.assertEqual(result["attempted"], 0)
         self.assertEqual(result["paused_minutes"], 10)

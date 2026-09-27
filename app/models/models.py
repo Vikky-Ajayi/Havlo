@@ -1,10 +1,11 @@
 """SQLAlchemy ORM models for Havlo backend."""
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -921,3 +922,25 @@ class ProductAccessToken(Base):
     __table_args__ = (
         Index("ix_product_access_scope_email_created", "product_scope", "email", "created_at"),
     )
+
+
+class LandRegistrySale(Base):
+    """A standard residential sale from HM Land Registry's Price Paid Data
+    (England and Wales), loaded from their yearly bulk files by
+    app/services/price_paid_data.py. Only what the comparable-sales lookup
+    needs, and only the last few years (see LOOKBACK_MONTHS there).
+
+    Contains HM Land Registry data (c) Crown copyright and database right,
+    licensed under the Open Government Licence v3.0."""
+    __tablename__ = "land_registry_sales"
+    __table_args__ = (Index("ix_land_registry_sales_postcode_date", "postcode", "sale_date"),)
+
+    transaction_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    price: Mapped[int] = mapped_column(Integer, nullable=False)
+    sale_date: Mapped[date] = mapped_column(Date, nullable=False)
+    postcode: Mapped[str] = mapped_column(String(8), nullable=False)
+    # D detached, S semi-detached, T terraced, F flat/maisonette, O other
+    property_type: Mapped[str] = mapped_column(String(1), nullable=False)
+    paon: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    saon: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    street: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

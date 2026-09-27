@@ -734,16 +734,22 @@ async def refresh_sold_comparables_in_background(prospect_id: str) -> None:
         logger.warning("Background Land Registry refresh failed for %s: %s", prospect_id, exc)
 
 
-async def backfill_sold_comparables(limit: int = 20) -> dict[str, int]:
+async def backfill_sold_comparables(limit: int = 60) -> dict[str, int]:
     """One cycle of filling in Land Registry comparables for UK prospects that
     don't have any yet (created before this existed, or whose creation-time
     lookup failed). Owners who've entered their code go first, then the
     newest prospects.
 
-    One lookup at a time, a small batch per cycle, and the cycle stops as
-    soon as Land Registry refuses a request: its SPARQL endpoint is a free
-    public service, and 120 lookups every few minutes, two at a time,
-    around the clock got the server's address refused (HTTP 403)."""
+    The sales themselves come from our own copy of the data now; what each
+    lookup still asks a public service for is the nearby postcodes
+    (postcodes.io). So: one lookup at a time, a pause between them, and the
+    cycle stops as soon as postcodes.io refuses a request. (Land Registry's
+    own endpoint refused the server outright after 120 lookups every few
+    minutes, two at a time, around the clock.)"""
+    from app.services import price_paid_data
+
+    if not await price_paid_data.ready():
+        return {"attempted": 0, "waiting_for": "price paid data to load"}
     if land_registry.paused_for():
         return {"attempted": 0, "paused_minutes": round(land_registry.paused_for() / 60)}
     async with AsyncSessionLocal() as db:
@@ -760,7 +766,7 @@ async def backfill_sold_comparables(limit: int = 20) -> dict[str, int]:
             break
         await refresh_sold_comparables_in_background(str(prospect_id))
         attempted += 1
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
     return {"attempted": attempted, "paused_minutes": round(land_registry.paused_for() / 60)}
 
 
