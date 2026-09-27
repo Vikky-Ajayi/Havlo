@@ -195,6 +195,13 @@ async def _load_year(engine: AsyncEngine, client: httpx.AsyncClient, year: int) 
             """
         ), {"start": start, "end": end})
         await conn.execute(text("DELETE FROM ppd_new WHERE price < 1 OR price > 2147483647"))
+        # The withdrawn-sales DELETE below looks up every row of the year in
+        # ppd_new. When the table's statistics predate this year's rows (e.g.
+        # loading 2025 right after 2026), Postgres expects ~1 row and picks a
+        # nested loop that rescans all of ppd_new per row -- a million times
+        # a million; it ran for half an hour on the first real load. With
+        # this index each row is one index lookup, whatever plan it picks.
+        await conn.execute(text("CREATE INDEX ON ppd_new (transaction_id)"))
         await conn.execute(text("ANALYZE ppd_new"))
         new_rows, latest = (await conn.execute(text("SELECT count(*), max(sale_date) FROM ppd_new"))).one()
         held = (await conn.execute(
