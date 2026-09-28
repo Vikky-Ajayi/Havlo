@@ -56,7 +56,9 @@ def display_company_name(name: str) -> str:
     words = []
     for word in (name or "").split():
         upper = word.upper()
-        if upper in {"LTD", "LLP", "PLC", "UK", "&"}:
+        if words and upper in {"AND", "OF", "THE", "FOR"}:
+            words.append(word.lower())
+        elif upper in {"LTD", "LLP", "PLC", "UK", "&"}:
             words.append({"LTD": "Ltd", "LLP": "LLP", "PLC": "plc", "UK": "UK", "&": "&"}[upper])
         elif len(word) <= 2 and word.isalpha() and word.isupper():
             words.append(word)  # initials: "J", "JB"
@@ -135,7 +137,10 @@ async def refresh_agent_accounts(db: AsyncSession) -> dict[str, int]:
             updated += 1
         account.company_name = names.most_common(1)[0][0]
         account.company_names_json = json.dumps(sorted(names))
-        account.brand = brands.most_common(1)[0][0] if brands else display_company_name(account.company_name)
+        # A group trading under several brands (e.g. Leaders and Romans Group:
+        # Langford Russell, Gibbs Gillespie, Acorn...) is greeted by the group's
+        # name, not whichever brand happens to have the most listings.
+        account.brand = next(iter(brands)) if len(brands) == 1 else display_company_name(account.company_name)
         account.letter_branch_id = busiest.agent_branch_id
         account.letter_branch_name = busiest.agent_branch_name
         account.letter_address = busiest.agent_address

@@ -18,6 +18,8 @@ class AgentCampaignTests(unittest.TestCase):
     def test_display_company_name(self):
         self.assertEqual(ac.display_company_name("GRANT J BATES PROPERTY LTD"), "Grant J Bates Property Ltd")
         self.assertEqual(ac.display_company_name("SMITH & JONES UK LLP"), "Smith & Jones UK LLP")
+        self.assertEqual(ac.display_company_name("Leaders and Romans Group"), "Leaders and Romans Group")
+        self.assertEqual(ac.display_company_name("THE LOMOND GROUP"), "The Lomond Group")
 
     def test_days_on_market_counts_from_listing_date(self):
         listed = datetime(2026, 1, 1, tzinfo=timezone.utc)
