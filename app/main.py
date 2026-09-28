@@ -655,6 +655,22 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Price paid data refresh disabled by ENABLE_PRICE_PAID_REFRESH.")
 
+    # ── Estate agent details for prospects created before they were captured ──
+    # Reads each such prospect's Rightmove listing page once (90 every 15
+    # minutes, one at a time) for the agent campaign. Does nothing once
+    # every prospect has been checked. run_scraper_loop's advisory lock
+    # keeps it to a single worker.
+    if HAS_DATABASE and _env_enabled("ENABLE_AGENT_DETAILS_BACKFILL", True):
+        from app.services.scraper_base import run_scraper_loop
+        from app.services.stale_prospect_service import backfill_agent_details
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Agent details backfill", backfill_agent_details, 0.25, initial_delay_seconds=180)
+        ))
+        logger.info("Agent details backfill loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Agent details backfill disabled by ENABLE_AGENT_DETAILS_BACKFILL.")
+
     # ── HM Land Registry comparable sold prices backfill ──────────────────
     # Looks up recorded sales for UK prospects that don't have them yet
     # (created before this existed, or whose creation-time lookup timed out),

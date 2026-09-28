@@ -292,7 +292,25 @@ def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
         "listed_date": scraped.get("listed_date") or "",
         "features": scraped.get("features") if isinstance(scraped.get("features"), list) else [],
         "price_reduced": bool(scraped.get("price_reduced")),
+        "agent": scraped.get("agent") if isinstance(scraped.get("agent"), dict) else None,
     }
+
+
+def apply_agent_details(prospect: StaleListingProspect, agent: dict[str, Any] | None) -> bool:
+    """Copy the listing's estate agent (listing_scraper._rm_agent_details)
+    onto the prospect. Returns whether an agent was found."""
+    prospect.agent_checked_at = datetime.now(timezone.utc)
+    if not isinstance(agent, dict) or not (agent.get("branch_id") or agent.get("company_name") or agent.get("branch_name")):
+        return False
+    prospect.agent_branch_id = (agent.get("branch_id") or "")[:20] or None
+    prospect.agent_company_name = (agent.get("company_name") or "")[:300] or None
+    prospect.agent_brand = (agent.get("brand") or "")[:200] or None
+    prospect.agent_branch_name = (agent.get("branch_name") or "")[:300] or None
+    prospect.agent_address = agent.get("address") or None
+    prospect.agent_phone = (agent.get("phone") or "")[:40] or None
+    prospect.agent_logo_url = agent.get("logo_url") or None
+    prospect.agent_profile_url = agent.get("profile_url") or None
+    return True
 
 
 def snapshot_from_rightmove_listing(listing: RightmoveListing) -> dict[str, Any]:
@@ -422,6 +440,8 @@ async def create_prospect_from_listing_snapshot(
         sold_comparables_json=json.dumps(sold_comparables) if sold_comparables is not None else None,
         sold_comparables_at=now if sold_comparables is not None else None,
     )
+    if isinstance(listing_snapshot.get("agent"), dict):
+        apply_agent_details(prospect, listing_snapshot["agent"])
     db.add(prospect)
     await db.flush()
     letter_path = generate_letter_pdf(prospect, token, get_settings().FRONTEND_URL or "https://www.heyhavlo.com")
@@ -768,6 +788,47 @@ async def backfill_sold_comparables(limit: int = 60) -> dict[str, int]:
         attempted += 1
         await asyncio.sleep(1)
     return {"attempted": attempted, "paused_minutes": round(land_registry.paused_for() / 60)}
+
+
+async def backfill_agent_details(limit: int = 90) -> dict[str, Any]:
+    """One cycle of reading the Rightmove listing page of UK prospects
+    created before agent details were captured, newest first, one at a time
+    with a pause between. A listing that's gone (sold, withdrawn) is marked
+    checked with no agent; if Rightmove refuses us, the cycle stops and
+    those prospects are tried again next cycle."""
+    from app.services.listing_scraper import scrape_single_listing
+
+    async with AsyncSessionLocal() as db:
+        ids = (await db.execute(
+            select(StaleListingProspect.id, StaleListingProspect.rightmove_url)
+            .where(StaleListingProspect.agent_checked_at.is_(None))
+            .where(StaleListingProspect.country == "UK")
+            .where(StaleListingProspect.rightmove_url.ilike("%rightmove.co.uk%"))
+            .order_by(StaleListingProspect.created_at.desc())
+            .limit(limit)
+        )).all()
+    found = gone = 0
+    for prospect_id, url in ids:
+        try:
+            scraped = await scrape_single_listing(url)
+        except ValueError:
+            scraped = {}  # page gone or unreadable: nothing to find
+        except Exception as exc:  # noqa: BLE001 -- network trouble: retry next cycle
+            logger.warning("Agent details: couldn't read %s: %s", url, exc)
+            break
+        if scraped.get("blocked"):
+            logger.warning("Agent details: Rightmove refused %s; stopping this cycle", url)
+            break
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, prospect_id)
+            if prospect is not None:
+                if apply_agent_details(prospect, scraped.get("agent")):
+                    found += 1
+                else:
+                    gone += 1
+                await db.commit()
+        await asyncio.sleep(2)
+    return {"checked": found + gone, "agent_found": found, "no_agent": gone}
 
 
 def report_comparable_rows(prospect: StaleListingProspect) -> list[dict[str, Any]]:

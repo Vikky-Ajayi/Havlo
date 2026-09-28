@@ -600,6 +600,20 @@ class StaleListingProspect(Base):
     # that happens, so re-stamping "today" on every re-download would
     # silently invalidate a QR code already printed and mailed out.
     letter_first_downloaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The estate agent marketing the listing, from the Rightmove listing
+    # page ("customer" block): branch, the company behind it (the legal
+    # name agent letters are grouped and addressed by) and the brand shown
+    # on Rightmove. agent_checked_at is set once the listing page has been
+    # read for this, found or not, so the backfill doesn't retry forever.
+    agent_branch_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    agent_company_name: Mapped[Optional[str]] = mapped_column(String(300), nullable=True, index=True)
+    agent_brand: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    agent_branch_name: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    agent_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    agent_phone: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    agent_logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    agent_profile_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    agent_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

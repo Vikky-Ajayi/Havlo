@@ -893,6 +893,43 @@ def _otm_extract_from_redux(html: str, url: str) -> dict | None:
 # Scrape a single listing URL  (used by the 'Paste a link' feature)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _rm_agent_details(customer: Any, contact: Any, resolve: Any = lambda value: value) -> dict | None:
+    """The estate agent from a Rightmove listing page's "customer" and
+    "contactInfo" blocks: branch, company (legal name), brand, postal
+    address, phone, logo and profile link. `resolve` turns the compressed
+    PAGE_MODEL's indices into values (identity for the legacy format)."""
+    customer = resolve(customer)
+    if not isinstance(customer, dict):
+        return None
+    get = lambda key: resolve(customer.get(key))  # noqa: E731
+    branch_id = get("branchId")
+    display_name = _clean(get("branchDisplayName") or "", 300)
+    company = _clean(get("companyName") or "", 300)
+    if not (branch_id or display_name or company):
+        return None
+    lines = [_clean(line, 200) for line in re.split(r"[\r\n]+", str(get("displayAddress") or ""))]
+    phone = ""
+    contact = resolve(contact)
+    if isinstance(contact, dict):
+        numbers = resolve(contact.get("telephoneNumbers"))
+        if isinstance(numbers, dict):
+            phone = _clean(resolve(numbers.get("localNumber")) or resolve(numbers.get("internationalNumber")) or "", 40)
+    profile = _clean(get("customerProfileUrl") or "", 500)
+    if profile and profile.startswith("/"):
+        profile = f"https://www.rightmove.co.uk{profile}"
+    return {
+        "branch_id": str(branch_id) if branch_id not in (None, "") else "",
+        "branch_name": display_name,
+        "brand": display_name.split(",")[0].strip() if display_name else _clean(get("companyTradingName") or company, 200),
+        "company_name": company,
+        "trading_name": _clean(get("companyTradingName") or "", 300),
+        "address": ", ".join(line for line in lines if line),
+        "phone": phone,
+        "logo_url": _clean(get("logoPath") or "", 500),
+        "profile_url": profile,
+    }
+
+
 def _rm_decode_page_model_v2(data: list) -> dict | None:
     """
     Decode Rightmove's compressed flat-index PAGE_MODEL format (encoding='on').
@@ -1022,6 +1059,7 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
             "features": features,
             "floor_area": "",
             "platform": "rightmove",
+            "agent": _rm_agent_details(prop_schema.get("customer"), prop_schema.get("contactInfo"), r),
         }
     except Exception as exc:
         logger.debug("PAGE_MODEL v2 decode error: %s", exc)
@@ -1103,6 +1141,7 @@ async def scrape_single_listing(url: str) -> dict:
                         "features": [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10],
                         "floor_area": "",
                         "platform": "rightmove",
+                        "agent": _rm_agent_details(prop.get("customer"), prop.get("contactInfo")),
                     }
 
     elif platform == "zoopla":
