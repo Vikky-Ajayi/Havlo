@@ -202,7 +202,17 @@ async def make_property_code(db: AsyncSession) -> str:
         )
         if result.scalar_one_or_none() is None:
             return code
-    raise RuntimeError("Could not allocate a unique property code.")
+    # Mostly full (see property_code_capacity): pick from the free ones.
+    used = set((await db.execute(
+        select(StaleListingProspect.property_code).where(
+            (StaleListingProspect.source_status.is_(None))
+            | (StaleListingProspect.source_status != "archived"),
+        )
+    )).scalars().all())
+    free = [code for code in (f"{n:04d}" for n in range(10_000)) if code not in used]
+    if free:
+        return random.choice(free)
+    raise RuntimeError("Could not allocate a unique property code: all 10,000 are in use.")
 
 
 def is_specific_address(address: str) -> bool:

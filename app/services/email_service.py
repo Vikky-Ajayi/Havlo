@@ -2903,3 +2903,53 @@ def send_stale_agent_followup_email_sync(
         "Copyright ©Havlo. All rights reserved."
     )
     return _send_sync(to_email=to_email, subject=config["subject"], html_body=html_body, plain_body=plain_body)
+
+
+def send_property_code_capacity_alert_sync(*, to_email: str, used: int, total: int, per_day: float) -> bool:
+    """Internal alert from property_code_capacity: most of the 4-digit
+    owner property codes are in use."""
+    free = max(total - used, 0)
+    percent = round(100 * used / total) if total else 100
+    days_left = int(free / per_day) if per_day > 0 else None
+    runway = (
+        f"At the last 30 days' rate (about {per_day:.0f} new letters a day), the rest will run out in about {days_left} days."
+        if days_left is not None else "No new codes have been used in the last 30 days."
+    )
+    fields = {
+        "Codes in use": f"{used:,} of {total:,} ({percent}%)",
+        "Codes free": f"{free:,}",
+        "Used per day (30-day average)": f"{per_day:.1f}",
+        "Estimated days left": str(days_left) if days_left is not None else "—",
+    }
+    summary = (
+        f"{percent}% of the 4-digit property codes are now in use. {runway} "
+        "New letters are still being issued; once codes run low, the time to find a free one grows "
+        "and eventually letters can't be created. Archiving old prospects frees their codes, or the "
+        "codes can move to 5 digits."
+    )
+    body_html = f"""
+    <tr>
+      <td class="havlo-pad-x" style="padding:24px 48px 0 48px;font-family:Arial,Helvetica,sans-serif;">
+        <p style="margin:0 0 10px 0;font-size:12px;line-height:16px;font-weight:800;letter-spacing:0.6px;color:#8C133B;text-transform:uppercase;">Internal alert</p>
+        <h1 class="havlo-heading" style="margin:0 0 10px 0;color:#111111;">Property codes are {percent}% used</h1>
+        <p class="havlo-body-copy" style="margin:0 0 18px 0;">{_html_lib.escape(summary)}</p>
+      </td>
+    </tr>
+    <tr>
+      <td class="havlo-pad-x" style="padding:0 48px 34px 48px;">{_email_value_table_html(fields)}</td>
+    </tr>
+    """
+    html_body = _email_shell_html(
+        title=f"Property codes are {percent}% used",
+        preheader=f"{used:,} of {total:,} property codes in use.",
+        body_html=body_html,
+        brand=_email_brand(),
+        show_hero=False,
+    )
+    plain_body = f"Property codes are {percent}% used\n\n{summary}\n\n" + "\n".join(f"{k}: {v}" for k, v in fields.items())
+    return _send_sync(
+        to_email=to_email,
+        subject=f"[Havlo] Property codes are {percent}% used",
+        html_body=html_body,
+        plain_body=plain_body,
+    )

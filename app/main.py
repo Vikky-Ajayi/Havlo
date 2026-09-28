@@ -702,6 +702,20 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Agent follow-ups disabled by ENABLE_AGENT_FOLLOWUPS.")
 
+    # ── 4-digit property codes running out ────────────────────────────────
+    # Emails ADMIN_NOTIFY_EMAIL once when 90% of the owner property codes
+    # are in use (see property_code_capacity). Every 6 hours.
+    if HAS_DATABASE and _env_enabled("ENABLE_PROPERTY_CODE_CAPACITY_CHECK", True):
+        from app.services.property_code_capacity import check_property_code_capacity
+        from app.services.scraper_base import run_scraper_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Property code capacity", check_property_code_capacity, 6, initial_delay_seconds=420)
+        ))
+        logger.info("Property code capacity check scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Property code capacity check disabled by ENABLE_PROPERTY_CODE_CAPACITY_CHECK.")
+
     # ── HM Land Registry comparable sold prices backfill ──────────────────
     # Looks up recorded sales for UK prospects that don't have them yet
     # (created before this existed, or whose creation-time lookup timed out),

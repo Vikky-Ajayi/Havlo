@@ -102,6 +102,8 @@ export interface StaleProspectConsoleListResponse {
   items: StaleProspectConsoleListItem[];
   total: number;
   cities: string[];
+  property_codes_used?: number | null;
+  property_codes_total?: number;
 }
 
 export interface StaleProspectAbandonedItem {

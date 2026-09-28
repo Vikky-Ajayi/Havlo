@@ -146,6 +146,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   const [items, setItems] = useState<StaleProspectConsoleListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [cities, setCities] = useState<string[]>([]);
+  const [codeUsage, setCodeUsage] = useState<{ used: number; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');
   const [cityFilter, setCityFilterRaw] = useState('');
@@ -189,6 +190,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
       setItems(res.items);
       setTotal(res.total);
       setCities(res.cities);
+      if (res.property_codes_used != null) setCodeUsage({ used: res.property_codes_used, total: res.property_codes_total || 10000 });
     } catch (e) {
       setListError(e instanceof Error ? e.message : 'Could not load prospects.');
     } finally {
@@ -941,6 +943,14 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         <div className="spc-stats">
           <div className="spc-stat"><b>{total}</b><span>{treatedFilter === 'all' ? 'total' : treatedFilter}</span></div>
           <div className="spc-stat"><b>{cities.length}</b><span>Locations</span></div>
+          {codeUsage && (
+            <div className="spc-stat" title="4-digit codes on letters. You'll get an email at 90%.">
+              <b style={codeUsage.used >= codeUsage.total * 0.9 ? { color: '#B91C1C' } : undefined}>
+                {Math.round((100 * codeUsage.used) / codeUsage.total)}%
+              </b>
+              <span>Property codes used ({codeUsage.used.toLocaleString()} of {codeUsage.total.toLocaleString()})</span>
+            </div>
+          )}
         </div>
         )}
 

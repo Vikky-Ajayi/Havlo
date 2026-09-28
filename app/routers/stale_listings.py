@@ -1471,7 +1471,12 @@ async def list_console_prospects(
         if c and (country == "US" or c.strip().lower() in _known_lower)
     ]
 
-    return StaleProspectConsoleListResponse(items=items, total=total, cities=cities)
+    from app.services.property_code_capacity import TOTAL_CODES, codes_in_use
+
+    return StaleProspectConsoleListResponse(
+        items=items, total=total, cities=cities,
+        property_codes_used=await codes_in_use(db), property_codes_total=TOTAL_CODES,
+    )
 
 
 def _prospect_funnel_status(p: StaleListingProspect) -> str:

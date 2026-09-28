@@ -768,6 +768,8 @@ class StaleProspectConsoleListResponse(BaseModel):
     items: list[StaleProspectConsoleListItem]
     total: int
     cities: list[str] = Field(default_factory=list)
+    property_codes_used: Optional[int] = None
+    property_codes_total: int = 10_000
 
 
 class StaleProspectConsoleDetail(StaleProspectConsoleListItem):
