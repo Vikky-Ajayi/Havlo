@@ -686,6 +686,22 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Agent accounts refresh disabled by ENABLE_AGENT_ACCOUNTS_REFRESH.")
 
+    # ── Agent campaign: follow-ups to agencies ────────────────────────────
+    # Emails (1 hour .. day 30) and two texts to each agency that has given
+    # its details once, about its whole portfolio; stops when it buys a
+    # report or opts out. Every 5 minutes. Texts follow the owner SMS flag
+    # unless ENABLE_AGENT_FOLLOWUP_SMS is set (see agent_followups).
+    if HAS_DATABASE and _env_enabled("ENABLE_AGENT_FOLLOWUPS", True):
+        from app.services.agent_followups import run_agent_followup_cycle
+        from app.services.scraper_base import run_scraper_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Agent follow-ups", run_agent_followup_cycle, 5 / 60, initial_delay_seconds=240)
+        ))
+        logger.info("Agent follow-up loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Agent follow-ups disabled by ENABLE_AGENT_FOLLOWUPS.")
+
     # ── HM Land Registry comparable sold prices backfill ──────────────────
     # Looks up recorded sales for UK prospects that don't have them yet
     # (created before this existed, or whose creation-time lookup timed out),

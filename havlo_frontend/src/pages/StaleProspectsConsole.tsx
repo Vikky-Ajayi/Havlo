@@ -14,6 +14,10 @@ interface AgentConsoleItem {
   code_looked_up_at?: string | null;
   properties_opened: number;
   properties_unlocked: number;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  unsubscribed?: boolean;
 }
 
 // ── Report edit shape ───────────────────────────────────────────────────────
@@ -1121,7 +1125,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
-                      {['Agency', 'Code', 'Letter goes to', 'Stale listings', 'Letter downloaded', 'Visited', 'Opened / unlocked', 'Letter'].map(h => (
+                      {['Agency', 'Code', 'Letter goes to', 'Stale listings', 'Letter downloaded', 'Visited', 'Contact', 'Opened / unlocked', 'Letter'].map(h => (
                         <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                       ))}
                     </tr>
@@ -1141,6 +1145,16 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         <td style={{ padding: '10px 12px', fontWeight: 700 }}>{agent.listing_count}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{agent.letter_first_downloaded_at ? fmtDate(agent.letter_first_downloaded_at) : <span style={{ color: '#92400E', fontWeight: 700 }}>Not yet</span>}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(agent.code_looked_up_at)}</td>
+                        <td style={{ padding: '10px 12px', maxWidth: 240 }}>
+                          {agent.contact_email ? (
+                            <>
+                              <div style={{ fontWeight: 600 }}>{agent.contact_name || '—'}</div>
+                              <div style={{ color: '#888', fontSize: 12 }}>{agent.contact_email}</div>
+                              <div style={{ color: '#888', fontSize: 12 }}>{agent.contact_phone || ''}</div>
+                              {agent.unsubscribed && <div style={{ color: '#92400E', fontSize: 12, fontWeight: 700 }}>Unsubscribed</div>}
+                            </>
+                          ) : '—'}
+                        </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{agent.properties_opened} / {agent.properties_unlocked}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           <a

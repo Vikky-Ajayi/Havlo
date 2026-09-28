@@ -2768,3 +2768,138 @@ __all__ = [
     "diagnostics",
     "is_configured",
 ]
+
+
+# ── Agent campaign follow-ups (one sequence per estate agency) ─────────────
+# Schedule and send loop: app/services/agent_followups.py. Same branded shell
+# as the owner drips above, but without the homeowner testimonials, and every
+# CTA opens the agency's /check/agent portfolio rather than one property.
+
+def _stale_agent_followup_content(stage: int, *, brand: str, count: int, price_text: str, agent_code: str) -> dict:
+    listings = f"{count} stale listing{'s' if count != 1 else ''}"
+    p = _stale_abandonment_paragraph
+    brand_html = _html_lib.escape(brand)
+    if stage == 1:
+        return {
+            "subject": f"The assessments for {brand}'s {listings}",
+            "heading": "Your listings' assessments are ready",
+            "cta_label": "View your listings",
+            "content_html": p(
+                f"Thanks for taking a look. We've prepared an independent assessment for each of {brand_html}'s "
+                f"<strong style=\"color:#111111;\">{listings}</strong>: how its price sits against recent recorded "
+                "sales nearby, what may be putting buyers off, and a practical plan to get it moving."
+            ),
+        }
+    if stage == 2:
+        return {
+            "subject": "What's holding your listings back?",
+            "heading": "What's holding your listings back?",
+            "cta_label": "See the findings",
+            "content_html": p("Each assessment looks at the three things that most often keep a home on the market:")
+            + _stale_abandonment_list_card_html([
+                ("01", "Price against the evidence", "How the asking price compares with what similar homes nearby actually sold for."),
+                ("02", "Presentation", "Photos, description and floorplan, as buyers scrolling Rightmove see them."),
+                ("03", "Competition", "The other homes buyers are weighing it against right now."),
+            ]),
+        }
+    if stage == 3:
+        return {
+            "subject": "Evidence for your next vendor conversation",
+            "heading": "Evidence for your next vendor conversation",
+            "cta_label": "Open the assessments",
+            "content_html": p(
+                "When a home has been on the market a while, vendors start asking what could be done differently. "
+                "Each assessment gives you independent, data-backed findings to support the price and presentation "
+                "changes you recommend &mdash; it's built to work alongside you, not replace you."
+            ),
+        }
+    if stage == 4:
+        return {
+            "subject": f"{listings[0].upper() + listings[1:]}, one place",
+            "heading": f"All {listings}, in one place",
+            "cta_label": "View your portfolio",
+            "content_html": p(
+                f"Every stale listing we found for {brand_html} is waiting in your portfolio. Unlock the full report "
+                f"for any property for <strong style=\"color:#111111;\">{_html_lib.escape(price_text)}</strong> and "
+                "share it with the vendor."
+            ),
+        }
+    if stage == 5:
+        return {
+            "subject": "Still on the market?",
+            "heading": "Still on the market?",
+            "cta_label": "Check your listings",
+            "content_html": p(
+                "The longer a home sits, the harder it can be to win back buyer attention. If any of your listings are "
+                "still with you, their assessments are ready whenever you are."
+            ),
+        }
+    if stage == 6:
+        return {
+            "subject": "Your listings' assessments",
+            "heading": "One last reminder",
+            "cta_label": "View your listings",
+            "content_html": p(
+                "This is our last reminder about your stale-listing assessments. Your agency code "
+                f"<strong style=\"color:#111111;\">{_html_lib.escape(agent_code)}</strong> keeps working at "
+                "heyhavlo.com/check/agent whenever you'd like to come back."
+            ),
+        }
+    raise ValueError(f"Unknown agent follow-up stage: {stage}")
+
+
+def send_stale_agent_followup_email_sync(
+    *,
+    to_email: str,
+    first_name: str,
+    stage: int,
+    brand: str,
+    listing_count: int,
+    agent_code: str,
+    portfolio_url: str,
+    unsubscribe_url: str,
+    frontend_base_url: str | None = None,
+) -> bool:
+    """One stage of the agency follow-up sequence. Only the send loop in
+    app/services/agent_followups.py should call this: it records each
+    (agency, stage) so nothing is sent twice."""
+    from app.services.stale_prospect_service import prospect_unlock_price
+
+    price_text = _stale_abandonment_format_price(prospect_unlock_price(None))
+    config = _stale_agent_followup_content(
+        stage, brand=brand, count=listing_count, price_text=price_text, agent_code=agent_code
+    )
+    brand_theme = _stale_abandonment_brand(frontend_base_url)
+    body_html = f"""
+        <tr>
+          <td class="hv-pad-x" style="padding:30px 44px 0 44px;">
+            <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#556274;">
+              Hi {_html_lib.escape(first_name or 'there')},
+            </p>
+            <h1 style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:30px;font-weight:800;letter-spacing:-.02em;color:#111111;">
+              {_html_lib.escape(config['heading'])}
+            </h1>
+            {config['content_html']}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" align="center" style="padding:6px 44px 30px 44px;">
+            {_email_button_html(portfolio_url, f"{config['cta_label']} ›", accent="#000000", text_color="#FFFFFF")}
+          </td>
+        </tr>
+    """
+    html_body = _stale_abandonment_shell_html(
+        title=config["subject"],
+        preheader=config["heading"],
+        body_html=body_html,
+        brand=brand_theme,
+        unsubscribe_url=unsubscribe_url,
+    )
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"{config['heading']}\n\n"
+        f"{config['cta_label']}: {portfolio_url}\n\n"
+        f"Unsubscribe from these reminders: {unsubscribe_url}\n\n"
+        "Copyright ©Havlo. All rights reserved."
+    )
+    return _send_sync(to_email=to_email, subject=config["subject"], html_body=html_body, plain_body=plain_body)

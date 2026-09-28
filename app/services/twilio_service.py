@@ -180,3 +180,20 @@ def send_stale_prospect_abandonment_sms(to_phone: str, stage: int, preview_url: 
         return False
     body = template.format(link=preview_url) + f"\n\nUnsubscribe: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
+
+
+# Agency follow-up texts (app/services/agent_followups.py): stage -> template.
+AGENT_FOLLOWUP_SMS_TEMPLATES: dict[int, str] = {
+    1: "Havlo: the assessments for {brand}'s {count} stale listings are ready - see what may be holding each one back: {link}",
+    2: "Havlo: {brand}'s {count} stale-listing assessments are still waiting - independent findings to take to your vendors: {link}",
+}
+
+
+def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, count: int, link: str, unsubscribe_url: str) -> bool:
+    """One agency follow-up text. Same never-raise contract as the other senders."""
+    template = AGENT_FOLLOWUP_SMS_TEMPLATES.get(stage)
+    if not template:
+        logger.error("Unknown agent follow-up SMS stage: %r", stage)
+        return False
+    body = template.format(brand=brand, count=count, link=link) + f"\n\nUnsubscribe: {unsubscribe_url}"
+    return _send_sms(to_phone, body, from_override="Havlo")

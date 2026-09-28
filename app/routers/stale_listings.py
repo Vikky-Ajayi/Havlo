@@ -733,6 +733,7 @@ async def submit_stale_prospect_details(
     # never reset by a later edit of the same details.
     if prospect.contact_details_submitted_at is None:
         prospect.contact_details_submitted_at = datetime.utcnow()
+    await agent_campaign.remember_agency_contact(db, prospect)
     await db.commit()
     return StaleProspectDetailsResponse(
         prospect_id=str(prospect.id),
@@ -2481,6 +2482,53 @@ async def unsubscribe_stale_prospect_sms_short(
     return _page("You've been unsubscribed from these text message reminders. You won't receive any more.")
 
 
+@public_router.get("/agents/unsubscribe", response_class=HTMLResponse)
+async def unsubscribe_agency_emails(
+    account_id: str,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """One-click opt-out from the agency follow-up emails
+    (agent_followups). Texts are opted out separately, via /ua/<code>."""
+    from app.services.agent_followups import email_unsubscribe_key
+
+    _page = _stale_listing_confirmation_page
+    try:
+        account_uuid = uuid.UUID(account_id)
+    except ValueError:
+        return _page("This unsubscribe link is invalid.")
+    if not verify_unsubscribe_token(email_unsubscribe_key(account_uuid), token):
+        return _page("This unsubscribe link is invalid or has expired.")
+    account = await db.get(StaleAgentAccount, account_uuid)
+    if account and account.unsubscribed_at is None:
+        account.unsubscribed_at = datetime.now(timezone.utc)
+        await db.commit()
+    return _page("You've been unsubscribed from these emails. You won't receive any more.")
+
+
+@short_router.get("/ua/{agent_code}", response_class=HTMLResponse)
+async def unsubscribe_agency_sms_short(
+    agent_code: str,
+    t: str,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """Texted opt-out link for the agency follow-ups -- the agency's
+    5-digit code plus a short token, like /u/<property code> for owners."""
+    from app.services.agent_followups import sms_unsubscribe_key
+
+    _page = _stale_listing_confirmation_page
+    code = "".join(ch for ch in agent_code if ch.isdigit())
+    if len(code) != 5 or not verify_sms_unsubscribe_short_token(sms_unsubscribe_key(code), t):
+        return _page("This unsubscribe link is invalid or has expired.")
+    account = (await db.execute(
+        select(StaleAgentAccount).where(StaleAgentAccount.agent_code == code)
+    )).scalar_one_or_none()
+    if account and account.sms_unsubscribed_at is None:
+        account.sms_unsubscribed_at = datetime.now(timezone.utc)
+        await db.commit()
+    return _page("You've been unsubscribed from these text messages. You won't receive any more.")
+
+
 @admin_router.get("/admin", response_model=list[StaleListingAdminItem])
 async def list_stale_listings_admin(
     current_user: User = Depends(get_current_user),
@@ -2790,6 +2838,10 @@ async def list_console_agents(
                 code_looked_up_at=a.code_looked_up_at,
                 properties_opened=progress.get(a.id, (0, 0))[0],
                 properties_unlocked=progress.get(a.id, (0, 0))[1],
+                contact_name=a.contact_name,
+                contact_email=a.contact_email,
+                contact_phone=a.contact_phone,
+                unsubscribed=a.unsubscribed_at is not None,
             )
             for a in accounts
         ],

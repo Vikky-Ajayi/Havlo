@@ -663,6 +663,10 @@ class AgentConsoleItem(BaseModel):
     code_looked_up_at: Optional[datetime] = None
     properties_opened: int = 0
     properties_unlocked: int = 0
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    unsubscribed: bool = False
 
 
 class AgentConsoleListResponse(BaseModel):

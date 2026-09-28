@@ -9,6 +9,10 @@
       "source": "/u/:path*",
       "destination": "https://havlo.up.railway.app/u/:path*"
     },
+    {
+      "source": "/ua/:path*",
+      "destination": "https://havlo.up.railway.app/ua/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

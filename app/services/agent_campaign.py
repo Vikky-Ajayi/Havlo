@@ -264,8 +264,32 @@ async def open_agent_copy(
         db.add(copy)
     else:
         sps.record_qr_token(copy, token)
+    # Details are collected once per agency: pre-fill them, and the funnel
+    # goes straight to the assessment (it skips the form when a prospect
+    # already has contact details).
+    if account.contact_email and not copy.contact_email:
+        copy.contact_name = account.contact_name
+        copy.contact_email = account.contact_email
+        copy.contact_phone = account.contact_phone
+        copy.contact_details_submitted_at = now
+        copy.property_confirmed_at = copy.property_confirmed_at or now
     await db.commit()
     return copy, token
+
+
+async def remember_agency_contact(db: AsyncSession, copy: StaleListingProspect) -> None:
+    """After the details form is submitted on an agency's copy: keep them on
+    the agency (the first time), for every later property and the follow-ups.
+    The caller commits."""
+    if copy.audience != "agent" or not copy.agent_account_id:
+        return
+    account = await db.get(StaleAgentAccount, copy.agent_account_id)
+    if account is None or account.contact_email:
+        return
+    account.contact_name = copy.contact_name
+    account.contact_email = copy.contact_email
+    account.contact_phone = copy.contact_phone
+    account.contact_details_submitted_at = datetime.now(timezone.utc)
 
 
 def property_status(copy: StaleListingProspect | None) -> str:
@@ -285,17 +309,147 @@ def _address_lines(address: str | None) -> list[str]:
     return [part.strip() for part in (address or "").split(",") if part.strip()]
 
 
+def _letter_wording(prospects: list[StaleListingProspect]) -> tuple[str, str]:
+    """(headline, "how stale" phrase) that's true for this mix of listings:
+    known days on market and/or price reductions (see STALE_MIN_DAYS)."""
+    count = len(prospects)
+    known = [days_on_market(p) for p in prospects if reduced_date(p) is None]
+    if len(known) == count and known:
+        return (f"{count} of your listings have been on the market for more than {max(min(known) // 30, 1)} months.",
+                f"have now been listed for {min(known)} days or more")
+    if not known:
+        return (f"{count} of your listings have stalled on the market.",
+                "have been reduced in price without finding a buyer")
+    return (f"{count} of your listings have stalled on the market.",
+            "have been listed for six months or more, or reduced in price without finding a buyer")
+
+
+def _agent_letter_header(page, width: float, height: float) -> None:
+    from reportlab.lib import colors
+
+    margin = sps._LETTER_MARGIN
+    top = height - 46
+    if sps._LETTER_LOGO_PATH.is_file():
+        page.drawImage(str(sps._LETTER_LOGO_PATH), margin, top - 22, width=100, height=23.3, mask="auto", preserveAspectRatio=True)
+    else:
+        page.setFillColor(sps._LETTER_INK)
+        page.setFont("Helvetica-Bold", 24)
+        page.drawString(margin, top - 18, "HAVLO")
+    page.setFillColor(colors.HexColor("#3A3A3C"))
+    page.setFont("Helvetica", 9.5)
+    page.drawString(margin + 1, top - 34, "StaleListings for Agents")
+    page.setFillColor(sps._LETTER_ACCENT)
+    page.setFont("Helvetica-Bold", 17)
+    page.drawRightString(width - margin, top, "Your stale listings, seen")
+    page.drawRightString(width - margin, top - 20, "through the market's eyes")
+    sps._letter_draw_corner_flag(page, width, height)
+
+
+def _agent_access_box(page, x: float, y: float, w: float, h: float, qr_reader, agent_code: str, count: int) -> None:
+    """QR straight to the portfolio, the address to type, and the agency code."""
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.utils import ImageReader
+
+    page.setFillColor(sps._LETTER_CARD_BG)
+    page.setStrokeColor(sps._LETTER_CARD_BORDER)
+    page.setLineWidth(1)
+    page.roundRect(x, y, w, h, 14, stroke=1, fill=1)
+    code_w = 150
+    code_x = x + w - code_w
+    page.setFillColor(sps._LETTER_ACCENT)
+    page.roundRect(code_x, y, code_w, h, 14, stroke=0, fill=1)
+    page.rect(code_x, y, 14, h, stroke=0, fill=1)
+    page.setFillColor(colors.white)
+    page.setFont("Helvetica-Bold", 8)
+    page.drawCentredString(code_x + code_w / 2, y + h - 22, "YOUR AGENCY CODE")
+    page.setFont("Helvetica-Bold", 28)
+    page.drawCentredString(code_x + code_w / 2, y + h / 2 - 10, agent_code)
+    qr_size = h - 20
+    page.drawImage(ImageReader(qr_reader), code_x - qr_size - 14, y + 10, qr_size, qr_size)
+    label = ParagraphStyle("AgentScan", fontName=sps._LETTER_FONT_BOLD, fontSize=12.5, leading=15.5, textColor=sps._LETTER_INK)
+    text_w = code_x - qr_size - 28 - (x + 18)
+    sps._letter_para(
+        page, f"Scan to see all {count} listings and their assessments, or visit "
+        "<font color='#A409D2'>heyhavlo.com/check/agent</font> and enter your agency code.",
+        x + 18, y + h - 18, text_w, label,
+    )
+
+
+def _agent_page1_body(page, width: float, height: float, account: StaleAgentAccount,
+                      prospects: list[StaleListingProspect], gap_scale: float = 1.0) -> float:
+    """Page 1's flowing content, address block to "summarised on the next
+    page"; returns the final y. Same measure-then-draw approach as the owner
+    letter (see stale_prospect_service._letter_draw_page1_body): `gap_scale`
+    compresses the whitespace so a long address never runs into the QR box."""
+    from reportlab.lib.styles import ParagraphStyle
+
+    def g(n: float) -> float:
+        return n * gap_scale
+
+    margin = sps._LETTER_MARGIN
+    body = sps._LETTER_BODY_STYLE
+    headline, how_stale = _letter_wording(prospects)
+    count = len(prospects)
+
+    # Address block where the owner letter's is: the mail house overlays its
+    # code above it and a barcode below it, hence the wide gap after.
+    y = height - 150
+    page.setFillColor(sps._LETTER_INK)
+    page.setFont("Helvetica", 10.5)
+    address_x = margin + 7 * page.stringWidth(" ", "Helvetica", 10.5)
+    page.drawRightString(width - margin, y, datetime.now(timezone.utc).strftime("%d/%m/%Y"))
+    lines = ["For the attention of the Directors", display_company_name(account.company_name)]
+    address = _address_lines(account.letter_address)
+    lines += address if len(address) <= 5 else [*address[:4], address[-1]]
+    for line in lines:
+        page.drawString(address_x, y, line)
+        y -= 14.5
+    y -= g(90)
+
+    headline_style = ParagraphStyle("AgentHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=sps._LETTER_ACCENT)
+    y = sps._letter_para(page, headline, margin, y, width - 2 * margin, headline_style) - g(16)
+    y = sps._letter_para(
+        page, f"We track how long homes stay on the market across the UK. <b>{count} properties</b> your agency "
+        f"is marketing on Rightmove {how_stale} &ndash; the point where buyer attention usually fades and vendors "
+        "start asking what could be done differently.",
+        margin, y, width - 2 * margin, body,
+    ) - g(8)
+    y = sps._letter_para(
+        page, "Havlo specialises in analysing properties that have remained unsold for an extended period. For each "
+        "of these listings we have prepared an independent <b>Property Performance Assessment</b>, designed to support "
+        "your work with your vendor &ndash; not replace you.",
+        margin, y, width - 2 * margin, body,
+    ) - g(22)
+
+    sps._letter_draw_tracked_text(
+        page, "WHAT EACH ASSESSMENT COVERS", margin, y,
+        font=sps._LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=sps._LETTER_INK,
+    )
+    y -= g(10) + 14
+    y = sps._letter_draw_checklist_grid(
+        page, margin, y, width - 2 * margin,
+        ["Price vs Recent Sold Prices", "Competing Listings Nearby", "Listing Presentation",
+         "Buyer Appeal", "Why It May Have Stalled", "A Practical Action Plan"],
+        2, row_h=24,
+    ) - g(6)
+    return sps._letter_para(
+        page, f"Your {count} listings are summarised on the following page.", margin, y, width - 2 * margin, body,
+    )
+
+
 def generate_agent_letter_pdf(
     account: StaleAgentAccount, prospects: list[StaleListingProspect], token: str, public_base_url: str
 ) -> str:
-    """One-page A4 letter to the agency: its stale listings (the longest
-    few in a table), and the code/QR for /check/agent. Returns the path."""
+    """Two-page A4 letter to the agency. Page 1: the pitch, what each
+    assessment covers, and the QR/agency code. Page 2: its stale listings
+    (as many as fit, longest first) and how it works. Returns the path."""
     if sps._PDF_LIBS_IMPORT_ERROR:
         raise RuntimeError("Install reportlab and qrcode to generate letters.") from sps._PDF_LIBS_IMPORT_ERROR
-    from reportlab.lib import colors
+    from io import BytesIO
+
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.utils import ImageReader
     from reportlab.pdfgen import canvas as rl_canvas
 
     output_dir = Path("generated") / "agent-letters"
@@ -304,142 +458,112 @@ def generate_agent_letter_pdf(
     width, height = A4
     margin = sps._LETTER_MARGIN
     ink, muted, accent = sps._LETTER_INK, sps._LETTER_MUTED, sps._LETTER_ACCENT
-    body = ParagraphStyle("AgentBody", fontName=sps._LETTER_FONT_REGULAR, fontSize=10, leading=14.2, textColor=ink)
-    small = ParagraphStyle("AgentSmall", fontName=sps._LETTER_FONT_REGULAR, fontSize=8.6, leading=11.5, textColor=muted)
-    title = ParagraphStyle("AgentTitle", fontName=sps._LETTER_FONT_EXTRABOLD, fontSize=19, leading=23, textColor=ink)
-    esc = sps._letter_esc
     count = len(prospects)
-    known = [days_on_market(p) for p in prospects if reduced_date(p) is None]
-    n_reduced = count - len(known)
     brand = account.brand or display_company_name(account.company_name)
-    if not n_reduced:
-        headline = f"{count} of your listings have been on the market for {max(min(known) // 30, 1)}+ months"
-        how_stale = f"have now been listed for {min(known)} days or more"
-    elif not known:
-        headline = f"{count} of your listings have stalled on the market"
-        how_stale = "have been reduced in price without finding a buyer"
-    else:
-        headline = f"{count} of your listings have stalled on the market"
-        how_stale = "have been listed for six months or more, or reduced in price without finding a buyer"
+    qr_reader = sps._letter_make_qr(f"{public_base_url.rstrip('/')}/check/agent?token={token}")
 
     page = rl_canvas.Canvas(str(pdf_path), pagesize=A4)
     page.setTitle(f"Havlo StaleListings - {brand}")
 
-    # Header: logo, tagline, the purple corner flag.
-    top = height - 46
-    if sps._LETTER_LOGO_PATH.is_file():
-        page.drawImage(str(sps._LETTER_LOGO_PATH), margin, top - 22, width=100, height=23.3, mask="auto", preserveAspectRatio=True)
-    else:
-        page.setFillColor(ink)
-        page.setFont("Helvetica-Bold", 24)
-        page.drawString(margin, top - 18, "HAVLO")
-    page.setFillColor(colors.HexColor("#3A3A3C"))
-    page.setFont("Helvetica", 9.5)
-    page.drawString(margin + 1, top - 34, "StaleListings for Agents")
-    page.setFillColor(accent)
-    page.setFont("Helvetica-Bold", 16)
-    page.drawRightString(width - margin, top, "Your stale listings, seen")
-    page.drawRightString(width - margin, top - 19, "through the market's eyes")
-    sps._letter_draw_corner_flag(page, width, height)
+    # ── Page 1 ──
+    _agent_letter_header(page, width, height)
+    footer_note = (
+        "If any of these properties are no longer on your books, please disregard them. We identify properties "
+        "currently listed for sale using publicly available listing information, and occasional errors may occur. "
+        "This is a property marketing and saleability analysis, not a formal valuation, survey or structural assessment."
+    )
+    qr_h = 91
+    qr_bottom = sps._letter_footer_height(width, footer_note) + 18
+    measure = rl_canvas.Canvas(BytesIO(), pagesize=A4)
+    y_full = _agent_page1_body(measure, width, height, account, prospects, gap_scale=1.0)
+    y_none = _agent_page1_body(measure, width, height, account, prospects, gap_scale=0.0)
+    overflow = (qr_bottom + qr_h + 16) - y_full
+    gap_scale = max(0.55, 1.0 - overflow / (y_none - y_full)) if overflow > 0 and y_none > y_full else 1.0
+    _agent_page1_body(page, width, height, account, prospects, gap_scale=gap_scale)
+    _agent_access_box(page, margin, qr_bottom, width - 2 * margin, qr_h, qr_reader, account.agent_code, count)
+    sps._letter_draw_footer(page, width, footer_note)
+    page.showPage()
 
-    # Date and recipient.
-    y = height - 128
-    page.setFillColor(muted)
-    page.setFont(sps._LETTER_FONT_REGULAR, 9.5)
-    page.drawString(margin, y, datetime.now(timezone.utc).strftime("%-d %B %Y"))
-    y -= 22
-    page.setFillColor(ink)
-    lines = ["For the attention of the Directors", display_company_name(account.company_name)]
-    lines += _address_lines(account.letter_address)
-    for i, line in enumerate(lines):
-        page.setFont(sps._LETTER_FONT_BOLD if i == 1 else sps._LETTER_FONT_REGULAR, 10)
-        page.drawString(margin, y, line)
-        y -= 13.5
-    y -= 14
+    # ── Page 2 ──
+    _agent_letter_header(page, width, height)
+    y = height - 140
+    sps._letter_draw_tracked_text(
+        page, "YOUR STALE LISTINGS", margin, y,
+        font=sps._LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=ink,
+    )
+    y -= 10
+    y = sps._letter_para(
+        page, f"The {count} listings we assessed for {sps._letter_esc(brand)}, those longest on the market first.",
+        margin, y, width - 2 * margin, sps._LETTER_BODY_STYLE,
+    ) - 12
 
-    y = sps._letter_para(page, headline, margin, y, width - 2 * margin, title) - 12
-    paragraphs = [
-        f"Dear {esc(brand)} team,",
-        f"We track how long homes stay on the market across the UK. <b>{count} properties</b> your agency is "
-        f"marketing on Rightmove {how_stale} &ndash; the point where buyer "
-        "attention usually fades and vendors start asking what could be done differently.",
-        "For each one we have prepared an independent <b>Property Performance Assessment</b>: how its price sits "
-        "against recent recorded sales nearby, what may be holding back buyer interest, the competition around it, "
-        "and a practical plan to get it moving. It is designed to support your work with your vendor, not replace you.",
-    ]
-    for text in paragraphs:
-        y = sps._letter_para(page, text, margin, y, width - 2 * margin, body) - 8
-
-    # The longest-listed properties: as many rows as fit above the access
-    # box, sign-off and footer (a long branch address leaves less room).
-    reserved = 104 + 24 + 24 + 34 + 72  # access box, gaps, sign-off, footer
-    fit = int((y - 6 - 16 - 16 - reserved) // 19)
-    rows = prospects[:max(3, min(LETTER_TABLE_ROWS, fit))]
-    col_price, col_days = width - margin - 150, width - margin
-    y -= 6
+    # Everything below the table, bottom up: legal line, sign-off, how it works.
+    legal_style = ParagraphStyle("AgentLegal", fontName=sps._LETTER_FONT_REGULAR, fontSize=7.4, leading=10, textColor=muted, alignment=1)
+    steps_h, signoff_h, legal_top = 118, 44, 62
+    table_bottom_limit = legal_top + signoff_h + steps_h + 20
+    row_h, head_h = 19.5, 26
+    more_h = 18
+    fit = int((y - table_bottom_limit - head_h - more_h) // row_h)
+    rows = prospects[:max(1, min(count, fit))]
+    col_price, col_market = width - margin - 170, width - margin - 12
+    table_h = head_h + row_h * len(rows) + (more_h if count > len(rows) else 6)
     page.setFillColor(sps._LETTER_CARD_BG)
-    table_h = 24 + 19 * len(rows) + (16 if count > len(rows) else 0)
     page.roundRect(margin, y - table_h, width - 2 * margin, table_h, 10, stroke=0, fill=1)
-    y -= 16
+    y -= 17
     page.setFillColor(muted)
     page.setFont(sps._LETTER_FONT_BOLD, 8)
     page.drawString(margin + 12, y, "PROPERTY")
     page.drawRightString(col_price, y, "ASKING PRICE")
-    page.drawRightString(col_days - 12, y, "ON THE MARKET")
+    page.drawRightString(col_market, y, "ON THE MARKET")
+    max_w = col_price - margin - 100
     for prospect in rows:
-        y -= 19
+        y -= row_h
         address = (prospect.property_address or "").strip()
         if prospect.postcode and prospect.postcode not in address:
             address = f"{address}, {prospect.postcode}"
-        page.setFillColor(ink)
-        page.setFont(sps._LETTER_FONT_REGULAR, 9.2)
-        max_w = col_price - margin - 90
         if page.stringWidth(address, sps._LETTER_FONT_REGULAR, 9.2) > max_w:
             while address and page.stringWidth(address + "…", sps._LETTER_FONT_REGULAR, 9.2) > max_w:
                 address = address[:-1]
             address = address.rstrip(", ") + "…"
+        page.setFillColor(ink)
+        page.setFont(sps._LETTER_FONT_REGULAR, 9.2)
         page.drawString(margin + 12, y, address)
         page.drawRightString(col_price, y, f"£{int(prospect.asking_price or 0):,}")
         page.setFillColor(sps._LETTER_ORANGE)
         page.setFont(sps._LETTER_FONT_BOLD, 9.2)
-        page.drawRightString(col_days - 12, y, market_label(prospect))
+        page.drawRightString(col_market, y, market_label(prospect))
     if count > len(rows):
-        y -= 16
+        y -= more_h
         page.setFillColor(muted)
         page.setFont(sps._LETTER_FONT_REGULAR, 8.6)
-        page.drawString(margin + 12, y, f"+ {count - len(rows)} more in your portfolio")
-    y -= 24
+        page.drawString(margin + 12, y, f"+ {count - len(rows)} more, all listed at heyhavlo.com/check/agent")
 
-    # Access box: QR straight to the portfolio, and the agency code.
-    box_h = 104
-    box_y = y - box_h
-    page.setFillColor(sps._LETTER_CARD_BG)
-    page.setStrokeColor(sps._LETTER_CARD_BORDER)
-    page.roundRect(margin, box_y, width - 2 * margin, box_h, 14, stroke=1, fill=1)
-    code_w = 150
-    code_x = width - margin - code_w
-    page.setFillColor(accent)
-    page.roundRect(code_x, box_y, code_w, box_h, 14, stroke=0, fill=1)
-    page.rect(code_x, box_y, 14, box_h, stroke=0, fill=1)
-    page.setFillColor(colors.white)
-    page.setFont("Helvetica-Bold", 8)
-    page.drawCentredString(code_x + code_w / 2, box_y + box_h - 24, "YOUR AGENCY CODE")
-    page.setFont("Helvetica-Bold", 28)
-    page.drawCentredString(code_x + code_w / 2, box_y + box_h / 2 - 8, account.agent_code)
-    qr_size = box_h - 22
-    url = f"{public_base_url.rstrip('/')}/check/agent?token={token}"
-    page.drawImage(ImageReader(sps._letter_make_qr(url)), code_x - qr_size - 14, box_y + 11, qr_size, qr_size)
-    label = ParagraphStyle("AgentScan", fontName=sps._LETTER_FONT_BOLD, fontSize=12.5, leading=15.5, textColor=ink)
-    text_w = code_x - qr_size - 28 - (margin + 18)
-    sps._letter_para(
-        page, f"Scan to see all {count} listings and their assessments, or visit "
-        f"<font color='#A409D2'>heyhavlo.com/check/agent</font> and enter your agency code.",
-        margin + 18, box_y + box_h - 20, text_w, label,
+    # How it works: three numbered steps across the page.
+    steps_top = legal_top + signoff_h + steps_h
+    sps._letter_draw_tracked_text(
+        page, "HOW IT WORKS", margin, steps_top,
+        font=sps._LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=ink,
     )
-    y = box_y - 24
+    steps = [
+        "Scan the QR code on the first page, or visit <b>heyhavlo.com/check/agent</b>.",
+        f"Enter your agency code <b>{account.agent_code}</b> and choose a listing.",
+        "See its assessment, unlock the full report and share it with your vendor.",
+    ]
+    step_style = ParagraphStyle("AgentStep", fontName=sps._LETTER_FONT_REGULAR, fontSize=9.6, leading=13.2, textColor=ink)
+    col_w = (width - 2 * margin) / 3
+    for i, text in enumerate(steps):
+        cx = margin + col_w * i
+        cy = steps_top - 34
+        page.setFillColor(accent)
+        page.circle(cx + 13, cy, 13, stroke=0, fill=1)
+        page.setFillColorRGB(1, 1, 1)
+        page.setFont("Helvetica-Bold", 12)
+        page.drawCentredString(cx + 13, cy - 4.2, str(i + 1))
+        sps._letter_para(page, text, cx, cy - 22, col_w - 18, step_style)
 
-    y = sps._letter_para(page, "Kind regards,<br/><b>The Havlo StaleListings team</b>", margin, y, width - 2 * margin, body)
-    sps._letter_para(page, sps._LETTER_LEGAL_TEXT, margin, 56, width - 2 * margin, small)
+    sps._letter_para(page, "Kind regards,<br/><b>The Havlo StaleListings team</b>", margin,
+                     legal_top + signoff_h - 6, width - 2 * margin, sps._LETTER_BODY_STYLE)
+    sps._letter_para(page, sps._LETTER_LEGAL_TEXT, margin, legal_top - 20, width - 2 * margin, legal_style)
     page.showPage()
     page.save()
     return str(pdf_path)
