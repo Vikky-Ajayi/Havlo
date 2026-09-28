@@ -309,7 +309,7 @@ export const MonitorDashboard = () => {
     return (
       <div className="slw-page">
         <Header />
-        <div className="slw-shell">
+        <div className="slw-shell lmd-shell">
           <main className="slw-main lmd-center">
             {error ? (
               <>
@@ -341,7 +341,7 @@ export const MonitorDashboard = () => {
   return (
     <div className="slw-page">
       <Header />
-      <div className="slw-shell">
+      <div className="slw-shell lmd-shell">
         <main className="slw-main lmd">
           {/* Hero */}
           <section className="lmd-hero">
@@ -576,7 +576,9 @@ export const MonitorDashboard = () => {
 
 const DashboardStyles = () => (
   <style>{`
-    .lmd{padding:32px 0 72px;max-width:980px;margin:0 auto}
+    /* Side spacing is 40% of the other /check pages': gutter = max(40px, 20% of (width - 980px)). */
+    .slw-shell.lmd-shell{width:min(calc(100% - 80px),calc(60% + 392px));max-width:none}
+    .lmd{padding:32px 0 72px;margin:0 auto}
     .lmd-center{text-align:center;padding:96px 0}
     .lmd-center .slw-spinner{margin:0 auto 16px}
     .lmd-h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:36px;line-height:1.08;letter-spacing:-0.02em;margin:6px 0 8px;color:#202124}
@@ -710,6 +712,7 @@ const DashboardStyles = () => (
     .lmd-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;z-index:50;max-width:calc(100% - 32px)}
 
     @media (max-width: 900px){
+      .slw-shell.lmd-shell{width:100%;padding:0 6px}
       .lmd{padding:18px 0 56px}
       .lmd-hero{grid-template-columns:1fr;gap:16px}
       .lmd-hero-image{height:200px}
