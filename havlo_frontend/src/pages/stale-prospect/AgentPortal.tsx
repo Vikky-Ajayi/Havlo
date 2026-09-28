@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getAgentPortfolio, lookupAgent, openAgentProperty } from './api';
-import { formatGbp, type AgentPortfolio, type AgentPortfolioProperty } from './types';
+import { formatGbp, formatReducedDate, type AgentPortfolio, type AgentPortfolioProperty } from './types';
 import {
   BulbIcon,
   CheckIconGreen,
@@ -209,10 +209,17 @@ const AgentPortfolioView = ({
                     <span>Asking price</span>
                     <b>{property.asking_price ? formatGbp(property.asking_price) : '—'}</b>
                   </div>
-                  <div>
-                    <span>On the market</span>
-                    <b className="slw-hl">{property.days_on_market} days</b>
-                  </div>
+                  {property.reduced_date !== null && property.reduced_date !== undefined ? (
+                    <div>
+                      <span>Date reduced</span>
+                      <b className="slw-hl">{formatReducedDate(property.reduced_date)}</b>
+                    </div>
+                  ) : (
+                    <div>
+                      <span>On the market</span>
+                      <b className="slw-hl">{property.days_on_market} days</b>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"

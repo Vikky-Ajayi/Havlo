@@ -31,6 +31,11 @@ from app.models.models import StaleAgentAccount, StaleListingProspect
 from app.services import stale_prospect_service as sps
 
 MIN_LISTINGS = 2
+# Discovery's criteria: on the market STALE_MIN_DAYS or more, or -- when
+# Rightmove only shows "Reduced on <date>" -- reduced in price. For those
+# the day count runs from the reduction, so they're shown as "Reduced
+# <date>", never as days on market (same as the assessment page).
+STALE_MIN_DAYS = 180
 LETTER_TABLE_ROWS = 8
 # Copied onto an agent's copy of an owner prospect: the listing, report and
 # comparables. Deliberately not the funnel/payment/contact/letter fields.
@@ -67,12 +72,48 @@ def display_company_name(name: str) -> str:
     return " ".join(words)
 
 
-def days_on_market(prospect: StaleListingProspect, today: date | None = None) -> int:
+def _days(listed_date: Any, duration: Any, today: date | None = None) -> int:
     today = today or datetime.now(timezone.utc).date()
-    if prospect.listed_date:
-        listed = prospect.listed_date.date() if isinstance(prospect.listed_date, datetime) else prospect.listed_date
-        return max((today - listed).days, int(prospect.listing_duration_days or 0))
-    return int(prospect.listing_duration_days or 0)
+    if listed_date:
+        listed = listed_date.date() if isinstance(listed_date, datetime) else listed_date
+        return max((today - listed).days, int(duration or 0))
+    return int(duration or 0)
+
+
+def days_on_market(prospect: StaleListingProspect, today: date | None = None) -> int:
+    return _days(prospect.listed_date, prospect.listing_duration_days, today)
+
+
+def reduced_date(prospect: StaleListingProspect) -> str | None:
+    """YYYY-MM-DD (or "" if unreadable) when the listing only qualified
+    through a price reduction; None when days on market are known."""
+    try:
+        snapshot = json.loads(prospect.listing_snapshot_json or "{}")
+    except ValueError:
+        snapshot = {}
+    return sps.reduced_date_info(prospect, snapshot if isinstance(snapshot, dict) else {})
+
+
+def qualifies(prospect: StaleListingProspect) -> bool:
+    return reduced_date(prospect) is not None or days_on_market(prospect) >= STALE_MIN_DAYS
+
+
+def _stale_order(prospect: StaleListingProspect) -> tuple:
+    """Known days on market first (longest first), then reductions (oldest first)."""
+    reduced = reduced_date(prospect)
+    if reduced is None:
+        return (0, -days_on_market(prospect))
+    return (1, reduced or "9999")
+
+
+def market_label(prospect: StaleListingProspect) -> str:
+    """"412 days" or "Reduced Jul 2026" for the letter table."""
+    reduced = reduced_date(prospect)
+    if reduced is None:
+        return f"{days_on_market(prospect)} days"
+    if not reduced:
+        return "Price reduced"
+    return "Reduced " + datetime.strptime(reduced, "%Y-%m-%d").strftime("%b %Y")
 
 
 def _owner_filter():
@@ -109,12 +150,12 @@ async def refresh_agent_accounts(db: AsyncSession) -> dict[str, int]:
     letter branch, brand and count follow the current prospects."""
     P = StaleListingProspect
     rows = (await db.execute(
-        select(P.agent_company_name, P.agent_brand, P.agent_branch_id, P.agent_branch_name,
-               P.agent_address, P.agent_phone, P.agent_logo_url)
-        .where(*_owner_filter(), P.agent_company_name.is_not(None))
-    )).all()
+        select(P).where(*_owner_filter(), P.agent_company_name.is_not(None))
+    )).scalars().all()
     groups: dict[str, list[Any]] = defaultdict(list)
     for row in rows:
+        if not qualifies(row):
+            continue
         key = company_key(row.agent_company_name)
         if key:
             groups[key].append(row)
@@ -153,12 +194,14 @@ async def refresh_agent_accounts(db: AsyncSession) -> dict[str, int]:
 
 
 async def portfolio(db: AsyncSession, account: StaleAgentAccount) -> list[StaleListingProspect]:
-    """The owner prospects this agency is marketing, longest on the market first."""
+    """The owner prospects this agency is marketing that meet discovery's
+    criteria (see STALE_MIN_DAYS): known days on market first, longest first,
+    then price reductions."""
     names = json.loads(account.company_names_json or "[]") or [account.company_name]
     prospects = (await db.execute(
         select(StaleListingProspect).where(*_owner_filter(), StaleListingProspect.agent_company_name.in_(names))
     )).scalars().all()
-    return sorted(prospects, key=lambda p: -days_on_market(p))
+    return sorted((p for p in prospects if qualifies(p)), key=_stale_order)
 
 
 async def agent_copies(db: AsyncSession, account: StaleAgentAccount) -> dict[uuid.UUID, StaleListingProspect]:
@@ -266,9 +309,18 @@ def generate_agent_letter_pdf(
     title = ParagraphStyle("AgentTitle", fontName=sps._LETTER_FONT_EXTRABOLD, fontSize=19, leading=23, textColor=ink)
     esc = sps._letter_esc
     count = len(prospects)
-    min_days = min((days_on_market(p) for p in prospects), default=0)
-    months = max(min_days // 30, 1)
+    known = [days_on_market(p) for p in prospects if reduced_date(p) is None]
+    n_reduced = count - len(known)
     brand = account.brand or display_company_name(account.company_name)
+    if not n_reduced:
+        headline = f"{count} of your listings have been on the market for {max(min(known) // 30, 1)}+ months"
+        how_stale = f"have now been listed for {min(known)} days or more"
+    elif not known:
+        headline = f"{count} of your listings have stalled on the market"
+        how_stale = "have been reduced in price without finding a buyer"
+    else:
+        headline = f"{count} of your listings have stalled on the market"
+        how_stale = "have been listed for six months or more, or reduced in price without finding a buyer"
 
     page = rl_canvas.Canvas(str(pdf_path), pagesize=A4)
     page.setTitle(f"Havlo StaleListings - {brand}")
@@ -305,13 +357,11 @@ def generate_agent_letter_pdf(
         y -= 13.5
     y -= 14
 
-    y = sps._letter_para(
-        page, f"{count} of your listings have been on the market for {months}+ months", margin, y, width - 2 * margin, title
-    ) - 12
+    y = sps._letter_para(page, headline, margin, y, width - 2 * margin, title) - 12
     paragraphs = [
         f"Dear {esc(brand)} team,",
         f"We track how long homes stay on the market across the UK. <b>{count} properties</b> your agency is "
-        f"marketing on Rightmove have now been listed for {min_days} days or more &ndash; the point where buyer "
+        f"marketing on Rightmove {how_stale} &ndash; the point where buyer "
         "attention usually fades and vendors start asking what could be done differently.",
         "For each one we have prepared an independent <b>Property Performance Assessment</b>: how its price sits "
         "against recent recorded sales nearby, what may be holding back buyer interest, the competition around it, "
@@ -320,8 +370,11 @@ def generate_agent_letter_pdf(
     for text in paragraphs:
         y = sps._letter_para(page, text, margin, y, width - 2 * margin, body) - 8
 
-    # The longest-listed properties.
-    rows = prospects[:LETTER_TABLE_ROWS]
+    # The longest-listed properties: as many rows as fit above the access
+    # box, sign-off and footer (a long branch address leaves less room).
+    reserved = 104 + 24 + 24 + 34 + 72  # access box, gaps, sign-off, footer
+    fit = int((y - 6 - 16 - 16 - reserved) // 19)
+    rows = prospects[:max(3, min(LETTER_TABLE_ROWS, fit))]
     col_price, col_days = width - margin - 150, width - margin
     y -= 6
     page.setFillColor(sps._LETTER_CARD_BG)
@@ -332,7 +385,7 @@ def generate_agent_letter_pdf(
     page.setFont(sps._LETTER_FONT_BOLD, 8)
     page.drawString(margin + 12, y, "PROPERTY")
     page.drawRightString(col_price, y, "ASKING PRICE")
-    page.drawRightString(col_days - 12, y, "DAYS ON MARKET")
+    page.drawRightString(col_days - 12, y, "ON THE MARKET")
     for prospect in rows:
         y -= 19
         address = (prospect.property_address or "").strip()
@@ -349,7 +402,7 @@ def generate_agent_letter_pdf(
         page.drawRightString(col_price, y, f"£{int(prospect.asking_price or 0):,}")
         page.setFillColor(sps._LETTER_ORANGE)
         page.setFont(sps._LETTER_FONT_BOLD, 9.2)
-        page.drawRightString(col_days - 12, y, f"{days_on_market(prospect)} days")
+        page.drawRightString(col_days - 12, y, market_label(prospect))
     if count > len(rows):
         y -= 16
         page.setFillColor(muted)
@@ -386,7 +439,7 @@ def generate_agent_letter_pdf(
     y = box_y - 24
 
     y = sps._letter_para(page, "Kind regards,<br/><b>The Havlo StaleListings team</b>", margin, y, width - 2 * margin, body)
-    sps._letter_para(page, sps._LETTER_LEGAL_TEXT, margin, 60, width - 2 * margin, small)
+    sps._letter_para(page, sps._LETTER_LEGAL_TEXT, margin, 56, width - 2 * margin, small)
     page.showPage()
     page.save()
     return str(pdf_path)

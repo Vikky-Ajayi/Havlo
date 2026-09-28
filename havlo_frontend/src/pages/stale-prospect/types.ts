@@ -211,6 +211,9 @@ export interface AgentPortfolioProperty {
   property_address: string;
   asking_price?: number | null;
   days_on_market: number;
+  /** Set when the listing qualified through a price reduction: days_on_market
+   * then counts from the reduction, so show "Date reduced" instead. */
+  reduced_date?: string | null;
   bedrooms?: number | null;
   property_type?: string | null;
   image_url?: string | null;

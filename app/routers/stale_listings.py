@@ -2682,6 +2682,7 @@ async def _agent_portfolio_response(
                 property_address=address_with_full_postcode(p.property_address, p.postcode),
                 asking_price=p.asking_price,
                 days_on_market=agent_campaign.days_on_market(p),
+                reduced_date=agent_campaign.reduced_date(p),
                 bedrooms=p.bedrooms,
                 property_type=p.property_type,
                 image_url=_agent_property_image(p),

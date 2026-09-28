@@ -1,8 +1,9 @@
 """Agent campaign helpers: grouping agencies, letter wording, portfolio status."""
 from __future__ import annotations
 
+import json
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.models.models import StaleListingProspect
 from app.services import agent_campaign as ac
@@ -27,6 +28,22 @@ class AgentCampaignTests(unittest.TestCase):
         self.assertEqual(ac.days_on_market(prospect, today=date(2026, 9, 28)), 270)
         # Never below what was recorded at discovery.
         self.assertEqual(ac.days_on_market(StaleListingProspect(listing_duration_days=200), today=date(2026, 9, 28)), 200)
+
+    def test_qualifies_and_labels(self):
+        today = datetime.now(timezone.utc)
+        long_listed = StaleListingProspect(listed_date=today - timedelta(days=400), listing_duration_days=400,
+                                           listing_snapshot_json=json.dumps({"listed_date": "2025-08-01"}))
+        reduced = StaleListingProspect(listed_date=datetime(2026, 3, 16, tzinfo=timezone.utc), listing_duration_days=120,
+                                       listing_snapshot_json=json.dumps({"listed_date": "Reduced on 16/03/2026"}))
+        too_new = StaleListingProspect(listed_date=today - timedelta(days=90), listing_duration_days=90,
+                                       listing_snapshot_json=json.dumps({"listed_date": "2026-06-30"}))
+        self.assertTrue(ac.qualifies(long_listed))
+        self.assertTrue(ac.qualifies(reduced))  # reduced in price: discovery's other criterion
+        self.assertFalse(ac.qualifies(too_new))
+        self.assertEqual(ac.market_label(long_listed), "400 days")
+        self.assertEqual(ac.market_label(reduced), "Reduced Mar 2026")
+        # Known days on market first, then reductions.
+        self.assertEqual(sorted([reduced, long_listed], key=ac._stale_order), [long_listed, reduced])
 
     def test_property_status(self):
         self.assertEqual(ac.property_status(None), "new")

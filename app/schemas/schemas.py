@@ -624,6 +624,10 @@ class AgentPortfolioProperty(BaseModel):
     property_address: str
     asking_price: Optional[float] = None
     days_on_market: int
+    # Set (YYYY-MM-DD, or "" if unreadable) when the listing qualified through
+    # a price reduction: days_on_market then counts from the reduction, so
+    # it's shown as "Reduced <date>" instead.
+    reduced_date: Optional[str] = None
     bedrooms: Optional[int] = None
     property_type: Optional[str] = None
     image_url: Optional[str] = None
