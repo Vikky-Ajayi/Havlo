@@ -70,6 +70,7 @@ async def run_post_purchase_email_cycle() -> dict:
             .where(
                 StaleListingProspect.unlocked_at.is_not(None),
                 StaleListingProspect.contact_email.is_not(None),
+                StaleListingProspect.audience == "owner",  # owner wording; agents not yet
             )
             .order_by(StaleListingProspect.unlocked_at.asc())
             .limit(_POLL_LIMIT)

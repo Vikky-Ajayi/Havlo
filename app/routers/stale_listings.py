@@ -21,6 +21,7 @@ from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.models import (
+    StaleAgentAccount,
     StaleListingAssessment,
     StaleListingDiscoveryRun,
     StaleListingProspect,
@@ -29,6 +30,13 @@ from app.models.models import (
     User,
 )
 from app.schemas.schemas import (
+    AgentConsoleItem,
+    AgentConsoleListResponse,
+    AgentLookupRequest,
+    AgentOpenPropertyRequest,
+    AgentOpenPropertyResponse,
+    AgentPortfolioProperty,
+    AgentPortfolioResponse,
     AgencyPricingRequest,
     StaleProspectAbandonedItem,
     StaleProspectAbandonedResponse,
@@ -68,7 +76,7 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
-from app.services import land_registry
+from app.services import agent_campaign, land_registry
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -1401,7 +1409,7 @@ async def list_console_prospects(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> StaleProspectConsoleListResponse:
-    filters = [StaleListingProspect.country == country]
+    filters = [StaleListingProspect.country == country, StaleListingProspect.audience == "owner"]
     if city:
         filters.append(StaleListingProspect.city == city)
     if treated is True:
@@ -1591,6 +1599,8 @@ async def list_abandoned_prospects(
             unsubscribed_at=p.unsubscribed_at.isoformat() if p.unsubscribed_at else None,
             sms_unsubscribed_at=p.sms_unsubscribed_at.isoformat() if p.sms_unsubscribed_at else None,
             treated_at=p.treated_at.isoformat() if p.treated_at else None,
+            audience=p.audience or "owner",
+            agent_company=(p.agent_brand or p.agent_company_name) if p.audience == "agent" else None,
         )
         for p, emails_sent, sms_sent in result.all()
     ]
@@ -2151,7 +2161,7 @@ async def sync_stale_prospects_to_sheets(
 
     from app.services import google_sheets
 
-    result = await db.execute(select(StaleListingProspect))
+    result = await db.execute(select(StaleListingProspect).where(StaleListingProspect.audience == "owner"))
     prospects = list(result.scalars().all())
 
     listing_dicts = [
@@ -2200,7 +2210,9 @@ async def regenerate_all_stale_prospect_letters(
         raise HTTPException(status_code=403, detail="Admin access required.")
 
     result = await db.execute(
-        select(StaleListingProspect).order_by(StaleListingProspect.created_at.asc()).limit(limit)
+        select(StaleListingProspect)
+        .where(StaleListingProspect.audience == "owner")  # agent copies have no letter
+        .order_by(StaleListingProspect.created_at.asc()).limit(limit)
     )
     prospects = list(result.scalars().all())
     if not prospects:
@@ -2636,3 +2648,213 @@ async def delete_stale_listing(
     await db.delete(assessment)
     await db.commit()
     return {"ok": True}
+
+
+# ── Agent campaign (/check/agent) ────────────────────────────────────────────
+# One letter per estate agency company about its stale listings; see
+# app/services/agent_campaign.py. The console endpoints follow the rest of
+# /prospects-console (see StaleProspectsConsole.tsx).
+
+def _agent_property_image(prospect: StaleListingProspect) -> str | None:
+    try:
+        snapshot = json.loads(prospect.listing_snapshot_json or "{}")
+    except ValueError:
+        return None
+    if not isinstance(snapshot, dict):
+        return None
+    return snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
+
+
+async def _agent_portfolio_response(
+    db: AsyncSession, account: StaleAgentAccount, token: str
+) -> AgentPortfolioResponse:
+    prospects = await agent_campaign.portfolio(db, account)
+    copies = await agent_campaign.agent_copies(db, account)
+    return AgentPortfolioResponse(
+        agent_code=account.agent_code,
+        company_name=agent_campaign.display_company_name(account.company_name),
+        brand=account.brand,
+        logo_url=account.logo_url,
+        token=token,
+        properties=[
+            AgentPortfolioProperty(
+                prospect_id=str(p.id),
+                property_address=address_with_full_postcode(p.property_address, p.postcode),
+                asking_price=p.asking_price,
+                days_on_market=agent_campaign.days_on_market(p),
+                bedrooms=p.bedrooms,
+                property_type=p.property_type,
+                image_url=_agent_property_image(p),
+                branch_name=p.agent_branch_name,
+                status=agent_campaign.property_status(copies.get(p.id)),
+            )
+            for p in prospects
+        ],
+    )
+
+
+def _mark_agent_visit(account: StaleAgentAccount) -> None:
+    now = datetime.now(timezone.utc)
+    account.last_viewed_at = now
+    if account.code_looked_up_at is None:
+        account.code_looked_up_at = now
+
+
+@public_router.post("/agents/lookup", response_model=AgentPortfolioResponse)
+async def agent_lookup(payload: AgentLookupRequest, db: AsyncSession = Depends(get_db)) -> AgentPortfolioResponse:
+    """An agency's stale listings, from the code on its letter."""
+    account = await agent_campaign.find_account(db, code=payload.agent_code)
+    if account is None:
+        raise HTTPException(status_code=404, detail="We could not find that agency code.")
+    _mark_agent_visit(account)
+    token = agent_campaign.issue_account_token(account)
+    await db.commit()
+    return await _agent_portfolio_response(db, account, token)
+
+
+@public_router.get("/agents/portfolio", response_model=AgentPortfolioResponse)
+async def agent_portfolio(token: str = Query(..., max_length=200), db: AsyncSession = Depends(get_db)) -> AgentPortfolioResponse:
+    """The same, from the letter's QR code or a token the page kept."""
+    account = await agent_campaign.find_account(db, token=token)
+    if account is None:
+        raise HTTPException(status_code=404, detail="We could not find that agency.")
+    _mark_agent_visit(account)
+    await db.commit()
+    return await _agent_portfolio_response(db, account, token)
+
+
+@public_router.post("/agents/open", response_model=AgentOpenPropertyResponse)
+async def agent_open_property(payload: AgentOpenPropertyRequest, db: AsyncSession = Depends(get_db)) -> AgentOpenPropertyResponse:
+    """Open one of the agency's properties: its own copy of the prospect
+    (made the first time) and a token for the normal /check funnel."""
+    account = await agent_campaign.find_account(db, token=payload.token, code=payload.agent_code)
+    if account is None:
+        raise HTTPException(status_code=404, detail="We could not find that agency.")
+    try:
+        owner = await db.get(StaleListingProspect, uuid.UUID(payload.prospect_id))
+    except ValueError:
+        owner = None
+    names = json.loads(account.company_names_json or "[]") or [account.company_name]
+    if owner is None or owner.audience != "owner" or owner.agent_company_name not in names:
+        raise HTTPException(status_code=404, detail="That property isn't in this agency's listings.")
+    _, token = await agent_campaign.open_agent_copy(db, account, owner)
+    return AgentOpenPropertyResponse(token=token)
+
+
+@public_router.get("/prospects-console/agents", response_model=AgentConsoleListResponse)
+async def list_console_agents(
+    db: AsyncSession = Depends(get_db),
+    q: str | None = Query(default=None, description="Search company, brand or agency code"),
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> AgentConsoleListResponse:
+    filters = []
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(
+            StaleAgentAccount.company_name.ilike(like),
+            StaleAgentAccount.brand.ilike(like),
+            StaleAgentAccount.agent_code.ilike(like),
+        ))
+    total = int((await db.execute(select(func.count()).select_from(StaleAgentAccount).where(*filters))).scalar() or 0)
+    accounts = (await db.execute(
+        select(StaleAgentAccount).where(*filters)
+        .order_by(StaleAgentAccount.listing_count.desc(), StaleAgentAccount.company_name)
+        .limit(limit).offset(offset)
+    )).scalars().all()
+    progress = {
+        row.agent_account_id: (int(row.opened), int(row.unlocked))
+        for row in (await db.execute(
+            select(
+                StaleListingProspect.agent_account_id,
+                func.count().label("opened"),
+                func.count(StaleListingProspect.unlocked_at).label("unlocked"),
+            )
+            .where(StaleListingProspect.agent_account_id.in_([a.id for a in accounts]))
+            .group_by(StaleListingProspect.agent_account_id)
+        )).all()
+    } if accounts else {}
+    return AgentConsoleListResponse(
+        total=total,
+        items=[
+            AgentConsoleItem(
+                account_id=str(a.id),
+                agent_code=a.agent_code,
+                company_name=agent_campaign.display_company_name(a.company_name),
+                brand=a.brand,
+                letter_branch_name=a.letter_branch_name,
+                letter_address=a.letter_address,
+                listing_count=a.listing_count,
+                letter_first_downloaded_at=a.letter_first_downloaded_at,
+                code_looked_up_at=a.code_looked_up_at,
+                properties_opened=progress.get(a.id, (0, 0))[0],
+                properties_unlocked=progress.get(a.id, (0, 0))[1],
+            )
+            for a in accounts
+        ],
+    )
+
+
+@public_router.post("/prospects-console/agents/refresh")
+async def refresh_console_agents(db: AsyncSession = Depends(get_db)) -> dict[str, int]:
+    """Rebuild the agency list from prospects' agent details."""
+    return await agent_campaign.refresh_agent_accounts(db)
+
+
+async def _agent_letter_path(db: AsyncSession, account: StaleAgentAccount) -> str:
+    """Generate the agency's letter with a fresh QR token (earlier tokens
+    keep working), stamping the first download."""
+    prospects = await agent_campaign.portfolio(db, account)
+    token = agent_campaign.issue_account_token(account)
+    if account.letter_first_downloaded_at is None:
+        account.letter_first_downloaded_at = datetime.now(timezone.utc)
+    await db.commit()
+    return await asyncio.to_thread(
+        agent_campaign.generate_agent_letter_pdf, account, prospects, token, _frontend_base_url()
+    )
+
+
+@public_router.get("/prospects-console/agents/letters.pdf")
+async def download_agent_letters_merged(
+    db: AsyncSession = Depends(get_db),
+    only_new: bool = Query(default=True, description="Only agencies whose letter hasn't been downloaded yet"),
+) -> Response:
+    """Every agency letter in one PDF, for printing in one go."""
+    from pypdf import PdfWriter
+
+    filters = [StaleAgentAccount.letter_first_downloaded_at.is_(None)] if only_new else []
+    accounts = (await db.execute(
+        select(StaleAgentAccount).where(*filters).order_by(StaleAgentAccount.listing_count.desc())
+    )).scalars().all()
+    if not accounts:
+        raise HTTPException(status_code=404, detail="No agency letters to download.")
+    writer = PdfWriter()
+    for account in accounts:
+        writer.append(await _agent_letter_path(db, account))
+    buf = io.BytesIO()
+    writer.write(buf)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="Havlo-agent-letters-{len(accounts)}.pdf"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@public_router.get("/prospects-console/agents/{account_id}/letter.pdf")
+async def download_agent_letter(account_id: str, db: AsyncSession = Depends(get_db)) -> FileResponse:
+    try:
+        account = await db.get(StaleAgentAccount, uuid.UUID(account_id))
+    except ValueError:
+        account = None
+    if account is None:
+        raise HTTPException(status_code=404, detail="Agency not found.")
+    path = await _agent_letter_path(db, account)
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=f"Havlo-agent-letter-{account.agent_code}.pdf",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
+    )

@@ -604,6 +604,66 @@ class StaleProspectPreviewResponse(BaseModel):
     # Details are now collected before the Assessment, so having them no
     # longer means the owner reached Payment - only an actual checkout does.
     checkout_started: bool = False
+    # "agent" for an agency's own copy opened from /check/agent (see
+    # app/services/agent_campaign.py), so the funnel can word things for agents.
+    audience: str = "owner"
+
+
+class AgentLookupRequest(BaseModel):
+    agent_code: str = Field(..., min_length=5, max_length=12)
+
+
+class AgentOpenPropertyRequest(BaseModel):
+    token: Optional[str] = Field(None, max_length=200)
+    agent_code: Optional[str] = Field(None, max_length=12)
+    prospect_id: str = Field(..., max_length=64)
+
+
+class AgentPortfolioProperty(BaseModel):
+    prospect_id: str
+    property_address: str
+    asking_price: Optional[float] = None
+    days_on_market: int
+    bedrooms: Optional[int] = None
+    property_type: Optional[str] = None
+    image_url: Optional[str] = None
+    branch_name: Optional[str] = None
+    # new | opened | in_progress | unlocked -- this agency's own progress.
+    status: str = "new"
+
+
+class AgentPortfolioResponse(BaseModel):
+    agent_code: str
+    company_name: str
+    brand: Optional[str] = None
+    logo_url: Optional[str] = None
+    # A link token for this browser to keep, so it can come back to the
+    # portfolio from a property without re-entering the code.
+    token: str
+    properties: list[AgentPortfolioProperty]
+
+
+class AgentOpenPropertyResponse(BaseModel):
+    token: str
+
+
+class AgentConsoleItem(BaseModel):
+    account_id: str
+    agent_code: str
+    company_name: str
+    brand: Optional[str] = None
+    letter_branch_name: Optional[str] = None
+    letter_address: Optional[str] = None
+    listing_count: int
+    letter_first_downloaded_at: Optional[datetime] = None
+    code_looked_up_at: Optional[datetime] = None
+    properties_opened: int = 0
+    properties_unlocked: int = 0
+
+
+class AgentConsoleListResponse(BaseModel):
+    items: list[AgentConsoleItem]
+    total: int
 
 
 class StaleProspectCheckoutResponse(BaseModel):
@@ -736,6 +796,10 @@ class StaleProspectAbandonedItem(BaseModel):
     unsubscribed_at: Optional[str] = None
     sms_unsubscribed_at: Optional[str] = None
     treated_at: Optional[str] = None
+    # "agent" when this is an agency's copy (from /check/agent), with the
+    # agency's name, so the follow-up list doesn't read it as the owner.
+    audience: str = "owner"
+    agent_company: Optional[str] = None
 
 
 class StaleProspectAbandonedResponse(BaseModel):

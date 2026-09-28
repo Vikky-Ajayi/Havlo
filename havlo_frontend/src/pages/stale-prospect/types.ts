@@ -36,6 +36,8 @@ export interface PreviewData {
 
 export interface ProspectPreview {
   prospect_id: string;
+  /** 'agent' for an agency's own copy opened from /check/agent. */
+  audience?: 'owner' | 'agent';
   property_code: string;
   property_address: string;
   rightmove_url: string;
@@ -202,4 +204,26 @@ export function formatReducedDate(iso: string): string {
 export function formatGbp(value?: number | null, opts?: Intl.NumberFormatOptions): string {
   if (value === null || value === undefined) return '';
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0, ...opts }).format(value);
+}
+
+export interface AgentPortfolioProperty {
+  prospect_id: string;
+  property_address: string;
+  asking_price?: number | null;
+  days_on_market: number;
+  bedrooms?: number | null;
+  property_type?: string | null;
+  image_url?: string | null;
+  branch_name?: string | null;
+  /** This agency's own progress with the property. */
+  status: 'new' | 'opened' | 'in_progress' | 'unlocked';
+}
+
+export interface AgentPortfolio {
+  agent_code: string;
+  company_name: string;
+  brand?: string | null;
+  logo_url?: string | null;
+  token: string;
+  properties: AgentPortfolioProperty[];
 }

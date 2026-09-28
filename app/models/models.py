@@ -614,6 +614,16 @@ class StaleListingProspect(Base):
     agent_logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     agent_profile_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     agent_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # "owner" for a prospect found by discovery (the homeowner's letter and
+    # funnel). "agent" for an agency's own copy of an owner prospect, made
+    # when the agency opens that property from its /check/agent portfolio:
+    # same listing and report, but its own details, checkout and unlock, so
+    # an agent's purchase never unlocks the owner's report or vice versa.
+    # Agent copies have a non-numeric property_code ("A" + 3 characters)
+    # that the 4-digit code lookup never matches; they're opened by token.
+    audience: Mapped[str] = mapped_column(String(10), nullable=False, default="owner", server_default="owner")
+    agent_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    parent_prospect_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -958,3 +968,33 @@ class LandRegistrySale(Base):
     paon: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     saon: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     street: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class StaleAgentAccount(Base):
+    """An estate agency company in the agent campaign: one letter per company
+    listing its stale properties, a code for /check/agent, and the branch
+    the letter is posted to (the one holding most of those listings, since
+    Rightmove only gives branch addresses). Built from owner prospects'
+    agent_company_name by app/services/agent_campaign.py."""
+    __tablename__ = "stale_agent_accounts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Normalised legal name ("GRANT J BATES PROPERTY LTD"); company_names
+    # holds every spelling seen on prospects (JSON list), for matching them.
+    company_key: Mapped[str] = mapped_column(String(300), nullable=False, unique=True)
+    company_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    company_names_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    brand: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    agent_code: Mapped[str] = mapped_column(String(8), nullable=False, unique=True)
+    qr_token_hashes: Mapped[list[str]] = mapped_column(ARRAY(String(64)), nullable=False, default=list)
+    letter_branch_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    letter_branch_name: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    letter_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    letter_phone: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    listing_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    letter_first_downloaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    code_looked_up_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

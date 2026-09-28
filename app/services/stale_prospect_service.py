@@ -667,6 +667,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "property_confirmed": prospect.property_confirmed_at is not None,
         "has_contact_details": bool(prospect.contact_email),
         "checkout_started": bool(prospect.sumup_checkout_id or prospect.bank_transfer_reference),
+        "audience": prospect.audience or "owner",
     }
 
 

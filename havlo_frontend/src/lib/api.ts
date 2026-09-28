@@ -124,6 +124,9 @@ export interface StaleProspectAbandonedItem {
   unsubscribed_at?: string | null;
   sms_unsubscribed_at?: string | null;
   treated_at?: string | null;
+  /** 'agent' for an agency's copy opened from /check/agent, with the agency's name. */
+  audience?: 'owner' | 'agent';
+  agent_company?: string | null;
 }
 
 export interface StaleProspectAbandonedResponse {

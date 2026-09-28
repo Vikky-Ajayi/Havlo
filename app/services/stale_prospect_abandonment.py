@@ -95,6 +95,7 @@ async def run_abandonment_email_cycle() -> dict:
                 StaleListingProspect.contact_details_submitted_at.is_not(None),
                 StaleListingProspect.payment_status != "completed",
                 StaleListingProspect.unsubscribed_at.is_(None),
+                StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_email.is_not(None),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())
@@ -247,6 +248,7 @@ async def run_abandonment_sms_cycle() -> dict:
                 StaleListingProspect.contact_details_submitted_at.is_not(None),
                 StaleListingProspect.payment_status != "completed",
                 StaleListingProspect.sms_unsubscribed_at.is_(None),
+                StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_phone.is_not(None),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())

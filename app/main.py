@@ -671,6 +671,21 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Agent details backfill disabled by ENABLE_AGENT_DETAILS_BACKFILL.")
 
+    # ── Agent campaign: agency accounts ───────────────────────────────────
+    # Rebuilds the list of agencies with 2+ stale listings from prospects'
+    # agent details every 6 hours (new agencies appear as the agent details
+    # backfill above fills in). Letters are downloaded from the console.
+    if HAS_DATABASE and _env_enabled("ENABLE_AGENT_ACCOUNTS_REFRESH", True):
+        from app.services.agent_campaign import refresh_agent_accounts_job
+        from app.services.scraper_base import run_scraper_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Agent accounts refresh", refresh_agent_accounts_job, 6, initial_delay_seconds=300)
+        ))
+        logger.info("Agent accounts refresh loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Agent accounts refresh disabled by ENABLE_AGENT_ACCOUNTS_REFRESH.")
+
     # ── HM Land Registry comparable sold prices backfill ──────────────────
     # Looks up recorded sales for UK prospects that don't have them yet
     # (created before this existed, or whose creation-time lookup timed out),

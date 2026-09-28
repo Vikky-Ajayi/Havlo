@@ -1,5 +1,5 @@
 import { API_BASE } from '../../lib/api';
-import type { ProspectPreview, ProspectReport, SoldComparable } from './types';
+import type { AgentPortfolio, ProspectPreview, ProspectReport, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
@@ -112,5 +112,31 @@ export async function getProspectReport(params: { token?: string; code?: string 
   if (params.token) query.set('token', params.token);
   if (params.code) query.set('code', params.code);
   const response = await fetch(`${API_BASE}/stale-listings/prospects/report?${query.toString()}`);
+  return parseJsonOrThrow(response);
+}
+
+/** An agency's stale listings, from the code on its letter (/check/agent). */
+export async function lookupAgent(agentCode: string): Promise<AgentPortfolio> {
+  const response = await fetch(`${API_BASE}/stale-listings/agents/lookup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent_code: agentCode }),
+  });
+  return parseJsonOrThrow(response);
+}
+
+/** The same, from the letter's QR token or the token this browser kept. */
+export async function getAgentPortfolio(token: string): Promise<AgentPortfolio> {
+  const response = await fetch(`${API_BASE}/stale-listings/agents/portfolio?token=${encodeURIComponent(token)}`);
+  return parseJsonOrThrow(response);
+}
+
+/** Open one of the agency's properties: returns a token for the normal /check funnel. */
+export async function openAgentProperty(params: { token: string; prospect_id: string }): Promise<{ token: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/agents/open`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
   return parseJsonOrThrow(response);
 }

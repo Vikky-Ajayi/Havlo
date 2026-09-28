@@ -2,6 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, API_BASE } from '../lib/api';
 import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
 
+interface AgentConsoleItem {
+  account_id: string;
+  agent_code: string;
+  company_name: string;
+  brand?: string | null;
+  letter_branch_name?: string | null;
+  letter_address?: string | null;
+  listing_count: number;
+  letter_first_downloaded_at?: string | null;
+  code_looked_up_at?: string | null;
+  properties_opened: number;
+  properties_unlocked: number;
+}
+
 // ── Report edit shape ───────────────────────────────────────────────────────
 // Mirrors the same subset DashboardStaleListings.tsx already edits for
 // StaleListingAssessment reports — same underlying schema (both come from
@@ -186,7 +200,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   // ── Tab: "Prospects" (above) vs "Follow-up" (everyone a customer
   // actually interacted with by code/token — from just looking the code
   // up, through confirmed, details-submitted, to paid) ──────────────────
-  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters'>('prospects');
+  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents'>('prospects');
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
@@ -232,6 +246,55 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   }, [tab, loadAbandoned, abandonedSearch]);
 
   const fmtDate = (v?: string | null) => v ? new Date(v).toLocaleDateString(isUS ? 'en-US' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+  // ── Tab: "Agents" (UK) — one letter per estate agency company with 2+
+  // stale listings; the agency enters its code at /check/agent. See
+  // app/services/agent_campaign.py. ────────────────────────────────────────
+  const [agentItems, setAgentItems] = useState<AgentConsoleItem[]>([]);
+  const [agentTotal, setAgentTotal] = useState(0);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentsError, setAgentsError] = useState('');
+  const [agentsNotice, setAgentsNotice] = useState('');
+  const [agentSearch, setAgentSearch] = useState('');
+
+  const loadAgents = useCallback(async () => {
+    setAgentsLoading(true);
+    setAgentsError('');
+    try {
+      const params = new URLSearchParams({ limit: '500' });
+      if (agentSearch.trim()) params.set('q', agentSearch.trim());
+      const res = await fetch(`${API_BASE}/stale-listings/prospects-console/agents?${params.toString()}`);
+      if (!res.ok) throw new Error(`Could not load agencies (HTTP ${res.status}).`);
+      const data = await res.json();
+      setAgentItems(data.items || []);
+      setAgentTotal(data.total || 0);
+    } catch (e) {
+      setAgentsError(e instanceof Error ? e.message : 'Could not load agencies.');
+    } finally {
+      setAgentsLoading(false);
+    }
+  }, [agentSearch]);
+
+  useEffect(() => {
+    if (tab !== 'agents') return;
+    const t = setTimeout(loadAgents, agentSearch ? 350 : 0);
+    return () => clearTimeout(t);
+  }, [tab, loadAgents, agentSearch]);
+
+  const refreshAgencies = async () => {
+    setAgentsNotice('');
+    setAgentsError('');
+    try {
+      const res = await fetch(`${API_BASE}/stale-listings/prospects-console/agents/refresh`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Refresh failed (HTTP ${res.status}).`);
+      const data = await res.json();
+      setAgentsNotice(`${data.companies_with_stale_listings} agencies with 2+ stale listings (${data.created} new).`);
+      await loadAgents();
+    } catch (e) {
+      setAgentsError(e instanceof Error ? e.message : 'Refresh failed.');
+    }
+  };
+  const newAgentLetters = agentItems.filter(a => !a.letter_first_downloaded_at).length;
 
   // ── Detail / edit ──────────────────────────────────────────────────────
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -722,7 +785,22 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
             </p>
           </div>
           <div className="spc-header-actions">
-            <button className="spc-btn spc-btn-ghost" onClick={tab === 'abandoned' ? loadAbandoned : loadList}>Refresh</button>
+            <button className="spc-btn spc-btn-ghost" onClick={tab === 'abandoned' ? loadAbandoned : tab === 'agents' ? loadAgents : loadList}>Refresh</button>
+            {tab === 'agents' && (
+              <>
+                <button className="spc-btn spc-btn-ghost" onClick={refreshAgencies}>Rebuild agency list</button>
+                <a
+                  className="spc-btn spc-btn-primary"
+                  href={`${API_BASE}/stale-listings/prospects-console/agents/letters.pdf?only_new=true&v=${Date.now()}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => window.setTimeout(loadAgents, 4000)}
+                  style={{ opacity: newAgentLetters ? 1 : 0.5, pointerEvents: newAgentLetters ? 'auto' : 'none', textDecoration: 'none' }}
+                >
+                  Download new letters ({newAgentLetters})
+                </a>
+              </>
+            )}
             {tab === 'letters' && (
               <button
                 className="spc-btn spc-btn-primary"
@@ -845,6 +923,14 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
           >
             Letters
           </button>
+          {!isUS && (
+            <button
+              onClick={() => setTab('agents')}
+              style={{ padding: '10px 4px', marginLeft: 20, background: 'none', border: 'none', borderBottom: tab === 'agents' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'agents' ? '#111111' : '#888', cursor: 'pointer' }}
+            >
+              Agents
+            </button>
+          )}
         </div>
 
         {tab === 'prospects' && (
@@ -973,6 +1059,11 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ fontWeight: 600 }}>{item.property_address}</div>
                           <div style={{ color: '#888', fontSize: 12 }}>{item.property_code}{item.postcode ? ` · ${item.postcode}` : ''}</div>
+                          {item.audience === 'agent' && (
+                            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#F3E6FB', color: '#A409D2', whiteSpace: 'nowrap' }}>
+                              Agent{item.agent_company ? ` · ${item.agent_company}` : ''}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <div>{item.contact_name || '—'}</div>
@@ -1006,6 +1097,68 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               </div>
             )}
             <Pager page={abandonedPage} pageSize={PAGE_SIZE} total={abandonedTotal} onChange={setAbandonedPage} />
+          </>
+        )}
+
+        {tab === 'agents' && (
+          <>
+            <div className="spc-stats">
+              <div className="spc-stat"><b>{agentTotal}</b><span>Agencies with 2+ stale listings</span></div>
+              <div className="spc-stat"><b>{newAgentLetters}</b><span>Letters not yet downloaded</span></div>
+              <div className="spc-stat"><b>{agentItems.filter(a => a.code_looked_up_at).length}</b><span>Agencies that visited</span></div>
+            </div>
+            <div className="spc-filters">
+              <input className="spc-input" placeholder="Search company, brand or agency code..." value={agentSearch} onChange={e => setAgentSearch(e.target.value)} />
+            </div>
+            {agentsNotice && <p style={{ color: '#15803D', fontWeight: 700, fontSize: 13 }}>{agentsNotice}</p>}
+            {agentsError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{agentsError}</p>}
+            {agentsLoading ? (
+              <div className="spc-loading">Loading agencies...</div>
+            ) : agentItems.length === 0 ? (
+              <div className="spc-empty">No agencies yet. Agent details are being filled in for existing prospects in the background; press "Rebuild agency list" to check again.</div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 10 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
+                      {['Agency', 'Code', 'Letter goes to', 'Stale listings', 'Letter downloaded', 'Visited', 'Opened / unlocked', 'Letter'].map(h => (
+                        <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {agentItems.map(agent => (
+                      <tr key={agent.account_id} style={{ borderBottom: '1px solid #F0F0F0' }}>
+                        <td style={{ padding: '10px 12px' }}>
+                          <div style={{ fontWeight: 600 }}>{agent.brand || agent.company_name}</div>
+                          <div style={{ color: '#888', fontSize: 12 }}>{agent.company_name}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, fontFamily: 'monospace' }}>{agent.agent_code}</td>
+                        <td style={{ padding: '10px 12px', maxWidth: 280 }}>
+                          <div>{agent.letter_branch_name || '—'}</div>
+                          <div style={{ color: '#888', fontSize: 12 }}>{agent.letter_address || ''}</div>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700 }}>{agent.listing_count}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{agent.letter_first_downloaded_at ? fmtDate(agent.letter_first_downloaded_at) : <span style={{ color: '#92400E', fontWeight: 700 }}>Not yet</span>}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(agent.code_looked_up_at)}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{agent.properties_opened} / {agent.properties_unlocked}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <a
+                            className="spc-link"
+                            href={`${API_BASE}/stale-listings/prospects-console/agents/${agent.account_id}/letter.pdf?v=${Date.now()}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={() => window.setTimeout(loadAgents, 3000)}
+                          >
+                            Download
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
 

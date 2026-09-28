@@ -36,13 +36,13 @@ import {
 // reused verbatim rather than re-drawn so the house/bulb/handshake marks
 // are pixel-identical to the rest of the site instead of rough approximations.
 const PURPLE = '#A409D2';
-const HouseIcon = () => (
+export const HouseIcon = () => (
   <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M5 19.9825V24.1665C5 29.6662 5 32.416 6.70855 34.1247C8.41708 35.8332 11.1669 35.8332 16.6667 35.8332H23.3333C28.833 35.8332 31.5828 35.8332 33.2915 34.1247C35 32.416 35 29.6662 35 24.1665V19.9825C35 17.1803 35 15.7794 34.4068 14.5666C33.8137 13.3538 32.7078 12.4936 30.496 10.7734L27.1627 8.18075C23.7218 5.50459 22.0015 4.1665 20 4.1665C17.9985 4.1665 16.2782 5.50459 12.8374 8.18075L9.50402 10.7734C7.29222 12.4936 6.18632 13.3538 5.59317 14.5666C5 15.7794 5 17.1803 5 19.9825Z" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M28.333 29.1667V22.5" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const BulbIcon = () => (
+export const BulbIcon = () => (
   <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M10.149 24.9986C9.51836 23.5809 9.16675 22.0038 9.16675 20.3418C9.16675 14.1692 14.017 9.16528 20.0001 9.16528C25.9832 9.16528 30.8334 14.1692 30.8334 20.3418C30.8334 22.0038 30.4818 23.5809 29.8511 24.9986" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
     <path d="M20 3.33191V4.99858" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
@@ -53,7 +53,7 @@ const BulbIcon = () => (
     <path d="M24.1951 32.1759C25.8791 31.6313 26.5544 30.0899 26.7444 28.5396C26.8011 28.0764 26.4201 27.6923 25.9534 27.6923L14.1282 27.6926C13.6455 27.6926 13.2579 28.1023 13.3155 28.5814C13.5016 30.1288 13.9713 31.2591 15.7558 32.1759M24.1951 32.1759C24.1951 32.1759 16.0496 32.1759 15.7558 32.1759M24.1951 32.1759C23.9926 35.4176 23.0564 36.7014 20.0114 36.6654C16.7544 36.7256 16.0051 35.1388 15.7558 32.1759" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const HandshakeIcon = () => (
+export const HandshakeIcon = () => (
   <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M36.6663 11.2498H32.0182C31.0163 11.2498 30.5153 11.2498 30.043 11.1068C29.5707 10.9638 29.1538 10.6859 28.3202 10.1302C27.0698 9.29655 25.6433 8.34559 24.9347 8.13104C24.2262 7.9165 23.4747 7.9165 21.9718 7.9165C19.9282 7.9165 18.6108 7.9165 17.692 8.2971C16.7732 8.6777 16.0506 9.40029 14.6055 10.8454L13.3337 12.1172C13.008 12.4429 12.8451 12.6058 12.7446 12.7665C12.3719 13.3625 12.4132 14.1283 12.8478 14.6807C12.9651 14.8297 13.1445 14.9741 13.5033 15.2629C14.8296 16.3302 16.7417 16.2237 17.9427 15.0155L19.9997 12.9463H21.6663L31.6663 23.0058C32.5868 23.9318 32.5868 25.433 31.6663 26.359C30.7458 27.285 29.2535 27.285 28.333 26.359L27.4997 25.5206M22.4997 27.1973L24.1663 28.8738C25.0868 29.7998 26.5792 29.7998 27.4997 28.8738C28.4202 27.948 28.4202 26.4466 27.4997 25.5206L22.4997 20.491M19.1663 23.864L22.4997 27.1973C23.4202 28.1231 23.4202 29.6245 22.4997 30.5505C21.5792 31.4763 20.0868 31.4763 19.1663 30.5505L16.6663 28.0355M3.33301 24.5831H3.86457C5.24647 24.5831 5.93744 24.5831 6.55692 24.8435C7.17641 25.104 7.65992 25.5975 8.62696 26.5846L13.333 31.3888C14.2535 32.3146 15.7459 32.3146 16.6663 31.3888C17.5868 30.4628 17.5868 28.9615 16.6663 28.0355L15.833 27.1973" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     <path d="M36.6667 24.5835H32.5" stroke={PURPLE} strokeWidth="3" strokeLinecap="round" />
@@ -61,7 +61,7 @@ const HandshakeIcon = () => (
   </svg>
 );
 
-const Header = () => {
+export const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <header className="slw-header">
@@ -93,13 +93,13 @@ const Header = () => {
 // Wrapped in slw-noprint (same as Header's nav) so the full marketing
 // footer - newsletter, socials, nav links, disclaimer - never shows up in
 // the "Download PDF Report" print output, only on the live wizard pages.
-const Footer = () => (
+export const Footer = () => (
   <div className="slw-noprint">
     <SiteFooter hideNewsletter />
   </div>
 );
 
-const GoBack = ({ onClick }: { onClick: () => void }) => (
+export const GoBack = ({ onClick }: { onClick: () => void }) => (
   <button type="button" className="slw-goback slw-noprint" onClick={onClick}>
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 17l-5-5 5-5M6 12h12" />
@@ -140,9 +140,9 @@ const Stepper = ({ step }: { step: WizardStep }) => {
   );
 };
 
-const Spinner = () => <div className="slw-spinner" />;
+export const Spinner = () => <div className="slw-spinner" />;
 
-const CheckIconGreen = () => (
+export const CheckIconGreen = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <path d="M15 5L7 13L3.5 9.5" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
@@ -315,8 +315,12 @@ const ConfirmStep = ({
 
   return (
     <section className="slw-confirm">
-      <h1>We Found Your Property</h1>
-      <p className="slw-confirm-copy">See what may be holding your property back. Share our recommendations with your agent or implement them yourself.</p>
+      <h1>{prospect.audience === 'agent' ? 'We Found Your Listing' : 'We Found Your Property'}</h1>
+      <p className="slw-confirm-copy">
+        {prospect.audience === 'agent'
+          ? 'See what may be holding this listing back, with recommendations you can take to your vendor.'
+          : 'See what may be holding your property back. Share our recommendations with your agent or implement them yourself.'}
+      </p>
       <div className="slw-confirm-card">
         <div className="slw-confirm-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
         <div className="slw-confirm-details">
@@ -823,10 +827,17 @@ const AssessmentStep = ({
           <path d="M2.5 20.5v-1.6a4.4 4.4 0 0 1 4.4-4.4h1.2a4.4 4.4 0 0 1 4.4 4.4v1.6z" />
           <path d="M13.4 14.6a4 4 0 0 1 2.3-.7h1.6a4.2 4.2 0 0 1 4.2 4.2v2.4h-9" />
         </svg>
-        <div>
-          <h3>Keep your estate agent.</h3>
-          <p>Havlo works alongside your existing agent &mdash; not instead of them. Share your assessment and recommendations with your agent, or implement the changes yourself.</p>
-        </div>
+        {prospect.audience === 'agent' ? (
+          <div>
+            <h3>Take it to your vendor.</h3>
+            <p>An independent view of why this listing has stalled and what could move it &mdash; evidence to back up the changes you recommend in your next conversation with the vendor.</p>
+          </div>
+        ) : (
+          <div>
+            <h3>Keep your estate agent.</h3>
+            <p>Havlo works alongside your existing agent &mdash; not instead of them. Share your assessment and recommendations with your agent, or implement the changes yourself.</p>
+          </div>
+        )}
       </div>
 
       <div className="slw-unlock-cta">
@@ -1454,7 +1465,9 @@ export const StaleProspectWizard = () => {
   }, [access.token, access.code, setSearchParams]);
 
   const handleGoBack = () => {
-    if (step === 'not_found' || step === 'confirm') setStep('landing');
+    // An agency's copy was opened from its /check/agent portfolio: back there.
+    if (step === 'confirm' && prospect?.audience === 'agent') navigate('/check/agent');
+    else if (step === 'not_found' || step === 'confirm') setStep('landing');
     else if (step === 'assessment') setStep('confirm');
     else if (step === 'payment') setStep('assessment');
     else if (step === 'success') setStep('payment');
@@ -1687,7 +1700,7 @@ export const StaleProspectWizard = () => {
   );
 };
 
-const WizardStyles = () => (
+export const WizardStyles = () => (
   <style>{`
     .slw-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#1f2024;background:#fff;min-height:100vh;display:flex;flex-direction:column}
     body.slw-prospect-active{overflow-x:hidden}

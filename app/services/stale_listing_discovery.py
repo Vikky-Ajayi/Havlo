@@ -70,7 +70,8 @@ async def retry_pending_stale_prospect_emails(*, target: int) -> dict[str, int]:
             .where(
                 StaleListingProspect.processing_status.in_(
                     ("letter_ready", "email_failed", "email_skipped")
-                )
+                ),
+                StaleListingProspect.audience == "owner",
             )
             .order_by(StaleListingProspect.created_at.asc())
             .limit(max(0, target))
