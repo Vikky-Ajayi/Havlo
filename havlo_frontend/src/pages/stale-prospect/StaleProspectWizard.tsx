@@ -6,6 +6,7 @@ import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import {
   createProspectCheckout,
   getProspectComparables,
+  getProspectDashboardLink,
   getProspectPaymentStatus,
   getProspectPreview,
   getProspectReport,
@@ -1014,10 +1015,12 @@ const SuccessStep = ({
   prospect,
   onViewReport,
   onDownloadPdf,
+  onOpenDashboard,
 }: {
   prospect: ProspectPreview;
   onViewReport: () => void;
   onDownloadPdf: () => void;
+  onOpenDashboard: () => void;
 }) => (
   <section className="slw-success">
     <svg className="slw-success-check" width="80" height="80" viewBox="0 0 80 80" fill="none">
@@ -1030,6 +1033,7 @@ const SuccessStep = ({
     <h1>Your full assessment is ready</h1>
     <p>Your complete Havlo Property Assessment for {prospect.property_address} has been unlocked.</p>
     <button type="button" className="slw-btn-black" onClick={onViewReport}>View My Property Assessment Report</button>
+    <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>Open My 90-Day Listing Dashboard</button>
     <button type="button" className="slw-btn-outline" onClick={onDownloadPdf}>Download PDF Report</button>
   </section>
 );
@@ -1040,10 +1044,12 @@ const FullReportStep = ({
   report,
   onOpenRecommendation,
   onDownloadPdf,
+  onOpenDashboard,
 }: {
   report: ProspectReport;
   onOpenRecommendation: () => void;
   onDownloadPdf: () => void;
+  onOpenDashboard: () => void;
 }) => {
   const data: FullReportData = report.report_data || {};
   const snapshot = report.listing_snapshot || {};
@@ -1090,7 +1096,10 @@ const FullReportStep = ({
     <section className="slw-report">
       <div className="slw-report-head">
         <h1>Full Property Assessment</h1>
-        <button type="button" className="slw-btn-outline slw-pdf-btn" onClick={onDownloadPdf}>Download PDF Report</button>
+        <div className="slw-report-head-actions">
+          <button type="button" className="slw-btn-black slw-pdf-btn" onClick={onOpenDashboard}>90-Day Dashboard</button>
+          <button type="button" className="slw-btn-outline slw-pdf-btn" onClick={onDownloadPdf}>Download PDF Report</button>
+        </div>
       </div>
 
       <div className="slw-report-summary-row">
@@ -1624,6 +1633,15 @@ export const StaleProspectWizard = () => {
     setStep('report');
   };
 
+  const handleOpenDashboard = async () => {
+    try {
+      const { url } = await getProspectDashboardLink(access);
+      navigate(url);
+    } catch (err) {
+      setError((err as Error).message || 'Could not open your dashboard. Please try again.');
+    }
+  };
+
   const handleDownloadPdf = async () => {
     if (step !== 'report') {
       setPendingPrint(true);
@@ -1680,10 +1698,10 @@ export const StaleProspectWizard = () => {
             />
           )}
           {step === 'success' && prospect && (
-            <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} />
+            <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />
           )}
           {step === 'report' && report && (
-            <FullReportStep report={report} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} />
+            <FullReportStep report={report} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />
           )}
         </main>
       </div>
@@ -1941,6 +1959,8 @@ export const WizardStyles = () => (
     .slw-report-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
     .slw-report h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:42px;line-height:1;margin:0;color:#202124}
     .slw-pdf-btn{width:auto;padding:12px 20px}
+    .slw-report-head-actions{display:flex;gap:10px;align-items:center}
+    .slw-report-head-actions .slw-btn-outline{margin-top:0}
     /* Not a grid: .slw-report-property-card floats right so the executive
        summary text (a normal flow block, no float/BFC of its own) wraps
        narrow beside it and then continues at the row's full width once it
@@ -2222,6 +2242,7 @@ export const WizardStyles = () => (
       .slw-recommendation-callout .slw-btn-black{width:100%}
       .slw-report-head{flex-direction:column;align-items:flex-start;gap:14px}
       .slw-pdf-btn{width:100%}
+      .slw-report-head-actions{flex-direction:column;align-items:stretch;width:100%}
     }
   `}</style>
 );

@@ -702,6 +702,21 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Agent follow-ups disabled by ENABLE_AGENT_FOLLOWUPS.")
 
+    # ── 90-day monitoring dashboards for purchased reports ────────────────
+    # Every 30 minutes: creates a dashboard for each new purchase, texts its
+    # link once, and re-checks listings (daily) and the homes around them
+    # (weekly). See listing_monitor.
+    if HAS_DATABASE and _env_enabled("ENABLE_LISTING_MONITOR", True):
+        from app.services.listing_monitor import run_monitor_cycle
+        from app.services.scraper_base import run_scraper_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Listing monitor", run_monitor_cycle, 0.5, initial_delay_seconds=360)
+        ))
+        logger.info("Listing monitor loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Listing monitor disabled by ENABLE_LISTING_MONITOR.")
+
     # ── 4-digit property codes running out ────────────────────────────────
     # Emails ADMIN_NOTIFY_EMAIL once when 90% of the owner property codes
     # are in use (see property_code_capacity). Every 6 hours.

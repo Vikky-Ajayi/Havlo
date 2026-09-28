@@ -56,6 +56,7 @@ const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents
 const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListingsPartnerships').then(m => ({ default: m.StaleListingsPartnerships })));
 const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/StaleProspectWizard').then(m => ({ default: m.StaleProspectWizard })));
 const AgentPortal = React.lazy(() => import('./pages/stale-prospect/AgentPortal').then(m => ({ default: m.AgentPortal })));
+const MonitorDashboard = React.lazy(() => import('./pages/stale-prospect/MonitorDashboard').then(m => ({ default: m.MonitorDashboard })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
 const StaleListingsReviewAccess = React.lazy(() => import('./pages/StaleListingsReviewAccess').then(m => ({ default: m.StaleListingsReviewAccess })));
 const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
@@ -271,7 +272,7 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/custom-offers',
 ]);
 const hasEmbeddedCountryBadge = (pathname: string) =>
-  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/uk/listings/');
+  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/uk/listings/') || pathname.startsWith('/m/');
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname: rawPathname } = useLocation();
@@ -294,7 +295,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   // needs to be named here explicitly or it falls through to the default
   // branch below and gets the global marketing Navbar + Footer wrapped
   // around it, which is not what its own page header/layout expects.
-  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent';
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/m/');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
@@ -407,6 +408,8 @@ export default function App() {
               <Route path="/check" element={<StaleProspectWizard />} />
               {/* Estate agencies: the code on the agent campaign letter (see AgentPortal.tsx). */}
               <Route path="/check/agent" element={<AgentPortal />} />
+              {/* The 90-day dashboard that comes with a purchased report (texted once; see MonitorDashboard.tsx). */}
+              <Route path="/m/:token" element={<MonitorDashboard />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />
               <Route path="/stale-listings/review-access" element={<StaleListingsReviewAccess />} />
               <Route path="/stale-listings/portal" element={<StaleListingsPortal />} />

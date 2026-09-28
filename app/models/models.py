@@ -1022,3 +1022,62 @@ class StaleAgentFollowup(Base):
     channel: Mapped[str] = mapped_column(String(10), nullable=False)  # "email" | "sms"
     stage: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StaleListingMonitor(Base):
+    """The 90-day monitoring dashboard that comes with a purchased report
+    (app/services/listing_monitor.py): the listing is re-checked daily and
+    the homes around it weekly, and each change becomes a
+    StaleListingMonitorEvent. One per purchased prospect; after ends_at it's
+    frozen (still viewable, no more checks). JSON columns are Text, like the
+    prospect's."""
+    __tablename__ = "stale_listing_monitors"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    # Links that open the dashboard (the texted one and any later ones), and
+    # read-only links the customer shares with their agent or vendor.
+    token_hashes: Mapped[list[str]] = mapped_column(ARRAY(String(64)), nullable=False, default=list, server_default="{}")
+    share_token_hashes: Mapped[list[str]] = mapped_column(ARRAY(String(64)), nullable=False, default=list, server_default="{}")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # on_market | under_offer | sold_stc | removed
+    listing_status: Mapped[str] = mapped_column(String(20), nullable=False, default="on_market", server_default="on_market")
+    baseline_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # the listing on day 0
+    latest_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # at the last successful check
+    nearby_baseline_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    nearby_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    seen_sale_ids: Mapped[list[str]] = mapped_column(ARRAY(String(40)), nullable=False, default=list, server_default="{}")
+    rightmove_location_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    checklist_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # {item key: {"done", "at"}}
+    next_listing_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    last_listing_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_nearby_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_sold_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    check_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # The one text with the dashboard link: sent | opted_out | no_phone |
+    # not_texted (bought before the dashboard existed). NULL = not yet.
+    sms_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    sms_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StaleListingMonitorEvent(Base):
+    """One change on a monitoring dashboard: to the listing itself (scope
+    "listing"), around it ("nearby"), or ticked off by the customer
+    ("customer"). `data_json` holds the details for display."""
+    __tablename__ = "stale_listing_monitor_events"
+    __table_args__ = (Index("ix_stale_listing_monitor_events_monitor_at", "monitor_id", "detected_at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    monitor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_monitors.id", ondelete="CASCADE"), nullable=False
+    )
+    scope: Mapped[str] = mapped_column(String(10), nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    data_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

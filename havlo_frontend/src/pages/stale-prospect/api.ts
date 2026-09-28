@@ -1,5 +1,5 @@
 import { API_BASE } from '../../lib/api';
-import type { AgentPortfolio, ProspectPreview, ProspectReport, SoldComparable } from './types';
+import type { AgentPortfolio, MonitorDashboardData, ProspectPreview, ProspectReport, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
@@ -137,6 +137,50 @@ export async function openAgentProperty(params: { token: string; prospect_id: st
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
+  });
+  return parseJsonOrThrow(response);
+}
+
+// ── 90-day monitoring dashboard ────────────────────────────────────────────
+
+export async function getMonitorDashboard(token: string): Promise<MonitorDashboardData> {
+  const response = await fetch(`${API_BASE}/stale-listings/monitor?token=${encodeURIComponent(token)}`);
+  return parseJsonOrThrow(response);
+}
+
+export async function setMonitorChecklistItem(token: string, key: string, done: boolean): Promise<MonitorDashboardData> {
+  const response = await fetch(`${API_BASE}/stale-listings/monitor/checklist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, key, done }),
+  });
+  return parseJsonOrThrow(response);
+}
+
+export async function shareMonitorDashboard(token: string): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/monitor/share`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return parseJsonOrThrow(response);
+}
+
+export async function getMonitorReportLink(token: string): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/monitor/report-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return parseJsonOrThrow(response);
+}
+
+/** From the report page: the property's dashboard link (a path, /m/<token>). */
+export async function getProspectDashboardLink(access: { token?: string; code?: string }): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/monitor-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: access.token, property_code: access.code }),
   });
   return parseJsonOrThrow(response);
 }

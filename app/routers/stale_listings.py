@@ -34,6 +34,9 @@ from app.schemas.schemas import (
     AgentConsoleListResponse,
     AgentLookupRequest,
     AgentOpenPropertyRequest,
+    MonitorChecklistRequest,
+    MonitorTokenRequest,
+    ProspectMonitorLinkRequest,
     AgentOpenPropertyResponse,
     AgentPortfolioProperty,
     AgentPortfolioResponse,
@@ -76,7 +79,7 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
-from app.services import agent_campaign, land_registry
+from app.services import agent_campaign, listing_monitor, land_registry
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -2485,6 +2488,76 @@ async def unsubscribe_stale_prospect_sms_short(
         await db.commit()
 
     return _page("You've been unsubscribed from these text message reminders. You won't receive any more.")
+
+
+# ── 90-day monitoring dashboard (app/services/listing_monitor.py) ─────────
+
+
+async def _monitor_for(db: AsyncSession, token: str, *, writable: bool = False):
+    found = await listing_monitor.find_by_token(db, token)
+    if found is None:
+        raise HTTPException(status_code=404, detail="We couldn't find that dashboard. Check the link in your text.")
+    monitor, read_only = found
+    if writable and read_only:
+        raise HTTPException(status_code=403, detail="This is a view-only link.")
+    return monitor, read_only
+
+
+@public_router.get("/monitor")
+async def get_monitor_dashboard(token: str, db: AsyncSession = Depends(get_db)) -> dict:
+    monitor, read_only = await _monitor_for(db, token)
+    payload = await listing_monitor.dashboard(db, monitor, read_only=read_only)
+    if not read_only:
+        monitor.last_viewed_at = datetime.now(timezone.utc)
+        await db.commit()
+    return payload
+
+
+@public_router.post("/monitor/checklist")
+async def update_monitor_checklist(payload: MonitorChecklistRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    monitor, _ = await _monitor_for(db, payload.token, writable=True)
+    current = await listing_monitor.dashboard(db, monitor, read_only=False)
+    item = next((c for c in current["checklist"] if c["key"] == payload.key), None)
+    if item is None:
+        raise HTTPException(status_code=404, detail="That checklist item doesn't exist.")
+    await listing_monitor.set_checklist_item(db, monitor, payload.key, payload.done, item["title"])
+    await db.commit()
+    return await listing_monitor.dashboard(db, monitor, read_only=False)
+
+
+@public_router.post("/monitor/share")
+async def share_monitor_dashboard(payload: MonitorTokenRequest, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+    """A view-only link to pass on to an agent (or, for agents, a vendor)."""
+    monitor, _ = await _monitor_for(db, payload.token, writable=True)
+    token = listing_monitor.issue_token(monitor, share=True)
+    await db.commit()
+    return {"url": listing_monitor.dashboard_url(token)}
+
+
+@public_router.post("/monitor/report-link")
+async def monitor_report_link(payload: MonitorTokenRequest, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+    """A fresh link to the full report, from the dashboard."""
+    monitor, _ = await _monitor_for(db, payload.token, writable=True)
+    prospect = await db.get(StaleListingProspect, monitor.prospect_id)
+    token = create_access_token()
+    record_qr_token(prospect, token)
+    await db.commit()
+    return {"url": f"/stale-listings/prospect/report?token={token}"}
+
+
+@public_router.post("/prospects/monitor-link")
+async def prospect_monitor_link(payload: ProspectMonitorLinkRequest, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
+    """From the report page: open the property's dashboard (creating it if
+    the background job hasn't yet)."""
+    prospect = await _get_prospect_by_access(db, token=payload.token, property_code=payload.property_code)
+    if prospect.unlocked_at is None:
+        raise HTTPException(status_code=403, detail="The dashboard comes with the full report.")
+    if not listing_monitor.rightmove_listing_id(prospect.rightmove_url):
+        raise HTTPException(status_code=404, detail="The dashboard is only available for Rightmove listings.")
+    monitor = await listing_monitor.get_or_create_monitor(db, prospect)
+    token = listing_monitor.issue_token(monitor)
+    await db.commit()
+    return {"url": f"/m/{token}"}
 
 
 @public_router.get("/agents/unsubscribe", response_class=HTMLResponse)

@@ -613,6 +613,21 @@ class AgentLookupRequest(BaseModel):
     agent_code: str = Field(..., min_length=5, max_length=12)
 
 
+class MonitorTokenRequest(BaseModel):
+    token: str = Field(..., max_length=200)
+
+
+class MonitorChecklistRequest(BaseModel):
+    token: str = Field(..., max_length=200)
+    key: str = Field(..., max_length=40)
+    done: bool
+
+
+class ProspectMonitorLinkRequest(BaseModel):
+    token: Optional[str] = Field(None, max_length=200)
+    property_code: Optional[str] = Field(None, max_length=12)
+
+
 class AgentOpenPropertyRequest(BaseModel):
     token: Optional[str] = Field(None, max_length=200)
     agent_code: Optional[str] = Field(None, max_length=12)

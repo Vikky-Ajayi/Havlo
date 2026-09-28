@@ -230,3 +230,140 @@ export interface AgentPortfolio {
   token: string;
   properties: AgentPortfolioProperty[];
 }
+
+// ── 90-day monitoring dashboard (/m/:token, MonitorDashboard.tsx) ──────────
+
+export type MonitorListingStatus = 'on_market' | 'under_offer' | 'sold_stc' | 'removed';
+
+export interface MonitorEvent {
+  id: string;
+  scope: 'listing' | 'nearby' | 'customer';
+  kind: string;
+  at: string;
+  data: Record<string, any>;
+}
+
+export interface MonitorChecklistItem {
+  key: string;
+  title: string;
+  detail: string;
+  priority: 'URGENT' | 'HIGH' | 'MEDIUM' | null;
+  source: 'report' | 'havlo';
+  auto: boolean;
+  done: boolean;
+  done_by: 'detected' | 'you' | null;
+  done_at: string | null;
+}
+
+export interface MonitorPlanPhase {
+  title: string;
+  start_day: number;
+  end_day: number;
+  current: boolean;
+  weeks: { week: number; title: string }[];
+  tasks: { key: string; title: string; done: boolean }[];
+  notes?: string[];
+}
+
+export interface MonitorNearbyListing {
+  id: string;
+  address: string;
+  price: number | null;
+  bedrooms: number | null;
+  type: string;
+  status: MonitorListingStatus;
+  update: string;
+  update_date: string;
+  first_listed: string;
+  distance: number | null;
+  url: string;
+  image: string;
+  similar: boolean;
+}
+
+export interface MonitorPulse {
+  for_sale: number;
+  under_offer_or_sold: number;
+  reduced: number;
+  median_price: number | null;
+}
+
+export interface MonitorSale {
+  id: string;
+  address: string;
+  price: number;
+  date: string;
+  type: string;
+}
+
+export interface MonitorDashboardData {
+  read_only: boolean;
+  audience: 'owner' | 'agent';
+  property: {
+    address: string;
+    postcode?: string | null;
+    image?: string | null;
+    rightmove_url?: string | null;
+    bedrooms?: number | null;
+    property_type?: string | null;
+    agent?: string | null;
+    agent_branch?: string | null;
+  };
+  contact_first_name: string | null;
+  day: number;
+  total_days: number;
+  started_at: string;
+  ends_at: string;
+  ended: boolean;
+  last_checked_at: string | null;
+  headline: {
+    status: MonitorListingStatus;
+    status_label: string;
+    price_start: number | null;
+    price_now: number | null;
+    price_change: number;
+    price_text: string | null;
+    price_qualifier: string;
+    days_on_market: number | null;
+    listing_changes: number;
+    actions_done: number;
+    actions_total: number;
+    photos?: number | null;
+    floorplans?: number | null;
+    virtual_tours?: number | null;
+  };
+  baseline: {
+    price: number | null;
+    image_count: number | null;
+    floorplans: number | null;
+    virtual_tours: number | null;
+    description_words: number | null;
+    featured: boolean | null;
+  } | null;
+  next_step: { title: string; detail: string };
+  alerts: MonitorEvent[];
+  timeline: MonitorEvent[];
+  checklist: MonitorChecklistItem[];
+  plan: { current_week: number; weeks: { week: number; title: string }[]; phases: MonitorPlanPhase[] };
+  nearby: {
+    checked_at: string | null;
+    radius: number | null;
+    pulse_now: MonitorPulse | null;
+    pulse_start: MonitorPulse | null;
+    events: MonitorEvent[];
+    listings: MonitorNearbyListing[];
+    sold: MonitorSale[];
+  };
+  summary?: {
+    price_start: number | null;
+    price_end: number | null;
+    status: MonitorListingStatus;
+    listing_changes: number;
+    actions_done: number;
+    actions_total: number;
+    nearby_new: number;
+    nearby_reduced: number;
+    nearby_agreed: number;
+    nearby_sold: number;
+  };
+}

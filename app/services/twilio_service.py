@@ -197,3 +197,16 @@ def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, coun
         return False
     body = template.format(brand=brand, count=count, link=link) + f"\n\nUnsubscribe: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
+
+
+# The one text with a purchased report's 90-day dashboard link
+# (app/services/listing_monitor.py). A service message about something
+# they've bought, so no marketing opt-out link, but never sent after one.
+MONITOR_DASHBOARD_SMS = (
+    "Havlo: your 90-day listing dashboard for {address} is live. We'll track your listing, "
+    "the changes you make and homes nearby: {link}"
+)
+
+
+def send_monitor_dashboard_sms(to_phone: str, *, address: str, link: str) -> bool:
+    return _send_sms(to_phone, MONITOR_DASHBOARD_SMS.format(address=address, link=link), from_override="Havlo")
