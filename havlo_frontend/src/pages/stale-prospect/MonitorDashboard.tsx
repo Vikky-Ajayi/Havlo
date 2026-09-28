@@ -576,7 +576,7 @@ export const MonitorDashboard = () => {
 
 const DashboardStyles = () => (
   <style>{`
-    /* Side spacing is 40% of the other /check pages': gutter = max(40px, 20% of (width - 980px)). */
+    /* On desktop the side spacing is 40% of the other /check pages': gutter = max(40px, 20% of (width - 980px)). Phones keep 14px. */
     .slw-shell.lmd-shell{width:min(calc(100% - 80px),calc(60% + 392px));max-width:none}
     .lmd{padding:32px 0 72px;margin:0 auto}
     .lmd-center{text-align:center;padding:96px 0}
@@ -712,7 +712,7 @@ const DashboardStyles = () => (
     .lmd-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;z-index:50;max-width:calc(100% - 32px)}
 
     @media (max-width: 900px){
-      .slw-shell.lmd-shell{width:100%;padding:0 6px}
+      .slw-shell.lmd-shell{width:100%;padding:0 14px}
       .lmd{padding:18px 0 56px}
       .lmd-hero{grid-template-columns:1fr;gap:16px}
       .lmd-hero-image{height:200px}
