@@ -22,3 +22,6 @@ attached_assets/
 replit.nix
 .replit
 .codex-logs
+
+# Letters and other files the app generates at runtime (never deploy stale copies)
+generated/
