@@ -1210,6 +1210,12 @@ async def bulk_upload_stale_prospects(
         "prospecting despite Rightmove's current listing-date signal showing under 180 days.",
     ),
     country: str = Form(default="UK", pattern="^(UK|US)$"),
+    override_type_check: bool = Form(
+        default=False,
+        description="Skip the property-type rule (detached/semi-detached/terraced only) for this "
+        "batch, for rows chosen by hand although Rightmove lists them as e.g. House or Bungalow. "
+        "The price minimum still applies. UK only.",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectDiscoveryRunResponse:
     """Console CSV-upload field: run every row through the exact same
@@ -1283,7 +1289,9 @@ async def bulk_upload_stale_prospects(
     await db.commit()
     await db.refresh(run)
 
-    background_tasks.add_task(run_bulk_csv_upload, str(run.id), rows, override_duration_check, country)
+    background_tasks.add_task(
+        run_bulk_csv_upload, str(run.id), rows, override_duration_check, country, override_type_check
+    )
     return StaleProspectDiscoveryRunResponse(**serialize_discovery_run(run))
 
 

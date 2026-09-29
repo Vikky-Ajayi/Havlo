@@ -120,6 +120,7 @@ async def _process_bulk_upload_row(
     row: dict[str, str],
     row_num: int,
     override_duration_check: bool = False,
+    override_type_check: bool = False,
 ) -> dict[str, Any]:
     """Process one CSV row exactly like the single manual-add endpoint does:
     scrape the listing, validate it against the same criteria the automated
@@ -140,6 +141,11 @@ async def _process_bulk_upload_row(
     showing under 180 days (e.g. a price reduction reset the apparent
     listing age) -- price and property-type still have to pass normally,
     only the staleness check is skipped.
+
+    override_type_check: likewise for the property-type rule, for rows the
+    admin has chosen to prospect although Rightmove lists them as e.g.
+    "House" or "Bungalow" rather than detached/semi-detached/terraced. The
+    price minimum still applies.
 
     A row whose "rightmove_url" cell isn't an actual rightmove.co.uk URL
     (blank, or placeholder text such as "n/a") is treated as a manually
@@ -206,7 +212,7 @@ async def _process_bulk_upload_row(
             if price is None or price < 500000:
                 return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
                         "address": address, "reason": "below_minimum_price_or_unscrapable"}
-            if not is_target_property_type(snapshot.get("property_type") or ""):
+            if not override_type_check and not is_target_property_type(snapshot.get("property_type") or ""):
                 return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
                         "address": address, "reason": "not_target_property_type"}
 
@@ -277,6 +283,7 @@ async def run_bulk_csv_upload(
     rows: list[dict[str, str]],
     override_duration_check: bool = False,
     country: str = "UK",
+    override_type_check: bool = False,
 ) -> None:
     """Background job behind the console's CSV-upload field: run every row
     through the exact same scrape -> validate -> create-prospect -> letter
@@ -320,7 +327,9 @@ async def run_bulk_csv_upload(
                     row, row_num, override_duration_check=override_duration_check, session=us_session
                 )
             else:
-                outcome = await _process_bulk_upload_row(row, row_num, override_duration_check=override_duration_check)
+                outcome = await _process_bulk_upload_row(
+                    row, row_num, override_duration_check=override_duration_check, override_type_check=override_type_check
+                )
         async with lock:
             counts["candidates_seen"] += 1
             bucket = outcome["outcome"] + ("_prospects_count" if outcome["outcome"] == "created" else "_count")
