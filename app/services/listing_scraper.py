@@ -1005,16 +1005,21 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
                     if img_url and img_url.startswith("http"):
                         images.append(img_url)
 
-        # ── Property type (extracted from page title) ─────────────────────────
+        # ── Property type (from the page title, else Rightmove's subtype) ─────
+        # Titles read "4 bedroom detached house for sale in ..." but drop the
+        # bedroom count when the agent didn't give one ("Detached house for
+        # sale in ..."), so it's optional here.
         property_type = ""
         if isinstance(text_schema, dict):
             page_title = str(r(text_schema.get("pageTitle")) or "")
-            m = re.search(
-                r"\d+\s+bedroom\s+(.+?)\s+for\s+(?:sale|rent)",
+            m = re.match(
+                r"\s*(?:\d+\s+bedroom\s+)?(.+?)\s+for\s+(?:sale|rent)\b",
                 page_title, re.IGNORECASE,
             )
             if m:
                 property_type = m.group(1).strip().title()
+        if not property_type:
+            property_type = _clean(str(r(prop_schema.get("propertySubType")) or ""))
 
         # ── Listed / reduced date ─────────────────────────────────────────────
         listed_date = ""
