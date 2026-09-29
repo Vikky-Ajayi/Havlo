@@ -42,6 +42,7 @@ from app.services.stale_prospect_service import (
     is_specific_address,
     record_qr_token,
     parse_listed_date,
+    same_rightmove_listing,
     snapshot_from_scrape,
     create_access_token,
 )
@@ -169,16 +170,16 @@ async def _process_bulk_upload_row(
         async with AsyncSessionLocal() as db:
             if is_real_listing_url:
                 existing = await db.execute(
-                    select(StaleListingProspect).where(StaleListingProspect.rightmove_url == rightmove_url)
+                    select(StaleListingProspect.id).where(same_rightmove_listing(rightmove_url)).limit(1)
                 )
             else:
                 existing = await db.execute(
-                    select(StaleListingProspect).where(
+                    select(StaleListingProspect.id).where(
                         StaleListingProspect.rightmove_url == "",
                         StaleListingProspect.property_address == address,
-                    )
+                    ).limit(1)
                 )
-            if existing.scalar_one_or_none():
+            if existing.first():
                 return {"outcome": "skipped", "row": row_num, "rightmove_url": rightmove_url,
                         "address": address, "reason": "duplicate_prospect"}
 

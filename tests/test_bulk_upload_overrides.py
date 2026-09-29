@@ -14,7 +14,7 @@ ROW = {"rightmove_url": URL, "address": "The Homestead, Cudham Lane North, Cudha
 
 class _NoExisting:
     async def execute(self, *_a, **_k):
-        return mock.Mock(scalar_one_or_none=lambda: None)
+        return mock.Mock(first=lambda: None)
 
     async def commit(self):
         pass
@@ -55,3 +55,23 @@ class OverrideTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SameListingTests(unittest.TestCase):
+    def test_listing_number_from_any_link(self):
+        from app.services.stale_prospect_service import rightmove_listing_id
+        for url in (
+            "https://www.rightmove.co.uk/properties/172322219#/?channel=RES_BUY",
+            "https://www.rightmove.co.uk/properties/172322219?utm_campaign=property-details&utm_source=copytoclipboard",
+            "https://www.rightmove.co.uk/properties/172322219",
+        ):
+            self.assertEqual(rightmove_listing_id(url), "172322219")
+        self.assertIsNone(rightmove_listing_id("n/a"))
+
+    def test_condition_matches_by_listing_number(self):
+        from sqlalchemy.dialects import postgresql
+        from app.services.stale_prospect_service import same_rightmove_listing
+        sql = str(same_rightmove_listing("https://www.rightmove.co.uk/properties/172322219#/?channel=RES_BUY").compile(
+            dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
+        self.assertIn("rightmove_id = '172322219'", sql)
+        self.assertIn("/properties/172322219([^0-9]|$)", sql)

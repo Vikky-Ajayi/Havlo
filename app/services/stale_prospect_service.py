@@ -19,7 +19,7 @@ from typing import Any
 from datetime import datetime, timedelta, timezone
 from xml.sax.saxutils import escape as _xml_escape
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -130,6 +130,26 @@ def record_qr_token(prospect: StaleListingProspect, token: str) -> None:
     existing = list(prospect.qr_token_hashes or [])
     if token_hash not in existing:
         prospect.qr_token_hashes = [*existing, token_hash]
+
+
+def rightmove_listing_id(url: str | None) -> str | None:
+    """The listing number in a Rightmove link, whatever else the link
+    carries (#/?channel=..., ?utm_... from "copy link")."""
+    found = re.search(r"rightmove\.co\.uk/properties/(\d+)", url or "")
+    return found.group(1) if found else None
+
+
+def same_rightmove_listing(url: str):
+    """SQL condition for prospects of the same Rightmove listing as `url`.
+    Links for one listing are written many ways, so comparing them exactly
+    let a sheet upload re-add listings discovery had already found."""
+    listing_id = rightmove_listing_id(url)
+    if not listing_id:
+        return StaleListingProspect.rightmove_url == url
+    return or_(
+        StaleListingProspect.rightmove_id == listing_id,
+        StaleListingProspect.rightmove_url.op("~")(rf"/properties/{listing_id}([^0-9]|$)"),
+    )
 
 
 def unsubscribe_token(prospect_id: str) -> str:
@@ -431,7 +451,7 @@ async def create_prospect_from_listing_snapshot(
         city=city or listing_snapshot.get("city") or None,
         is_manual=is_manual,
         rightmove_url=rightmove_url,
-        rightmove_id=listing_snapshot.get("rightmove_id") or None,
+        rightmove_id=listing_snapshot.get("rightmove_id") or rightmove_listing_id(rightmove_url),
         asking_price=float(asking_price),
         listing_duration_days=int(listing_duration_days),
         listed_date=listed_date,

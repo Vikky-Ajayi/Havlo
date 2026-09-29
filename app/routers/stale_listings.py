@@ -95,6 +95,7 @@ from app.services.stale_prospect_service import (
     hash_access_token,
     record_qr_token,
     is_report_expanded,
+    same_rightmove_listing,
     normalize_property_code,
     parse_listed_date,
     serialize_preview,
@@ -1091,9 +1092,9 @@ async def create_stale_prospect_manually(
         return await _create_us_prospect_manually(payload, background_tasks, db)
 
     existing = await db.execute(
-        select(StaleListingProspect).where(StaleListingProspect.rightmove_url == str(payload.rightmove_url))
+        select(StaleListingProspect.id).where(same_rightmove_listing(str(payload.rightmove_url))).limit(1)
     )
-    if existing.scalar_one_or_none():
+    if existing.first():
         raise HTTPException(status_code=409, detail="This Rightmove listing has already been prospected.")
 
     try:
