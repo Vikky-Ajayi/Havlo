@@ -1382,6 +1382,61 @@ def _letter_fetch_photo(url: str | None) -> "ImageReader | None":
         return None
 
 
+def _current_listing_photos(rightmove_url: str | None) -> list[str]:
+    """The live listing's photo links, lead photo first; [] on any failure.
+    Same route to Rightmove as listing_scraper._fetch (ScraperAPI when
+    SCRAPERAPI_PROXY_DETAIL is set), but synchronous, like the photo fetch
+    it backs up."""
+    if not rightmove_listing_id(rightmove_url):
+        return []
+    import httpx
+
+    from app.services import listing_scraper
+    from app.services.listing_monitor import property_data_from_page
+
+    url = str(rightmove_url).split("#")[0]
+    try:
+        if listing_scraper._SCRAPERAPI_KEY and listing_scraper._SCRAPERAPI_PROXY_DETAIL:
+            resp = httpx.get(
+                listing_scraper._SCRAPERAPI_ENDPOINT,
+                params={"api_key": listing_scraper._SCRAPERAPI_KEY, "url": url, "country_code": "uk", "premium": "true"},
+                timeout=30.0,
+            )
+        else:
+            resp = httpx.get(url, headers=listing_scraper._browser_headers("https://www.rightmove.co.uk/"),
+                             timeout=12.0, follow_redirects=True)
+        resp.raise_for_status()
+        prop = property_data_from_page(resp.text) or {}
+    except Exception:
+        logger.warning("Could not read the live listing's photos for %s", url, exc_info=True)
+        return []
+    return [img["url"] for img in (prop.get("images") or []) if isinstance(img, dict) and img.get("url")]
+
+
+def _letter_listing_photo(prospect: StaleListingProspect, snapshot: dict[str, Any]) -> "ImageReader | None":
+    """Page 2's property photo. Agents replace listing photos, and
+    Rightmove then 404s the lead photo we saved, leaving the letter's photo
+    box empty. So when the saved one fails, use the listing's current lead
+    photo (and save it on the prospect's snapshot for next time; the caller
+    commits), then any other saved photo that still loads."""
+    saved = snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
+    photo = _letter_fetch_photo(saved)
+    if photo is not None:
+        return photo
+    current = _current_listing_photos(prospect.rightmove_url)
+    if current:
+        photo = _letter_fetch_photo(current[0])
+        if photo is not None:
+            prospect.listing_snapshot_json = json.dumps({**snapshot, "image": current[0], "images": current[:12]})
+            return photo
+    for url in (snapshot.get("images") or [])[:6]:
+        if url and url != saved:
+            photo = _letter_fetch_photo(url)
+            if photo is not None:
+                return photo
+    return None
+
+
 def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str) -> None:
     page.setFillColor(_LETTER_CARD_BG)
     page.setStrokeColor(_LETTER_CARD_BORDER)
@@ -1880,8 +1935,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     scores = report.get("scores") or {}
     active_competition = report.get("active_competition") or []
     comparable_sales = report_comparable_rows(prospect)
-    photo_url = snapshot.get("image") or next(iter(snapshot.get("images") or []), None)
-    photo_reader = _letter_fetch_photo(photo_url)
+    photo_reader = _letter_listing_photo(prospect, snapshot)
     # Rightmove's displayAddress (prospect.property_address) truncates the
     # postcode; prospect.postcode has the real one. Every address printed
     # in this letter should use the patched-in full version.
