@@ -34,6 +34,7 @@ from app.schemas.schemas import (
     AgentConsoleListResponse,
     AgentLookupRequest,
     AgentOpenPropertyRequest,
+    AgentLetterVersionsRequest,
     LetterVersionsRequest,
     MonitorChecklistRequest,
     MonitorTokenRequest,
@@ -2951,6 +2952,7 @@ async def list_console_agents(
                 code_looked_up_at=a.code_looked_up_at,
                 properties_opened=progress.get(a.id, (0, 0))[0],
                 properties_unlocked=progress.get(a.id, (0, 0))[1],
+                letter_version=a.letter_version,
                 contact_name=a.contact_name,
                 contact_email=a.contact_email,
                 contact_phone=a.contact_phone,
@@ -2959,6 +2961,29 @@ async def list_console_agents(
             for a in accounts
         ],
     )
+
+
+@public_router.post("/prospects-console/agents/letter-versions")
+async def assign_agent_letter_versions(payload: AgentLetterVersionsRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    """Record which test version of the letter (1-5) each agency is sent;
+    its letter is then built in that version."""
+    wanted: dict[uuid.UUID, int] = {}
+    for a in payload.assignments:
+        try:
+            wanted[uuid.UUID(a.account_id)] = a.version
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid account id: {a.account_id}")
+    accounts = (await db.execute(
+        select(StaleAgentAccount).where(StaleAgentAccount.id.in_(list(wanted)))
+    )).scalars().all()
+    for account in accounts:
+        account.letter_version = wanted[account.id]
+    await db.commit()
+    counts: dict[int, int] = {}
+    for account in accounts:
+        counts[account.letter_version] = counts.get(account.letter_version, 0) + 1
+    return {"updated": len(accounts), "not_found": len(wanted) - len(accounts),
+            "by_version": {str(v): n for v, n in sorted(counts.items())}}
 
 
 @public_router.post("/prospects-console/agents/refresh")

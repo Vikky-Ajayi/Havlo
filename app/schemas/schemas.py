@@ -678,6 +678,7 @@ class AgentConsoleItem(BaseModel):
     code_looked_up_at: Optional[datetime] = None
     properties_opened: int = 0
     properties_unlocked: int = 0
+    letter_version: Optional[int] = None
     contact_name: Optional[str] = None
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
@@ -896,6 +897,15 @@ class StaleProspectDiscoveryRunResponse(BaseModel):
 class LetterVersionAssignment(BaseModel):
     prospect_id: str = Field(..., max_length=64)
     version: int = Field(..., ge=1, le=5)
+
+
+class AgentLetterVersionAssignment(BaseModel):
+    account_id: str = Field(..., max_length=64)
+    version: int = Field(..., ge=1, le=5)
+
+
+class AgentLetterVersionsRequest(BaseModel):
+    assignments: list[AgentLetterVersionAssignment] = Field(..., min_length=1, max_length=5000)
 
 
 class LetterVersionsRequest(BaseModel):
