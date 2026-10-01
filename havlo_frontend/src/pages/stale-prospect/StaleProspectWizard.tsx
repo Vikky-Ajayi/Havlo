@@ -3,8 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
+import { readAgencyToken } from './agentSession';
 import {
   createProspectCheckout,
+  getAgencyPortfolioToken,
   getProspectComparables,
   getProspectDashboardLink,
   getProspectPaymentStatus,
@@ -106,6 +108,17 @@ export const GoBack = ({ onClick }: { onClick: () => void }) => (
       <path d="M11 17l-5-5 5-5M6 12h12" />
     </svg>
     Go Back
+  </button>
+);
+
+/** On an agency's property pages: back to all the agency's listings. */
+const BackToListings = ({ onClick }: { onClick: () => void }) => (
+  <button type="button" className="slw-back-listings slw-noprint" onClick={onClick}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="7" height="7" rx="1.5" /><rect x="14" y="4" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+    Back to all your listings
   </button>
 );
 
@@ -1473,6 +1486,26 @@ export const StaleProspectWizard = () => {
     );
   }, [access.token, access.code, setSearchParams]);
 
+  const isAgencyProperty = prospect?.audience === 'agent' || report?.audience === 'agent';
+
+  const handleBackToListings = async () => {
+    const saved = readAgencyToken();
+    if (saved) {
+      navigate(`/check/agent?token=${encodeURIComponent(saved)}`);
+      return;
+    }
+    try {
+      if (access.token) {
+        const { token } = await getAgencyPortfolioToken(access.token);
+        navigate(`/check/agent?token=${encodeURIComponent(token)}`);
+        return;
+      }
+    } catch {
+      // Fall through to the code page.
+    }
+    navigate('/check/agent');
+  };
+
   const handleGoBack = () => {
     // An agency's copy was opened from its /check/agent portfolio: back there.
     if (step === 'confirm' && prospect?.audience === 'agent') navigate('/check/agent');
@@ -1674,7 +1707,12 @@ export const StaleProspectWizard = () => {
     <div className="slw-page">
       <Header />
       <div className="slw-shell">
-        {step !== 'landing' && step !== 'finding' && <GoBack onClick={handleGoBack} />}
+        {step !== 'landing' && step !== 'finding' && (
+          <div className="slw-backrow">
+            <GoBack onClick={handleGoBack} />
+            {isAgencyProperty && <BackToListings onClick={handleBackToListings} />}
+          </div>
+        )}
         {step !== 'landing' && step !== 'finding' && <Stepper step={step} />}
         <main className="slw-main">
           {step === 'landing' && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
@@ -1738,6 +1776,9 @@ export const WizardStyles = () => (
 
     .slw-shell{max-width:1240px;margin:0 auto;width:min(calc(100% - 200px),1240px);flex:1}
     .slw-goback{display:flex;align-items:center;gap:8px;background:none;border:none;color:#666;font-size:14px;cursor:pointer;padding:58px 0 0;font-family:inherit}
+    .slw-backrow{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .slw-back-listings{display:flex;align-items:center;gap:8px;background:#f7ecfc;border:1px solid #ecd5f7;color:#A409D2;border-radius:999px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+    .slw-back-listings:hover{background:#f1dcfb}
     .slw-stepper-wrap{overflow-x:auto;margin:48px 0 36px;-ms-overflow-style:none;scrollbar-width:none}
     .slw-stepper-wrap::-webkit-scrollbar{display:none}
     .slw-stepper{display:flex;align-items:center;justify-content:space-between;list-style:none;margin:0;padding:0;white-space:nowrap;font-size:15px;font-weight:700;color:#26313d}
@@ -2139,6 +2180,7 @@ export const WizardStyles = () => (
       .slw-shell{width:100%;padding:0 14px}
       .slw-main{padding-bottom:46px}
       .slw-goback{padding-top:22px;font-size:11px;margin-left:2px}
+      .slw-back-listings{font-size:12px;padding:7px 12px}
       .slw-stepper-wrap{margin:34px -14px 32px;padding:0 14px}
       .slw-stepper{justify-content:flex-start;font-size:12px;gap:0}
       .slw-stepper li{gap:22px}

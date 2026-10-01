@@ -184,3 +184,23 @@ export async function getProspectDashboardLink(access: { token?: string; code?: 
   });
   return parseJsonOrThrow(response);
 }
+
+/** A link token to the agency's listings for the agent to share. */
+export async function getAgencyShareToken(token: string): Promise<{ token: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/agents/share-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  return parseJsonOrThrow(response);
+}
+
+/** From an agency's property page (its /check token): a link token back to all its listings. */
+export async function getAgencyPortfolioToken(propertyToken: string): Promise<{ token: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/agents/portfolio-link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: propertyToken }),
+  });
+  return parseJsonOrThrow(response);
+}

@@ -1,6 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getAgentPortfolio, lookupAgent, openAgentProperty } from './api';
+import { readAgencyToken, storeAgencyToken } from './agentSession';
+import { getAgencyShareToken, getAgentPortfolio, lookupAgent, openAgentProperty } from './api';
+import { ShareSheet } from './ShareSheet';
 import { formatGbp, formatReducedDate, type AgentPortfolio, type AgentPortfolioProperty } from './types';
 import {
   BulbIcon,
@@ -18,24 +20,6 @@ import {
 // code from its letter (or scans the QR) and sees every stale listing we
 // found for it. Opening one makes the agency's own copy of that property and
 // continues in the normal /check funnel with its token.
-
-const TOKEN_KEY = 'havlo_agent_portfolio_token';
-
-const readStoredToken = (): string | null => {
-  try {
-    return window.sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-};
-
-const storeToken = (token: string) => {
-  try {
-    window.sessionStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    // Private mode etc.: the URL still carries the token.
-  }
-};
 
 const STATUS_LABELS: Record<AgentPortfolioProperty['status'], string> = {
   new: 'New',
@@ -155,19 +139,34 @@ const AgentLanding = ({
   );
 };
 
+const ShareIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="18" cy="5" r="2.6" /><circle cx="6" cy="12" r="2.6" /><circle cx="18" cy="19" r="2.6" />
+    <path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4" />
+  </svg>
+);
+
 const AgentPortfolioView = ({
   portfolio,
   openingId,
   error,
+  highlightId,
   onOpen,
+  onShare,
 }: {
   portfolio: AgentPortfolio;
   openingId: string;
   error: string;
+  highlightId: string;
   onOpen: (prospectId: string) => void;
+  onShare: (property: AgentPortfolioProperty) => void;
 }) => {
   const name = portfolio.brand || portfolio.company_name;
   const count = portfolio.properties.length;
+  const highlightRef = useRef<HTMLLIElement | null>(null);
+  useEffect(() => {
+    highlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId]);
   return (
     <section className="slw-portfolio">
       <div className="slw-portfolio-head">
@@ -187,7 +186,11 @@ const AgentPortfolioView = ({
       ) : (
         <ul className="slw-portfolio-grid">
           {portfolio.properties.map((property) => (
-            <li key={property.prospect_id} className="slw-portfolio-card">
+            <li
+              key={property.prospect_id}
+              ref={property.prospect_id === highlightId ? highlightRef : undefined}
+              className={`slw-portfolio-card${property.prospect_id === highlightId ? ' slw-portfolio-card-shared' : ''}`}
+            >
               <div
                 className="slw-portfolio-image"
                 style={property.image_url ? { backgroundImage: `url(${property.image_url})` } : undefined}
@@ -221,16 +224,27 @@ const AgentPortfolioView = ({
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  className="slw-btn-black slw-portfolio-open"
-                  disabled={Boolean(openingId)}
-                  onClick={() => onOpen(property.prospect_id)}
-                >
-                  {openingId === property.prospect_id
-                    ? 'Opening…'
-                    : property.status === 'unlocked' ? 'View Full Report' : 'View Assessment'}
-                </button>
+                <div className="slw-portfolio-actions">
+                  <button
+                    type="button"
+                    className="slw-btn-black slw-portfolio-open"
+                    disabled={Boolean(openingId)}
+                    onClick={() => onOpen(property.prospect_id)}
+                  >
+                    {openingId === property.prospect_id
+                      ? 'Opening…'
+                      : property.status === 'unlocked' ? 'View Full Report' : 'View Assessment'}
+                  </button>
+                  <button
+                    type="button"
+                    className="slw-portfolio-share"
+                    aria-label={`Share ${property.property_address}`}
+                    onClick={() => onShare(property)}
+                  >
+                    <ShareIcon />
+                    <span>Share</span>
+                  </button>
+                </div>
               </div>
             </li>
           ))}
@@ -248,9 +262,14 @@ export const AgentPortal = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [openingId, setOpeningId] = useState('');
+  // A shared link (?listing=<id>) highlights the listing it was shared from.
+  const [highlightId] = useState(() => searchParams.get('listing') || '');
+  const [sharing, setSharing] = useState<AgentPortfolioProperty | null>(null);
+  const [shareToken, setShareToken] = useState('');
+  const [shareError, setShareError] = useState('');
 
   const showPortfolio = (data: AgentPortfolio) => {
-    storeToken(data.token);
+    storeAgencyToken(data.token);
     setPortfolio(data);
     setStep('portfolio');
     setSearchParams({ token: data.token }, { replace: true });
@@ -258,7 +277,7 @@ export const AgentPortal = () => {
 
   useEffect(() => {
     let cancelled = false;
-    const token = searchParams.get('token') || readStoredToken();
+    const token = searchParams.get('token') || readAgencyToken();
     if (!token) {
       setStep('landing');
       return undefined;
@@ -296,6 +315,22 @@ export const AgentPortal = () => {
     }
   };
 
+  const handleShare = async (property: AgentPortfolioProperty) => {
+    setSharing(property);
+    setShareError('');
+    if (shareToken || !portfolio) return;
+    try {
+      setShareToken((await getAgencyShareToken(portfolio.token)).token);
+    } catch {
+      setShareError('We could not create a share link just now. Please try again.');
+    }
+  };
+
+  const shareName = portfolio ? portfolio.brand || portfolio.company_name : '';
+  const shareUrl = sharing && shareToken
+    ? `${window.location.origin}/check/agent?token=${encodeURIComponent(shareToken)}&listing=${encodeURIComponent(sharing.prospect_id)}`
+    : null;
+
   return (
     <div className="slw-page">
       <Header />
@@ -318,10 +353,27 @@ export const AgentPortal = () => {
             </section>
           )}
           {step === 'portfolio' && portfolio && (
-            <AgentPortfolioView portfolio={portfolio} openingId={openingId} error={error} onOpen={handleOpen} />
+            <AgentPortfolioView
+              portfolio={portfolio}
+              openingId={openingId}
+              error={error}
+              highlightId={highlightId}
+              onOpen={handleOpen}
+              onShare={handleShare}
+            />
           )}
         </main>
       </div>
+      {sharing && portfolio && (
+        <ShareSheet
+          url={shareUrl}
+          title="Share this listing"
+          subtitle={`Anyone with the link can see ${shareName}'s ${portfolio.properties.length} stale listings, with this one highlighted.`}
+          text={`Havlo's assessment of ${sharing.property_address}, one of ${shareName}'s stale listings:`}
+          error={shareError}
+          onClose={() => setSharing(null)}
+        />
+      )}
       <Footer />
       <WizardStyles />
       <style>{`
@@ -343,7 +395,11 @@ export const AgentPortal = () => {
         .slw-portfolio-figures div{display:flex;flex-direction:column;gap:2px}
         .slw-portfolio-figures span{font-size:12px;color:#667085}
         .slw-portfolio-figures b{font-size:16px}
-        .slw-portfolio-open{width:100%;margin-top:6px}
+        .slw-portfolio-actions{display:flex;gap:10px;margin-top:6px}
+        .slw-portfolio-open{flex:1;margin-top:0!important}
+        .slw-portfolio-share{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #ddd;border-radius:7px;padding:0 16px;font-size:14px;font-weight:600;color:#111;cursor:pointer;font-family:inherit}
+        .slw-portfolio-share:hover{border-color:#A409D2;color:#A409D2}
+        .slw-portfolio-card-shared{border-color:#A409D2;box-shadow:0 0 0 3px rgba(164,9,210,.14)}
         .slw-portfolio-empty{color:#475467}
         @media (max-width:640px){
           .slw-portfolio{padding:24px 0 40px}

@@ -899,6 +899,14 @@ class LetterVersionAssignment(BaseModel):
     version: int = Field(..., ge=1, le=5)
 
 
+class AgentTokenRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=200)
+
+
+class AgentTokenResponse(BaseModel):
+    token: str
+
+
 class AgentLetterVersionAssignment(BaseModel):
     account_id: str = Field(..., max_length=64)
     version: int = Field(..., ge=1, le=5)

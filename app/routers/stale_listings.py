@@ -35,6 +35,8 @@ from app.schemas.schemas import (
     AgentLookupRequest,
     AgentOpenPropertyRequest,
     AgentLetterVersionsRequest,
+    AgentTokenRequest,
+    AgentTokenResponse,
     LetterVersionsRequest,
     MonitorChecklistRequest,
     MonitorTokenRequest,
@@ -2902,6 +2904,33 @@ async def agent_open_property(payload: AgentOpenPropertyRequest, db: AsyncSessio
         raise HTTPException(status_code=404, detail="That property isn't in this agency's listings.")
     _, token = await agent_campaign.open_agent_copy(db, account, owner)
     return AgentOpenPropertyResponse(token=token)
+
+
+@public_router.post("/agents/share-link", response_model=AgentTokenResponse)
+async def agent_share_link(payload: AgentTokenRequest, db: AsyncSession = Depends(get_db)) -> AgentTokenResponse:
+    """A link to the agency's listings for the agent to pass on (to a
+    colleague, a vendor...): its own token, not the agent's."""
+    account = await agent_campaign.find_account(db, token=payload.token)
+    if account is None:
+        raise HTTPException(status_code=404, detail="We could not find that agency.")
+    token = agent_campaign.issue_account_token(account)
+    await db.commit()
+    return AgentTokenResponse(token=token)
+
+
+@public_router.post("/agents/portfolio-link", response_model=AgentTokenResponse)
+async def agent_portfolio_link(payload: AgentTokenRequest, db: AsyncSession = Depends(get_db)) -> AgentTokenResponse:
+    """From one of an agency's property pages, a way back to all its
+    listings (for when the browser doesn't still have one)."""
+    prospect = await _get_prospect_by_access(db, token=payload.token)
+    if prospect.audience != "agent" or not prospect.agent_account_id:
+        raise HTTPException(status_code=404, detail="This property isn't part of an agency's listings.")
+    account = await db.get(StaleAgentAccount, prospect.agent_account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="We could not find that agency.")
+    token = agent_campaign.issue_account_token(account)
+    await db.commit()
+    return AgentTokenResponse(token=token)
 
 
 @public_router.get("/prospects-console/agents", response_model=AgentConsoleListResponse)
