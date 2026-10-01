@@ -501,7 +501,7 @@ def _agent_page1_body(page, width: float, height: float, account: StaleAgentAcco
     page.setFont("Helvetica", 10.5)
     address_x = margin + 7 * page.stringWidth(" ", "Helvetica", 10.5)
     page.drawRightString(width - margin, y, datetime.now(timezone.utc).strftime("%d/%m/%Y"))
-    lines = ["For the attention of the Directors", display_company_name(account.company_name)]
+    lines = ["Regarding your property listings", display_company_name(account.company_name)]
     address = _address_lines(account.letter_address)
     lines += address if len(address) <= 5 else [*address[:4], address[-1]]
     for line in lines:
