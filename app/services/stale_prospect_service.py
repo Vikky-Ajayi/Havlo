@@ -2069,6 +2069,7 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     output_dir = Path("generated") / "stale-prospect-letters"
     output_dir.mkdir(parents=True, exist_ok=True)
+    letter_version = letter_version or getattr(prospect, "letter_version", None)
     suffix = f"-v{letter_version}" if letter_version else ""
     pdf_path = output_dir / f"stale-listing-{prospect.property_code}{suffix}.pdf"
     if _LETTER_STATIC_QR_PATH.is_file():

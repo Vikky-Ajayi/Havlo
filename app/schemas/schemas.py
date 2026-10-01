@@ -777,6 +777,7 @@ class StaleProspectConsoleListItem(BaseModel):
     # When the customer first entered this property's code or opened its
     # QR link -- None if they never have.
     code_looked_up_at: Optional[str] = None
+    letter_version: Optional[int] = None
 
 
 class StaleProspectConsoleListResponse(BaseModel):
@@ -890,6 +891,15 @@ class StaleProspectDiscoveryRunResponse(BaseModel):
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     created_at: Optional[str] = None
+
+
+class LetterVersionAssignment(BaseModel):
+    prospect_id: str = Field(..., max_length=64)
+    version: int = Field(..., ge=1, le=5)
+
+
+class LetterVersionsRequest(BaseModel):
+    assignments: list[LetterVersionAssignment] = Field(..., min_length=1, max_length=5000)
 
 
 class StaleProspectLettersZipRequest(BaseModel):

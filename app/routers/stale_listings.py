@@ -34,6 +34,7 @@ from app.schemas.schemas import (
     AgentConsoleListResponse,
     AgentLookupRequest,
     AgentOpenPropertyRequest,
+    LetterVersionsRequest,
     MonitorChecklistRequest,
     MonitorTokenRequest,
     ProspectMonitorLinkRequest,
@@ -1397,6 +1398,7 @@ def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleLi
         treated_at=prospect.treated_at.isoformat() if prospect.treated_at else None,
         created_at=prospect.created_at.isoformat(),
         code_looked_up_at=prospect.code_looked_up_at.isoformat() if prospect.code_looked_up_at else None,
+        letter_version=prospect.letter_version,
     )
 
 
@@ -1870,6 +1872,30 @@ async def download_console_full_report_pdf(prospect_id: str, db: AsyncSession = 
         filename=f"Havlo-full-report-{prospect.property_code}.pdf",
         headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
     )
+
+
+@public_router.post("/prospects-console/prospects/letter-versions")
+async def assign_letter_versions(payload: LetterVersionsRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    """Record which test version of the letter (1-5) each prospect is sent;
+    their letters are then built in that version. Same (unauthenticated)
+    footing as the rest of /prospects-console."""
+    wanted: dict[uuid.UUID, int] = {}
+    for a in payload.assignments:
+        try:
+            wanted[uuid.UUID(a.prospect_id)] = a.version
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid prospect id: {a.prospect_id}")
+    prospects = (await db.execute(
+        select(StaleListingProspect).where(StaleListingProspect.id.in_(list(wanted)))
+    )).scalars().all()
+    for prospect in prospects:
+        prospect.letter_version = wanted[prospect.id]
+    await db.commit()
+    counts: dict[int, int] = {}
+    for prospect in prospects:
+        counts[prospect.letter_version] = counts.get(prospect.letter_version, 0) + 1
+    return {"updated": len(prospects), "not_found": len(wanted) - len(prospects),
+            "by_version": {str(v): n for v, n in sorted(counts.items())}}
 
 
 @public_router.post(

@@ -54,3 +54,15 @@ class LetterPhotoTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LetterVersionTests(unittest.TestCase):
+    def test_every_test_version_has_copy(self):
+        for version in sps.LETTER_VERSIONS[1:]:
+            copy = sps._letter_version_copy(version, "75 Willow Tree Fields, Nailsea, Bristol, BS48 4PR")
+            self.assertEqual(len(copy["items"]), 4)
+            self.assertTrue(copy["headline"] and copy["cta"] and copy["section"])
+
+    def test_unknown_version(self):
+        with self.assertRaises(ValueError):
+            sps._letter_version_copy(6, "x")

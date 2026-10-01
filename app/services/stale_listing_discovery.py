@@ -407,7 +407,9 @@ async def ensure_letter_pdf_path(db: AsyncSession, prospect: StaleListingProspec
         prospect.letter_first_downloaded_at = datetime.now(timezone.utc)
 
     path = Path(prospect.letter_pdf_path) if prospect.letter_pdf_path else None
-    if not path or not path.is_file() or first_download:
+    # A letter built before the prospect was given a test version isn't it.
+    wrong_version = bool(prospect.letter_version) and not str(path or "").endswith(f"-v{prospect.letter_version}.pdf")
+    if not path or not path.is_file() or first_download or wrong_version:
         new_token = create_access_token()
         record_qr_token(prospect, new_token)
         prospect.letter_pdf_path = await asyncio.wait_for(
