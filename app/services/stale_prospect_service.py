@@ -913,6 +913,7 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "contact_name": prospect.contact_name,
         "listing_snapshot": snapshot,
         "reduced_date": reduced_date_info(prospect, snapshot),
+        "audience": prospect.audience or "owner",
         "report_data": report_data,
         "sold_comparables_attribution": land_registry.attribution() if report_data["comparable_sales"] else None,
         "payment_status": prospect.payment_status,

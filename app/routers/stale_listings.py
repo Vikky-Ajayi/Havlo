@@ -83,7 +83,7 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
-from app.services import agent_campaign, listing_monitor, land_registry
+from app.services import agent_campaign, agent_report, listing_monitor, land_registry
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -2902,8 +2902,37 @@ async def agent_open_property(payload: AgentOpenPropertyRequest, db: AsyncSessio
     names = json.loads(account.company_names_json or "[]") or [account.company_name]
     if owner is None or owner.audience != "owner" or owner.agent_company_name not in names:
         raise HTTPException(status_code=404, detail="That property isn't in this agency's listings.")
-    _, token = await agent_campaign.open_agent_copy(db, account, owner)
+    copy, token = await agent_campaign.open_agent_copy(db, account, owner)
+    if not agent_report.is_fresh(copy):
+        agent_report.start_refresh(copy.id)  # ready by the time they reach it
     return AgentOpenPropertyResponse(token=token)
+
+
+@public_router.get("/prospects/agent-intel")
+async def prospect_agent_intel(
+    token: str | None = Query(default=None, max_length=200),
+    code: str | None = Query(default=None, max_length=12),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The agent report for an agency's copy of a listing
+    (app/services/agent_report.py): the headline figures before purchase,
+    everything after. Built in the background on first request and rebuilt
+    weekly; "preparing" until there's something to show."""
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    if prospect.audience != "agent":
+        raise HTTPException(status_code=404, detail="The agent report is only for agencies' listings.")
+    unlocked = prospect.unlocked_at is not None or prospect.payment_status == "completed"
+    if not agent_report.is_fresh(prospect):
+        agent_report.start_refresh(prospect.id)
+    if not prospect.agent_intel_json:
+        return {"status": "preparing", "locked": not unlocked}
+    intel = json.loads(prospect.agent_intel_json)
+    return {
+        "status": "ready",
+        "refreshing": agent_report.is_refreshing(prospect.id),
+        "locked": not unlocked,
+        "intel": intel if unlocked else agent_report.teaser(intel),
+    }
 
 
 @public_router.post("/agents/share-link", response_model=AgentTokenResponse)

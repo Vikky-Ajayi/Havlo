@@ -352,12 +352,23 @@ def nearby_row(prop: dict[str, Any]) -> dict[str, Any] | None:
         "distance": round(float(prop.get("distance")), 2) if isinstance(prop.get("distance"), (int, float)) else None,
         "url": url if url.startswith("http") else f"{_RM}{url}",
         "image": _text(images.get("mainImageSrc") or images.get("mainImageUrl")),
+        # The marketing agency, and how the listing is presented (for the
+        # agent report's competitor and presentation comparisons).
+        "agent": _text((prop.get("customer") or {}).get("brandTradingName")),
+        "branch": _text((prop.get("customer") or {}).get("branchDisplayName")),
+        "branch_id": str((prop.get("customer") or {}).get("branchId") or ""),
+        "photos": prop.get("numberOfImages") if isinstance(prop.get("numberOfImages"), int) else None,
+        "floorplans": prop.get("numberOfFloorplans") if isinstance(prop.get("numberOfFloorplans"), int) else None,
+        "virtual_tours": prop.get("numberOfVirtualTours") if isinstance(prop.get("numberOfVirtualTours"), int) else None,
     }
 
 
-async def fetch_nearby(client: httpx.AsyncClient, location_id: str, radius: float) -> list[dict[str, Any]]:
+async def fetch_nearby(client: httpx.AsyncClient, location_id: str, radius: float,
+                       pages: int = NEARBY_PAGES) -> list[dict[str, Any]]:
+    """Homes for sale (and under offer / sold STC) within `radius` miles,
+    newest first, up to `pages` result pages."""
     rows: dict[str, dict[str, Any]] = {}
-    for page in range(NEARBY_PAGES):
+    for page in range(pages):
         url = (
             f"{_RM}/property-for-sale/find.html?searchType=SALE&locationIdentifier={location_id}"
             f"&radius={radius}&sortType=6&includeSSTC=true&index={page * NEARBY_PAGE_SIZE}"

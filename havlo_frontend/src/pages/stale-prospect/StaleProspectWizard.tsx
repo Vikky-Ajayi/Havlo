@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
+import { AgentFullReport, AgentTeaser } from './AgentReport';
 import { readAgencyToken } from './agentSession';
 import {
   createProspectCheckout,
@@ -853,6 +854,8 @@ const AssessmentStep = ({
           </div>
         )}
       </div>
+
+      {prospect.audience === 'agent' && <AgentTeaser access={access} onUnlock={onUnlock} />}
 
       <div className="slw-unlock-cta">
         <div className="slw-unlock-cta-copy">
@@ -1737,6 +1740,9 @@ export const StaleProspectWizard = () => {
           )}
           {step === 'success' && prospect && (
             <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />
+          )}
+          {step === 'report' && report && report.audience === 'agent' && (
+            <AgentFullReport access={access} address={report.property_address} />
           )}
           {step === 'report' && report && (
             <FullReportStep report={report} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />

@@ -1,5 +1,5 @@
 import { API_BASE } from '../../lib/api';
-import type { AgentPortfolio, MonitorDashboardData, ProspectPreview, ProspectReport, SoldComparable } from './types';
+import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, ProspectPreview, ProspectReport, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
@@ -202,5 +202,14 @@ export async function getAgencyPortfolioToken(propertyToken: string): Promise<{ 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: propertyToken }),
   });
+  return parseJsonOrThrow(response);
+}
+
+/** The agent report for an agency's copy of a listing ("preparing" while it's built). */
+export async function getAgentIntel(access: { token?: string; code?: string }): Promise<AgentIntelResponse> {
+  const query = new URLSearchParams();
+  if (access.token) query.set('token', access.token);
+  else if (access.code) query.set('code', access.code);
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/agent-intel?${query.toString()}`);
   return parseJsonOrThrow(response);
 }

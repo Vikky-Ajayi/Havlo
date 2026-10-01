@@ -605,6 +605,10 @@ class StaleListingProspect(Base):
     # stale_prospect_service.LETTER_VERSIONS) this property is sent; NULL =
     # the standard letter. Results are compared by version through the code.
     letter_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # An agency's copy only: the agent report's figures
+    # (app/services/agent_report.py), rebuilt when older than a week.
+    agent_intel_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    agent_intel_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # The estate agent marketing the listing, from the Rightmove listing
     # page ("customer" block): branch, the company behind it (the legal
     # name agent letters are grouped and addressed by) and the brand shown

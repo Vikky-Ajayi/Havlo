@@ -732,6 +732,7 @@ class StaleProspectReportResponse(BaseModel):
     # must be shown alongside them (Open Government Licence).
     sold_comparables_attribution: Optional[str] = None
     payment_status: str
+    audience: str = "owner"  # "agent": an agency's copy, shown the agent report
 
 
 class StaleProspectSoldComparable(BaseModel):
