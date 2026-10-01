@@ -1437,7 +1437,7 @@ def _letter_listing_photo(prospect: StaleListingProspect, snapshot: dict[str, An
     return None
 
 
-def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str) -> None:
+def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str, cta: str | None = None) -> None:
     page.setFillColor(_LETTER_CARD_BG)
     page.setStrokeColor(_LETTER_CARD_BORDER)
     page.setLineWidth(1)
@@ -1480,6 +1480,13 @@ def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str
     label_size = 14
     label_leading = label_size * 1.2
     label_char_space = label_size * -0.02
+    if cta:
+        # A test version's call to action, with the "scan or visit" line
+        # under it in body text.
+        _letter_draw_version_cta(page, x + 60, y, h, label_w, cta)
+        qr_size = h - 24
+        page.drawImage(ImageReader(qr_reader), x + 300, y + (h - qr_size) / 2, qr_size, qr_size)
+        return
     scan_label = "Scan to view your property findings or visit heyhavlo.com/check"
     _label_words = scan_label.split()
     _label_lines: list[str] = []
@@ -1509,6 +1516,32 @@ def _letter_draw_qr_box(page, x, y, w, h, qr_reader: BytesIO, property_code: str
 
     qr_size = h - 24
     page.drawImage(ImageReader(qr_reader), x + 300, y + (h - qr_size) / 2, qr_size, qr_size)
+
+
+def _letter_draw_version_cta(page, x, y, h, w, cta: str) -> None:
+    size, leading, char_space = 14, 14 * 1.2, 14 * -0.02
+    lines, current = [], ""
+    for word in cta.split():
+        candidate = f"{current} {word}".strip()
+        cw = page.stringWidth(candidate, _LETTER_FONT_BOLD, size) + char_space * max(len(candidate) - 1, 0)
+        if current and cw > w:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    sub_size, sub_gap = 9.2, 8
+    cap_h = size * 0.72
+    block_h = (len(lines) - 1) * leading + cap_h + sub_gap + sub_size
+    first_baseline = y + h / 2 + block_h / 2 - cap_h
+    _letter_draw_tracked_text(
+        page, cta, x, first_baseline,
+        font=_LETTER_FONT_BOLD, size=size, char_space=char_space, color=_LETTER_INK, max_w=w, leading=leading,
+    )
+    page.setFillColor(_LETTER_MUTED)
+    page.setFont(_LETTER_FONT_REGULAR, sub_size)
+    page.drawString(x, first_baseline - (len(lines) - 1) * leading - sub_gap - sub_size * 0.8, "Scan the QR code or visit heyhavlo.com/check")
 
 
 def _letter_footer_height(width: float, extra_note: str) -> float:
@@ -1673,7 +1706,7 @@ def _letter_fmt_money(value: float | None, country: str = "UK") -> str:
     return f"{'$' if country == 'US' else '£'}{value:,.0f}"
 
 
-def _letter_draw_page1_body(page, width: float, M: float, display_address: str, prospect: StaleListingProspect, gap_scale: float = 1.0) -> float:
+def _letter_draw_page1_body(page, width: float, M: float, display_address: str, prospect: StaleListingProspect, gap_scale: float = 1.0, version: int = 1) -> float:
     """Draws page 1's flowing content -- address block through "Your report
     is specific to this property." -- and returns the final y.
 
@@ -1726,6 +1759,8 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
     y -= g(90)
 
     headline_style = ParagraphStyle("LetterHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=_LETTER_ACCENT)
+    if version != 1:
+        return _letter_draw_version_copy(page, width, M, y, _letter_version_copy(version, display_address), headline_style, g)
     y = _letter_para(page, "Your property has been on the market for more than six months.", M, y, width - 2 * M, headline_style)
     y -= g(16)
 
@@ -1761,6 +1796,121 @@ def _letter_draw_page1_body(page, width: float, M: float, display_address: str, 
     y = _letter_para(page, "Your complete property assessment contains our detailed analysis and recommendations.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
     y -= g(4)
     y = _letter_para(page, "Your report is specific to this property.", M, y, width - 2 * M, _LETTER_BODY_STYLE)
+    return y
+
+
+# ── Letter test versions ─────────────────────────────────────────────────────
+# Direct-mail A/B test (Oct 2026): version 1 is the original letter above
+# (the control, unchanged); versions 2-5 rewrite page 1's copy and the call
+# to action beside the QR code, nothing else. The QR is the same for all;
+# responses are compared by which version each property code was sent.
+LETTER_VERSIONS = (1, 2, 3, 4, 5)
+_CHECKS = ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Buyer Appeal"]
+
+
+def _letter_version_copy(version: int, display_address: str) -> dict[str, Any]:
+    addr = f"<b>{_letter_esc(display_address)}</b>"
+    copies: dict[int, dict[str, Any]] = {
+        2: {
+            "headline": "We reviewed your property \u2014 and found several things worth your attention.",
+            "body": [
+                f"Your property at {addr} has been on the market for <b>more than six months</b>.",
+                "We took a closer look at how your property is currently being presented to the market and compared it with factors that can influence buyer interest.",
+                "Our review identified <b>several potential reasons your property may be getting overlooked</b>.",
+                "Some relate to how the property is positioned against competing homes. Others relate to the way buyers may perceive the listing when deciding which properties to view.",
+            ],
+            "section": "WHAT WE FOUND",
+            "lead": "Our initial review identified areas worth looking at across:",
+            "items": _CHECKS,
+            "closing": [
+                "We've prepared the findings <b>specifically for your property</b>.",
+                "You can review them yourself or share them with your current estate agent. <b>You do not need to change estate agents.</b>",
+            ],
+            "cta": "See what we found about your property",
+        },
+        3: {
+            "headline": "What could another six months on the market mean for your property?",
+            "body": [
+                f"Your property at {addr} has already been advertised for <b>more than six months</b>.",
+                "When a property remains unsold for an extended period, the question isn't always simply: <b>\u201cShould we reduce the price?\u201d</b>",
+                "Sometimes the better question is: <b>\u201cWhat may be preventing the right buyers from taking the next step?\u201d</b>",
+                "Before making another major decision about your sale, Havlo has reviewed the publicly available marketing information for your property to identify areas that may deserve attention.",
+            ],
+            "section": "BEFORE YOU CHANGE ANYTHING",
+            "lead": "Our assessment looks at:",
+            "items": ["Pricing & Positioning", "Listing Presentation", "Market Competition", "Potential barriers to buyer interest"],
+            "closing": [
+                "You <b>may not need to change your estate agent or immediately reduce your asking price</b>.",
+                "Understanding what may be holding the listing back can help you have a more informed conversation about what to do next.",
+            ],
+            "cta": "Before making your next move, see what we found",
+        },
+        4: {
+            "headline": "Your property hasn't sold yet. That doesn't mean the right buyer isn't out there.",
+            "body": [
+                "After more than six months on the market, it's understandable to wonder why your property hasn't found the right buyer.",
+                "Sometimes, relatively small changes to <b>positioning, presentation and marketing strategy</b> can change how buyers respond to a property.",
+                f"That's why we reviewed the publicly available marketing information for {addr}.",
+                "We identified several areas that may be worth reconsidering before deciding what to do next.",
+            ],
+            "section": "A FRESH LOOK AT YOUR PROPERTY",
+            "lead": "Havlo's assessment considers:",
+            "items": _CHECKS,
+            "closing": [
+                "Our purpose isn't to tell you to change estate agents.",
+                "It's to give you a <b>fresh, independent perspective</b> on how your property is currently appearing to the market.",
+                "You can use the findings yourself or discuss them with your existing estate agent.",
+            ],
+            "cta": "See your property with fresh eyes",
+        },
+        5: {
+            "headline": "What are buyers seeing when they look at your property?",
+            "body": [
+                "You've seen your property as an owner.",
+                "Your estate agent sees it as the property they're marketing.",
+                "But <b>what might a buyer see</b> when your property appears alongside all the other homes they're considering?",
+                f"Havlo reviewed the publicly available marketing information for {addr}.",
+                "Your property has now been on the market for more than six months, so we looked at several factors that may be influencing how potential buyers respond to the listing.",
+            ],
+            "section": "SEE YOUR LISTING FROM ANOTHER PERSPECTIVE",
+            "lead": "We looked at:",
+            "items": ["How your property is positioned", "How the listing presents the property", "What it's competing against", "Factors that may affect buyer appeal"],
+            "closing": [
+                "We identified <b>several areas worth your attention</b>.",
+                "Your assessment is specific to this property and can be shared with your existing estate agent. <b>There's no need to switch agents.</b>",
+            ],
+            "cta": "See your property through the eyes of the market",
+        },
+    }
+    if version not in copies:
+        raise ValueError(f"Unknown letter version: {version}")
+    return copies[version]
+
+
+def _letter_draw_version_copy(page, width: float, M: float, y: float, copy: dict[str, Any], headline_style, g) -> float:
+    """Page 1 of a test version, from the headline down; same styles and
+    spacing as version 1 so only the words differ."""
+    w = width - 2 * M
+    y = _letter_para(page, copy["headline"], M, y, w, headline_style)
+    y -= g(16)
+    for i, text in enumerate(copy["body"]):
+        if i:
+            y -= g(6)
+        y = _letter_para(page, text, M, y, w, _LETTER_BODY_STYLE)
+    y -= g(22)
+    _letter_draw_tracked_text(
+        page, copy["section"], M, y,
+        font=_LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=_LETTER_INK,
+    )
+    y -= g(10)
+    y = _letter_para(page, copy["lead"], M, y, w, _LETTER_BODY_STYLE)
+    y -= g(14)
+    y = _letter_draw_checklist_grid(page, M, y, w, copy["items"], 2, row_h=26)
+    y -= g(6)
+    for i, text in enumerate(copy["closing"]):
+        if i:
+            y -= g(6)
+        y = _letter_para(page, text, M, y, w, _LETTER_BODY_STYLE)
     return y
 
 
@@ -1909,7 +2059,7 @@ def _letter_draw_page2_body(
     return lowest_bottom_y
 
 
-def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str) -> str:
+def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_url: str, letter_version: int | None = None) -> str:
     """Generate the printable two-page homeowner letter PDF and return its
     absolute path (page 1: intro + initial checklist; page 2: property
     snapshot with the pricing/competition/presentation gauges), matching
@@ -1919,7 +2069,8 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
 
     output_dir = Path("generated") / "stale-prospect-letters"
     output_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = output_dir / f"stale-listing-{prospect.property_code}.pdf"
+    suffix = f"-v{letter_version}" if letter_version else ""
+    pdf_path = output_dir / f"stale-listing-{prospect.property_code}{suffix}.pdf"
     if _LETTER_STATIC_QR_PATH.is_file():
         qr_reader: BytesIO | str = str(_LETTER_STATIC_QR_PATH)
     else:
@@ -1970,8 +2121,9 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     # a gap inside _letter_draw_page1_body later without updating a
     # separate constant here.
     _measure_page = rl_canvas.Canvas(BytesIO(), pagesize=page_size)
-    y_full_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=1.0)
-    y_no_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=0.0)
+    version = letter_version or 1
+    y_full_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=1.0, version=version)
+    y_no_gaps = _letter_draw_page1_body(_measure_page, width, M, display_address, prospect, gap_scale=0.0, version=version)
     total_scalable_gap = y_no_gaps - y_full_gaps
     min_gap_above_qr = 16
     overflow = (qr_top + min_gap_above_qr) - y_full_gaps
@@ -1985,9 +2137,10 @@ def generate_letter_pdf(prospect: StaleListingProspect, token: str, public_base_
     else:
         gap_scale = 1.0
 
-    _letter_draw_page1_body(page, width, M, display_address, prospect, gap_scale=gap_scale)
+    _letter_draw_page1_body(page, width, M, display_address, prospect, gap_scale=gap_scale, version=version)
 
-    _letter_draw_qr_box(page, M, qr_bottom, width - 2 * M, qr_h, qr_reader, prospect.property_code)
+    cta = _letter_version_copy(version, display_address)["cta"] if version != 1 else None
+    _letter_draw_qr_box(page, M, qr_bottom, width - 2 * M, qr_h, qr_reader, prospect.property_code, cta=cta)
     _letter_draw_footer(page, width, footer_note)
     page.showPage()
 
