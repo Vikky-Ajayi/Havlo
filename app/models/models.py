@@ -1001,6 +1001,9 @@ class StaleAgentAccount(Base):
     letter_first_downloaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     code_looked_up_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Test version of the agency letter (1-5, see
+    # agent_campaign.AGENT_LETTER_VERSIONS); NULL = the standard letter.
+    letter_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     # Collected once, the first time anyone at the agency submits the details
     # form on one of its properties; every later property the agency opens is
     # pre-filled from here, and the agency follow-ups (agent_followups.py)

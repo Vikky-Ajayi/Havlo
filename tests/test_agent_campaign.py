@@ -63,3 +63,40 @@ class AgentCampaignTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UniqueListingsTests(unittest.TestCase):
+    def prospect(self, url, **kw):
+        p = StaleListingProspect(rightmove_url=url, **kw)
+        p.id = kw.get("id") or __import__("uuid").uuid4()
+        return p
+
+    def test_one_per_listing_whatever_the_link(self):
+        old = self.prospect("https://www.rightmove.co.uk/properties/172322219#/?channel=RES_BUY",
+                            created_at=datetime(2026, 9, 14, tzinfo=timezone.utc))
+        new = self.prospect("https://www.rightmove.co.uk/properties/172322219?utm_source=copytoclipboard",
+                            created_at=datetime(2026, 9, 24, tzinfo=timezone.utc))
+        other = self.prospect("https://www.rightmove.co.uk/properties/90000001", created_at=datetime(2026, 9, 1, tzinfo=timezone.utc))
+        self.assertEqual(ac.unique_listings([new, old, other]), [old, other])
+
+    def test_prefers_the_copy_already_used(self):
+        old = self.prospect("https://www.rightmove.co.uk/properties/1", created_at=datetime(2026, 9, 1, tzinfo=timezone.utc))
+        looked_up = self.prospect("https://www.rightmove.co.uk/properties/1", created_at=datetime(2026, 9, 9, tzinfo=timezone.utc),
+                                  code_looked_up_at=datetime(2026, 9, 20, tzinfo=timezone.utc))
+        opened = self.prospect("https://www.rightmove.co.uk/properties/1", created_at=datetime(2026, 9, 10, tzinfo=timezone.utc))
+        self.assertEqual(ac.unique_listings([old, looked_up]), [looked_up])
+        self.assertEqual(ac.unique_listings([old, looked_up, opened], prefer={opened.id}), [opened])
+
+
+class AgentLetterVersionTests(unittest.TestCase):
+    def test_every_test_version_has_copy(self):
+        for version in ac.AGENT_LETTER_VERSIONS[1:]:
+            copy = ac._agent_version_copy(version, 8, "Smith & Jones")
+            self.assertEqual(len(copy["items"]), 6)
+            self.assertIn("Smith &amp; Jones", " ".join(copy["body"]))
+            self.assertTrue(copy["headline"] and copy["closing"] and len(copy["cta"]) == 2)
+
+    def test_counts_fill_in(self):
+        self.assertTrue(ac._agent_version_copy(3, 12, "X")["headline"].startswith("12 vendors"))
+        with self.assertRaises(ValueError):
+            ac._agent_version_copy(6, 2, "X")

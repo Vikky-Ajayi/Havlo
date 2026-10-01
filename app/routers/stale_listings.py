@@ -2910,7 +2910,7 @@ async def list_console_agents(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> AgentConsoleListResponse:
-    filters = []
+    filters = [StaleAgentAccount.listing_count >= agent_campaign.MIN_LISTINGS]
     if q and q.strip():
         like = f"%{q.strip()}%"
         filters.append(or_(
@@ -2988,7 +2988,9 @@ async def download_agent_letters_merged(
     """Every agency letter in one PDF, for printing in one go."""
     from pypdf import PdfWriter
 
-    filters = [StaleAgentAccount.letter_first_downloaded_at.is_(None)] if only_new else []
+    filters = [StaleAgentAccount.listing_count >= agent_campaign.MIN_LISTINGS]
+    if only_new:
+        filters.append(StaleAgentAccount.letter_first_downloaded_at.is_(None))
     accounts = (await db.execute(
         select(StaleAgentAccount).where(*filters).order_by(StaleAgentAccount.listing_count.desc())
     )).scalars().all()

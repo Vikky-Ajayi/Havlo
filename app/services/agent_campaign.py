@@ -144,6 +144,23 @@ async def make_agent_copy_code(db: AsyncSession) -> str:
     raise RuntimeError("Could not allocate a unique agent copy code.")
 
 
+def unique_listings(prospects: list[Any], prefer: set | None = None) -> list[Any]:
+    """One prospect per Rightmove listing. A sheet upload could add a listing
+    discovery already had under a differently written link, and counting
+    both overstated agencies' stale listings (and listed the property twice
+    on their letter). Keeps the copy in `prefer` (ids), else the one whose
+    code was used, else the oldest."""
+    prefer = prefer or set()
+    best: dict[str, Any] = {}
+    for p in prospects:
+        key = sps.rightmove_listing_id(p.rightmove_url) or str(p.id)
+        rank = (p.id not in prefer, p.code_looked_up_at is None, p.created_at or datetime.max.replace(tzinfo=timezone.utc))
+        if key not in best or rank < best[key][0]:
+            best[key] = (rank, p)
+    kept = {id(p) for _, p in best.values()}
+    return [p for p in prospects if id(p) in kept]
+
+
 async def refresh_agent_accounts(db: AsyncSession) -> dict[str, int]:
     """Create or update an account for every agency company with at least
     MIN_LISTINGS owner prospects. Existing accounts keep their code; their
@@ -159,8 +176,15 @@ async def refresh_agent_accounts(db: AsyncSession) -> dict[str, int]:
         key = company_key(row.agent_company_name)
         if key:
             groups[key].append(row)
+    groups = {key: unique_listings(items) for key, items in groups.items()}
     existing = {a.company_key: a for a in (await db.execute(select(StaleAgentAccount))).scalars()}
     created = updated = 0
+    # Accounts never go (their code may be in the post), but one that no
+    # longer has MIN_LISTINGS shows its real count, which keeps it out of
+    # the agency list and letters.
+    for key, account in existing.items():
+        if len(groups.get(key, [])) < MIN_LISTINGS:
+            account.listing_count = len(groups.get(key, []))
     for key, items in groups.items():
         if len(items) < MIN_LISTINGS:
             continue
@@ -201,7 +225,10 @@ async def portfolio(db: AsyncSession, account: StaleAgentAccount) -> list[StaleL
     prospects = (await db.execute(
         select(StaleListingProspect).where(*_owner_filter(), StaleListingProspect.agent_company_name.in_(names))
     )).scalars().all()
-    return sorted((p for p in prospects if qualifies(p)), key=_stale_order)
+    opened = set((await db.execute(
+        select(StaleListingProspect.parent_prospect_id).where(StaleListingProspect.agent_account_id == account.id)
+    )).scalars().all())
+    return sorted(unique_listings([p for p in prospects if qualifies(p)], prefer=opened), key=_stale_order)
 
 
 async def agent_copies(db: AsyncSession, account: StaleAgentAccount) -> dict[uuid.UUID, StaleListingProspect]:
@@ -345,7 +372,8 @@ def _agent_letter_header(page, width: float, height: float) -> None:
     sps._letter_draw_corner_flag(page, width, height)
 
 
-def _agent_access_box(page, x: float, y: float, w: float, h: float, qr_reader, agent_code: str, count: int) -> None:
+def _agent_access_box(page, x: float, y: float, w: float, h: float, qr_reader, agent_code: str, count: int,
+                      cta: tuple[str, str] | None = None) -> None:
     """QR straight to the portfolio, the address to type, and the agency code."""
     from reportlab.lib import colors
     from reportlab.lib.styles import ParagraphStyle
@@ -369,6 +397,14 @@ def _agent_access_box(page, x: float, y: float, w: float, h: float, qr_reader, a
     page.drawImage(ImageReader(qr_reader), code_x - qr_size - 14, y + 10, qr_size, qr_size)
     label = ParagraphStyle("AgentScan", fontName=sps._LETTER_FONT_BOLD, fontSize=12.5, leading=15.5, textColor=sps._LETTER_INK)
     text_w = code_x - qr_size - 28 - (x + 18)
+    if cta:
+        # A test version's call to action: its line, how to get in, the address.
+        small = ParagraphStyle("AgentScanSub", fontName=sps._LETTER_FONT_REGULAR, fontSize=9.2, leading=12, textColor=sps._LETTER_MUTED)
+        url = ParagraphStyle("AgentScanUrl", fontName=sps._LETTER_FONT_BOLD, fontSize=9.6, leading=12, textColor=sps._LETTER_ACCENT)
+        ty = sps._letter_para(page, cta[0], x + 18, y + h - 16, text_w, label) - 3
+        ty = sps._letter_para(page, cta[1], x + 18, ty, text_w, small) - 2
+        sps._letter_para(page, "heyhavlo.com/check/agent", x + 18, ty, text_w, url)
+        return
     sps._letter_para(
         page, f"Scan to see all {count} listings and their assessments, or visit "
         "<font color='#A409D2'>heyhavlo.com/check/agent</font> and enter your agency code.",
@@ -376,8 +412,74 @@ def _agent_access_box(page, x: float, y: float, w: float, h: float, qr_reader, a
     )
 
 
+# ── Letter test versions ─────────────────────────────────────────────────────
+# Direct-mail A/B test (Oct 2026), as for the owner letter: version 1 is the
+# letter above (the control, unchanged); versions 2-5 rewrite page 1's copy
+# and the call to action only. The QR code is the same for all.
+AGENT_LETTER_VERSIONS = (1, 2, 3, 4, 5)
+
+
+def _agent_version_copy(version: int, count: int, brand: str) -> dict[str, Any]:
+    brand = sps._letter_esc(brand)
+    copies: dict[int, dict[str, Any]] = {
+        2: {
+            "headline": f"We reviewed {count} of your long-running listings. A few patterns stood out.",
+            "body": [
+                f"We identified <b>{count} properties</b> currently marketed by {brand} that have been listed for <b>six months or more</b>, or have had a price reduction without yet finding a buyer.",
+                "We then reviewed the publicly available market information for each property. Across the listings, we found <b>several areas worth a second look</b> &mdash; including how some homes are <b>positioned against nearby competition</b> and how the listings may appear to buyers comparing alternatives.",
+                "We have summarised those observations in a separate Property Performance Assessment for each listing. The assessments are intended to give your team <b>another perspective</b>, <b>not to replace your existing expertise or vendor relationship</b>.",
+            ],
+            "section": "WHAT WE REVIEWED",
+            "items": ["Price vs Recent Sold Prices", "Competing Listings Nearby", "Listing Presentation", "Buyer Appeal", "Potential Friction Points", "Practical Next Steps"],
+            "closing": f"The {count} properties and their initial findings are ready to view.",
+            "cta": (f"See what stood out across your {count} listings.", "Scan the QR code and enter your agency code."),
+        },
+        3: {
+            "headline": f"{count} vendors may soon be asking: \u201cWhat do we do next?\u201d",
+            "body": [
+                f"We identified <b>{count} properties</b> currently marketed by {brand} that have remained on the market for <b>six months or more</b>, or have been reduced without yet finding a buyer.",
+                "Long-running instructions can lead to <b>difficult conversations</b> about price, presentation, marketing and what should happen next. Havlo has independently reviewed the publicly available information for each of these properties to help give your team <b>additional evidence</b> for those conversations.",
+                "Each Property Performance Assessment is designed to <b>sit alongside your own expertise</b>. It can help structure a vendor review, highlight areas worth discussing and provide a <b>practical starting point</b> for the next phase of the instruction.",
+            ],
+            "section": "USE THE ASSESSMENT TO REVIEW",
+            "items": ["Current Price Position", "Nearby Competition", "Listing Presentation", "Buyer Appeal", "Possible Stalling Factors", "Next-Step Actions"],
+            "closing": f"We have already identified the {count} listings and prepared their assessment summaries.",
+            "cta": ("Prepare for your next vendor review.", f"Scan to see the {count} properties and their assessments."),
+        },
+        4: {
+            "headline": f"You already won the instruction. Can these {count} listings be moved forward?",
+            "body": [
+                f"{brand} currently has <b>{count} properties</b> we identified as having been marketed for <b>six months or more</b>, or reduced in price without yet finding a buyer.",
+                "These are instructions your team has <b>already worked to win</b>. When a listing stalls, generating <b>fresh attention</b> may require more than simply waiting for the next enquiry.",
+                f"Havlo has prepared an independent <b>Property Performance Assessment</b> for each of the {count} properties, looking at the listing in the context of <b>current competition</b>, pricing signals, presentation and buyer appeal.",
+                "The aim is simple: give your team another set of observations that may help you decide what to test, change or discuss with the vendor &mdash; <b>while you retain the instruction and the client relationship</b>.",
+            ],
+            "section": "EACH ASSESSMENT LOOKS AT",
+            "items": ["Price Position", "Nearby Competition", "Listing Presentation", "Buyer Appeal", "Why Interest May Be Limited", "Practical Action Plan"],
+            "closing": f"Your {count} listings are grouped together for your team to review.",
+            "cta": (f"See the {count} listings we reviewed.", "Scan to open your agency summary and assessment previews."),
+        },
+        5: {
+            "headline": "Sometimes a long-running listing just needs a fresh pair of eyes.",
+            "body": [
+                f"We identified <b>{count} properties</b> currently marketed by {brand} that have been on the market for <b>six months or more</b>, or have been reduced without yet finding a buyer.",
+                "Your team knows the vendors, the local market and the work already carried out. Havlo adds something different: an <b>independent review</b> of how each property currently appears when viewed against the <b>wider market</b>.",
+                "For each property, we prepared a <b>Property Performance Assessment</b> covering pricing context, nearby competition, listing presentation, buyer appeal and <b>practical areas</b> your team may wish to revisit.",
+                "This is <b>not a replacement for your agency</b> or your advice. Think of it as <b>a second set of eyes</b> that can help surface observations that are easy to miss after a listing has been live for several months.",
+            ],
+            "section": "A SECOND LOOK AT",
+            "items": ["Pricing Context", "Nearby Competition", "Listing Presentation", "Buyer Appeal", "Potential Stalling Factors", "Practical Next Steps"],
+            "closing": f"We have summarised all {count} properties for your agency.",
+            "cta": (f"Take a fresh look at your {count} listings.", "Scan the QR code and enter your agency code."),
+        },
+    }
+    if version not in copies:
+        raise ValueError(f"Unknown agent letter version: {version}")
+    return copies[version]
+
+
 def _agent_page1_body(page, width: float, height: float, account: StaleAgentAccount,
-                      prospects: list[StaleListingProspect], gap_scale: float = 1.0) -> float:
+                      prospects: list[StaleListingProspect], gap_scale: float = 1.0, version: int = 1) -> float:
     """Page 1's flowing content, address block to "summarised on the next
     page"; returns the final y. Same measure-then-draw approach as the owner
     letter (see stale_prospect_service._letter_draw_page1_body): `gap_scale`
@@ -408,6 +510,20 @@ def _agent_page1_body(page, width: float, height: float, account: StaleAgentAcco
     y -= g(90)
 
     headline_style = ParagraphStyle("AgentHeadline", fontName="Helvetica-Bold", fontSize=22.5, leading=26, textColor=sps._LETTER_ACCENT)
+    if version != 1:
+        copy = _agent_version_copy(version, count, account.brand or display_company_name(account.company_name))
+        w = width - 2 * margin
+        y = sps._letter_para(page, copy["headline"], margin, y, w, headline_style) - g(16)
+        for i, text in enumerate(copy["body"]):
+            y = sps._letter_para(page, text, margin, y - (g(8) if i else 0), w, body)
+        y -= g(22)
+        sps._letter_draw_tracked_text(
+            page, copy["section"], margin, y,
+            font=sps._LETTER_FONT_BOLD, size=10, char_space=10 * -0.03, color=sps._LETTER_INK,
+        )
+        y -= g(10) + 14
+        y = sps._letter_draw_checklist_grid(page, margin, y, w, copy["items"], 2, row_h=24) - g(6)
+        return sps._letter_para(page, copy["closing"], margin, y, w, body)
     y = sps._letter_para(page, headline, margin, y, width - 2 * margin, headline_style) - g(16)
     y = sps._letter_para(
         page, f"We track how long homes stay on the market across the UK. <b>{count} properties</b> your agency "
@@ -439,7 +555,8 @@ def _agent_page1_body(page, width: float, height: float, account: StaleAgentAcco
 
 
 def generate_agent_letter_pdf(
-    account: StaleAgentAccount, prospects: list[StaleListingProspect], token: str, public_base_url: str
+    account: StaleAgentAccount, prospects: list[StaleListingProspect], token: str, public_base_url: str,
+    letter_version: int | None = None,
 ) -> str:
     """Two-page A4 letter to the agency. Page 1: the pitch, what each
     assessment covers, and the QR/agency code. Page 2: its stale listings
@@ -454,7 +571,8 @@ def generate_agent_letter_pdf(
 
     output_dir = Path("generated") / "agent-letters"
     output_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = output_dir / f"agent-letter-{account.agent_code}.pdf"
+    version = letter_version or getattr(account, "letter_version", None) or 1
+    pdf_path = output_dir / f"agent-letter-{account.agent_code}{f'-v{version}' if version != 1 else ''}.pdf"
     width, height = A4
     margin = sps._LETTER_MARGIN
     ink, muted, accent = sps._LETTER_INK, sps._LETTER_MUTED, sps._LETTER_ACCENT
@@ -475,12 +593,13 @@ def generate_agent_letter_pdf(
     qr_h = 91
     qr_bottom = sps._letter_footer_height(width, footer_note) + 18
     measure = rl_canvas.Canvas(BytesIO(), pagesize=A4)
-    y_full = _agent_page1_body(measure, width, height, account, prospects, gap_scale=1.0)
-    y_none = _agent_page1_body(measure, width, height, account, prospects, gap_scale=0.0)
+    y_full = _agent_page1_body(measure, width, height, account, prospects, gap_scale=1.0, version=version)
+    y_none = _agent_page1_body(measure, width, height, account, prospects, gap_scale=0.0, version=version)
     overflow = (qr_bottom + qr_h + 16) - y_full
     gap_scale = max(0.55, 1.0 - overflow / (y_none - y_full)) if overflow > 0 and y_none > y_full else 1.0
-    _agent_page1_body(page, width, height, account, prospects, gap_scale=gap_scale)
-    _agent_access_box(page, margin, qr_bottom, width - 2 * margin, qr_h, qr_reader, account.agent_code, count)
+    _agent_page1_body(page, width, height, account, prospects, gap_scale=gap_scale, version=version)
+    cta = _agent_version_copy(version, count, brand)["cta"] if version != 1 else None
+    _agent_access_box(page, margin, qr_bottom, width - 2 * margin, qr_h, qr_reader, account.agent_code, count, cta=cta)
     sps._letter_draw_footer(page, width, footer_note)
     page.showPage()
 
