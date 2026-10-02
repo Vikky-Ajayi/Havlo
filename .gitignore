@@ -25,3 +25,6 @@ replit.nix
 
 # Letters and other files the app generates at runtime (never deploy stale copies)
 generated/
+
+# macOS folder metadata
+.DS_Store
