@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import hmac
 import io
 import json
 import asyncio
@@ -9,12 +10,13 @@ import logging
 import random
 import re
 import string
+import time
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, HTMLResponse, Response
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -24,9 +26,12 @@ from app.models.models import (
     StaleAgentAccount,
     StaleListingAssessment,
     StaleListingDiscoveryRun,
+    StaleListingMonitor,
+    StaleListingMonitorEvent,
     StaleListingProspect,
     StaleProspectAbandonmentEmail,
     StaleProspectAbandonmentSms,
+    StaleProspectPostPurchaseEmail,
     User,
 )
 from app.schemas.schemas import (
@@ -54,6 +59,8 @@ from app.schemas.schemas import (
     StaleProspectConfirmRequest,
     StaleProspectConfirmResponse,
     StaleProspectConsoleAddressEditRequest,
+    StaleProspectConsoleDeleteRequest,
+    StaleProspectConsoleDeleteResponse,
     StaleProspectConsoleDetail,
     StaleProspectConsoleEditRequest,
     StaleProspectConsoleListItem,
@@ -1562,6 +1569,9 @@ async def list_abandoned_prospects(
                 StaleListingProspect.property_code.ilike(like),
                 StaleListingProspect.contact_name.ilike(like),
                 StaleListingProspect.contact_email.ilike(like),
+                StaleListingProspect.agent_account_id.in_(
+                    select(StaleAgentAccount.id).where(StaleAgentAccount.agent_code.ilike(like))
+                ),
             )
         )
 
@@ -1608,6 +1618,16 @@ async def list_abandoned_prospects(
         .limit(limit)
         .offset(offset)
     )
+    rows = result.all()
+    # An agency's copy carries the agency it belongs to; show that agency's
+    # code alongside the property code, as owner lookups show theirs.
+    account_ids = {p.agent_account_id for p, _, _ in rows if p.agent_account_id}
+    agent_codes: dict[uuid.UUID, str] = {}
+    if account_ids:
+        code_rows = await db.execute(
+            select(StaleAgentAccount.id, StaleAgentAccount.agent_code).where(StaleAgentAccount.id.in_(account_ids))
+        )
+        agent_codes = {account_id: code for account_id, code in code_rows.all()}
     items = [
         StaleProspectAbandonedItem(
             prospect_id=str(p.id),
@@ -1631,8 +1651,9 @@ async def list_abandoned_prospects(
             treated_at=p.treated_at.isoformat() if p.treated_at else None,
             audience=p.audience or "owner",
             agent_company=(p.agent_brand or p.agent_company_name) if p.audience == "agent" else None,
+            agent_code=agent_codes.get(p.agent_account_id) if p.agent_account_id else None,
         )
-        for p, emails_sent, sms_sent in result.all()
+        for p, emails_sent, sms_sent in rows
     ]
     return StaleProspectAbandonedResponse(items=items, total=total, stage_counts=stage_counts)
 
@@ -1796,6 +1817,72 @@ async def set_console_prospect_treated(
     await db.commit()
     await db.refresh(prospect)
     return _console_list_item(prospect)
+
+
+# Wrong delete codes per client, so the short code can't simply be guessed
+# against this unauthenticated endpoint: 5 misses locks that client out for
+# 15 minutes. In-process only — fine for a single API instance.
+_DELETE_MAX_FAILURES = 5
+_DELETE_LOCKOUT_SECONDS = 15 * 60
+_delete_failures: dict[str, list[float]] = {}
+
+
+def _client_key(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _recent_delete_failures(client: str) -> list[float]:
+    cutoff = time.monotonic() - _DELETE_LOCKOUT_SECONDS
+    recent = [t for t in _delete_failures.get(client, []) if t > cutoff]
+    if recent:
+        _delete_failures[client] = recent
+    else:
+        _delete_failures.pop(client, None)
+    return recent
+
+
+@public_router.post("/prospects-console/prospects/{prospect_id}/delete", response_model=StaleProspectConsoleDeleteResponse)
+async def delete_console_prospect(
+    prospect_id: str,
+    payload: StaleProspectConsoleDeleteRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectConsoleDeleteResponse:
+    """Permanently delete a prospect (e.g. one created or looked up while
+    testing) with its report, letter, follow-up log and monitor. Needs the
+    delete code (STALE_PROSPECT_DELETE_CODE). Deleting an owner prospect
+    leaves any agency copies of it in place; delete those separately."""
+    client = _client_key(request)
+    if len(_recent_delete_failures(client)) >= _DELETE_MAX_FAILURES:
+        raise HTTPException(status_code=429, detail="Too many wrong codes. Try again in 15 minutes.")
+    configured = get_settings().STALE_PROSPECT_DELETE_CODE.strip()
+    submitted = payload.code.strip()
+    if not configured or not hmac.compare_digest(submitted.encode(), configured.encode()):
+        _delete_failures.setdefault(client, []).append(time.monotonic())
+        raise HTTPException(status_code=403, detail="That delete code is not correct.")
+
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+
+    # The foreign keys cascade in Postgres, but remove dependents explicitly
+    # so this also holds where cascades aren't enforced (e.g. SQLite).
+    monitor_ids = select(StaleListingMonitor.id).where(StaleListingMonitor.prospect_id == prospect.id)
+    await db.execute(delete(StaleListingMonitorEvent).where(StaleListingMonitorEvent.monitor_id.in_(monitor_ids)))
+    await db.execute(delete(StaleListingMonitor).where(StaleListingMonitor.prospect_id == prospect.id))
+    await db.execute(delete(StaleProspectAbandonmentEmail).where(StaleProspectAbandonmentEmail.prospect_id == prospect.id))
+    await db.execute(delete(StaleProspectAbandonmentSms).where(StaleProspectAbandonmentSms.prospect_id == prospect.id))
+    await db.execute(delete(StaleProspectPostPurchaseEmail).where(StaleProspectPostPurchaseEmail.prospect_id == prospect.id))
+    await db.delete(prospect)
+    await db.commit()
+    logger.info("Prospect %s (%s) deleted from the prospects console.", prospect_id, prospect.property_code)
+    return StaleProspectConsoleDeleteResponse(deleted=True, prospect_id=prospect_id)
 
 
 @public_router.get("/prospects-console/prospects/{prospect_id}/letter.pdf")

@@ -251,6 +251,42 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
     return () => clearTimeout(t);
   }, [tab, loadAbandoned, abandonedSearch]);
 
+  // Deleting a prospect (e.g. test lookups) asks for the console delete
+  // code; the backend checks it and locks out repeated wrong guesses.
+  const [deleteTarget, setDeleteTarget] = useState<StaleProspectAbandonedItem | null>(null);
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [followUpNotice, setFollowUpNotice] = useState('');
+
+  const openDelete = (item: StaleProspectAbandonedItem) => {
+    setDeleteTarget(item);
+    setDeleteCode('');
+    setDeleteError('');
+    setFollowUpNotice('');
+  };
+  const closeDelete = () => {
+    if (!deleting) setDeleteTarget(null);
+  };
+  const confirmDelete = async () => {
+    if (!deleteTarget || !deleteCode.trim()) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await api.staleProspectsConsoleDelete(deleteTarget.prospect_id, deleteCode.trim());
+      const removed = deleteTarget;
+      setAbandonedItems(items => items.filter(i => i.prospect_id !== removed.prospect_id));
+      setAbandonedTotal(t => Math.max(0, t - 1));
+      setStageCounts(counts => ({ ...counts, [removed.status]: Math.max(0, (counts[removed.status] || 0) - 1) }));
+      setFollowUpNotice(`Deleted ${removed.property_address || removed.property_code}.`);
+      setDeleteTarget(null);
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Could not delete this prospect.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const fmtDate = (v?: string | null) => v ? new Date(v).toLocaleDateString(isUS ? 'en-US' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
   // ── Tab: "Agents" (UK) — one letter per estate agency company with 2+
@@ -683,6 +719,11 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         .spc-btn-primary:hover{background:#000}
         .spc-btn-ghost{background:#fff;color:#111;border:1px solid #E3E5E9}
         .spc-btn-ghost:hover{background:#F4F4F5}
+        .spc-btn-danger{background:#B91C1C;color:#fff}
+        .spc-btn-danger:hover{background:#991B1B}
+        .spc-btn-danger:disabled{opacity:.5;cursor:not-allowed}
+        .spc-btn-danger-ghost{background:#fff;color:#B91C1C;border:1px solid #F3C7C7;padding:6px 12px;font-size:12.5px}
+        .spc-btn-danger-ghost:hover{background:#FEF2F2}
         .spc-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
         .spc-stat{background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:12px 16px;min-width:110px}
         .spc-stat b{display:block;font-family:"Plus Jakarta Sans",sans-serif;font-size:20px;font-weight:800}
@@ -1024,7 +1065,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               <div className="spc-stat"><b>{abandonedTotal}</b><span>{STAGE_LABELS[stageFilter] || 'in the funnel'}</span></div>
             </div>
             <div className="spc-filters" style={{ flexWrap: 'wrap' }}>
-              <input className="spc-input" placeholder="Search address, property code, contact name or email..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
+              <input className="spc-input" placeholder="Search address, property or agency code, contact name or email..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['', 'looked_up', 'details_submitted', 'paid'] as const).map(s => (
                   <button
@@ -1052,6 +1093,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
             </div>
 
             {abandonedError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{abandonedError}</p>}
+            {followUpNotice && <p style={{ color: '#15803D', fontWeight: 700, fontSize: 13 }}>{followUpNotice}</p>}
 
             {abandonedLoading ? (
               <div className="spc-loading">Loading follow-up list...</div>
@@ -1062,7 +1104,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
-                      {['Property', 'Contact', 'Price', 'Stage', 'First looked up', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status'].map(h => (
+                      {['Property', 'Contact', 'Price', 'Stage', 'First looked up', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status', ''].map(h => (
                         <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                       ))}
                     </tr>
@@ -1074,9 +1116,16 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                           <div style={{ fontWeight: 600 }}>{item.property_address}</div>
                           <div style={{ color: '#888', fontSize: 12 }}>{item.property_code}{item.postcode ? ` · ${item.postcode}` : ''}</div>
                           {item.audience === 'agent' && (
-                            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#F3E6FB', color: '#A409D2', whiteSpace: 'nowrap' }}>
-                              Agent{item.agent_company ? ` · ${item.agent_company}` : ''}
-                            </span>
+                            <>
+                              <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#F3E6FB', color: '#A409D2', whiteSpace: 'nowrap' }}>
+                                Agent{item.agent_company ? ` · ${item.agent_company}` : ''}
+                              </span>
+                              {item.agent_code && (
+                                <div style={{ color: '#555', fontSize: 12, marginTop: 4 }}>
+                                  Agency code <b style={{ fontFamily: 'monospace', color: '#111' }}>{item.agent_code}</b>
+                                </div>
+                              )}
+                            </>
                           )}
                         </td>
                         <td style={{ padding: '10px 12px' }}>
@@ -1103,6 +1152,11 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                             : item.sms_unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed (SMS)</span>
                             : item.treated_at ? <span style={{ color: '#15803D', fontWeight: 700 }}>Treated</span>
                             : <span style={{ color: '#92400E', fontWeight: 700 }}>Open</span>}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <button type="button" className="spc-btn spc-btn-danger-ghost" onClick={() => openDelete(item)} aria-label={`Delete ${item.property_address || item.property_code}`}>
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1580,6 +1634,39 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="spc-overlay" onClick={closeDelete}>
+          <div className="spc-modal spc-modal-sm" role="dialog" aria-modal="true" aria-labelledby="spc-delete-title" onClick={e => e.stopPropagation()}>
+            <button className="spc-close" onClick={closeDelete} aria-label="Close">✕</button>
+            <h2 id="spc-delete-title">Delete this prospect?</h2>
+            <p className="sub">
+              This permanently deletes <b>{deleteTarget.property_address || 'this property'}</b> ({deleteTarget.property_code}
+              {deleteTarget.agent_code ? ` · agency code ${deleteTarget.agent_code}` : ''}) with its report, letter and follow-up history. It can&apos;t be undone.
+              {deleteTarget.audience !== 'agent' && ' Agency copies of this property are kept; delete those separately.'}
+            </p>
+            <form onSubmit={e => { e.preventDefault(); void confirmDelete(); }}>
+              <div className="spc-field">
+                <label htmlFor="spc-delete-code">Delete code</label>
+                <input
+                  id="spc-delete-code"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  autoFocus
+                  value={deleteCode}
+                  onChange={e => { setDeleteCode(e.target.value); setDeleteError(''); }}
+                />
+              </div>
+              {deleteError && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{deleteError}</p>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button type="button" className="spc-btn spc-btn-ghost" onClick={closeDelete} disabled={deleting}>Cancel</button>
+                <button type="submit" className="spc-btn spc-btn-danger" disabled={deleting || !deleteCode.trim()}>{deleting ? 'Deleting…' : 'Delete prospect'}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

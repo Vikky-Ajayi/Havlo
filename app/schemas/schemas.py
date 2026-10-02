@@ -825,9 +825,11 @@ class StaleProspectAbandonedItem(BaseModel):
     sms_unsubscribed_at: Optional[str] = None
     treated_at: Optional[str] = None
     # "agent" when this is an agency's copy (from /check/agent), with the
-    # agency's name, so the follow-up list doesn't read it as the owner.
+    # agency's name and its agency code, so the follow-up list doesn't read
+    # it as the owner and shows which agency looked the property up.
     audience: str = "owner"
     agent_company: Optional[str] = None
+    agent_code: Optional[str] = None
 
 
 class StaleProspectAbandonedResponse(BaseModel):
@@ -838,6 +840,15 @@ class StaleProspectAbandonedResponse(BaseModel):
 
 class StaleProspectConsoleEditRequest(BaseModel):
     report_data: dict
+
+
+class StaleProspectConsoleDeleteRequest(BaseModel):
+    code: str = Field(..., max_length=32)
+
+
+class StaleProspectConsoleDeleteResponse(BaseModel):
+    deleted: bool
+    prospect_id: str
 
 
 class StaleProspectConsoleAddressEditRequest(BaseModel):

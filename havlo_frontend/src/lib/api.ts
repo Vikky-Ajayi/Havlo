@@ -126,9 +126,10 @@ export interface StaleProspectAbandonedItem {
   unsubscribed_at?: string | null;
   sms_unsubscribed_at?: string | null;
   treated_at?: string | null;
-  /** 'agent' for an agency's copy opened from /check/agent, with the agency's name. */
+  /** 'agent' for an agency's copy opened from /check/agent, with the agency's name and code. */
   audience?: 'owner' | 'agent';
   agent_company?: string | null;
+  agent_code?: string | null;
 }
 
 export interface StaleProspectAbandonedResponse {
@@ -1203,6 +1204,13 @@ export const api = {
       method: 'PATCH',
       body: { property_address: propertyAddress },
       timeout: 30000,
+    }),
+
+  /** Permanently deletes a prospect; needs the console delete code. */
+  staleProspectsConsoleDelete: (prospectId: string, code: string) =>
+    request<{ deleted: boolean; prospect_id: string }>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}/delete`, {
+      method: 'POST',
+      body: { code },
     }),
 
   staleProspectsConsoleSetTreated: (prospectId: string, treated: boolean) =>
