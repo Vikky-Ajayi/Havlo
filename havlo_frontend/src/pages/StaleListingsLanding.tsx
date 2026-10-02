@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { Footer } from '../components/shared/Footer';
-import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { StaleListingsBrandLogo } from '../components/shared/StaleListingsLogo';
+import { PropertyCodeForm } from '../components/shared/PropertyCodeForm';
 import { CountryBadge } from '../components/shared/CountryBadge';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
 import { parsePropertyInput } from '../lib/propertyInput';
@@ -336,6 +337,7 @@ export function StaleListingsLanding() {
           display:none;
         }
 
+        .sl-code-form { margin:8px 0 4px; }
         .sl-stale-logo {
           display: block;
           flex-shrink: 0;
@@ -1115,7 +1117,7 @@ export function StaleListingsLanding() {
         <div className="sl-inner-container" style={{ width:'100%', maxWidth:1440, margin:'0 auto', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           {/* Logo */}
           <div className="sl-nav-logo-wrap" style={{ display:'flex', alignItems:'center' }}>
-            <StaleListingsLogo className="sl-stale-logo" />
+            <StaleListingsBrandLogo className="sl-stale-logo" />
           </div>
 
           {/* Nav links (desktop) */}
@@ -1196,7 +1198,7 @@ export function StaleListingsLanding() {
         {/* Drawer header */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:40 }}>
           <div style={{ display:'flex', alignItems:'center' }}>
-            <StaleListingsLogo className="sl-stale-logo" />
+            <StaleListingsBrandLogo className="sl-stale-logo" />
           </div>
           <button
             onClick={() => setMenuOpen(false)}
@@ -1319,6 +1321,8 @@ export function StaleListingsLanding() {
               {inputError && (
                 <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{inputError}</p>
               )}
+
+              <PropertyCodeForm audience="owner" className="sl-code-form" />
 
               {/* Trustpilot row */}
               <div className="sl-trustpilot-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -1653,7 +1657,7 @@ export function StaleListingsLanding() {
                 color:'#A409D2',
               } as CSSProperties}
             >
-              £499.99
+              £299.99
             </span>
           </div>
 

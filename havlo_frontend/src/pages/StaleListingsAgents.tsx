@@ -1,7 +1,8 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
-import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { StaleListingsBrandLogo } from '../components/shared/StaleListingsLogo';
+import { PropertyCodeForm } from '../components/shared/PropertyCodeForm';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -230,12 +231,6 @@ export function StaleListingsAgents() {
     navigate('/stale-listings/questions');
   };
 
-  const startFree = () => {
-    sessionStorage.setItem('sl_agent_flow', 'true');
-    sessionStorage.setItem('sl_free_plan', 'true');
-    navigate('/stale-listings/questions');
-  };
-
   const visibleFaqs = faqExpanded ? faqItems : faqItems.slice(0, 5);
 
   return (
@@ -305,8 +300,8 @@ export function StaleListingsAgents() {
         }
 
         .sla-logo {
-          width: 215px;
-          height: auto;
+          height: 48px;
+          width: auto;
           display: block;
         }
 
@@ -483,6 +478,10 @@ export function StaleListingsAgents() {
           color: #a00000;
           font-size: 13px;
           font-weight: 700;
+        }
+
+        .sla-code-form {
+          margin: 0 0 28px;
         }
 
         .sla-trust-row {
@@ -908,7 +907,8 @@ export function StaleListingsAgents() {
 
         .sla-plan-grid {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 397px));
+          justify-content: center;
           gap: 24px;
           text-align: left;
         }
@@ -1174,7 +1174,7 @@ export function StaleListingsAgents() {
           }
 
           .sla-logo {
-            width: 120px;
+            height: 40px;
           }
 
           .sla-nav {
@@ -1638,7 +1638,7 @@ export function StaleListingsAgents() {
       <header className="sla-header">
         <div className="sla-shell sla-header-inner">
           <a href="/stale-listings/agents" aria-label="Stale Listings agents home">
-            <StaleListingsLogo className="sla-logo" />
+            <StaleListingsBrandLogo className="sla-logo" />
           </a>
           <div className="sla-header-actions">
             <nav className="sla-nav" aria-label="Stale Listings agents navigation">
@@ -1690,6 +1690,7 @@ export function StaleListingsAgents() {
                 <button type="submit">Submit A Listing</button>
               </form>
               {error && <p className="sla-form-error">{error}</p>}
+              <PropertyCodeForm audience="agent" className="sla-code-form" />
 
               <div className="sla-trust-row">
                 <strong>Excellent</strong>
@@ -1778,22 +1779,14 @@ export function StaleListingsAgents() {
 
         <section className="sla-dark" id="pricing">
           <div className="sla-shell sla-pricing">
-            <h2>Start with a free assessment.</h2>
-            <p>No commitment required for your first listing. See exactly what Havlo finds before deciding on a full report.</p>
+            <h2>Simple, per-listing pricing.</h2>
+            <p>£149.99 for each property assessment, with no subscription. Reviewing listings every month? Ask about agency pricing.</p>
             <div className="sla-plan-grid">
-              <PlanCard
-                price="£0"
-                title="Free Trial Assessment"
-                subtitle="For first-time agencies."
-                features={['Listing review', 'Pricing analysis', 'Photography review', 'Market positioning assessment', 'Recovery recommendations']}
-                button="Submit Free Listing"
-                onClick={startFree}
-              />
               <PlanCard
                 price="£149.99"
                 title="Listing Recovery Assessment"
                 subtitle="For individual stale listings."
-                features={['Full Listing Recovery Report', 'Pricing review', 'Photography review', 'Listing copy review', 'Competitive analysis', 'Recovery recommendations', 'Delivered within 5 working day']}
+                features={['Full Listing Recovery Report', 'Pricing review', 'Photography review', 'Listing copy review', 'Competitive analysis', 'Recovery recommendations']}
                 button="Submit Listing"
                 onClick={startBlank}
               />

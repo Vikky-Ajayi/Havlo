@@ -51,10 +51,21 @@ export function isUK(iso: string | null | undefined): boolean {
   return (iso || '').toUpperCase() === 'GB';
 }
 
-// Where the country-switcher badge sends you when the UK/international
-// side of the site changes.
+// The buy-abroad pages are written for a Nigerian audience, so Nigeria is
+// the only country sent there; everywhere else (the UK included) gets the
+// stale-listings experience.
+export function isBuyAbroadCountry(iso: string | null | undefined): boolean {
+  return (iso || '').toUpperCase() === 'NG';
+}
+
+export function isBuyAbroadPath(pathname: string): boolean {
+  return /^\/(buyabroad|buy-abroad|buy-property-abroad)(\/|$)/i.test(pathname);
+}
+
+// Where the country-switcher badge (and the "/" country redirect) sends
+// you for a country.
 export function experienceRouteFor(iso: string | null | undefined): string {
-  return isUK(iso) ? '/stale-listings' : '/buyabroad/uk';
+  return isBuyAbroadCountry(iso) ? '/buyabroad/uk' : '/stale-listings';
 }
 
 // Calls the Vercel edge function once. Resolves to an ISO 3166-1 alpha-2

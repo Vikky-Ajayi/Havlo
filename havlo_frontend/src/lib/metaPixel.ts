@@ -21,7 +21,7 @@ export const STALE_LISTINGS_PIXEL_PLANS: Record<
   property_sale_assessment: {
     id: 'property_sale_assessment',
     name: 'Havlo Property Sale Assessment',
-    value: 499.99,
+    value: 299.99,
     currency: 'GBP',
   },
   quick_insight: {

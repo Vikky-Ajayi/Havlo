@@ -185,25 +185,23 @@ def verify_sms_unsubscribe_short_token(property_code: str, token: str) -> bool:
     return hmac.compare_digest(expected, (token or "").strip())
 
 
-def prospect_unlock_price(asking_price: float | None) -> float:
-    """Full-report price shown to a letter prospect, tiered by asking price.
+AGENT_UNLOCK_PRICE = 149.99
+OWNER_UNLOCK_PRICE = 299.99
 
-    Mirrors app.routers.stale_listings._stale_prospect_checkout_amount and
-    the frontend's unlockPrice() (havlo_frontend/src/pages/stale-prospect/
-    types.ts) — three independent copies of the same tiers because the
-    frontend needs it before checkout resolves, the checkout route needs
-    the authoritative amount, and the abandonment email drip needs it to
-    show the recipient's real price rather than a hardcoded figure. Keep
-    all three in sync if the tiers ever change.
+
+def prospect_unlock_price(asking_price: float | None, audience: str | None = None) -> float:
+    """Full-report price for a letter prospect: GBP 149.99 when the letter
+    went to the listing's estate agency (audience "agent" — the same
+    per-assessment price as on /stale-listings/agents), otherwise a flat
+    GBP 299.99 whatever the asking price. asking_price is kept so callers
+    don't change if per-price tiering ever comes back.
+
+    The checkout route (_stale_prospect_checkout_amount) and the email
+    drips call this; the frontend's unlockPrice() in
+    havlo_frontend/src/pages/stale-prospect/types.ts mirrors it because the
+    page needs the figure before checkout resolves. Keep the two in sync.
     """
-    price = float(asking_price or 0)
-    if price >= 1_000_000:
-        return 499.99
-    if price > 700_000:
-        return 399.99
-    if price >= 500_000:
-        return 299.99
-    return 149.99
+    return AGENT_UNLOCK_PRICE if audience == "agent" else OWNER_UNLOCK_PRICE
 
 
 def normalize_property_code(code: str) -> str:

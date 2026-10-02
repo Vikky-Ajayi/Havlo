@@ -1,7 +1,7 @@
 import { CSSProperties, Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChartPie, CircleCheck, Eye } from 'lucide-react';
-import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { StaleListingsBrandLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
 import { useTypewriter } from '../hooks/useTypewriter';
@@ -211,7 +211,7 @@ const Header = () => {
         <div className="slh-wrap slh-header-inner">
           <div className="slh-brand">
             <Link to="/stale-listings" className="slh-logo" aria-label="Stale Listings by Havlo">
-              <StaleListingsLogo className="slh-logo-mark" />
+              <StaleListingsBrandLogo className="slh-logo-mark" />
             </Link>
             <CountryBadge variant="inline" />
           </div>
@@ -235,7 +235,7 @@ const Header = () => {
       <div className={`slh-drawer-backdrop${menuOpen ? ' is-open' : ''}`} onClick={close} aria-hidden="true" />
       <div className={`slh-drawer${menuOpen ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden={!menuOpen}>
         <div className="slh-drawer-head">
-          <StaleListingsLogo className="slh-logo-mark" />
+          <StaleListingsBrandLogo className="slh-logo-mark" />
           <button type="button" onClick={close} aria-label="Close menu">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M18 6L6 18M6 6l12 12" stroke="#1F1F1E" strokeWidth="2" strokeLinecap="round" />
@@ -287,7 +287,7 @@ export const StaleListingsHome = () => {
             </p>
             <div className="slh-hero-actions">
               <Link className="slh-btn slh-btn--dark" to="/stale-listings/agents">Get Started - Agents</Link>
-              <Link className="slh-btn slh-btn--light" to="/stale-listings/seller">Get Started - Sellers</Link>
+              <Link className="slh-btn slh-btn--light" to="/stale-listings/seller">Get Started - Sellers/Vendors</Link>
             </div>
             <ul className="slh-badges">
               {heroBadges.map(({ icon: Icon, title, sub }) => (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { flagUrl } from '../../lib/geoCountries';
 import { ALL_COUNTRY_REGIONS } from '../../lib/allCountries';
 import {
@@ -7,7 +7,8 @@ import {
   detectCountryFromIP,
   experienceRouteFor,
   getStoredCountry,
-  isUK,
+  isBuyAbroadCountry,
+  isBuyAbroadPath,
   setStoredCountry,
 } from '../../lib/geo';
 
@@ -32,8 +33,9 @@ let inFlightDetection: Promise<string | null> | null = null;
 // Global country switcher: a pill (flag + chevron) meant to sit inline in
 // a page's own header/navbar — see `variant`. Clicking opens a dropdown of
 // countries grouped by region; picking one updates the badge's flag and —
-// if it moves you between the UK and international sides of the site —
-// redirects to that experience's entry point.
+// if it belongs to the other side of the site from the current page
+// (Nigeria → buy-abroad, anywhere else → stale-listings) — redirects to
+// that experience's entry point.
 //
 // If no country is stored yet (a visitor who landed on some page other
 // than "/", where GeoHome normally does this), the badge resolves one
@@ -41,6 +43,7 @@ let inFlightDetection: Promise<string | null> | null = null;
 // manual choice just because the badge happened to mount first.
 export const CountryBadge = ({ variant = 'floating' }: { variant?: 'floating' | 'inline' }) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [currentIso, setCurrentIso] = useState<string | null>(null);
@@ -94,13 +97,15 @@ export const CountryBadge = ({ variant = 'floating' }: { variant?: 'floating' | 
   const hasKnownFlag = ALL_COUNTRIES.some((c) => c.flag.toUpperCase() === (currentIso || '').toUpperCase());
 
   const handleSelect = (iso: string) => {
-    const wasUK = isUK(currentIso);
-    const nowUK = isUK(iso);
     setStoredCountry(iso, 'manual');
     setCurrentIso(iso);
     setOpen(false);
     setQuery('');
-    if (wasUK !== nowUK) {
+    // Only move the visitor when the pick belongs to the other side of the
+    // site from the page they're on: Nigeria → buy-abroad, every other
+    // country → stale-listings (so choosing, say, the US on a stale-listings
+    // page keeps them there).
+    if (isBuyAbroadCountry(iso) !== isBuyAbroadPath(pathname)) {
       navigate(experienceRouteFor(iso));
     }
   };

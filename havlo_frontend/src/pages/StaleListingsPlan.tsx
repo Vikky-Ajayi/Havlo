@@ -36,25 +36,6 @@ const CloseIcon = () => (
 );
 
 /* ─── HOUSE ILLUSTRATIONS ─── */
-const BlueHouseIllustration = () => (
-  <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0' }}>
-    <svg width="110" height="100" viewBox="0 0 110 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="55,8 102,42 8,42" fill="#6AABDF"/>
-      <polygon points="55,14 98,42 12,42" fill="#5B9BD5"/>
-      <rect x="12" y="42" width="86" height="50" fill="#4A7FC1"/>
-      <rect x="41" y="58" width="28" height="34" fill="#2B5A9E"/>
-      <rect x="17" y="50" width="20" height="17" fill="#87BCDE"/>
-      <rect x="73" y="50" width="20" height="17" fill="#87BCDE"/>
-      <rect x="17" y="54" width="20" height="1" fill="#6AABDF" opacity="0.5"/>
-      <rect x="27" y="50" width="1" height="17" fill="#6AABDF" opacity="0.5"/>
-      <rect x="73" y="54" width="20" height="1" fill="#6AABDF" opacity="0.5"/>
-      <rect x="83" y="50" width="1" height="17" fill="#6AABDF" opacity="0.5"/>
-      <circle cx="55" cy="75" r="3" fill="#1A3A6E"/>
-      <rect x="50" y="92" width="10" height="2" rx="1" fill="#1A3A6E" opacity="0.3"/>
-    </svg>
-  </div>
-);
-
 const GoldHouseIllustration = () => (
   <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0' }}>
     <svg width="110" height="100" viewBox="0 0 110 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -106,11 +87,11 @@ const PLANS = [
   {
     id: 'property_sale_assessment' as const,
     name: 'Havlo Property Sale Assessment',
-    price: '£499.99',
-    amount: 499.99,
+    price: '£299.99',
+    amount: 299.99,
     tagline: 'For serious sellers wanting expert guidance to improve saleability.',
     turnaround: 'Turnaround: 24 hours',
-    priceLabel: '£499.99 per report',
+    priceLabel: '£299.99 per report',
     preNote: null as string | null,
     features: [
       'Market analysis',
@@ -165,32 +146,9 @@ const AGENT_PLAN = {
   selectedBorderColor: '2px solid #000',
 };
 
-const FREE_PLAN = {
-  id: 'free_trial_assessment' as const,
-  name: 'Free Trial Assessment',
-  price: '£0',
-  amount: 0,
-  tagline: 'For first-time agencies.',
-  turnaround: 'Delivered within 5 working days',
-  priceLabel: 'Free',
-  preNote: null as string | null,
-  features: [
-    'Listing review',
-    'Pricing analysis',
-    'Photography review',
-    'Market positioning assessment',
-    'Recovery recommendations',
-  ],
-  Illustration: BlueHouseIllustration,
-  bestValue: false,
-  btnBg: '#000',
-  btnColor: '#fff',
-  btnGold: false,
-  borderColor: '1.5px solid #E8E8E8',
-  selectedBorderColor: '2px solid #000',
-};
-
-type PlanId = 'property_sale_assessment' | 'listing_recovery_assessment' | 'free_trial_assessment';
+// Agents pay listing_recovery_assessment for every assessment — the free
+// trial is no longer offered (the server refuses it too).
+type PlanId = 'property_sale_assessment' | 'listing_recovery_assessment';
 
 /* ─── STEPPER ─── */
 function Stepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
@@ -257,10 +215,9 @@ export function StaleListingsPlan() {
   });
   const navigate = useNavigate();
   const isAgentFlow = sessionStorage.getItem('sl_agent_flow') === 'true';
-  const isFreePlan = sessionStorage.getItem('sl_free_plan') === 'true';
-  const visiblePlans = isAgentFlow ? [FREE_PLAN, AGENT_PLAN] : PLANS;
+  const visiblePlans = isAgentFlow ? [AGENT_PLAN] : PLANS;
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
-    isFreePlan ? 'free_trial_assessment' : isAgentFlow ? 'listing_recovery_assessment' : 'property_sale_assessment'
+    isAgentFlow ? 'listing_recovery_assessment' : 'property_sale_assessment'
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const [showOrderSheet, setShowOrderSheet] = useState(false);
@@ -288,7 +245,6 @@ export function StaleListingsPlan() {
 
   const turnaroundLabel = selectedPlan === 'property_sale_assessment' ? '24 hours'
     : selectedPlan === 'listing_recovery_assessment' ? 'Within 5 working days'
-    : selectedPlan === 'free_trial_assessment' ? 'Within 5 working days'
     : '24 hours';
 
   const handleVerifyPromo = async () => {
@@ -329,12 +285,10 @@ export function StaleListingsPlan() {
     setLoading(true);
     setError('');
     sessionStorage.setItem('sl_selected_plan', selectedPlan);
-    if (selectedPlan !== 'free_trial_assessment') {
-      trackMetaPixelEvent('AddToCart', {
-        ...staleListingsPlanParams(selectedPlan),
-        property_input_type: listingUrl ? 'listing_url' : address ? 'property_address' : 'unknown',
-      }, `stale_add_to_cart_${selectedPlan}_${Date.now()}`);
-    }
+    trackMetaPixelEvent('AddToCart', {
+      ...staleListingsPlanParams(selectedPlan),
+      property_input_type: listingUrl ? 'listing_url' : address ? 'property_address' : 'unknown',
+    }, `stale_add_to_cart_${selectedPlan}_${Date.now()}`);
     try {
       const result = await api.staleListingsSubmit({
         ...form,
@@ -345,7 +299,7 @@ export function StaleListingsPlan() {
         redirect_url: `${window.location.origin}/stale-listings/complete`,
         promo_code: promoVerified ? promoCode.trim() : undefined,
       });
-      if (selectedPlan === 'free_trial_assessment' || result.amount === 0) {
+      if (result.amount === 0) {
         sessionStorage.removeItem('sl_free_plan');
         navigate(`/stale-listings/complete?ref=${result.reference}`);
         return;
@@ -855,7 +809,7 @@ export function StaleListingsPlan() {
                   onClick={handlePayClick}
                   style={{ height: 48, padding: '0 24px', borderRadius: 8, border: 'none', background: '#000', fontFamily: 'Inter, sans-serif', fontWeight: 500, fontSize: 15, color: '#fff', cursor: 'pointer', letterSpacing: '-0.2px', whiteSpace: 'nowrap' }}
                 >
-                  {selectedPlan === 'free_trial_assessment' ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+                  Pay Securely and start Assessment
                 </button>
               </div>
 
@@ -871,7 +825,7 @@ export function StaleListingsPlan() {
           Back to Questions
         </button>
         <button className="sl-p-pay-btn" onClick={handlePayClick}>
-          {selectedPlan === 'free_trial_assessment' ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+          Pay Securely and start Assessment
         </button>
       </div>
 
@@ -1076,7 +1030,7 @@ export function StaleListingsPlan() {
               disabled={loading}
               style={{ width: '100%', height: 50, borderRadius: 8, border: 'none', background: loading ? '#888' : '#000', fontFamily: 'Inter, sans-serif', fontWeight: 600, fontSize: 16, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Processing…' : selectedPlan === 'free_trial_assessment' || promoVerified ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
+              {loading ? 'Processing…' : promoVerified ? 'Submit Free Listing' : 'Pay Securely and start Assessment'}
             </button>
           </div>
         </div>

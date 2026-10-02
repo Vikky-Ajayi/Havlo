@@ -186,12 +186,13 @@ export function stepperIndexFor(step: WizardStep): number {
   }
 }
 
-// Mirrors _stale_prospect_checkout_amount in app/routers/stale_listings.py —
-// flat £299.99 regardless of asking price. Keeps the askingPrice parameter
-// so callers don't need to change if per-price tiering is ever
-// reintroduced.
-export function unlockPrice(askingPrice?: number | null): number {
-  return 299.99;
+// Mirrors prospect_unlock_price in app/services/stale_prospect_service.py
+// (what the checkout route charges): £149.99 for an estate agency's copy —
+// the same per-assessment price as on /stale-listings/agents — otherwise a
+// flat £299.99 whatever the asking price. Keeps the askingPrice parameter
+// so callers don't change if per-price tiering is ever reintroduced.
+export function unlockPrice(askingPrice?: number | null, audience?: 'owner' | 'agent'): number {
+  return audience === 'agent' ? 149.99 : 299.99;
 }
 
 /** "12 Aug 2026" for a reduced_date; "Recently" when the date couldn't be read. */

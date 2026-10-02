@@ -874,7 +874,7 @@ const AssessmentStep = ({
           <p>You&rsquo;ve seen <b className="slw-hl">{revealed.length}</b> of the <b className="slw-hl">{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
             <button type="button" className="slw-btn-white" onClick={onUnlock}>
-              View Full Assessment &ndash; {formatGbp(unlockPrice(prospect.asking_price), { maximumFractionDigits: 2 })}
+              View Full Assessment &ndash; {formatGbp(unlockPrice(prospect.asking_price, prospect.audience), { maximumFractionDigits: 2 })}
             </button>
           </div>
           <PreparedFor address={prospect.property_address} />
@@ -943,7 +943,7 @@ const PaymentStep = ({
   const [promoCode, setPromoCode] = useState('');
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
-  const price = unlockPrice(prospect.asking_price);
+  const price = unlockPrice(prospect.asking_price, prospect.audience);
 
   const handlePayClick = () => {
     if (method === 'card') onPayCard();
@@ -1345,7 +1345,7 @@ function fireProspectLeadPixel(data: ProspectPreview) {
     content_name: 'Stale Listing Prospect Letter Lookup',
     content_category: 'stale_listings_prospect',
     content_ids: [data.property_code],
-    value: unlockPrice(data.asking_price),
+    value: unlockPrice(data.asking_price, data.audience),
     currency: 'GBP',
   }, `sl_prospect_lead_${data.property_code}`);
 }

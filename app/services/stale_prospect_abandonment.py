@@ -140,6 +140,7 @@ async def run_abandonment_email_cycle() -> dict:
                 asking_price=prospect.asking_price,
                 property_code=prospect.property_code,
                 unsubscribe_url=build_unsubscribe_url(prospect.id),
+                audience=prospect.audience,
             )
         except Exception:
             logger.exception(

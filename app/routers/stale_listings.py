@@ -102,6 +102,7 @@ from app.services.stale_prospect_service import (
     same_rightmove_listing,
     normalize_property_code,
     parse_listed_date,
+    prospect_unlock_price,
     serialize_preview,
     serialize_report,
     send_prospect_letter_to_admin,
@@ -131,8 +132,11 @@ SL_PACKAGES: dict[str, dict] = {
     # checkout step both now sell only this. quick_insight and
     # professional_review are kept below (never offered by either page
     # anymore) purely so existing historical orders still resolve a package
-    # name/amount correctly — do not remove them.
-    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 499.99,  "currency": "GBP"},
+    # name/amount correctly — do not remove them. free_trial_assessment is
+    # likewise kept only for historical orders: agents now pay
+    # listing_recovery_assessment for every assessment, and /submit refuses
+    # new free-trial orders.
+    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 299.99,  "currency": "GBP"},
     "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
@@ -141,12 +145,13 @@ SL_PACKAGES: dict[str, dict] = {
 }
 
 
-def _stale_prospect_checkout_amount(asking_price: float | None) -> float:
-    """Full-report checkout price for a letter prospect — flat GBP 299.99
-    regardless of asking price. Keeps the asking_price parameter so callers
-    don't need to change if per-price tiering is ever reintroduced.
+def _stale_prospect_checkout_amount(asking_price: float | None, audience: str | None = None) -> float:
+    """Full-report checkout price for a letter prospect: GBP 149.99 for an
+    estate agency's listing (the same per-assessment price agents pay on
+    /stale-listings/agents), otherwise a flat GBP 299.99 regardless of
+    asking price. See prospect_unlock_price, which this delegates to.
     """
-    return 299.99
+    return prospect_unlock_price(asking_price, audience)
 
 public_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings"])
 admin_router = APIRouter(prefix="/stale-listings", tags=["Stale Listings Admin"])
@@ -419,6 +424,8 @@ async def submit_stale_listing(
     package_info = SL_PACKAGES.get(payload.package)
     if not package_info:
         raise HTTPException(status_code=400, detail="Invalid package selected.")
+    if payload.package == "free_trial_assessment":
+        raise HTTPException(status_code=400, detail="The free trial assessment is no longer offered.")
 
     amount = float(package_info["amount"])
     currency = str(package_info["currency"])
@@ -762,7 +769,7 @@ async def create_stale_prospect_checkout(
         property_code=payload.property_code,
     )
     package = SL_PACKAGES["listing_recovery_assessment"]
-    amount = _stale_prospect_checkout_amount(prospect.asking_price)
+    amount = _stale_prospect_checkout_amount(prospect.asking_price, prospect.audience)
     currency = str(package["currency"])
     frontend = _frontend_base_url()
     access_key = f"token={payload.token.strip()}" if payload.token else f"code={prospect.property_code}"

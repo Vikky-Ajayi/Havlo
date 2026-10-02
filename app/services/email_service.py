@@ -2165,9 +2165,10 @@ def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text:
         intended copy.
       - Price mentions that quote the recipient's own assessment cost
         (stages 1, 5, 6) use their actual tiered price (price_html) rather
-        than the mockup's hardcoded "£499.99". Email 4's "£499.99 Havlo
+        than the mockup's hardcoded "£499.99". Email 4's "£299.99 Havlo
         assessment" is a different customer's (John's) anecdote, not the
-        recipient's price, so it stays a fixed illustrative figure.
+        recipient's price, so it stays a fixed illustrative figure (the
+        current seller price — it quoted £499.99 until that was retired).
     """
     if stage == 1:
         return {
@@ -2228,7 +2229,7 @@ def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text:
                     "John's property had been sitting on the market for 7 months with barely any viewings."
                 )
                 + _stale_abandonment_paragraph(
-                    "Their £499.99 Havlo assessment flagged pricing 8% above comparable sales, they made the "
+                    "Their £299.99 Havlo assessment flagged pricing 8% above comparable sales, they made the "
                     "change, and had an offer within 3 weeks."
                 )
                 + _stale_abandonment_paragraph("Worth finding out what your own assessment would flag.")
@@ -2404,6 +2405,7 @@ def send_stale_prospect_abandonment_email_sync(
     property_code: str,
     unsubscribe_url: str,
     frontend_base_url: str | None = None,
+    audience: str | None = None,
 ) -> bool:
     """Send one stage of the pre-purchase / cart-abandonment drip.
 
@@ -2414,7 +2416,7 @@ def send_stale_prospect_abandonment_email_sync(
     """
     from app.services.stale_prospect_service import prospect_unlock_price
 
-    price = prospect_unlock_price(asking_price)
+    price = prospect_unlock_price(asking_price, audience)
     price_text = _stale_abandonment_format_price(price)
     price_html = f'<strong style="color:#111111;">{price_text}</strong>'
     config = _stale_abandonment_stage_content(stage, price_html=price_html, price_text=price_text)
@@ -2694,6 +2696,7 @@ def send_stale_prospect_post_purchase_email_sync(
     property_code: str,
     unsubscribe_url: str,
     frontend_base_url: str | None = None,
+    audience: str | None = None,
 ) -> bool:
     """Send one stage of the post-purchase nurture / upsell drip.
 
@@ -2704,7 +2707,7 @@ def send_stale_prospect_post_purchase_email_sync(
     """
     from app.services.stale_prospect_service import prospect_unlock_price
 
-    price = prospect_unlock_price(asking_price)
+    price = prospect_unlock_price(asking_price, audience)
     price_text = _stale_abandonment_format_price(price)
     price_html = f'<strong style="color:#111111;">{price_text}</strong>'
     config = _stale_post_purchase_stage_content(stage, price_html=price_html, price_text=price_text)
@@ -2865,7 +2868,7 @@ def send_stale_agent_followup_email_sync(
     (agency, stage) so nothing is sent twice."""
     from app.services.stale_prospect_service import prospect_unlock_price
 
-    price_text = _stale_abandonment_format_price(prospect_unlock_price(None))
+    price_text = _stale_abandonment_format_price(prospect_unlock_price(None, "agent"))
     config = _stale_agent_followup_content(
         stage, brand=brand, count=listing_count, price_text=price_text, agent_code=agent_code
     )

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { StaleListingsLogo } from '../components/shared/StaleListingsLogo';
+import { StaleListingsBrandLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
 
@@ -46,7 +46,7 @@ const shapes = [
 export const StaleListingsPartnerships = () => (
   <div className="slp-page">
     <header className="slp-header">
-      <Link className="slp-logo" to="/stale-listings"><StaleListingsLogo className="slp-logo-mark" /></Link>
+      <Link className="slp-logo" to="/stale-listings"><StaleListingsBrandLogo className="slp-logo-mark" /></Link>
       <div className="slp-header-actions">
         <nav><a href="#work">Who we work with</a><a href="#white">White-label</a><a href="#how">How it works</a><a className="dark" href="mailto:partnerships@heyhavlo.com">Make an Enquiry</a><a href="mailto:partnerships@heyhavlo.com">Book a Demo</a></nav>
         <CountryBadge variant="inline" />
@@ -131,8 +131,9 @@ export const StaleListingsPartnerships = () => (
     <Footer />
 
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
-      .slp-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#0b0b0b;background:#fff}
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+      /* Typography follows /stale-listings/seller: Plus Jakarta Sans headings, Inter text. */
+      .slp-page{font-family:Inter,sans-serif;letter-spacing:-.02em;color:#1F1F1E;background:#fff}
       .slp-header{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 11%;border-bottom:1px solid #eee}
       .slp-header-actions{display:flex;align-items:center;gap:20px}
       .slp-logo{display:inline-flex;align-items:center;text-decoration:none}
@@ -144,16 +145,18 @@ export const StaleListingsPartnerships = () => (
       .slp-header .dark,.slp-hero a:first-child{background:#000;color:#fff}
       .slp-header button{display:none;background:0;border:0;font-size:24px}
       .slp-hero{display:grid;grid-template-columns:1fr 460px;gap:96px;align-items:center;padding:95px 11%;background:linear-gradient(105deg,#fff 34%,#ffeffc)}
-      .slp-hero span{display:inline-block;background:#feeefe;color:#b100e6;font-weight:700;font-size:13px;border-radius:999px;padding:8px 14px}
-      .slp-hero h1,.slp-work h2,.slp-white h2,.slp-shapes h2{font-family:'Right Grotesk','Arial Black','Inter',sans-serif;font-size:48px;line-height:1.02;letter-spacing:-.03em;font-weight:900;margin:16px 0}
-      .slp-hero p,.slp-work p,.slp-shapes p{line-height:1.55;color:#222}
+      .slp-hero span{display:inline-block;background:#feeefe;color:#A409D2;font-weight:600;font-size:13px;border-radius:999px;padding:8px 14px}
+      .slp-hero h1,.slp-work h2,.slp-white h2,.slp-shapes h2,.slp-cta h2{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;letter-spacing:-.03em;color:inherit}
+      .slp-hero h1{font-size:56px;line-height:110%;margin:16px 0 24px}
+      .slp-work h2,.slp-shapes h2{font-size:40px;line-height:120%;margin:16px 0}
+      .slp-hero p,.slp-work p,.slp-shapes p{font-size:16px;line-height:150%;letter-spacing:-.02em;color:#1F1F1E}
       .slp-hero p{margin:0 0 48px}
-      .slp-hero a,.slp-cta-actions a{display:inline-block;text-decoration:none;color:#111;border:1px solid #ddd;border-radius:8px;padding:12px 18px;font-weight:800;margin-right:12px}
+      .slp-hero a,.slp-cta-actions a{display:inline-block;text-decoration:none;color:#111;border:1px solid #ddd;border-radius:8px;padding:12px 18px;font-weight:500;font-size:16px;letter-spacing:-.02em;margin-right:12px}
       .slp-hero img{width:100%;border-radius:22px}
       .slp-trust{text-align:center;padding:34px 8%;overflow:hidden}
-      .slp-trust p{font-size:11px;color:#777;font-weight:900;letter-spacing:.08em;margin:0 0 22px}
+      .slp-trust p{font-size:14px;color:#5C5C5C;font-weight:500;letter-spacing:-.02em;margin:0 0 22px}
       .slp-media{background:#000;color:#fff;text-align:center;padding:34px 8%;overflow:hidden}
-      .slp-media p{font-size:11px;color:#bbb;font-weight:800;letter-spacing:.08em;margin:0 0 22px}
+      .slp-media p{font-size:14px;color:#ccc;font-weight:500;letter-spacing:-.02em;margin:0 0 22px}
       .slp-marquee{overflow:hidden}
       .slp-marquee-track{display:flex;align-items:center;justify-content:center;gap:48px;flex-wrap:wrap}
       .slp-trust .slp-marquee-track img{max-height:46px;max-width:170px;filter:grayscale(1);opacity:.72}
@@ -164,38 +167,40 @@ export const StaleListingsPartnerships = () => (
       @keyframes slp-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
       .slp-work,.slp-shapes{padding:90px 11%}
       .slp-head{display:grid;grid-template-columns:1fr 1fr;gap:90px;align-items:end}
-      .slp-head>div>small{font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:20px;line-height:110%;letter-spacing:-.05em;color:#5b6472;display:block;margin-bottom:6px}
+      .slp-head>div>small{font-family:Inter,sans-serif;font-weight:500;font-size:19px;line-height:150%;letter-spacing:-.02em;color:#56606B;display:block;margin-bottom:6px}
       .slp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:45px}
       .slp-grid article{border:1px solid #f0b8ee;border-radius:10px;padding:28px;min-height:190px}
-      .slp-grid span{color:#8e98a8;font-weight:900;font-size:22px}
-      .slp-grid h3{margin:14px 0 8px;font-size:18px}
-      .slp-grid p{font-size:14px;color:#4b5563;line-height:1.5}
+      .slp-grid span{font-family:'Plus Jakarta Sans',sans-serif;color:#8e98a8;font-weight:700;font-size:22px;letter-spacing:-.02em}
+      .slp-grid h3{margin:14px 0 8px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:18px;line-height:130%;letter-spacing:-.02em}
+      .slp-grid p{font-size:14px;color:#4b5563;line-height:150%;letter-spacing:-.02em}
       .slp-white{position:relative;margin:50px 11%;background-color:#610073;color:#fff;border-radius:18px;padding:44px}
-      .slp-white>small{display:inline-flex;align-items:center;gap:7px;background:#7a188a;color:#fff;font-family:'Inter',sans-serif;font-weight:600;font-size:14px;border-radius:999px;padding:8px 15px}
+      .slp-white>small{display:inline-flex;align-items:center;gap:7px;background:#7a188a;color:#fff;font-family:Inter,sans-serif;font-weight:500;font-size:14px;border-radius:999px;padding:8px 15px}
       .slp-white>small>i{width:8px;height:8px;background:#fff;border-radius:50%;display:inline-block}
       .slp-white>div:first-of-type{display:grid;grid-template-columns:1fr 1fr;gap:70px;margin-top:20px}
-      .slp-white h2{font-size:34px;margin:0 0 12px}
+      .slp-white h2{font-size:32px;line-height:120%;margin:0 0 12px}
+      .slp-white>div:first-of-type p{font-size:16px;line-height:150%}
       .slp-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
       .slp-steps article{background:rgba(255,255,255,.12);border-radius:16px;padding:26px}
-      .slp-steps span{font-weight:700;font-size:13px;opacity:.85}
-      .slp-steps h3{margin:12px 0 10px;font-size:20px}
-      .slp-steps p{font-size:14px;line-height:1.5;color:#f0dff5}
-      .slp-note{border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:16px;margin-top:20px;font-size:14px;line-height:1.5;color:#f0dff5}
+      .slp-steps span{font-weight:600;font-size:13px;opacity:.85}
+      .slp-steps h3{margin:12px 0 10px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:20px;line-height:130%;letter-spacing:-.02em}
+      .slp-steps p{font-size:14px;line-height:150%;color:#f0dff5}
+      .slp-note{border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:16px;margin-top:20px;font-size:14px;line-height:150%;color:#f0dff5}
       .slp-shapes{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start}
-      .slp-shapes>div>small{font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:20px;line-height:110%;letter-spacing:-.05em;color:#5b6472;display:block;margin-bottom:6px}
+      .slp-shapes>div>small{font-family:Inter,sans-serif;font-weight:500;font-size:19px;line-height:150%;letter-spacing:-.02em;color:#56606B;display:block;margin-bottom:6px}
       .slp-shapes>div>h2{margin:0 0 16px}
       .slp-shapes>div>p{margin:0;max-width:420px}
       .slp-shapes ul{list-style:none;margin:0;padding:16px;background:#fafafa;border-radius:20px}
       .slp-shapes li{display:grid;grid-template-columns:20px 1fr;background:#fff;border-radius:14px;padding:22px;margin-bottom:14px}
       .slp-shapes li:last-child{margin-bottom:0}
-      .slp-shapes li span{color:#b100e6;font-size:22px;line-height:1}
-      .slp-shapes li b{display:block;color:#b100e6;font-weight:800;font-size:12px;letter-spacing:.06em;margin-bottom:6px}
-      .slp-shapes li h3{margin:0 0 6px;font-size:17px}
-      .slp-shapes li p{color:#555;margin:0;line-height:1.5}
+      .slp-shapes li span{color:#A409D2;font-size:22px;line-height:1}
+      .slp-shapes li b{display:block;font-family:'Plus Jakarta Sans',sans-serif;color:#A409D2;font-weight:700;font-size:12px;letter-spacing:.04em;margin-bottom:6px}
+      .slp-shapes li h3{margin:0 0 6px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:17px;line-height:130%;letter-spacing:-.02em}
+      .slp-shapes li p{color:#555;margin:0;font-size:14px;line-height:150%}
       .slp-cta{position:relative;margin:70px auto;max-width:1120px;background-color:#050505;background-image:linear-gradient(rgba(5,5,5,.78),rgba(5,5,5,.78)),url("/stale-cta-bg.png");background-size:cover;background-position:center;color:#fff;text-align:center;border-radius:18px;padding:46px 24px}
-      .slp-cta span{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#b100e6;font-weight:700;font-size:13px;border-radius:999px;padding:8px 16px}
-      .slp-cta span i{width:8px;height:8px;background:#b100e6;border-radius:50%;display:inline-block}
-      .slp-cta h2{font-size:33px;max-width:760px;margin:16px auto}
+      .slp-cta span{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#A409D2;font-weight:500;font-size:13px;border-radius:999px;padding:8px 16px}
+      .slp-cta span i{width:8px;height:8px;background:#A409D2;border-radius:50%;display:inline-block}
+      .slp-cta h2{font-size:32px;line-height:120%;max-width:760px;margin:16px auto}
+      .slp-cta>p{font-size:16px;line-height:150%}
       .slp-cta-actions{margin-top:8px}
       .slp-cta-actions a:first-of-type{background:#fff;color:#000}
       .slp-cta-actions a:last-of-type{color:#fff}
@@ -203,11 +208,12 @@ export const StaleListingsPartnerships = () => (
       .slp-cta>small a{color:#fff;text-decoration:underline}
       @media(max-width:900px){
         .slp-header{padding:0 18px}
-        .slp-logo-mark{height:34px}
+        .slp-logo-mark{height:40px}
         .slp-header nav{display:none}
         .slp-header button{display:block}
         .slp-hero{display:flex;flex-direction:column;padding:40px 18px;gap:26px}
-        .slp-hero h1,.slp-work h2,.slp-shapes h2{font-size:35px}
+        .slp-hero h1{font-size:36px;line-height:120%}
+        .slp-work h2,.slp-shapes h2{font-size:28px}
         .slp-trust .slp-marquee-track,.slp-media .slp-marquee-track{flex-wrap:nowrap;justify-content:flex-start;width:max-content;animation:slp-marquee 22s linear infinite}
         .slp-dup{display:block}
         .slp-head,.slp-white>div:first-of-type{display:block}
@@ -218,7 +224,7 @@ export const StaleListingsPartnerships = () => (
         .slp-shapes ul{margin-top:24px}
         .slp-grid,.slp-steps{grid-template-columns:1fr}
         .slp-white{margin:28px 18px;padding:26px}
-        .slp-white h2{font-size:28px}
+        .slp-white h2,.slp-cta h2{font-size:26px}
         .slp-cta-actions a{display:block;width:100%;box-sizing:border-box;margin:10px 0 0}
         .slp-cta-actions a:first-of-type{margin-top:0}
         .slp-cta{margin:46px 18px}

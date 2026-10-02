@@ -277,6 +277,14 @@ export const AgentPortal = () => {
 
   useEffect(() => {
     let cancelled = false;
+    // ?code= comes from the agency-code field on /stale-listings/agents; it
+    // wins over a token remembered from an earlier visit (which may belong
+    // to another agency) but not over a token in the link itself.
+    const code = searchParams.get('code');
+    if (!searchParams.get('token') && code) {
+      handleCode(code);
+      return undefined;
+    }
     const token = searchParams.get('token') || readAgencyToken();
     if (!token) {
       setStep('landing');

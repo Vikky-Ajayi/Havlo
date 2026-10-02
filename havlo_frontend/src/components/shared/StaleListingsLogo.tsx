@@ -54,3 +54,20 @@ export function StaleListingsLogo({ className, style }: StaleListingsLogoProps) 
     </svg>
   );
 }
+
+// The "HAVLO / StaleListings" lockup from the stale-listings marketing
+// design (public/stale-listings/stale.svg). Used in the headers of the
+// marketing pages: /stale-listings, /seller, /agents and /partnerships.
+// Size it with CSS height; the width follows the 137×52 artwork.
+export function StaleListingsBrandLogo({ className, style }: StaleListingsLogoProps) {
+  return (
+    <img
+      className={className}
+      src="/stale-listings/stale.svg"
+      alt="Havlo Stale Listings"
+      width={137}
+      height={52}
+      style={{ display: 'block', flexShrink: 0, width: 'auto', ...style }}
+    />
+  );
+}
