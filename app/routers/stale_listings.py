@@ -90,7 +90,7 @@ from app.services import email_service, google_sheets, sumup_service
 from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
-from app.services import agent_campaign, agent_report, listing_monitor, land_registry
+from app.services import agent_campaign, agent_report, agent_report_pdf, listing_monitor, land_registry
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -1954,11 +1954,18 @@ async def download_console_full_report_pdf(prospect_id: str, db: AsyncSession = 
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found.")
 
+    intel = agent_report.stored_intel(prospect) if prospect.audience == "agent" else None
     try:
-        path = await asyncio.wait_for(
-            asyncio.to_thread(generate_full_report_pdf, prospect),
-            timeout=25.0,
-        )
+        if agent_report.is_current(intel):
+            # An agency's copy: its agent report, which includes the assessment.
+            path = await asyncio.wait_for(
+                asyncio.to_thread(agent_report_pdf.generate_agent_report_pdf, prospect, intel, None), timeout=45.0,
+            )
+        else:
+            path = await asyncio.wait_for(
+                asyncio.to_thread(generate_full_report_pdf, prospect),
+                timeout=25.0,
+            )
     except Exception as exc:
         logger.warning("Full-report PDF generation failed for prospect %s: %s", prospect_id, exc)
         raise HTTPException(status_code=500, detail="Could not generate the report PDF — try again in a moment.") from exc
@@ -3018,15 +3025,58 @@ async def prospect_agent_intel(
     unlocked = prospect.unlocked_at is not None or prospect.payment_status == "completed"
     if not agent_report.is_fresh(prospect):
         agent_report.start_refresh(prospect.id)
-    if not prospect.agent_intel_json:
+    intel = agent_report.stored_intel(prospect)
+    # A report built by an earlier version lacks figures the page shows:
+    # wait for the rebuild, unless that rebuild has just failed.
+    if not intel or (not agent_report.is_current(intel) and not agent_report.recently_failed(prospect.id)):
         return {"status": "preparing", "locked": not unlocked}
-    intel = json.loads(prospect.agent_intel_json)
     return {
         "status": "ready",
         "refreshing": agent_report.is_refreshing(prospect.id),
         "locked": not unlocked,
         "intel": intel if unlocked else agent_report.teaser(intel),
     }
+
+
+@public_router.get("/prospects/agent-report.pdf")
+async def download_agent_report_pdf(
+    token: str | None = Query(default=None, max_length=200),
+    code: str | None = Query(default=None, max_length=12),
+    fee: float | None = Query(default=None, gt=0, lt=10),
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """The full agent report as a PDF (agent_report_pdf.py), for an agency
+    that has bought it. `fee` is the agent's own fee (percent, before VAT)
+    for the commission figures; 1.2% when not given."""
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    if prospect.audience != "agent":
+        raise HTTPException(status_code=404, detail="The agent report is only for agencies' listings.")
+    if not (prospect.unlocked_at is not None or prospect.payment_status == "completed"):
+        raise HTTPException(status_code=402, detail="The full agent report unlocks once it's purchased.")
+    intel = agent_report.stored_intel(prospect)
+    if not agent_report.is_current(intel):
+        try:
+            intel = await asyncio.wait_for(agent_report.build_intel(prospect), timeout=150.0)
+            prospect.agent_intel_json = json.dumps(intel)
+            prospect.agent_intel_at = datetime.now(timezone.utc)
+            await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Agent report PDF: building the report failed for %s: %s", prospect.id, exc)
+            if not intel:
+                raise HTTPException(status_code=503, detail="The report is still being prepared. Please try again in a minute.") from exc
+    try:
+        path = await asyncio.wait_for(
+            asyncio.to_thread(agent_report_pdf.generate_agent_report_pdf, prospect, intel, fee), timeout=45.0,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Agent report PDF generation failed for %s: %s", prospect.id, exc)
+        raise HTTPException(status_code=500, detail="Could not create the PDF just now. Please try again.") from exc
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=f"Havlo-agent-report-{prospect.property_code}.pdf",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
+    )
 
 
 @public_router.post("/agents/share-link", response_model=AgentTokenResponse)

@@ -1265,8 +1265,10 @@ def _letter_draw_gauge(page, cx, cy, radius, score, color) -> None:
     page.setStrokeColor(colors.HexColor("#ECECEE"))
     page.setLineWidth(radius * 0.24 * 0.7)  # 30% thinner than the original track width
     page.arc(cx - radius, cy - radius, cx + radius, cy + radius, _LETTER_GAUGE_END, _LETTER_GAUGE_SPAN)
-    page.setStrokeColor(color)
-    page.arc(cx - radius, cy - radius, cx + radius, cy + radius, value_angle, _LETTER_GAUGE_START - value_angle)
+    if _LETTER_GAUGE_START - value_angle > 0.5:
+        # A zero-length arc (score 0) makes reportlab divide by zero.
+        page.setStrokeColor(color)
+        page.arc(cx - radius, cy - radius, cx + radius, cy + radius, value_angle, _LETTER_GAUGE_START - value_angle)
     # The needle pivots level with the arc's two open ends (_LETTER_GAUGE_START
     # / _LETTER_GAUGE_END, symmetric about straight-down), not the circle's
     # true center — matching a real dashboard gauge, where the needle sits at

@@ -340,7 +340,7 @@ export const AgentPortal = () => {
     : null;
 
   return (
-    <div className="slw-page">
+    <div className="slw-page slw-agent">
       <Header />
       <div className="slw-shell">
         <main className="slw-main">

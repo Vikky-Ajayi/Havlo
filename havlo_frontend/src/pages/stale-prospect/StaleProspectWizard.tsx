@@ -3,10 +3,21 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
-import { AgentFullReport, AgentTeaser } from './AgentReport';
+import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
+import {
+  ExpandableText,
+  RecommendationContent,
+  SaleabilityGauge,
+  SCORE_LABELS,
+  ScoreBar,
+  SoldPricesList,
+  firstSentence,
+  splitIntoThree,
+} from './reportParts';
 import { readAgencyToken } from './agentSession';
 import {
   createProspectCheckout,
+  downloadAgentReportPdf,
   getAgencyPortfolioToken,
   getProspectComparables,
   getProspectDashboardLink,
@@ -434,204 +445,6 @@ const ConfirmStep = ({
   );
 };
 
-// ── Shared: saleability gauge ──────────────────────────────────────────────
-
-const SaleabilityGauge = ({ score, size = 247 }: { score: number; size?: number }) => {
-  const angle = 180 - (Math.min(100, Math.max(0, score)) / 100) * 180;
-  const r = size / 2 - 14;
-  const cx = size / 2;
-  const cy = size / 2;
-  const point = (deg: number, radius = r) => ({
-    x: cx + radius * Math.cos((deg * Math.PI) / 180),
-    y: cy - radius * Math.sin((deg * Math.PI) / 180),
-  });
-  const arcPath = (from: number, to: number) => {
-    const start = point(from);
-    const end = point(to);
-    return `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
-  };
-  const segments = [
-    { from: 180, to: 148, color: '#F03A17' },
-    { from: 140, to: 108, color: '#FF8A00' },
-    { from: 100, to: 68, color: '#D7D93A' },
-    { from: 60, to: 28, color: '#3FD88E' },
-    { from: 20, to: 0, color: '#09D9B2' },
-  ];
-  return (
-    <div className="slw-gauge" style={{ width: size, height: size / 2 + 40 }}>
-      <svg width={size} height={size / 2 + 20} viewBox={`0 0 ${size} ${size / 2 + 20}`}>
-        {segments.map((segment) => (
-          <path
-            key={segment.color}
-            d={arcPath(segment.from, segment.to)}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth="13"
-            strokeLinecap="round"
-          />
-        ))}
-        <path
-          d={`M ${cx - r - 8} ${cy} A ${r + 8} ${r + 8} 0 0 1 ${cx + r + 8} ${cy}`}
-          fill="none"
-          stroke="#d1d5db"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeDasharray="0.5 8"
-        />
-        <line
-          x1={cx}
-          y1={cy}
-          x2={cx + r * 0.48 * Math.cos((angle * Math.PI) / 180)}
-          y2={cy - r * 0.48 * Math.sin((angle * Math.PI) / 180)}
-          stroke="#111"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        <circle cx={cx} cy={cy} r="4" fill="#111" />
-      </svg>
-      <div className="slw-gauge-score"><b>{score}</b>/100</div>
-    </div>
-  );
-};
-
-const SCORE_LABELS: Record<string, string> = {
-  pricing: 'Pricing',
-  listing_presentation: 'Listing presentation',
-  market_positioning: 'Market positioning',
-  competition: 'Competition',
-  buyer_appeal: 'Buyer appeal',
-};
-
-const ScoreBar = ({ label, value }: { label: string; value: number }) => {
-  const color = value < 45 ? '#E33709' : value < 65 ? '#F5A623' : '#00C08B';
-  return (
-    <div className="slw-score-bar-row">
-      <div className="slw-score-bar-label"><span>{label}</span><b>{value}/100</b></div>
-      <div className="slw-score-bar-track"><div className="slw-score-bar-fill" style={{ width: `${value}%`, background: color }} /></div>
-    </div>
-  );
-};
-
-// ── Shared: long-text handling ──────────────────────────────────────────────
-//
-// Real Groq-generated report text runs 1000-3000+ characters per field (the
-// prompt deliberately asks for consultant-length prose), which is exactly
-// right for a report someone paid for and wants to actually read, but is far
-// too dense for the small, scannable cards the design uses. Rather than
-// shortening the underlying content, every long block on these two pages is
-// shown clamped by default with a "Read more" toggle — nothing is ever lost,
-// the page just doesn't open looking like a wall of text.
-
-// Re-chunks long text into short, readable paragraphs for display. Two
-// problems this solves at once:
-// - executive_summary genuinely has \n\n breaks in the data, but each one
-//   is still a dense 4-6 sentence block — real, but not fine-grained
-//   enough to read comfortably.
-// - evidence/impact/recommend (derived by splitIntoThree below for any
-//   report older than that schema) have NO breaks at all: splitIntoThree
-//   joins each third of the sentences with a single space, so pre-line
-//   has nothing to render as a break and the whole thing looks like one
-//   wall of text regardless of the white-space CSS.
-// Treating any existing blank line as a hard boundary (never merging two
-// authored paragraphs into one) and then re-splitting every paragraph
-// down to at most `perParagraph` sentences fixes both: real paragraph
-// intent is preserved, and anything longer just gets broken up further.
-function reflowParagraphs(text: string, perParagraph = 2): string {
-  const clean = (text || '').trim();
-  if (!clean) return '';
-  const paragraphs = clean.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
-  const out: string[] = [];
-  for (const paragraph of paragraphs.length ? paragraphs : [clean]) {
-    const sentences = paragraph.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).filter(Boolean);
-    for (let i = 0; i < sentences.length; i += perParagraph) {
-      out.push(sentences.slice(i, i + perParagraph).join(' '));
-    }
-  }
-  return out.join('\n\n');
-}
-
-const ExpandableText = ({
-  text,
-  maxChars = 220,
-  allowExpand = true,
-  as: Tag = 'p',
-  className,
-}: {
-  text?: string;
-  maxChars?: number;
-  allowExpand?: boolean;
-  as?: 'p' | 'span';
-  className?: string;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  // "Read more" clamping only makes sense on screen — the truncated string
-  // is all the DOM ever contains when collapsed, so printing/downloading a
-  // PDF while collapsed would permanently lose that text from the page (no
-  // amount of print CSS can bring back text that was never rendered). Force
-  // every instance open for the duration of the print, and hide the button
-  // itself since there's nothing to click on paper.
-  const [forcePrint, setForcePrint] = useState(false);
-  useEffect(() => {
-    const onBeforePrint = () => setForcePrint(true);
-    const onAfterPrint = () => setForcePrint(false);
-    window.addEventListener('beforeprint', onBeforePrint);
-    window.addEventListener('afterprint', onAfterPrint);
-    return () => {
-      window.removeEventListener('beforeprint', onBeforePrint);
-      window.removeEventListener('afterprint', onAfterPrint);
-    };
-  }, []);
-  const raw = (text || '').trim();
-  if (!raw) return null;
-  const clean = reflowParagraphs(raw);
-  const isLong = clean.length > maxChars;
-  const truncated = isLong ? clean.slice(0, maxChars).replace(/\s+\S*$/, '') + '…' : clean;
-  const shown = expanded || forcePrint ? clean : truncated;
-  return (
-    // The underlying text is written (and, since the duplication fix,
-    // stored) as \n\n-separated paragraphs, but plain HTML collapses
-    // newlines by default — every long field was rendering as one
-    // undifferentiated block no matter how it was punctuated in the data.
-    // pre-line respects the existing blank lines as real paragraph breaks
-    // while still wrapping normally within each line.
-    <Tag className={className} style={{ whiteSpace: 'pre-line' }}>
-      {shown}
-      {isLong && allowExpand && !forcePrint && (
-        <button type="button" className="slw-read-more slw-noprint" onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Show less' : 'Read more'}
-        </button>
-      )}
-    </Tag>
-  );
-};
-
-// Older reports (generated before evidence/impact/recommend existed) only
-// ever stored one long `description` per finding. Rather than showing those
-// three labels with nothing under them, split the description into rough
-// thirds on sentence boundaries so every report — old or new — gets a
-// sensible EVIDENCE / IMPACT / RECOMMEND breakdown.
-function splitIntoThree(text: string): [string, string, string] {
-  const clean = (text || '').trim();
-  if (!clean) return ['', '', ''];
-  const sentences = clean.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).filter(Boolean);
-  if (sentences.length < 3) return [clean, '', ''];
-  const third = Math.ceil(sentences.length / 3);
-  return [
-    sentences.slice(0, third).join(' '),
-    sentences.slice(third, third * 2).join(' '),
-    sentences.slice(third * 2).join(' '),
-  ];
-}
-
-// Same idea for action_plan.why_it_matters, which is also empty on older
-// reports — fall back to the description's first sentence.
-function firstSentence(text: string): string {
-  const clean = (text || '').trim();
-  if (!clean) return '';
-  const match = clean.match(/^.*?[.!?](?=\s|$)/);
-  return (match ? match[0] : clean).trim();
-}
-
 // comparable_sales now only ever holds HM Land Registry sales (the backend's
 // report_comparable_rows), shown in their own "Comparable sold prices" card.
 function soldComparablesFrom(comparableSales?: ComparableSale[]): SoldComparable[] {
@@ -707,36 +520,6 @@ const PreparedFor = ({ address }: { address: string }) => (
     </svg>
     <span>Prepared specifically for <b>{address.replace(/\.$/, '')}</b>.</span>
   </p>
-);
-
-// Recorded sales from HM Land Registry (never AI-written). The attribution
-// is required by the data's licence wherever the sales are shown.
-const SoldPricesList = ({ sales, attribution, loading = false }: { sales: SoldComparable[]; attribution?: string | null; loading?: boolean }) => (
-  <div className="slw-sold-comps">
-    <div className="slw-sold-comps-head">
-      <b>Comparable sold properties</b>
-      <span>Recent sales of similar homes nearby</span>
-    </div>
-    {loading ? (
-      <p className="slw-sold-comps-loading">Checking recent sales near you&hellip;</p>
-    ) : (
-      <ul>
-        {sales.map((sale) => (
-          <li key={`${sale.address}-${sale.date}`}>
-            <div>
-              {/* Keep the postcode on one line: "CF23 5JL", never "CF23 / 5JL". */}
-              <span className="slw-sold-comps-addr">{sale.address.replace(/ (\d[A-Z]{2})$/, '\u00a0$1')}</span>
-              <span className="slw-sold-comps-meta">
-                {sale.property_type} &middot; Sold {new Date(`${sale.date}T00:00:00`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-              </span>
-            </div>
-            <b>{formatGbp(sale.price)}</b>
-          </li>
-        ))}
-      </ul>
-    )}
-    {attribution && <small>{attribution}</small>}
-  </div>
 );
 
 const SoldComparablesCard = ({ access }: { access: { token?: string; code?: string } }) => {
@@ -855,7 +638,7 @@ const AssessmentStep = ({
         )}
       </div>
 
-      {prospect.audience === 'agent' && <AgentTeaser access={access} onUnlock={onUnlock} />}
+      {prospect.audience === 'agent' && <AgentTeaser access={access} onUnlock={onUnlock} reducedDate={prospect.reduced_date} />}
 
       <div className="slw-unlock-cta">
         <div className="slw-unlock-cta-copy">
@@ -1032,11 +815,13 @@ const SuccessStep = ({
   onViewReport,
   onDownloadPdf,
   onOpenDashboard,
+  error,
 }: {
   prospect: ProspectPreview;
   onViewReport: () => void;
   onDownloadPdf: () => void;
   onOpenDashboard: () => void;
+  error?: string;
 }) => (
   <section className="slw-success">
     <svg className="slw-success-check" width="80" height="80" viewBox="0 0 80 80" fill="none">
@@ -1046,11 +831,20 @@ const SuccessStep = ({
       />
       <path d="M27 41l9 9 17-17" stroke="#059669" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-    <h1>Your full assessment is ready</h1>
-    <p>Your complete Havlo Property Assessment for {prospect.property_address} has been unlocked.</p>
-    <button type="button" className="slw-btn-black" onClick={onViewReport}>View My Property Assessment Report</button>
-    <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>Open My 90-Day Listing Dashboard</button>
+    <h1>{prospect.audience === 'agent' ? 'Your agent report is ready' : 'Your full assessment is ready'}</h1>
+    <p>
+      {prospect.audience === 'agent'
+        ? <>The full agent report for {prospect.property_address} has been unlocked.</>
+        : <>Your complete Havlo Property Assessment for {prospect.property_address} has been unlocked.</>}
+    </p>
+    <button type="button" className="slw-btn-black" onClick={onViewReport}>
+      {prospect.audience === 'agent' ? 'View the Agent Report' : 'View My Property Assessment Report'}
+    </button>
+    <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>
+      {prospect.audience === 'agent' ? 'Open the 90-Day Instruction Watch' : 'Open My 90-Day Listing Dashboard'}
+    </button>
     <button type="button" className="slw-btn-outline" onClick={onDownloadPdf}>Download PDF Report</button>
+    {error && <p className="slw-error">{error}</p>}
   </section>
 );
 
@@ -1268,37 +1062,6 @@ const FullReportStep = ({
 };
 
 // ── Recommendation modal ────────────────────────────────────────────────────
-
-const RecommendationContent = ({ contactName, actions }: { contactName: string; actions: ReportAction[] }) => (
-  <>
-    <p>Dear {contactName || '(name)'},</p>
-    <p>Following our assessment of your property&rsquo;s current market position, here is the complete set of recommended actions in priority order, along with why each one matters and how to execute it:</p>
-
-    {actions.map((action, i) => (
-      <div className="slw-modal-action" key={i}>
-        <h3>{i + 1}) {action.title}
-          {action.priority && <span className="slw-modal-priority"> &middot; {action.priority}</span>}
-        </h3>
-        {action.description && <p style={{ whiteSpace: 'pre-line' }}>{reflowParagraphs(action.description)}</p>}
-        {action.why_it_matters && <p><i>Why it matters: {action.why_it_matters}</i></p>}
-        {(action.bullets || []).length > 0 && (
-          <ul className="slw-modal-bullets">
-            {action.bullets!.map((bullet, bi) => <li key={bi}>{bullet}</li>)}
-          </ul>
-        )}
-      </div>
-    ))}
-
-    <h3>OUR ADVISORY VIEW</h3>
-    <p>We recommend working through these actions in the order shown, starting with the highest-priority items, and reviewing the result of each before moving to the next.<br />
-    Your existing agent remains fully in control of the sale &mdash; these recommendations are designed to support their work, not replace it.</p>
-
-    <h3>Prepared &amp; reviewed by</h3>
-    <p className="slw-modal-team">Havlo Sales Advisory Team</p>
-    <p>Property Intelligence &bull; Sales Strategy &bull; Buyer Generation</p>
-    <p className="slw-modal-disclaimer">This recommendation is strategic guidance based on the information available to Havlo at the time of assessment. Individual strategies should be evaluated against the property&rsquo;s circumstances and current market conditions. Results will vary and no particular strategy guarantees a sale.</p>
-  </>
-);
 
 const RecommendationModal = ({
   contactName,
@@ -1679,6 +1442,16 @@ export const StaleProspectWizard = () => {
   };
 
   const handleDownloadPdf = async () => {
+    if (isAgencyProperty) {
+      // An agency's report is a PDF built on the server (all its figures,
+      // laid out for A4), not a print of the page.
+      try {
+        await downloadAgentReportPdf(access, readAgentFee());
+      } catch (err) {
+        setError((err as Error).message);
+      }
+      return;
+    }
     if (step !== 'report') {
       setPendingPrint(true);
       await handleViewReport();
@@ -1707,7 +1480,7 @@ export const StaleProspectWizard = () => {
   }
 
   return (
-    <div className="slw-page">
+    <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}`}>
       <Header />
       <div className="slw-shell">
         {step !== 'landing' && step !== 'finding' && (
@@ -1739,12 +1512,17 @@ export const StaleProspectWizard = () => {
             />
           )}
           {step === 'success' && prospect && (
-            <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />
+            <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} error={error} />
           )}
           {step === 'report' && report && report.audience === 'agent' && (
-            <AgentFullReport access={access} address={report.property_address} />
+            <AgentFullReport
+              access={access}
+              report={report}
+              onOpenRecommendation={() => setShowRecommendation(true)}
+              onOpenDashboard={handleOpenDashboard}
+            />
           )}
-          {step === 'report' && report && (
+          {step === 'report' && report && report.audience !== 'agent' && (
             <FullReportStep report={report} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />
           )}
         </main>
@@ -1765,6 +1543,14 @@ export const StaleProspectWizard = () => {
 export const WizardStyles = () => (
   <style>{`
     .slw-page{font-family:'Inter','Plus Jakarta Sans',sans-serif;color:#1f2024;background:#fff;min-height:100vh;display:flex;flex-direction:column}
+    /* An agency's pages use the Stale Listings type: Plus Jakarta Sans
+       headings, Inter text (as /stale-listings/sellers), not Right Grotesk. */
+    .slw-agent h1,.slw-agent h2,.slw-agent h3,.slw-agent h4,.slw-agent .slw-price-box b,.slw-agent .slw-report-summary-card b,
+    .slw-agent .slw-recommendation-callout b,.slw-agent .slw-modal-head h2{font-family:'Plus Jakarta Sans','Inter',sans-serif!important;letter-spacing:-0.03em}
+    .slw-agent .slw-hero h1,.slw-agent .slw-confirm h1,.slw-agent .slw-assessment h1,.slw-agent .slw-payment h1,.slw-agent .slw-success h1,
+    .slw-agent .slw-not-found h1,.slw-agent .slw-portfolio-head h1,.slw-agent .lmd-h1{font-weight:800}
+    .slw-agent .slw-assess-heading,.slw-agent .slw-agent-note h3,.slw-agent .slw-unlock-cta-copy h2,.slw-agent .lmd-h2,
+    .slw-agent .slw-section-heading,.slw-agent .slw-recommendation-callout b{font-weight:700}
     body.slw-prospect-active{overflow-x:hidden}
     .slw-page *{box-sizing:border-box}
     .slw-header{display:flex;align-items:center;justify-content:space-between;padding:16px max(24px,calc((100vw - 1240px)/2));border-bottom:1px solid #eee;position:relative}
@@ -1903,7 +1689,8 @@ export const WizardStyles = () => (
     .slw-assess-gauge-card{background:#fff;border-radius:14px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
     .slw-assess-gauge-card b{margin-top:6px;font-size:16px}
     .slw-assess-gauge-card p{color:#667085;font-size:13px;line-height:1.45;margin:8px 0 0;max-width:250px}
-    .slw-gauge{display:flex;flex-direction:column;align-items:center;position:relative}
+    .slw-gauge{display:flex;flex-direction:column;align-items:center;position:relative;max-width:100%;height:auto!important}
+    .slw-gauge svg{max-width:100%;height:auto}
     .slw-gauge-score{margin-top:8px;font-size:15px;color:#666}
     .slw-gauge-score b{font-size:30px;color:#111}
 
@@ -2025,7 +1812,8 @@ export const WizardStyles = () => (
 
     .slw-section-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1;margin:44px 0 20px;color:#202124}
     .slw-score-row{display:grid;grid-template-columns:.75fr 2fr;gap:14px;background:#f5f6f8;border-radius:18px;padding:14px}
-    .slw-score-gauge-card{background:#fff;border-radius:14px;padding:24px;text-align:center;display:flex;flex-direction:column;align-items:center}
+    .slw-score-gauge-card{background:#fff;border-radius:14px;padding:24px;text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0}
+    .slw-score-bars-card{min-width:0}
     .slw-score-gauge-card b{margin-top:6px}
     .slw-score-gauge-card p{color:#777;font-size:13px;line-height:1.5;margin:8px 0 0}
     .slw-score-bars-card{background:#fff;border-radius:14px;padding:24px 28px}

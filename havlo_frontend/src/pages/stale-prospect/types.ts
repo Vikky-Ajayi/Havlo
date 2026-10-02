@@ -398,29 +398,79 @@ export interface AgentIntelAgency {
 export interface AgentIntelHeadline {
   health: number | null;
   risk: RiskLevel;
+  risk_reason?: string;
+  /** Always High on these listings; the reasons say why for this one. */
+  vendor_pressure?: 'High';
+  vendor_pressure_reasons?: string[];
+  /** Older reports' name for vendor pressure. */
   vendor_frustration: 'Low' | 'Elevated' | 'High';
   dom: number | null;
   dom_benchmark: number | null;
+  /** YYYY-MM-DD for a price-reduced listing ("" when unreadable), else null. */
+  reduced_date?: string | null;
+  days_since_reduction?: number | null;
   competitor_pressure: 'Low' | 'Moderate' | 'High';
+  competitor_reason?: string;
   success_gap: number;
+  /** Similar homes listed after this one now under offer or sold STC. */
+  success_gap_rightmove?: number;
+  /** Similar homes nearby that completed a sale after it was listed (HM Land Registry). */
+  success_gap_sales?: number;
   relaunch: 'Limited' | 'Moderate' | 'Strong';
+  relaunch_reason?: string;
   price: number | null;
 }
 
+export interface AgentIntelSale {
+  address: string;
+  price: number;
+  date: string;
+  type?: string;
+  property_type?: string;
+}
+
+export interface AgentIntelCard {
+  label: string;
+  value: string;
+  sub?: string;
+}
+
 export interface AgentIntel {
+  version?: number;
   generated_at: string;
   radius: number | null;
+  /** e.g. "within half a mile", "in CF23". */
+  area_label?: string;
+  /** What the figures were compared with, in a sentence. */
+  summary?: string;
+  sources?: { listing?: string; nearby?: string | null; sales?: string | null; nearby_area?: string; sales_area?: string; nearby_count?: number; sales_count?: number };
   basis_label: string;
   comparables: number;
   headline: AgentIntelHeadline;
+  subject?: { listed_date: string | null; reduced_date: string | null; days_since_reduction: number | null; dom: number | null; agent: string };
   // Full report only (after purchase):
   nearby_total?: number;
   health_components?: Record<string, number | null>;
-  vendor_view?: { since_label: string; new_since_listed: number; agreed: number; agreed_since_listed: number; competitor_agencies_agreed: number; reduced_nearby: number };
-  market?: { staleness: number | null; dom_gap: number | null; for_sale: number; alternatives: number; new_30: AgentIntelHome[]; sold_since: AgentIntelHome[]; new_since_listed: number };
+  vendor_view?: {
+    since_label: string; new_since_listed: number; agreed: number; agreed_since_listed: number; sold_since_listed?: number;
+    competitor_agencies_agreed: number; reduced_nearby: number; items?: { value: string | number; text: string }[];
+  };
+  market?: {
+    cards?: AgentIntelCard[]; staleness: number | null; dom_gap: number | null; for_sale: number; alternatives: number;
+    new_30: AgentIntelHome[]; sold_since: AgentIntelHome[]; competing?: AgentIntelHome[]; new_since_listed: number;
+  };
+  sold?: {
+    area_label: string; homes_label: string; count_12m: number; median_12m: number | null; low_12m: number | null; high_12m: number | null;
+    since_listed: AgentIntelSale[]; recent: AgentIntelSale[];
+  };
   competitors?: { agencies: AgentIntelAgency[]; leading: AgentIntelAgency[]; alternative_set: AgentIntelAgency[]; momentum: AgentIntelAgency[]; threat: string; exposure: string; in_segment: number; agreed_in_segment: number };
-  pricing?: { median_for_sale: number | null; premium_pct: number | null; cheaper_share: number | null; price_per_bedroom: number | null; comparable_price_per_bedroom: number | null; sold_median: number | null; sold_count: number; reduced_date: string | null; days_since_reduction: number | null; reduction_pressure: string; score: number | null };
-  presentation?: { score: number; assessment_score: number | null; photos: number | null; comparable_photos: number | null; floorplans: number | null; comparable_floorplan_share: number; virtual_tours: number | null; comparable_tour_share: number; description_words: number | null; features: number | null; gaps: string[]; buyer_appeal: number | null; findings: { title: string; detail: string }[] };
+  pricing?: {
+    median_for_sale: number | null; premium_pct: number | null; cheaper_share: number | null; price_per_bedroom: number | null;
+    comparable_price_per_bedroom: number | null; sold_median: number | null; sold_count: number; sold_premium_pct?: number | null;
+    reduced_date: string | null; days_since_reduction: number | null; reduction_pressure: string; score: number | null;
+    comparables?: AgentIntelSale[];
+  };
+  presentation?: { score: number; assessment_score: number | null; photos: number | null; comparable_photos: number | null; floorplans: number | null; comparable_floorplan_share: number | null; virtual_tours: number | null; comparable_tour_share: number | null; description_words: number | null; features: number | null; gaps: string[]; buyer_appeal: number | null; findings: { title: string; detail: string }[] };
   freshness?: { fatigue: string; days_since_update: number | null; relaunch: string };
   vendor?: { priority: string; questions: string[]; talking_points: string[] };
   actions?: { title: string; priority: 'Immediate' | 'High' | 'Medium' | 'Low'; why: string }[];

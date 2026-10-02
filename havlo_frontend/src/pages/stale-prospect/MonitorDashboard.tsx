@@ -339,7 +339,7 @@ export const MonitorDashboard = () => {
   const pulseStart: MonitorPulse | null = data.nearby.pulse_start;
 
   return (
-    <div className="slw-page">
+    <div className={`slw-page${data.audience === 'agent' ? ' slw-agent' : ''}`}>
       <Header />
       <div className="slw-shell lmd-shell">
         <main className="slw-main lmd">
@@ -556,7 +556,7 @@ export const MonitorDashboard = () => {
               <button type="button" className="slw-btn-outline" onClick={share}>
                 {data.audience === 'agent' ? 'Share with your vendor' : 'Share with your agent'}
               </button>
-              <a className="slw-btn-outline lmd-link-btn" href="/contact-us">Book a call with Havlo</a>
+              {data.audience !== 'agent' && <a className="slw-btn-outline lmd-link-btn" href="/contact-us">Book a call with Havlo</a>}
               {data.audience !== 'agent' && (
                 <a className="lmd-sell-faster" href="/sell-your-property">
                   <b>Want more buyers seeing it?</b> Sell Faster (Havlo Relaunch™) takes your property to buyers beyond the portals. Find out more →

@@ -206,6 +206,35 @@ export async function getAgencyPortfolioToken(propertyToken: string): Promise<{ 
 }
 
 /** The agent report for an agency's copy of a listing ("preparing" while it's built). */
+/** Downloads the full agent report PDF (built on the server), with the
+ * agent's fee for the commission figures. */
+export async function downloadAgentReportPdf(access: { token?: string; code?: string }, fee: number): Promise<void> {
+  const query = new URLSearchParams();
+  if (access.token) query.set('token', access.token);
+  else if (access.code) query.set('code', access.code);
+  query.set('fee', String(fee));
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/agent-report.pdf?${query.toString()}`);
+  if (!response.ok) {
+    let detail = '';
+    try {
+      detail = (await response.json()).detail || '';
+    } catch {
+      // Not JSON: fall back to the generic message.
+    }
+    throw new Error(typeof detail === 'string' && detail ? detail : 'We could not create the PDF just now. Please try again.');
+  }
+  const blob = await response.blob();
+  const name = /filename="?([^";]+)"?/.exec(response.headers.get('content-disposition') || '')?.[1] || 'Havlo-agent-report.pdf';
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 export async function getAgentIntel(access: { token?: string; code?: string }): Promise<AgentIntelResponse> {
   const query = new URLSearchParams();
   if (access.token) query.set('token', access.token);
