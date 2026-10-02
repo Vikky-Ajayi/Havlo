@@ -12,6 +12,11 @@ import { CountryBadge } from '../components/shared/CountryBadge';
 const HERO_COUNTRIES = ['United Kingdom', 'Canada', 'Dubai', 'United States'];
 
 const MARKETPLACE_FAVS = 'havlo_buyabroad_favs';
+// Whose favourites MARKETPLACE_FAVS holds (a user id). Unset means homes
+// saved on this browser before favourites moved to accounts.
+const MARKETPLACE_FAVS_OWNER = 'havlo_buyabroad_favs_owner';
+// The key AuthContext keeps the session token under.
+const AUTH_TOKEN_KEY = 'havlo_token';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
 const LISTING_CACHE_PREFIX = 'havlo_buyabroad_listing_';
 const FAVOURITES_PATH = '/buyabroad/uk/favourites';
@@ -404,6 +409,117 @@ function useAuthGate(setAuthView: (view: AuthView | null) => void) {
     pending.current = null;
   }, []);
   return { requireAuth, onAuthenticated, clearPending };
+}
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeFavsOwner(userId: string | null) {
+  try {
+    if (userId) localStorage.setItem(MARKETPLACE_FAVS_OWNER, userId);
+    else localStorage.removeItem(MARKETPLACE_FAVS_OWNER);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+// Favourites are saved to the visitor's account, so they follow them to any
+// browser or device. This browser keeps a copy of the signed-in account's
+// list so hearts and counts draw straight away, and it's replaced by the
+// account's list as soon as that arrives. Homes saved here before
+// favourites moved to accounts are added to the first account that signs in.
+//
+// Changes show at once and are sent one after another; only the answer to
+// the last one replaces what's shown, so quick taps don't flicker. A change
+// that fails is undone by reloading the account's list.
+function useFavourites() {
+  const { token, user } = useAuth();
+  const userId = user?.id ?? null;
+  const [favs, setFavsState] = useState<string[]>(() => (token ? readIds(MARKETPLACE_FAVS) : []));
+  const [ready, setReady] = useState(false);
+  const favsRef = useRef(favs);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  const queued = useRef(0);
+
+  const show = useCallback((ids: string[]) => {
+    favsRef.current = ids;
+    setFavsState(ids);
+    writeIds(MARKETPLACE_FAVS, ids);
+    if (userIdRef.current) writeFavsOwner(userIdRef.current);
+  }, []);
+
+  const send = useCallback((change: (token: string) => Promise<{ listing_ids: string[] }>) => {
+    queued.current += 1;
+    queue.current = queue.current.then(async () => {
+      // Read the token fresh: a save made from the sign-in prompt runs
+      // before this component re-renders with the new session.
+      const current = readStored(AUTH_TOKEN_KEY);
+      let ids: string[] | null = null;
+      if (current) {
+        try {
+          ids = (await change(current)).listing_ids;
+        } catch {
+          try {
+            ids = (await api.favouriteListings(current)).listing_ids;
+          } catch {
+            // Offline or signed out meanwhile: keep what's shown.
+          }
+        }
+      }
+      queued.current -= 1;
+      if (ids && queued.current === 0) show(ids);
+      setReady(true);
+    });
+  }, [show]);
+
+  useEffect(() => {
+    if (!token) {
+      favsRef.current = [];
+      setFavsState([]);
+      setReady(true);
+      // Signed out: forget the account's copy (homes saved before accounts
+      // have no owner and are kept for the next sign-in).
+      if (readStored(MARKETPLACE_FAVS_OWNER)) {
+        writeIds(MARKETPLACE_FAVS, []);
+        writeFavsOwner(null);
+      }
+      return;
+    }
+    if (!userId) return; // wait for the profile so the copy is tagged right
+    const owner = readStored(MARKETPLACE_FAVS_OWNER);
+    const fromBeforeAccounts = owner ? [] : readIds(MARKETPLACE_FAVS);
+    if (owner && owner !== userId) {
+      favsRef.current = [];
+      setFavsState([]);
+    }
+    setReady(false);
+    send(async (current) => {
+      const res = await api.favouriteListings(current);
+      const missing = fromBeforeAccounts.filter((id) => !res.listing_ids.includes(id)).slice(0, 200);
+      return missing.length ? api.addFavouriteListings(current, missing) : res;
+    });
+  }, [token, userId, send]);
+
+  const toggle = useCallback((id: string) => {
+    const adding = !favsRef.current.includes(id);
+    const next = adding ? [...favsRef.current, id] : favsRef.current.filter((item) => item !== id);
+    show(next);
+    send((current) => (adding ? api.addFavouriteListings(current, [id]) : api.removeFavouriteListing(current, id)));
+  }, [show, send]);
+
+  const remove = useCallback((ids: string[]) => {
+    show(favsRef.current.filter((item) => !ids.includes(item)));
+    ids.forEach((id) => send((current) => api.removeFavouriteListing(current, id)));
+  }, [show, send]);
+
+  return { favs, ready, toggle, remove };
 }
 
 
@@ -1415,7 +1531,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   const [listingErrors, setListingErrors] = useState<Record<CountryKey, string>>(() => emptyCountryMessages());
   const [searchTerm, setSearchTerm] = useState('');
   const [queryTerm, setQueryTerm] = useState('');
-  const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
+  const { favs, toggle: toggleSaved } = useFavourites();
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [allOpen, setAllOpen] = useState<{ title: string; country: CountryKey } | null>(null);
@@ -1497,13 +1613,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
 
   const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
 
-  const toggleFav = (id: string) => requireAuth(() => {
-    setFavs((prev) => {
-      const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
-      writeIds(MARKETPLACE_FAVS, next);
-      return next;
-    });
-  });
+  const toggleFav = (id: string) => requireAuth(() => toggleSaved(id));
 
   return (
     <div className="baml-page">
@@ -1566,7 +1676,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loadingListing, setLoadingListing] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
+  const { favs, toggle: toggleSaved } = useFavourites();
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -1641,13 +1751,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const detailMeta = listingMetaParts(active);
   const viewSourceText = `View on ${sourceLabel(active)}`;
 
-  const toggleFav = () => requireAuth(() => {
-    setFavs((prev) => {
-      const next = prev.includes(active.rightmove_id) ? prev.filter((item) => item !== active.rightmove_id) : [...prev, active.rightmove_id];
-      writeIds(MARKETPLACE_FAVS, next);
-      return next;
-    });
-  });
+  const toggleFav = () => requireAuth(() => toggleSaved(active.rightmove_id));
 
   const addToBasket = () => {
     const next = basket.includes(active.rightmove_id) ? basket : [...basket, active.rightmove_id];
@@ -1798,6 +1902,7 @@ export const BuyAbroadUkBasket: React.FC = () => {
   const auth = useAuth();
   const navigate = useNavigate();
   const [ids, setIds] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
+  const { favs } = useFavourites();
   const [listings, setListings] = useState<Listing[]>([]);
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -1886,7 +1991,7 @@ export const BuyAbroadUkBasket: React.FC = () => {
       <MarketplaceStyles />
       <Header
         active="homes"
-        favCount={readIds(MARKETPLACE_FAVS).length}
+        favCount={favs.length}
         basketCount={selected.length}
         onAuth={() => setAuthView('savePrompt')}
         onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
@@ -1974,6 +2079,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
   const basketCount = readIds(MARKETPLACE_BASKET).length;
+  const { favs } = useFavourites();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1985,7 +2091,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
       <MarketplaceStyles />
       <Header
         active="how"
-        favCount={readIds(MARKETPLACE_FAVS).length}
+        favCount={favs.length}
         basketCount={basketCount}
         onAuth={() => setAuthView('savePrompt')}
         onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
@@ -2042,46 +2148,60 @@ export const BuyAbroadUkConsultation: React.FC = () => {
   );
 };
 
-// Saved homes. Favourites live in this browser (MARKETPLACE_FAVS), and
-// saving one needs an account, so the page asks visitors to sign in first.
+// Saved homes. Favourites are saved to the account (useFavourites), so the
+// page asks visitors to sign in first.
 export const BuyAbroadUkFavourites: React.FC = () => {
   usePageMeta({ title: 'Your Favourites | Havlo Buy Abroad', description: 'Homes you have saved on Havlo Buy Abroad.' });
   const auth = useAuth();
   const navigate = useNavigate();
-  const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
+  const { favs, ready, remove } = useFavourites();
   const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
-  const [listings, setListings] = useState<Listing[]>(() => readIds(MARKETPLACE_FAVS).map(readCachedListing).filter(Boolean) as Listing[]);
-  const [loading, setLoading] = useState(() => readIds(MARKETPLACE_FAVS).length > 0);
+  const [listings, setListings] = useState<Listing[]>(() => favs.map(readCachedListing).filter(Boolean) as Listing[]);
+  const [inFlight, setInFlight] = useState(0);
   const [loadError, setLoadError] = useState('');
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
   const signedIn = Boolean(auth.token);
-  const favKey = favs.join(',');
+
+  // Fetch details for saved homes we haven't asked about yet: on arrival,
+  // and again when the account's list brings in homes saved elsewhere.
+  // Removing a home only filters what's shown, so it never refetches.
+  const requested = useRef(new Set<string>());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const toFetchKey = favs.filter((id) => !requested.current.has(id)).join(',');
 
   useEffect(() => {
-    if (!favKey) {
-      setLoading(false);
-      return undefined;
-    }
-    const controller = new AbortController();
+    if (!toFetchKey) return;
+    const ids = toFetchKey.split(',');
+    ids.forEach((id) => requested.current.add(id));
+    setInFlight((n) => n + 1);
     setLoadError('');
-    fetch(listingsApiUrl(`/listings/by-ids?ids=${encodeURIComponent(favKey)}`), { signal: controller.signal })
-      .then((res) => res.ok ? res.json() : Promise.reject())
-      .then((data: { listings: Listing[] }) => {
-        cacheListings(data.listings || []);
-        setListings(data.listings || []);
+    // /listings/by-ids answers at most 200 ids per call.
+    const batches: string[][] = [];
+    for (let i = 0; i < ids.length; i += 200) batches.push(ids.slice(i, i + 200));
+    Promise.all(batches.map((batch) => (
+      fetch(listingsApiUrl(`/listings/by-ids?ids=${encodeURIComponent(batch.join(','))}`))
+        .then((res) => res.ok ? res.json() as Promise<{ listings: Listing[] }> : Promise.reject())
+    )))
+      .then((results) => {
+        if (!mounted.current) return;
+        const found = results.flatMap((data) => data.listings || []);
+        cacheListings(found);
+        setListings((prev) => [...prev.filter((listing) => !ids.includes(listing.rightmove_id)), ...found]);
       })
-      .catch((err) => {
-        if (err?.name !== 'AbortError') setLoadError('We could not refresh your saved homes right now.');
+      .catch(() => {
+        if (mounted.current) setLoadError('We could not refresh your saved homes right now.');
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (mounted.current) setInFlight((n) => n - 1);
       });
-    return () => controller.abort();
-    // Removing a home only filters what's shown; no refetch needed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [toFetchKey]);
 
+  const loading = inFlight > 0 || Boolean(toFetchKey);
   // Keep the order homes were saved in.
   const saved = favs
     .map((id) => listings.find((listing) => listing.rightmove_id === id))
@@ -2089,17 +2209,9 @@ export const BuyAbroadUkFavourites: React.FC = () => {
   // Homes that have since been sold or taken off the portals.
   const unavailable = !loading && !loadError ? favs.filter((id) => !listings.some((listing) => listing.rightmove_id === id)) : [];
 
-  const unsave = (id: string) => {
-    const next = favs.filter((item) => item !== id);
-    setFavs(next);
-    writeIds(MARKETPLACE_FAVS, next);
-  };
+  const unsave = (id: string) => remove([id]);
 
-  const clearUnavailable = () => {
-    const next = favs.filter((id) => !unavailable.includes(id));
-    setFavs(next);
-    writeIds(MARKETPLACE_FAVS, next);
-  };
+  const clearUnavailable = () => remove(unavailable);
 
   const toggleBasket = (id: string) => {
     const next = basket.includes(id) ? basket.filter((item) => item !== id) : [...basket, id];
@@ -2131,6 +2243,8 @@ export const BuyAbroadUkFavourites: React.FC = () => {
               <button type="button" className="bab-btn-outline" onClick={() => setAuthView('login')}>Sign in</button>
             </div>
           </section>
+        ) : !favs.length && !ready ? (
+          <ListingsLoadingState />
         ) : !favs.length ? (
           <section className="bab-fav-empty">
             <Heart size={34} />

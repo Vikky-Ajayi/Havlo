@@ -937,6 +937,26 @@ class RightmoveListing(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class BuyAbroadFavourite(Base):
+    """A home a signed-in visitor saved on the Buy Abroad marketplace, so
+    their favourites follow the account to any browser or device.
+    listing_id is the listing's rightmove_id (the id the marketplace uses for
+    every source). There's no foreign key to rightmove_listings: a saved home
+    that drops off the portals stays on the favourites page as unavailable
+    rather than silently disappearing."""
+    __tablename__ = "buy_abroad_favourites"
+    __table_args__ = (
+        UniqueConstraint("user_id", "listing_id", name="uq_buy_abroad_favourites_user_listing"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    listing_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ProductAccessToken(Base):
     __tablename__ = "product_access_tokens"
 

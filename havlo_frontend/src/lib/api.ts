@@ -616,6 +616,17 @@ export const api = {
   changePassword: (token: string, payload: ChangePasswordPayload) =>
     request<{ message: string }>('/users/change-password', { method: 'POST', token, body: payload }),
 
+  // Buy Abroad favourites saved to the account (ids are listings' rightmove_id).
+  // Each call answers with the account's whole list, oldest first.
+  favouriteListings: (token: string) =>
+    request<{ listing_ids: string[] }>('/users/me/favourite-listings', { token }),
+
+  addFavouriteListings: (token: string, listingIds: string[]) =>
+    request<{ listing_ids: string[] }>('/users/me/favourite-listings', { method: 'POST', token, body: { listing_ids: listingIds } }),
+
+  removeFavouriteListing: (token: string, listingId: string) =>
+    request<{ listing_ids: string[] }>(`/users/me/favourite-listings/${encodeURIComponent(listingId)}`, { method: 'DELETE', token }),
+
   submitOnboarding: (token: string, payload: OnboardingPayload) =>
     request<{ message: string; onboarding_id: string }>('/onboarding', { method: 'POST', token, body: payload }),
 

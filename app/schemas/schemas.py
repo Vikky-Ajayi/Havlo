@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, StringConstraints, field_validator
 
 
 # ── Shared ─────────────────────────────────────────────────────────────────────
@@ -157,6 +157,18 @@ class UpdateProfileRequest(BaseModel):
 class UpdatePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=8)
+
+
+# Buy Abroad favourites: listing ids are the listings' rightmove_id.
+FavouriteListingId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
+
+
+class FavouriteListingsRequest(BaseModel):
+    listing_ids: list[FavouriteListingId] = Field(..., min_length=1, max_length=200)
+
+
+class FavouriteListingsResponse(BaseModel):
+    listing_ids: list[str]
 
 
 # ── Onboarding ─────────────────────────────────────────────────────────────────
