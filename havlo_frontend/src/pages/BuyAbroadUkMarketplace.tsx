@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bath, Bed, Bitcoin, BriefcaseBusiness, CheckCircle, ChevronLeft, ChevronRight, CircleDollarSign, CreditCard, Eye, Heart, Home, Info, Landmark, Lightbulb, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Bath, Bed, Bitcoin, BriefcaseBusiness, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff, Heart, Home, Info, Landmark, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react';
 import { api, API_BASE } from '../lib/api';
 import { redirectToCheckout } from '../lib/paymentReturn';
 import { useAuth } from '../context/AuthContext';
@@ -9,11 +9,12 @@ import { useTypewriter } from '../hooks/useTypewriter';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
 
-const HERO_COUNTRIES = ['UK', 'Canada', 'Dubai', 'United States'];
+const HERO_COUNTRIES = ['United Kingdom', 'Canada', 'Dubai', 'United States'];
 
 const MARKETPLACE_FAVS = 'havlo_buyabroad_favs';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
 const LISTING_CACHE_PREFIX = 'havlo_buyabroad_listing_';
+const FAVOURITES_PATH = '/buyabroad/uk/favourites';
 const CONSULTATION_FEE = 99.99;
 const LISTINGS_API_BASE = API_BASE.replace(/\/$/, '');
 
@@ -62,8 +63,8 @@ interface ListingsResponse {
 const fallbackImages = ['/1.png', '/2.png', '/3.png', '/4.png', '/5.png'];
 
 const COUNTRY_SECTIONS = [
-  { key: 'uk', title: 'Properties For Sale in the UK', allTitle: 'All Properties in United Kingdom' },
-  { key: 'america', title: 'Properties For Sale in America', allTitle: 'All Homes in America' },
+  { key: 'uk', title: 'Properties For Sale in the United Kingdom', allTitle: 'All Properties in the United Kingdom' },
+  { key: 'america', title: 'Properties For Sale in the United States', allTitle: 'All Homes in the United States' },
   { key: 'dubai', title: 'Properties For Sale in Dubai', allTitle: 'All Homes in Dubai' },
   { key: 'canada', title: 'Properties For Sale in Canada', allTitle: 'All Homes in Canada' },
 ] as const;
@@ -209,8 +210,8 @@ function cleanText(value?: string | null) {
 
 function countryLabel(country?: string) {
   const labels: Record<string, string> = {
-    uk: 'UK',
-    america: 'America',
+    uk: 'United Kingdom',
+    america: 'United States',
     canada: 'Canada',
     dubai: 'Dubai',
   };
@@ -317,46 +318,102 @@ function splitName(fullName: string) {
   };
 }
 
+type NavKey = 'homes' | 'how' | null;
+
 function Header({
+  active = 'homes',
   favCount,
   basketCount,
   onAuth,
+  onFavourites,
   onBasket,
 }: {
+  active?: NavKey;
   favCount: number;
   basketCount: number;
   onAuth: () => void;
+  onFavourites: () => void;
   onBasket: () => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
+  // Pricing has no page yet: it's shown, but deliberately inert.
+  const links = (
+    <>
+      <a className={active === 'homes' ? 'active' : undefined} aria-current={active === 'homes' ? 'page' : undefined} href="/buyabroad/uk/listings">Homes</a>
+      <a className={active === 'how' ? 'active' : undefined} aria-current={active === 'how' ? 'page' : undefined} href="/buyabroad/uk/consultation">How it Works</a>
+      <span className="baml-nav-inert">Pricing</span>
+    </>
+  );
+
   return (
-    <header className="baml-header">
-      <a className="baml-logo" href="/buyabroad/uk" aria-label="Havlo Buy Abroad">
-        <img src="/Havlo Black Transparent.png" alt="Havlo" />
-        <span>Buy Abroad</span>
-      </a>
-      <nav className="baml-nav">
-        <a className="active" href="/buyabroad/uk/listings"><Home className="baml-nav-icon home" size={31} /> Homes</a>
-        <a href="/buyabroad/uk#process"><Lightbulb className="baml-nav-icon bulb" size={31} /> How it Works</a>
-        <a href="/buyabroad/uk#pricing"><CircleDollarSign className="baml-nav-icon money" size={31} /> Pricing</a>
-      </nav>
-      <button className="baml-consult" onClick={onAuth}>Get Free Consultation</button>
-      <div className="baml-actions">
-        <CountryBadge variant="inline" />
-        <button className="baml-pill" onClick={onAuth} aria-label="Saved homes"><Heart size={21} /><span>{favCount}</span></button>
-        <button className="baml-pill" onClick={onBasket} aria-label="Basket"><ShoppingBasket size={20} /><span>{basketCount}</span></button>
-        <button className="baml-menu" aria-label="Open menu"><Menu size={29} /></button>
+    <>
+      <header className="baml-header">
+        <a className="baml-logo" href="/buyabroad/uk" aria-label="Havlo Buy Abroad">
+          <img src="/Havlo Black Transparent.png" alt="Havlo" />
+          <span>Buy Abroad</span>
+        </a>
+        <span className="baml-header-country"><CountryBadge variant="inline" /></span>
+        <nav className="baml-nav" aria-label="Buy Abroad">{links}</nav>
+        <button type="button" className="baml-consult" onClick={onAuth}>Get Free Consultation</button>
+        <div className="baml-actions">
+          <button type="button" className="baml-pill" onClick={onFavourites} aria-label={`Saved homes (${favCount})`}><Heart size={21} /><span>{favCount}</span></button>
+          <button type="button" className="baml-pill" onClick={onBasket} aria-label={`Basket (${basketCount})`}><ShoppingBasket size={20} /><span>{basketCount}</span></button>
+          <button type="button" className="baml-menu" aria-label="Open menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={28} /></button>
+        </div>
+      </header>
+      <div className={`baml-drawer-backdrop${menuOpen ? ' is-open' : ''}`} onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      <div className={`baml-drawer${menuOpen ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Menu" aria-hidden={!menuOpen}>
+        <button type="button" className="baml-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={22} /></button>
+        <nav className="baml-drawer-nav" aria-label="Buy Abroad">{links}</nav>
+        <button type="button" className="baml-drawer-consult" onClick={() => { setMenuOpen(false); onAuth(); }}>Get Free Consultation</button>
+        <div className="baml-drawer-country"><span>Country</span><CountryBadge variant="inline" /></div>
       </div>
-    </header>
+    </>
   );
 }
+
+// Saving and viewing homes need an account. requireAuth runs the action
+// straight away when signed in; otherwise it opens the sign-in prompt and
+// runs the action once the visitor has signed in or created an account,
+// so they land where they were headed instead of back at the prompt.
+function useAuthGate(setAuthView: (view: AuthView | null) => void) {
+  const auth = useAuth();
+  const pending = useRef<(() => void) | null>(null);
+  const requireAuth = useCallback((action: () => void) => {
+    if (auth.token) {
+      action();
+      return;
+    }
+    pending.current = action;
+    setAuthView('savePrompt');
+  }, [auth.token, setAuthView]);
+  const onAuthenticated = useCallback(() => {
+    const action = pending.current;
+    pending.current = null;
+    action?.();
+  }, []);
+  const clearPending = useCallback(() => {
+    pending.current = null;
+  }, []);
+  return { requireAuth, onAuthenticated, clearPending };
+}
+
 
 function FooterCta() {
   return (
     <>
       <section className="baml-cta">
         <div>
-          <h2>Can&apos;t find what you&apos;re looking for?</h2>
-          <p>Our advisors source off-market and exclusive properties not listed on any portal. Tell us what you want and we&apos;ll find it.</p>
+          <h2>Can&apos;t find what you&apos;re <br className="baml-br" />looking for?</h2>
+          <p>Our advisors source off-market and exclusive properties not listed on any portal. <br className="baml-br" />Tell us what you want and we&apos;ll find it.</p>
         </div>
         <a href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call" target="_blank" rel="noreferrer" className="baml-call"><img src="/calendly-icon.svg" alt="" className="baml-call-mark" width={22} height={22} /> Book a Call</a>
       </section>
@@ -698,25 +755,165 @@ function AllHomesModal({
   );
 }
 
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  minLength,
+  autoComplete,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  minLength?: number;
+  autoComplete: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label>
+      {label}
+      <span className="baml-password">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          type={visible ? 'text' : 'password'}
+          placeholder={placeholder}
+          required
+          minLength={minLength}
+          autoComplete={autoComplete}
+        />
+        <button type="button" onClick={() => setVisible((v) => !v)} aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible}>
+          {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </span>
+    </label>
+  );
+}
+
+const OTP_LENGTH = 6;
+
+// One box per digit: typing moves to the next box, Backspace steps back,
+// arrows move between boxes, and pasting (or an SMS/email autofill into
+// any box) spreads the whole code across them.
+function OtpInput({ digits, onChange }: { digits: string[]; onChange: (digits: string[]) => void }) {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const focusBox = (index: number) => {
+    const box = refs.current[Math.max(0, Math.min(OTP_LENGTH - 1, index))];
+    box?.focus();
+    box?.select();
+  };
+  const fillFrom = (start: number, text: string) => {
+    const incoming = text.replace(/\D/g, '').slice(0, OTP_LENGTH - start).split('');
+    if (!incoming.length) return;
+    const next = digits.slice();
+    incoming.forEach((digit, offset) => { next[start + offset] = digit; });
+    onChange(next);
+    focusBox(start + incoming.length);
+  };
+
+  useEffect(() => {
+    refs.current[0]?.focus();
+  }, []);
+
+  return (
+    <div className="baml-otp" role="group" aria-label="6-digit code">
+      {digits.map((digit, index) => (
+        <input
+          key={index}
+          ref={(el) => {
+            refs.current[index] = el;
+            // The site-wide mobile rule pins inputs to 16px with a layered
+            // !important that stylesheet rules can't outrank; an inline
+            // !important can, so the digits stay large on phones too.
+            el?.style.setProperty('font-size', '22px', 'important');
+          }}
+          value={digit}
+          inputMode="numeric"
+          autoComplete={index === 0 ? 'one-time-code' : 'off'}
+          aria-label={`Digit ${index + 1}`}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, '');
+            if (value.length > 1) {
+              fillFrom(index, value);
+              return;
+            }
+            const next = digits.slice();
+            next[index] = value;
+            onChange(next);
+            if (value) focusBox(index + 1);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' && !digit && index > 0) {
+              e.preventDefault();
+              const next = digits.slice();
+              next[index - 1] = '';
+              onChange(next);
+              focusBox(index - 1);
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              focusBox(index - 1);
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              focusBox(index + 1);
+            }
+          }}
+          onPaste={(e) => {
+            e.preventDefault();
+            fillFrom(index, e.clipboardData.getData('text'));
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+const RESEND_SECONDS = 59;
+
 function AuthModal({
   view,
   setView,
   onClose,
+  onAuthenticated,
 }: {
   view: AuthView;
   setView: (view: AuthView) => void;
   onClose: () => void;
+  onAuthenticated?: () => void;
 }) {
   const auth = useAuth();
   const [role, setRole] = useState<'buyer' | 'agent'>('buyer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otpDigits, setOtpDigits] = useState<string[]>(() => Array(OTP_LENGTH).fill(''));
+  const [resendIn, setResendIn] = useState(0);
+  const [notice, setNotice] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const otp = otpDigits.join('');
+
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const timer = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendIn]);
+
+  const goTo = (next: AuthView) => {
+    setError('');
+    setNotice('');
+    setView(next);
+  };
+
+  const finish = () => {
+    onAuthenticated?.();
+    onClose();
+  };
 
   const submitRegister = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -732,7 +929,7 @@ function AuthModal({
         role,
       } as any);
       await auth.login(resp);
-      onClose();
+      finish();
     } catch (err: any) {
       setError(err?.message || 'Could not create account.');
     } finally {
@@ -746,7 +943,7 @@ function AuthModal({
     try {
       const resp = await api.login({ email, password });
       await auth.login(resp);
-      onClose();
+      finish();
     } catch (err: any) {
       setError(err?.message || 'Could not sign in.');
     } finally {
@@ -759,11 +956,25 @@ function AuthModal({
     setLoading(true); setError('');
     try {
       await api.forgotPassword(email);
-      setView('otp');
+      setOtpDigits(Array(OTP_LENGTH).fill(''));
+      setResendIn(RESEND_SECONDS);
+      goTo('otp');
     } catch (err: any) {
       setError(err?.message || 'Could not send code.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendCode = async () => {
+    if (resendIn > 0) return;
+    setError(''); setNotice('');
+    try {
+      await api.forgotPassword(email);
+      setResendIn(RESEND_SECONDS);
+      setNotice('A new code is on its way.');
+    } catch (err: any) {
+      setError(err?.message || 'Could not resend the code.');
     }
   };
 
@@ -773,7 +984,7 @@ function AuthModal({
     try {
       const resp = await api.verifyResetOtp(email, otp);
       setResetToken(resp.reset_token);
-      setView('reset');
+      goTo('reset');
     } catch (err: any) {
       setError(err?.message || 'Invalid code.');
     } finally {
@@ -783,11 +994,16 @@ function AuthModal({
 
   const submitReset = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError('The two passwords don’t match.');
+      return;
+    }
     setLoading(true); setError('');
     try {
       await api.resetPassword(resetToken, newPassword);
       setPassword(newPassword);
-      setView('login');
+      goTo('login');
+      setNotice('Password updated. Sign in with your new password.');
     } catch (err: any) {
       setError(err?.message || 'Could not reset password.');
     } finally {
@@ -796,6 +1012,7 @@ function AuthModal({
   };
 
   const maskedEmail = email ? email.replace(/^(.{3}).*(@.*)$/, '$1*****$2') : 'free*****@gmail.com';
+  const resendLabel = resendIn > 0 ? `Resend Code in 00:${String(resendIn).padStart(2, '0')}` : 'Resend Code';
 
   return (
     <div className="baml-overlay">
@@ -805,8 +1022,8 @@ function AuthModal({
           <>
             <h2>Sign In To Save Properties</h2>
             <p className="baml-auth-copy">We provide end-to-end advisory and guidance, from search to sale, wherever you&apos;re buying.</p>
-            <button className="baml-primary" onClick={() => setView('register')}>Create Account</button>
-            <button className="baml-secondary" onClick={() => setView('login')}>Sign in</button>
+            <button className="baml-primary" onClick={() => goTo('register')}>Create Account</button>
+            <button className="baml-secondary" onClick={() => goTo('login')}>Sign in</button>
           </>
         )}
         {view === 'register' && (
@@ -817,55 +1034,55 @@ function AuthModal({
               <button type="button" className={role === 'buyer' ? 'active' : ''} onClick={() => setRole('buyer')}><Home size={22} fill="#b20adc" strokeWidth={1.8} /><strong>I&apos;m a Buyer</strong><small>Search and Save homes</small></button>
               <button type="button" className={role === 'agent' ? 'active' : ''} onClick={() => setRole('agent')}><BriefcaseBusiness size={22} strokeWidth={2} /><strong>I&apos;m an Agent</strong><small>List and Manage Properties</small></button>
             </div>
-            <label>Full name<input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" required /></label>
-            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="e.g Johndoe@email.com" required /></label>
-            <label>Password<span className="baml-password"><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="******" required minLength={8} /><Eye size={18} /></span></label>
+            <label>Full name<input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" autoComplete="name" required /></label>
+            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="e.g Johndoe@email.com" autoComplete="email" required /></label>
+            <PasswordField label="Password" value={password} onChange={setPassword} placeholder="******" minLength={8} autoComplete="new-password" />
             {error && <p className="baml-error">{error}</p>}
             <button className="baml-primary" disabled={loading}>{loading ? 'Please wait...' : 'Continue'}</button>
-            <button type="button" className="baml-secondary" onClick={() => setView('login')}>Already have an Account? <strong>Sign in</strong></button>
+            <button type="button" className="baml-secondary" onClick={() => goTo('login')}>Already have an Account? <strong>Sign in</strong></button>
           </form>
         )}
         {view === 'login' && (
           <form onSubmit={submitLogin}>
             <h2>Sign In</h2>
-            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="e.g Johndoe@email.com" required /></label>
-            <label>Password<span className="baml-password"><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="******" required /><Eye size={18} /></span></label>
-            <button type="button" className="baml-link" onClick={() => setView('forgot')}>Forgot Password?</button>
+            {notice && <p className="baml-notice">{notice}</p>}
+            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="e.g Johndoe@email.com" autoComplete="email" required /></label>
+            <PasswordField label="Password" value={password} onChange={setPassword} placeholder="******" autoComplete="current-password" />
+            <button type="button" className="baml-link" onClick={() => goTo('forgot')}>Forgot Password?</button>
             {error && <p className="baml-error">{error}</p>}
             <button className="baml-primary" disabled={loading}>{loading ? 'Please wait...' : 'Sign In'}</button>
-            <button type="button" className="baml-secondary" onClick={() => setView('register')}>Don&apos;t have an Account? <strong>Create Account</strong></button>
+            <button type="button" className="baml-secondary" onClick={() => goTo('register')}>Don&apos;t have an Account? <strong>Create Account</strong></button>
           </form>
         )}
         {view === 'forgot' && (
           <form onSubmit={submitForgot}>
             <h2>Forgot Password?</h2>
             <p className="baml-auth-copy strong">Enter email address, you will receive a code to reset your password</p>
-            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="name@email.com" required /></label>
+            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="name@email.com" autoComplete="email" required /></label>
             {error && <p className="baml-error">{error}</p>}
             <button className="baml-primary" disabled={loading}>{loading ? 'Sending...' : 'Submit'}</button>
-            <button type="button" className="baml-back" onClick={() => setView('login')}><ArrowLeft size={16} /> Back to Login</button>
+            <button type="button" className="baml-back" onClick={() => goTo('login')}><ArrowLeft size={16} /> Back to Login</button>
           </form>
         )}
         {view === 'otp' && (
           <form onSubmit={submitOtp}>
             <h2>Enter OTP</h2>
             <p className="baml-auth-copy">A 6-Digit code was sent to <strong>{maskedEmail}</strong></p>
-            <div className="baml-otp">
-              {[0, 1, 2, 3, 4, 5].map((i) => <input key={i} value={otp[i] || ''} onChange={(e) => setOtp((otp.slice(0, i) + e.target.value.slice(-1) + otp.slice(i + 1)).slice(0, 6))} inputMode="numeric" />)}
-            </div>
-            <p className="baml-resend">Didn&apos;t get Code? <button type="button" onClick={() => void api.forgotPassword(email)}>Resend Code in 00:59</button></p>
+            <OtpInput digits={otpDigits} onChange={(next) => { setOtpDigits(next); setError(''); }} />
+            <p className="baml-resend">Didn&apos;t get Code? <button type="button" onClick={() => void resendCode()} disabled={resendIn > 0}>{resendLabel}</button></p>
+            {notice && <p className="baml-notice">{notice}</p>}
             {error && <p className="baml-error">{error}</p>}
-            <button className="baml-primary" disabled={loading || otp.length < 6}>Confirm</button>
-            <button type="button" className="baml-back" onClick={() => setView('forgot')}><ArrowLeft size={16} /> Back</button>
+            <button className="baml-primary" disabled={loading || otp.length < OTP_LENGTH}>{loading ? 'Checking...' : 'Confirm'}</button>
+            <button type="button" className="baml-back" onClick={() => goTo('forgot')}><ArrowLeft size={16} /> Back</button>
           </form>
         )}
         {view === 'reset' && (
           <form onSubmit={submitReset}>
             <h2>Set New Password</h2>
-            <label>New Password<span className="baml-password"><input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" placeholder="At least 8 Characters" required minLength={8} /><Eye size={18} /></span></label>
-            <label>Confirm New Password<span className="baml-password"><input type="password" placeholder="At least 8 Characters" required minLength={8} /><Eye size={18} /></span></label>
+            <PasswordField label="New Password" value={newPassword} onChange={(v) => { setNewPassword(v); setError(''); }} placeholder="At least 8 Characters" minLength={8} autoComplete="new-password" />
+            <PasswordField label="Confirm New Password" value={confirmPassword} onChange={(v) => { setConfirmPassword(v); setError(''); }} placeholder="At least 8 Characters" minLength={8} autoComplete="new-password" />
             {error && <p className="baml-error">{error}</p>}
-            <button className="baml-primary" disabled={loading}>Reset Password</button>
+            <button className="baml-primary" disabled={loading}>{loading ? 'Please wait...' : 'Reset Password'}</button>
           </form>
         )}
       </div>
@@ -999,14 +1216,200 @@ function MarketplaceStyles() {
       @media(max-width:900px){.baml-source-badge{font-size:11px;padding:4px 8px}.baml-card-title{min-height:36px}.baml-detail-meta{font-size:14px}.baml-basket-info .baml-meta{display:none}}
       @media(max-width:900px){.baml-homes-overlay{padding-top:0}.baml-homes-overlay .baml-all-homes{height:min(86dvh,calc(100dvh - 18px));max-height:calc(100dvh - 18px);min-height:0;overflow:hidden}.baml-homes-overlay .baml-all-homes h2{margin-bottom:28px}.baml-homes-overlay .baml-all-scroll{padding-bottom:6px}.baml-homes-overlay .baml-pagination{margin-top:36px}}
     `}</style>
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap');
+      /* Header, menu and shared CTA — matches the Buy Abroad basket/consultation designs (Instrument Sans). */
+      .baml-page .baml-header{height:80px;padding:0 clamp(16px,5.56vw,80px);gap:0;font-family:'Instrument Sans',Inter,sans-serif}
+      .baml-page .baml-logo{flex:0 0 auto}
+      .baml-page .baml-nav{flex:0 0 auto;margin-left:auto;gap:73px;justify-content:flex-end}
+      .baml-page .baml-nav a,.baml-page .baml-nav-inert{position:relative;display:inline-flex;align-items:center;padding:0;border:0;font-family:'Instrument Sans',Inter,sans-serif;font-size:16px;font-weight:400;letter-spacing:0;color:#3D3D3D;text-decoration:none;white-space:nowrap}
+      .baml-page .baml-nav a.active{font-weight:500;color:#111}
+      .baml-page .baml-nav a.active::after{content:'';position:absolute;left:-40px;right:0;bottom:-15px;height:4px;border-radius:2px;background:#111}
+      .baml-page .baml-nav a:hover{color:#111}
+      .baml-nav-inert{cursor:default}
+      .baml-page .baml-consult{margin-left:91px;padding:0;font-family:'Instrument Sans',Inter,sans-serif;font-size:16px;font-weight:600;color:#111;cursor:pointer;white-space:nowrap}
+      .baml-page .baml-actions{margin-left:33px;gap:14px}
+      .baml-header-country{display:inline-flex;margin-left:20px}
+      .baml-page .baml-pill{width:73px;min-width:0;height:47px;border-radius:12px;background:#F3F4F6;box-shadow:none;color:#111;cursor:pointer;gap:8px;font-weight:600}
+      .baml-page .baml-pill span{min-width:22px;height:22px;padding:0 6px;background:#A409D2;font-family:'Instrument Sans',Inter,sans-serif;font-size:12px;font-weight:600}
+      .baml-page .baml-menu{display:none;padding:6px;cursor:pointer;color:#111}
+      .baml-drawer-backdrop{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s}
+      .baml-drawer-backdrop.is-open{opacity:1;pointer-events:auto}
+      .baml-drawer{position:fixed;top:0;right:0;bottom:0;z-index:1201;width:min(300px,86vw);display:flex;flex-direction:column;padding:72px 24px 32px;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.12);font-family:'Instrument Sans',Inter,sans-serif;transform:translateX(100%);visibility:hidden;transition:transform .25s ease,visibility .25s}
+      .baml-drawer.is-open{transform:none;visibility:visible}
+      .baml-drawer .baml-close{top:20px;right:20px}
+      .baml-drawer-nav{display:flex;flex-direction:column}
+      .baml-drawer-nav a,.baml-drawer-nav .baml-nav-inert{padding:16px 0;border-bottom:1px solid #EFEFEF;font-size:18px;color:#3D3D3D;text-decoration:none}
+      .baml-drawer-nav a.active{font-weight:600;color:#111}
+      .baml-drawer-consult{margin-top:24px;height:48px;border:0;border-radius:10px;background:#000;color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
+      .baml-drawer-country{display:flex;align-items:center;justify-content:space-between;margin-top:24px;font-size:15px;color:#666}
+      .baml-page .baml-cta{width:min(1240px,calc(100% - 200px));min-height:226px;margin:25px auto 80px;padding:46px 56px;border-radius:28px;background:#0A0A0A;font-family:'Instrument Sans',Inter,sans-serif}
+      .baml-page .baml-cta h2{margin:0 0 11px;font-family:'Instrument Sans',Inter,sans-serif;font-size:32px;font-weight:700;line-height:1.15;letter-spacing:-0.02em}
+      .baml-page .baml-cta p{max-width:none;font-size:14px;line-height:20px;letter-spacing:-0.01em}
+      .baml-page .baml-call{height:48px;padding:0 18px;border-radius:10px;font-family:'Instrument Sans',Inter,sans-serif;font-size:16px;font-weight:600;gap:8px}
+      .baml-page .baml-call-mark{width:28px;height:28px}
+      /* Sign-in modal fixes: working password reveal, roomy OTP boxes. */
+      .baml-password button{flex:none;display:flex;align-items:center;justify-content:center;width:48px;border:0;background:transparent;color:#555;cursor:pointer}
+      .baml-password button svg{margin:0}
+      .baml-password button:focus-visible{outline:2px solid #A409D2;outline-offset:-4px;border-radius:10px}
+      .baml-otp{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px!important;margin:0 0 28px}
+      .baml-auth .baml-otp input{width:100%!important;min-width:0;height:56px!important;padding:0!important;border:1.5px solid #E2E3E8;border-radius:12px;background:#F1F2F5;font-size:24px!important;line-height:1!important;font-weight:700;text-align:center;color:#111}
+      .baml-auth .baml-otp input:focus{outline:0;border-color:#A409D2;background:#fff;box-shadow:0 0 0 3px rgba(164,9,210,.12)}
+      .baml-resend button:disabled{color:#888;cursor:default}
+      .baml-notice{margin:0 0 14px;font-size:14px;font-weight:600;color:#0A7A3D}
+      /* Basket, consultation and favourites pages. */
+      .bab-page{background:#fff;font-family:'Instrument Sans',Inter,sans-serif;letter-spacing:-0.01em}
+      .bab-page h1,.bab-page h2,.bab-page h3{font-family:'Instrument Sans',Inter,sans-serif}
+      .bab-main{max-width:1440px;margin:0 auto;padding:60px clamp(16px,5.56vw,80px) 0}
+      .bab-goback{display:none}
+      .bab-title{margin:0;font-size:32px;font-weight:700;line-height:1.2;letter-spacing:-0.03em;color:#111}
+      .bab-basket-layout{display:grid;grid-template-columns:minmax(0,1fr) 412px;gap:33px;align-items:start;margin-top:28px}
+      .bab-item{display:flex;align-items:center;height:121px;border:1px solid #E6E6E6;border-radius:14px;overflow:hidden;background:#fff}
+      .bab-item+.bab-item{margin-top:36px}
+      .bab-item-img{flex:none;width:121px;height:100%;background:#eee}
+      .bab-item-img img{display:block;width:100%;height:100%;object-fit:cover}
+      .bab-item-info{flex:1;min-width:0;padding:0 24px}
+      .bab-item-info h2{margin:0;font-size:17px;font-weight:600;line-height:1.3;letter-spacing:-0.02em}
+      .bab-item-info h2 a{color:#111;text-decoration:none;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+      .bab-item-meta{display:flex;flex-wrap:wrap;gap:2px 6px;margin:7px 0 0;font-size:14px;line-height:1.4;color:#666}
+      .bab-item-price{margin:6px 0 0;font-size:14px;line-height:1.4;color:#666}
+      .bab-trash{flex:none;margin-right:18px;padding:8px;border:0;background:none;color:#111;cursor:pointer}
+      .bab-empty{margin:0;padding:40px 0;color:#666;font-size:16px}
+      .bab-link{display:inline-flex;align-items:center;gap:4px;margin-top:32px;color:#A409D2;font-size:16px;text-decoration:none}
+      .bab-summary{padding:14px 21px 21px;border:1px solid #E6E6E6;border-radius:22px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+      .bab-summary h2{margin:0;font-size:16px;font-weight:500;line-height:1.5;text-transform:uppercase;color:#555}
+      .bab-sum-row{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;line-height:1.5;color:#666}
+      .bab-sum-row:first-of-type{margin-top:18px}
+      .bab-sum-row+.bab-sum-row{margin-top:20px}
+      .bab-sum-row b{font-size:16px;font-weight:600;color:#111}
+      .bab-sum-row b.bab-count{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#F7E8FD;color:#A409D2}
+      .bab-sum-total{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:17px;padding-top:12px;border-top:1px solid #E6E6E6}
+      .bab-sum-total span{font-size:20px;color:#111}
+      .bab-sum-total b{font-size:35px;font-weight:700;line-height:1.15;letter-spacing:-0.02em;color:#111}
+      .bab-note{display:flex;gap:14px;margin-top:6px;padding:12px 19px 12px 18px;border-radius:12px;background:#F1F2F7;color:#4B006C;font-size:12px;font-weight:500;line-height:18px;letter-spacing:-0.02em}
+      .bab-note p{margin:0}
+      .bab-note ul{margin:0;padding:0;list-style:none}
+      .bab-note li{position:relative;margin-top:18px;padding-left:18px}
+      .bab-note li::before{content:'•';position:absolute;left:6px;top:0}
+      .bab-note-icon{flex:none;display:grid;place-items:center;width:16px;height:16px;margin-top:2px;border-radius:50%;background:#4B006C;color:#fff;font-size:11px;font-weight:700;font-family:Georgia,serif;font-style:italic}
+      .bab-checkout{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:40px;margin-top:40px;border:0;border-radius:8px;background:#000;color:#fff;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer}
+      .bab-checkout:disabled{opacity:.5;cursor:not-allowed}
+      .bab-consult{padding-top:34px}
+      .bab-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:0 0 20px;font-size:16px;line-height:1.5;color:#666}
+      .bab-crumbs .done{color:#A409D2;text-decoration:none}
+      .bab-intro{max-width:840px;margin:18px 0 0;font-size:18px;line-height:1.5;color:#666}
+      .bab-intro b{font-weight:600;color:#111}
+      .bab-video{margin-top:38px;border:1px solid #E6E6E6;border-radius:34px;overflow:hidden;background:#fff;box-shadow:0 12px 35px rgba(0,0,0,.05)}
+      .bab-video-stage{position:relative;display:flex;align-items:center;justify-content:center;height:540px;background:#000}
+      .bab-video-pill{position:absolute;left:37px;top:26px;padding:5px 14px;border:1px solid #3A3A3A;border-radius:999px;background:#111;color:#fff;font-size:14px;line-height:1.4}
+      .bab-play{display:grid;place-items:center;width:56px;height:56px;border:0;border-radius:50%;background:#fff;color:#000;cursor:pointer}
+      .bab-play svg{margin-left:3px}
+      .bab-covers{padding:31px 33px 24px}
+      .bab-covers h2{margin:0;font-size:18px;font-weight:500;line-height:1.5;text-transform:uppercase;color:#666}
+      .bab-covers ul{display:grid;grid-template-columns:404px minmax(0,1fr);grid-template-rows:repeat(2,auto);grid-auto-flow:column;row-gap:27px;margin:36px 0 0;padding:0;list-style:none}
+      .bab-covers li{display:flex;align-items:center;gap:11px;font-size:18px;line-height:1.4;color:#666}
+      .bab-tick{flex:none}
+      .bab-questions{display:flex;align-items:center;justify-content:space-between;gap:24px;max-width:1238px;min-height:115px;margin-top:51px;padding:22px 32px 22px 37px;border:1px solid #E6E6E6;border-radius:30px;background:#fff;box-shadow:0 10px 28px rgba(0,0,0,.05)}
+      .bab-questions h2{margin:0;font-size:30px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;color:#111}
+      .bab-questions p{margin:4px 0 0;font-size:18px;line-height:1.5;color:#666}
+      .bab-question-actions,.bab-fav-actions{display:flex;flex:none;gap:14px}
+      .bab-btn-outline,.bab-btn-solid{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:47px;padding:0 22px;border-radius:8px;font-family:inherit;font-size:16px;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+      .bab-btn-outline{border:1px solid #E6E6E6;background:#fff;color:#111}
+      .bab-btn-solid{border:1px solid #000;background:#000;color:#fff}
+      .bab-page .baml-cta{margin-top:120px}
+      .bab-fav-empty{display:flex;flex-direction:column;align-items:center;max-width:560px;margin:40px auto 0;padding:48px 32px;border:1px solid #E6E6E6;border-radius:22px;text-align:center;color:#A409D2}
+      .bab-fav-empty h2{margin:16px 0 0;font-size:24px;font-weight:700;letter-spacing:-0.02em;color:#111}
+      .bab-fav-empty p{margin:8px 0 24px;font-size:16px;line-height:1.5;color:#666}
+      .bab-fav-gone{margin:10px 0 0;font-size:15px;color:#666}
+      .bab-fav-gone button{padding:0;border:0;background:none;color:#A409D2;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}
+      .bab-fav-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:48px 32px;margin-top:36px}
+      .bab-fav-card{display:flex;flex-direction:column;min-width:0}
+      .bab-page .bab-fav-card .baml-card-title,.bab-page .bab-fav-card .baml-price{font-family:'Instrument Sans',Inter,sans-serif}
+      .bab-fav-basket{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;margin-top:14px;border:1px solid #E6E6E6;border-radius:8px;background:#fff;color:#111;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+      .bab-fav-basket.is-added{border-color:#A409D2;color:#A409D2;background:#FBF3FE}
+      @media(max-width:1200px){
+        .baml-page .baml-nav{gap:40px}
+        .baml-page .baml-consult{margin-left:40px}
+        .bab-basket-layout{grid-template-columns:minmax(0,1fr) 380px}
+        .bab-fav-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      }
+      @media(max-width:1024px){
+        .baml-page .baml-nav,.baml-page .baml-consult{display:none}
+        .baml-page .baml-actions{margin-left:auto}
+        .baml-page .baml-menu{display:block}
+        .baml-br{display:none}
+        .bab-basket-layout{grid-template-columns:1fr}
+        .bab-summary{max-width:560px}
+        .bab-video-stage{height:min(540px,48vw)}
+        .bab-covers ul{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}
+        .bab-questions{max-width:none}
+      }
+      @media(max-width:900px){
+        .baml-page .baml-header{height:80px;min-height:0;flex-wrap:nowrap;padding:0 16px}
+        .baml-page .baml-logo img{width:104px}
+        .baml-page .baml-logo span{margin-top:2px;font-size:13px;font-weight:400}
+        .baml-header-country{display:none}
+        .baml-page .baml-actions{gap:10px}
+        .baml-page .baml-pill{width:64px;height:48px}
+        .baml-page .baml-cta{width:calc(100% - 32px);min-height:0;margin:20px auto 55px;padding:30px 16px;border-radius:24px}
+        .baml-page .baml-cta h2{font-size:24px;line-height:1.2}
+        .baml-page .baml-cta p{font-size:15px}
+        .baml-page .baml-call{height:52px;margin-top:40px}
+        .bab-main{padding:24px 16px 0}
+        .bab-goback{display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;color:#666;font-size:15px;text-decoration:none}
+        .bab-title{font-size:28px}
+        .bab-basket-layout{margin-top:20px}
+        .bab-item{height:80px;border-radius:10px}
+        .bab-item+.bab-item{margin-top:12px}
+        .bab-item-img{width:80px}
+        .bab-item-info{padding:0 12px}
+        .bab-item-info h2{font-size:15px}
+        .bab-item-meta,.bab-item-price{margin-top:4px;font-size:11px}
+        .bab-trash{margin-right:8px}
+        .bab-trash svg{width:20px;height:20px}
+        .bab-link{margin-top:24px;font-size:14px}
+        .bab-summary{max-width:none;margin-top:28px;padding:16px;border-radius:20px}
+        .bab-summary h2{font-size:15px}
+        .bab-sum-row{font-size:13px}
+        .bab-sum-row b{font-size:15px}
+        .bab-sum-row b.bab-count{width:28px;height:28px}
+        .bab-sum-total span{font-size:17px}
+        .bab-sum-total b{font-size:30px}
+        .bab-note{padding:16px 16px 20px;font-size:12px;gap:12px}
+        .bab-note li{margin-top:14px}
+        .bab-checkout{height:44px;margin-top:28px}
+        .bab-consult{padding-top:28px}
+        .bab-crumbs{display:none}
+        .bab-consult .bab-title{font-size:22px}
+        .bab-intro{margin-top:16px;font-size:15px}
+        .bab-video{margin-top:24px;border-radius:18px}
+        .bab-video-stage{height:206px}
+        .bab-video-pill{left:16px;top:14px;font-size:13px}
+        .bab-play{width:52px;height:52px}
+        .bab-covers{padding:16px 18px 18px}
+        .bab-covers h2{font-size:15px}
+        .bab-covers ul{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row;row-gap:14px;margin-top:16px}
+        .bab-covers li{font-size:14px;gap:10px}
+        .bab-tick{width:20px;height:20px}
+        .bab-questions{display:block;margin-top:16px;padding:24px 14px;border-radius:18px}
+        .bab-questions h2{font-size:21px}
+        .bab-questions p{margin-bottom:20px;font-size:15px}
+        .bab-question-actions,.bab-fav-actions{flex-direction:column-reverse;gap:10px}
+        .bab-fav-actions{flex-direction:column;width:100%}
+        .bab-btn-outline,.bab-btn-solid{width:100%;height:48px}
+        .bab-page .baml-cta{margin-top:64px}
+        .bab-fav-empty{margin-top:28px;padding:36px 18px}
+        .bab-fav-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 16px;margin-top:24px}
+        .bab-fav-grid .baml-card{width:auto;flex:auto}
+      }
+    `}</style>
     </>
   );
 }
 
 export const BuyAbroadUkListingsRedesign: React.FC = () => {
-  usePageMeta({ title: 'Browse UK Properties in Pounds & Naira | Havlo', description: 'Browse homes across UK, America, Dubai and Canada with Havlo Buy Abroad.' });
+  usePageMeta({ title: 'Browse United Kingdom Properties in Pounds & Naira | Havlo', description: 'Browse homes across the United Kingdom, the United States, Dubai and Canada with Havlo Buy Abroad.' });
   const typedCountry = useTypewriter(HERO_COUNTRIES);
-  const auth = useAuth();
   const [listingsByCountry, setListingsByCountry] = useState<Record<CountryKey, Listing[]>>(() => emptyCountryListings());
   const [loadingByCountry, setLoadingByCountry] = useState<Record<CountryKey, boolean>>(() => emptyCountryFlags(true));
   const [listingErrors, setListingErrors] = useState<Record<CountryKey, string>>(() => emptyCountryMessages());
@@ -1092,22 +1495,20 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
     return next;
   }, [listingsByCountry, queryTerm]);
 
-  const toggleFav = (id: string) => {
-    if (!auth.token) {
-      setAuthView('savePrompt');
-      return;
-    }
+  const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
+
+  const toggleFav = (id: string) => requireAuth(() => {
     setFavs((prev) => {
       const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
       writeIds(MARKETPLACE_FAVS, next);
       return next;
     });
-  };
+  });
 
   return (
     <div className="baml-page">
       <MarketplaceStyles />
-      <Header favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onBasket={() => navigate('/buyabroad/uk/basket')} />
+      <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))} onBasket={() => navigate('/buyabroad/uk/basket')} />
       <section className="baml-hero">
         <h1>
           Buy Property in{' '}
@@ -1116,7 +1517,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
               {typedCountry}
               <span className="baml-hero-cursor" />
             </span>
-            <span className="sr-only">UK</span>
+            <span className="sr-only">United Kingdom</span>
           </span>
         </h1>
         <p>We provide end-to-end advisory and guidance, from search to sale, wherever you&apos;re buying.</p>
@@ -1153,7 +1554,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
         ))}
       </main>
       <FooterCta />
-      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
+      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => { setAuthView(null); clearPending(); }} onAuthenticated={onAuthenticated} />}
       {allOpen && <AllHomesModal title={allOpen.title} country={allOpen.country} searchTerm={queryTerm} filters={filters} favs={favs} toggleFav={toggleFav} onClose={() => setAllOpen(null)} />}
     </div>
   );
@@ -1172,7 +1573,8 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const [costTab, setCostTab] = useState<'cash' | 'mortgage'>('cash');
   const [deposit, setDeposit] = useState(25);
   const [term, setTerm] = useState(25);
-  const auth = useAuth();
+  const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
+  const openFavourites = () => requireAuth(() => navigate(FAVOURITES_PATH));
 
   usePageMeta({
     title: `${listing?.title || 'Property Details'} | Havlo Buy Abroad`,
@@ -1209,7 +1611,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     return (
       <div className="baml-page">
         <MarketplaceStyles />
-        <Header favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onBasket={() => navigate('/buyabroad/uk/basket')} />
+        <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
         <main className="baml-detail-main"><p className="baml-empty">Loading property details...</p></main>
       </div>
     );
@@ -1219,7 +1621,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     return (
       <div className="baml-page">
         <MarketplaceStyles />
-        <Header favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onBasket={() => navigate('/buyabroad/uk/basket')} />
+        <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
         <main className="baml-detail-main">
           <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
           <h1>Property not found</h1>
@@ -1239,15 +1641,13 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const detailMeta = listingMetaParts(active);
   const viewSourceText = `View on ${sourceLabel(active)}`;
 
-  const toggleFav = () => {
-    if (!auth.token) {
-      setAuthView('savePrompt');
-      return;
-    }
-    const next = saved ? favs.filter((item) => item !== active.rightmove_id) : [...favs, active.rightmove_id];
-    setFavs(next);
-    writeIds(MARKETPLACE_FAVS, next);
-  };
+  const toggleFav = () => requireAuth(() => {
+    setFavs((prev) => {
+      const next = prev.includes(active.rightmove_id) ? prev.filter((item) => item !== active.rightmove_id) : [...prev, active.rightmove_id];
+      writeIds(MARKETPLACE_FAVS, next);
+      return next;
+    });
+  });
 
   const addToBasket = () => {
     const next = basket.includes(active.rightmove_id) ? basket : [...basket, active.rightmove_id];
@@ -1259,7 +1659,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   return (
     <div className="baml-page">
       <MarketplaceStyles />
-      <Header favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onBasket={() => navigate('/buyabroad/uk/basket')} />
+      <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
       <main className="baml-detail-main">
         <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
         <div className="baml-detail-top">
@@ -1360,7 +1760,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
             <p className="baml-cost-legend"><strong><span className="baml-dot" /> Property {formatGbp(propertyPrice)}</strong> <strong className="purple"><span className="baml-dot purple-dot" /> Fees {formatGbp(fees)}</strong></p>
             <div className="baml-sidebar-actions">
               <button onClick={addToBasket}>Add to Basket <ShoppingBasket size={17} /></button>
-              <a href="/buyabroad/uk#process">How it Works <ChevronRight size={17} /></a>
+              <a href="/buyabroad/uk/consultation">How it Works <ChevronRight size={17} /></a>
               <a href={active.url || '#'} target="_blank" rel="noreferrer">{viewSourceText}</a>
             </div>
             <p className="baml-info-note"><Info size={16} /> This property is covered by your one-time $99.99 consultation deposit. Add as many as you like at no extra cost.</p>
@@ -1368,7 +1768,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
         </section>
       </main>
       <FooterCta />
-      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
+      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => { setAuthView(null); clearPending(); }} onAuthenticated={onAuthenticated} />}
       {lightboxIndex !== null && (
         <ImageLightbox
           images={images}
@@ -1381,6 +1781,17 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     </div>
   );
 };
+
+// Bed / shower / pin emoji, as in the basket design.
+function BasketMeta({ listing }: { listing: Listing }) {
+  const parts: string[] = [];
+  if (listing.bedrooms > 0) parts.push(`🛏️ ${listing.bedrooms} ${listing.bedrooms === 1 ? 'bed' : 'beds'}`);
+  if ((listing.bathrooms || 0) > 0) parts.push(`🚿 ${listing.bathrooms} ${listing.bathrooms === 1 ? 'bath' : 'baths'}`);
+  const place = cleanText(listing.city);
+  if (place) parts.push(`📍 ${place}`);
+  if (!parts.length) return null;
+  return <p className="bab-item-meta">{parts.map((part) => <span key={part}>{part}</span>)}</p>;
+}
 
 export const BuyAbroadUkBasket: React.FC = () => {
   usePageMeta({ title: 'Your Basket | Havlo Buy Abroad', description: 'Review selected homes and proceed to checkout.' });
@@ -1401,6 +1812,7 @@ export const BuyAbroadUkBasket: React.FC = () => {
     postCode: '',
     phone: '',
   });
+  const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
   const selected = useMemo(() => ids.length ? listings.filter((item) => ids.includes(item.rightmove_id)) : [], [ids, listings]);
 
   useEffect(() => {
@@ -1437,12 +1849,10 @@ export const BuyAbroadUkBasket: React.FC = () => {
 
   const beginCheckout = () => {
     if (!selected.length) return;
-    if (!auth.token || !auth.user) {
-      setAuthView('savePrompt');
-      return;
-    }
-    setCheckoutError('');
-    setCheckoutStep('payment');
+    requireAuth(() => {
+      setCheckoutError('');
+      setCheckoutStep('payment');
+    });
   };
 
   const submitDetails = async (event: React.FormEvent) => {
@@ -1472,39 +1882,57 @@ export const BuyAbroadUkBasket: React.FC = () => {
   };
 
   return (
-    <div className="baml-page">
+    <div className="baml-page bab-page">
       <MarketplaceStyles />
-      <Header favCount={readIds(MARKETPLACE_FAVS).length} basketCount={selected.length} onAuth={() => setAuthView('savePrompt')} onBasket={() => navigate('/buyabroad/uk/basket')} />
-      <main className="baml-basket-main">
-        <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
-        <h1>Your Basket</h1>
-        <div className="baml-basket-layout">
-          <div>
+      <Header
+        active="homes"
+        favCount={readIds(MARKETPLACE_FAVS).length}
+        basketCount={selected.length}
+        onAuth={() => setAuthView('savePrompt')}
+        onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
+        onBasket={() => navigate('/buyabroad/uk/basket')}
+      />
+      <main className="bab-main">
+        <a href="/buyabroad/uk/listings" className="bab-goback"><Undo2 size={20} /> Go Back</a>
+        <h1 className="bab-title">Your Basket</h1>
+        <div className="bab-basket-layout">
+          <div className="bab-items">
             {selected.length ? selected.map((listing, index) => (
-              <article className="baml-basket-item" key={listing.rightmove_id}>
-                <img src={imageFor(listing, index)} alt={listing.title} />
-                <div className="baml-basket-info">
-                  <h3>{cleanText(listing.title) || cleanText(listing.address) || 'Property for sale'}</h3>
-                  <p className="baml-meta">{listingMetaParts(listing)}</p>
-                  <p className="baml-price">{displayPrice(listing)}</p>
+              <article className="bab-item" key={listing.rightmove_id}>
+                <a href={detailUrl(listing)} className="bab-item-img"><img src={imageFor(listing, index)} alt="" /></a>
+                <div className="bab-item-info">
+                  <h2><a href={detailUrl(listing)}>{cleanText(listing.title) || cleanText(listing.address) || 'Property for sale'}</a></h2>
+                  <BasketMeta listing={listing} />
+                  <p className="bab-item-price">{displayPrice(listing)} total</p>
                 </div>
-                <button className="baml-trash" onClick={() => remove(listing.rightmove_id)} aria-label="Remove"><Trash2 /></button>
+                <button type="button" className="bab-trash" onClick={() => remove(listing.rightmove_id)} aria-label={`Remove ${cleanText(listing.title) || 'property'} from basket`}><Trash2 size={24} /></button>
               </article>
-            )) : <p className="baml-empty">Your basket is empty.</p>}
-            <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Continue Browsing</a>
+            )) : <p className="bab-empty">Your basket is empty.</p>}
+            <a href="/buyabroad/uk/listings" className="bab-link"><ArrowLeft size={16} /> Continue Browsing</a>
           </div>
-          <aside className="baml-summary">
-            <h3>ORDER SUMMARY</h3>
-            <div className="baml-summary-row"><span>Properties selected</span><strong className="baml-pill"><span>{selected.length}</span></strong></div>
-            <div className="baml-summary-row"><span>Consultation fee (Refundable)</span><strong>${CONSULTATION_FEE}</strong></div>
-            <div className="baml-summary-row baml-total"><span>Total due today</span><strong>${CONSULTATION_FEE}</strong></div>
-            <div className="baml-note"><Info size={16} /> The consultation itself is free. Due to the high number of enquiries we receive, we ask for a $99.99 deposit to confirm you&apos;re serious about buying. If you don&apos;t move forward, your deposit is refunded after the consultation, minus any payment processing fees charged by our provider. If you decide to work with us, the full $99.99 is credited toward your advisory fee.</div>
-            <button className="baml-primary" onClick={beginCheckout} disabled={checkingOut || !selected.length}>{checkingOut ? 'Creating checkout...' : 'Proceed to Checkout >'}</button>
+          <aside className="bab-summary" aria-label="Order summary">
+            <h2>Order Summary</h2>
+            <div className="bab-sum-row"><span>Properties selected</span><b className="bab-count">{selected.length}</b></div>
+            <div className="bab-sum-row"><span>Consultation fee ( Refundable)</span><b>${CONSULTATION_FEE}</b></div>
+            <div className="bab-sum-total"><span>Total due today</span><b>${CONSULTATION_FEE}</b></div>
+            <div className="bab-note">
+              <span className="bab-note-icon" aria-hidden="true">i</span>
+              <div>
+                <p>The consultation itself is free. Due to the high number of enquiries we receive, we ask for a ${CONSULTATION_FEE} deposit to confirm you&apos;re serious about buying, this lets our advisor focus their time on genuine buyers rather than casual enquiries.</p>
+                <ul>
+                  <li>If you don&apos;t move forward: Your deposit is refunded after the consultation, minus any payment processing fees charged by our provider.</li>
+                  <li>If you decide to work with us: The full ${CONSULTATION_FEE} is credited toward your advisory fee — you won&apos;t pay it twice.</li>
+                </ul>
+              </div>
+            </div>
+            <button type="button" className="bab-checkout" onClick={beginCheckout} disabled={checkingOut || !selected.length}>
+              {checkingOut ? 'Creating checkout...' : <>Proceed to Checkout <ChevronRight size={18} /></>}
+            </button>
           </aside>
         </div>
       </main>
       <FooterCta />
-      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => setAuthView(null)} />}
+      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => { setAuthView(null); clearPending(); }} onAuthenticated={onAuthenticated} />}
       {checkoutStep === 'payment' && (
         <PaymentMethodModal
           method={paymentMethod}
@@ -1528,6 +1956,14 @@ export const BuyAbroadUkBasket: React.FC = () => {
   );
 };
 
+// White tick on a purple disc, as in the consultation design.
+const TickBadge = () => (
+  <svg className="bab-tick" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+    <circle cx="14" cy="14" r="14" fill="#A409D2" />
+    <path d="M8.5 14.4l3.6 3.6 7.4-7.6" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const BuyAbroadUkConsultation: React.FC = () => {
   usePageMeta({
     title: 'How Your Consultation Works | Havlo Buy Abroad',
@@ -1535,6 +1971,8 @@ export const BuyAbroadUkConsultation: React.FC = () => {
   });
   const navigate = useNavigate();
   const [showAdvisor, setShowAdvisor] = useState(false);
+  const [authView, setAuthView] = useState<AuthView | null>(null);
+  const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
   const basketCount = readIds(MARKETPLACE_BASKET).length;
 
   useEffect(() => {
@@ -1543,58 +1981,197 @@ export const BuyAbroadUkConsultation: React.FC = () => {
   }, []);
 
   return (
-    <div className="baml-page">
+    <div className="baml-page bab-page">
       <MarketplaceStyles />
       <Header
+        active="how"
         favCount={readIds(MARKETPLACE_FAVS).length}
-        basketCount={readIds(MARKETPLACE_BASKET).length}
-        onAuth={() => navigate('/buyabroad/uk/listings')}
+        basketCount={basketCount}
+        onAuth={() => setAuthView('savePrompt')}
+        onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
         onBasket={() => navigate('/buyabroad/uk/basket')}
       />
-      <main className="baml-consult-page">
-        <nav className="baml-crumbs" aria-label="Checkout progress">
-          <strong>Basket</strong>
-          <span>·</span>
-          <strong>How your consultation works</strong>
-          <span>·</span>
+      <main className="bab-main bab-consult">
+        <nav className="bab-crumbs" aria-label="Checkout progress">
+          <a href="/buyabroad/uk/basket" className="done">Basket</a>
+          <span aria-hidden="true">·</span>
+          <span className="done" aria-current="step">How your consultation works</span>
+          <span aria-hidden="true">·</span>
           <span>Payment</span>
-          <span>·</span>
+          <span aria-hidden="true">·</span>
           <span>Consultation booked</span>
         </nav>
-        <h1>How Your Consultation Works</h1>
-        <p className="baml-consult-intro">
-          Your basket has <strong>{basketCount} properties</strong> shortlisted. Before you pay the <strong>$99.99 consultation deposit</strong>, watch this 2-minute explainer covering what happens next.
+        <h1 className="bab-title">How Your Consultation Works</h1>
+        <p className="bab-intro">
+          {basketCount > 0 && <>Your basket has <b>{basketCount} {basketCount === 1 ? 'property' : 'properties'}</b> shortlisted. </>}
+          Before you pay the <b>${CONSULTATION_FEE} consultation deposit,</b> watch this 2-minute explainer covering what happens next.
         </p>
-        <section className="baml-video-card">
-          <div className="baml-video-stage">
-            <span className="baml-video-pill">2 min explainer</span>
-            <button className="baml-play" type="button" aria-label="Play consultation explainer">
-              <Play size={22} fill="black" />
+        <section className="bab-video" aria-label="Consultation explainer video">
+          {/* Placeholder until the explainer video is supplied. */}
+          <div className="bab-video-stage">
+            <span className="bab-video-pill">2 min explainer</span>
+            <button className="bab-play" type="button" aria-label="Play consultation explainer">
+              <Play size={20} fill="currentColor" />
             </button>
           </div>
-          <div className="baml-video-covers">
-            <h3>WHAT THIS VIDEO COVERS</h3>
-            <div className="baml-video-grid">
-              <p><CheckCircle size={27} fill="#b20adc" />How the process works</p>
-              <p><CheckCircle size={27} fill="#b20adc" />What happens after payment</p>
-              <p><CheckCircle size={27} fill="#b20adc" />What the consultation includes</p>
-              <p><CheckCircle size={27} fill="#b20adc" />Your timeline & next steps</p>
-            </div>
+          <div className="bab-covers">
+            <h2>What this video covers</h2>
+            <ul>
+              <li><TickBadge />How the process works</li>
+              <li><TickBadge />What the consultation includes</li>
+              <li><TickBadge />What happens after payment</li>
+              <li><TickBadge />Your timeline &amp; next steps</li>
+            </ul>
           </div>
         </section>
-        <section className="baml-question-card">
+        <section className="bab-questions">
           <div>
             <h2>Still Have Questions?</h2>
             <p>Read our frequently asked questions before proceeding.</p>
           </div>
-          <div className="baml-question-actions">
-            <a href="/faq" className="outline">Read FAQs</a>
-            <a href="/buyabroad/uk/basket" className="solid">Continue to Payment <ChevronRight size={18} /></a>
+          <div className="bab-question-actions">
+            <a href="/faq" className="bab-btn-outline">Read FAQs</a>
+            <a href="/buyabroad/uk/basket" className="bab-btn-solid">Continue to Payment <ChevronRight size={18} /></a>
           </div>
         </section>
       </main>
       <FooterCta />
+      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => { setAuthView(null); clearPending(); }} onAuthenticated={onAuthenticated} />}
       {showAdvisor && <AdvisorReadyModal onClose={() => setShowAdvisor(false)} />}
+    </div>
+  );
+};
+
+// Saved homes. Favourites live in this browser (MARKETPLACE_FAVS), and
+// saving one needs an account, so the page asks visitors to sign in first.
+export const BuyAbroadUkFavourites: React.FC = () => {
+  usePageMeta({ title: 'Your Favourites | Havlo Buy Abroad', description: 'Homes you have saved on Havlo Buy Abroad.' });
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const [favs, setFavs] = useState<string[]>(() => readIds(MARKETPLACE_FAVS));
+  const [basket, setBasket] = useState<string[]>(() => readIds(MARKETPLACE_BASKET));
+  const [listings, setListings] = useState<Listing[]>(() => readIds(MARKETPLACE_FAVS).map(readCachedListing).filter(Boolean) as Listing[]);
+  const [loading, setLoading] = useState(() => readIds(MARKETPLACE_FAVS).length > 0);
+  const [loadError, setLoadError] = useState('');
+  const [authView, setAuthView] = useState<AuthView | null>(null);
+  const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
+  const signedIn = Boolean(auth.token);
+  const favKey = favs.join(',');
+
+  useEffect(() => {
+    if (!favKey) {
+      setLoading(false);
+      return undefined;
+    }
+    const controller = new AbortController();
+    setLoadError('');
+    fetch(listingsApiUrl(`/listings/by-ids?ids=${encodeURIComponent(favKey)}`), { signal: controller.signal })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data: { listings: Listing[] }) => {
+        cacheListings(data.listings || []);
+        setListings(data.listings || []);
+      })
+      .catch((err) => {
+        if (err?.name !== 'AbortError') setLoadError('We could not refresh your saved homes right now.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+    // Removing a home only filters what's shown; no refetch needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the order homes were saved in.
+  const saved = favs
+    .map((id) => listings.find((listing) => listing.rightmove_id === id))
+    .filter(Boolean) as Listing[];
+  // Homes that have since been sold or taken off the portals.
+  const unavailable = !loading && !loadError ? favs.filter((id) => !listings.some((listing) => listing.rightmove_id === id)) : [];
+
+  const unsave = (id: string) => {
+    const next = favs.filter((item) => item !== id);
+    setFavs(next);
+    writeIds(MARKETPLACE_FAVS, next);
+  };
+
+  const clearUnavailable = () => {
+    const next = favs.filter((id) => !unavailable.includes(id));
+    setFavs(next);
+    writeIds(MARKETPLACE_FAVS, next);
+  };
+
+  const toggleBasket = (id: string) => {
+    const next = basket.includes(id) ? basket.filter((item) => item !== id) : [...basket, id];
+    setBasket(next);
+    writeIds(MARKETPLACE_BASKET, next);
+  };
+
+  return (
+    <div className="baml-page bab-page">
+      <MarketplaceStyles />
+      <Header
+        active={null}
+        favCount={favs.length}
+        basketCount={basket.length}
+        onAuth={() => setAuthView('savePrompt')}
+        onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
+        onBasket={() => navigate('/buyabroad/uk/basket')}
+      />
+      <main className="bab-main">
+        <a href="/buyabroad/uk/listings" className="bab-goback"><Undo2 size={20} /> Go Back</a>
+        <h1 className="bab-title">Your Favourites</h1>
+        {!signedIn ? (
+          <section className="bab-fav-empty">
+            <Heart size={34} />
+            <h2>Sign in to see your saved homes</h2>
+            <p>Save homes as you browse and they&apos;ll be waiting for you here.</p>
+            <div className="bab-fav-actions">
+              <button type="button" className="bab-btn-solid" onClick={() => setAuthView('register')}>Create Account</button>
+              <button type="button" className="bab-btn-outline" onClick={() => setAuthView('login')}>Sign in</button>
+            </div>
+          </section>
+        ) : !favs.length ? (
+          <section className="bab-fav-empty">
+            <Heart size={34} />
+            <h2>No saved homes yet</h2>
+            <p>Tap the heart on any home to save it here.</p>
+            <div className="bab-fav-actions">
+              <a href="/buyabroad/uk/listings" className="bab-btn-solid">Browse homes <ChevronRight size={18} /></a>
+            </div>
+          </section>
+        ) : (
+          <>
+            <p className="bab-intro">{saved.length || favs.length} {(saved.length || favs.length) === 1 ? 'home' : 'homes'} saved. Tap the heart to remove one.</p>
+            {unavailable.length > 0 && (
+              <p className="bab-fav-gone">
+                {unavailable.length} saved {unavailable.length === 1 ? 'home is' : 'homes are'} no longer listed.{' '}
+                <button type="button" onClick={clearUnavailable}>Remove {unavailable.length === 1 ? 'it' : 'them'}</button>
+              </p>
+            )}
+            {loadError && !saved.length && <p className="bab-empty">{loadError}</p>}
+            {loading && !saved.length ? <ListingsLoadingState /> : (
+              <div className="bab-fav-grid">
+                {saved.map((listing, index) => (
+                  <div className="bab-fav-card" key={listing.rightmove_id}>
+                    <PropertyCard listing={listing} index={index} saved onSave={() => unsave(listing.rightmove_id)} />
+                    <button
+                      type="button"
+                      className={`bab-fav-basket${basket.includes(listing.rightmove_id) ? ' is-added' : ''}`}
+                      onClick={() => toggleBasket(listing.rightmove_id)}
+                      aria-pressed={basket.includes(listing.rightmove_id)}
+                    >
+                      <ShoppingBasket size={16} /> {basket.includes(listing.rightmove_id) ? 'In basket' : 'Add to basket'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+      <FooterCta />
+      {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => { setAuthView(null); clearPending(); }} onAuthenticated={onAuthenticated} />}
     </div>
   );
 };

@@ -15,6 +15,7 @@ const BuyAbroadUkListingsRedesign = React.lazy(() => import('./pages/BuyAbroadUk
 const BuyAbroadUkListingDetailRedesign = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkListingDetailRedesign })));
 const BuyAbroadUkBasket = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkBasket })));
 const BuyAbroadUkConsultation = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkConsultation })));
+const BuyAbroadUkFavourites = React.lazy(() => import('./pages/BuyAbroadUkMarketplace').then(m => ({ default: m.BuyAbroadUkFavourites })));
 const BuyAbroadUkApply = React.lazy(() => import('./pages/BuyAbroadUkApply').then(m => ({ default: m.BuyAbroadUkApply })));
 const BuyAbroadGhana = React.lazy(() => import('./pages/BuyAbroadGhana').then(m => ({ default: m.BuyAbroadGhana })));
 const BuyAbroadSouthAfrica = React.lazy(() => import('./pages/BuyAbroadSouthAfrica').then(m => ({ default: m.BuyAbroadSouthAfrica })));
@@ -264,6 +265,8 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/buyabroad/uk/listings',
   '/buyabroad/uk/basket',
   '/buyabroad/uk/consultation',
+  '/buyabroad/uk/favourites',
+  '/buyabroad/uk/favorites',
   '/buyabroad/uk/apply',
   '/buyabroad/ghana',
   '/buyabroad/southafrica',
@@ -346,6 +349,8 @@ export default function App() {
               <Route path="/buyabroad/uk/listings" element={<BuyAbroadUkListingsRedesign />} />
               <Route path="/buyabroad/uk/basket" element={<BuyAbroadUkBasket />} />
               <Route path="/buyabroad/uk/consultation" element={<BuyAbroadUkConsultation />} />
+              <Route path="/buyabroad/uk/favourites" element={<BuyAbroadUkFavourites />} />
+              <Route path="/buyabroad/uk/favorites" element={<Navigate to="/buyabroad/uk/favourites" replace />} />
               <Route path="/buyabroad/uk/listings/:id" element={<BuyAbroadUkListingDetailRedesign />} />
               <Route path="/buyabroad/uk/apply" element={<BuyAbroadUkApply />} />
               <Route path="/buyabroad/ghana" element={<BuyAbroadGhana />} />
