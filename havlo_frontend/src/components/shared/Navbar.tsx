@@ -71,7 +71,6 @@ export const Navbar: React.FC = () => {
       href: '#',
       vectorSrc: "https://c.animaapp.com/KKHOxPDD/img/vector-1.svg",
       dropdownItems: [
-        { name: 'Sell Faster', href: '/sell-your-property' },
         { name: 'Stale Listings', href: '/stale-listings' },
       ]
     },

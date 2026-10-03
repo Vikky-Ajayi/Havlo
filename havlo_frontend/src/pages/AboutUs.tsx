@@ -25,13 +25,6 @@ const serviceCards: ServiceCard[] = [
     background: '#EBFFF6',
   },
   {
-    title: 'Sell Faster (Havlo Relaunch\u2122)',
-    description:
-      'A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer.',
-    href: '/sell-your-property',
-    background: '#FFFEEB',
-  },
-  {
     title: 'Stale Listings',
     description:
       "Uncover why your property hasn't sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers.",

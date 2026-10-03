@@ -30,13 +30,25 @@ class PageSeo:
 # Source of truth: HAVLO SEO TASK — Meta Data content (2026-04-24).
 PAGE_SEO: dict[str, PageSeo] = {
     "/": PageSeo(
-        title="Havlo - Buy, Sell & Manage International Property",
+        title="Havlo | Property Listing Intelligence for Sellers & Estate Agents",
         description=(
-            "Havlo helps you buy, sell, and manage properties across multiple "
-            "countries. Get expert support, end-to-end guidance, and a "
-            "seamless international real estate experience."
+            "Havlo provides property listing intelligence to homeowners and estate "
+            "agents, identifying why properties may not be selling and providing "
+            "actionable insights to improve their performance. Explore Havlo Buy "
+            "Abroad for international property opportunities."
         ),
         canonical_path="/",
+    ),
+    # "/" forwards most visitors here, so it carries the home page listing.
+    "/stale-listings": PageSeo(
+        title="Havlo | Property Listing Intelligence for Sellers & Estate Agents",
+        description=(
+            "Havlo provides property listing intelligence to homeowners and estate "
+            "agents, identifying why properties may not be selling and providing "
+            "actionable insights to improve their performance. Explore Havlo Buy "
+            "Abroad for international property opportunities."
+        ),
+        canonical_path="/stale-listings",
     ),
     "/about-us": PageSeo(
         title="About Us | Trusted Global Property Experts | Havlo",
@@ -84,15 +96,6 @@ PAGE_SEO: dict[str, PageSeo] = {
             "homeowners can properly consider your proposal."
         ),
         canonical_path="/custom-offers",
-    ),
-    "/sell-your-property": PageSeo(
-        title="Sell Your Property Abroad with Ease | Havlo",
-        description=(
-            "Sell your property abroad with ease using Havlo. Reach qualified "
-            "buyers, manage listings seamlessly, and close deals "
-            "faster\u2014no stress, no hassle."
-        ),
-        canonical_path="/sell-your-property",
     ),
     "/property-audit": PageSeo(
         title="Property Audit Services to Help You Sell Faster | Havlo",
@@ -208,13 +211,25 @@ ALIASES: dict[str, str] = {
     "/about": "/about-us",
     "/contact": "/contact-us",
     "/buy-abroad": "/buy-property-abroad",
-    "/sell-faster": "/sell-your-property",
-    "/marketing": "/sell-your-property",
 }
 
 
+# Pages taken down: served as "not found" (HTTP 404) so search engines drop them.
+REMOVED_PATHS: frozenset[str] = frozenset({
+    "/sell-your-property", "/sell-your-property/report", "/sell-faster", "/marketing",
+})
+
+
+def is_removed(path: str) -> bool:
+    path = "/" + (path or "").strip("/")
+    return path.lower() in REMOVED_PATHS
+
+
 def lookup(path: str) -> PageSeo:
-    """Return the SEO block for a URL path, falling back to the home page."""
+    """Return the SEO block for a URL path. A page without its own entry gets
+    the home page's wording but its own canonical address: pointing every
+    page's canonical at "/" told search engines they were all copies of the
+    home page."""
     if not path:
         path = "/"
     if not path.startswith("/"):
@@ -224,7 +239,10 @@ def lookup(path: str) -> PageSeo:
         path = path.rstrip("/")
     if path in ALIASES:
         path = ALIASES[path]
-    return PAGE_SEO.get(path, PAGE_SEO["/"])
+    if path in PAGE_SEO:
+        return PAGE_SEO[path]
+    home = PAGE_SEO["/"]
+    return PageSeo(title=home.title, description=home.description, canonical_path=path)
 
 
 _TITLE_RE = re.compile(r"<title>.*?</title>", re.IGNORECASE | re.DOTALL)

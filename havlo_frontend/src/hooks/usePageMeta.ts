@@ -26,20 +26,28 @@ const setLink = (rel: string, href: string) => {
   el.setAttribute('href', href);
 };
 
-export const usePageMeta = ({ title, description, canonical }: PageMeta) => {
+const SITE = 'https://www.heyhavlo.com';
+
+// Every page names itself as canonical unless it says otherwise; a single
+// site-wide canonical told search engines every page was the home page.
+const ownAddress = () => {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  return `${SITE}${path}`;
+};
+
+export const usePageMeta = ({ title, description, canonical: explicit }: PageMeta) => {
   useEffect(() => {
+    const canonical = explicit || ownAddress();
     document.title = title;
     setMeta('meta[name="description"]', 'name', 'description', description);
     setMeta('meta[property="og:title"]', 'property', 'og:title', title);
     setMeta('meta[property="og:description"]', 'property', 'og:description', description);
     setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', title);
     setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', description);
-    if (canonical) {
-      setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
-      setLink('canonical', canonical);
-    }
+    setMeta('meta[property="og:url"]', 'property', 'og:url', canonical);
+    setLink('canonical', canonical);
     setMeta('meta[property="og:type"]', 'property', 'og:type', 'website');
     setMeta('meta[property="og:site_name"]', 'property', 'og:site_name', 'Havlo');
     setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image');
-  }, [title, description, canonical]);
+  }, [title, description, explicit]);
 };

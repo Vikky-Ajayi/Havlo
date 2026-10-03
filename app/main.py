@@ -919,7 +919,8 @@ async def geo_home_target(
 ) -> JSONResponse:
     """Return the best public homepage experience from proxy country headers."""
     country = (cf_ipcountry or x_vercel_ip_country or x_country_code or "").strip().upper()
-    target_path = "/stale-listings" if country in {"GB", "UK"} else "/buyabroad/uk"
+    # Mirrors the frontend rule (lib/geo.ts): only Nigeria goes to Buy Abroad.
+    target_path = "/buyabroad/uk" if country == "NG" else "/stale-listings"
     return JSONResponse({"country": country or None, "target_path": target_path})
 
 
@@ -1036,7 +1037,7 @@ app.include_router(listings.router)
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "havlo_frontend" / "dist"
 
 from fastapi.responses import PlainTextResponse, Response
-from app.seo import lookup as seo_lookup, inject as seo_inject, PAGE_SEO, SITE_BASE
+from app.seo import lookup as seo_lookup, inject as seo_inject, is_removed as seo_is_removed, PAGE_SEO, SITE_BASE
 from datetime import date
 
 
@@ -1112,6 +1113,10 @@ if FRONTEND_DIST.is_dir():
         if file_path.is_file():
             return FileResponse(str(file_path))
         html = INDEX_HTML_PATH.read_text(encoding="utf-8")
+        if seo_is_removed(full_path):
+            # The app shows its "page not found" here; the status tells search engines.
+            html = html.replace("</head>", '<meta name="robots" content="noindex" />\n</head>', 1)
+            return HTMLResponse(html, status_code=404)
         seo = seo_lookup("/" + full_path if full_path else "/")
         return HTMLResponse(seo_inject(html, seo))
 

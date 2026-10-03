@@ -557,11 +557,6 @@ export const MonitorDashboard = () => {
                 {data.audience === 'agent' ? 'Share with your vendor' : 'Share with your agent'}
               </button>
               {data.audience !== 'agent' && <a className="slw-btn-outline lmd-link-btn" href="/contact-us">Book a call with Havlo</a>}
-              {data.audience !== 'agent' && (
-                <a className="lmd-sell-faster" href="/sell-your-property">
-                  <b>Want more buyers seeing it?</b> Sell Faster (Havlo Relaunch™) takes your property to buyers beyond the portals. Find out more →
-                </a>
-              )}
             </section>
           )}
           {notice && <div className="lmd-toast" role="status">{notice}</div>}
@@ -707,8 +702,6 @@ const DashboardStyles = () => (
     .lmd-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:stretch}
     .lmd-actions .slw-btn-outline{margin-top:0}
     .lmd-link-btn{display:flex;align-items:center;justify-content:center;text-decoration:none;text-align:center}
-    .lmd-sell-faster{grid-column:1 / -1;display:block;padding:16px 18px;border-radius:14px;background:#f7ecfc;color:#3a2b44;font-size:14px;line-height:1.5;text-decoration:none}
-    .lmd-sell-faster b{color:#A409D2}
     .lmd-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:10px;font-size:14px;z-index:50;max-width:calc(100% - 32px)}
 
     @media (max-width: 900px){

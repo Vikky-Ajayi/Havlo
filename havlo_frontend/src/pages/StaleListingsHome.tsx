@@ -5,6 +5,8 @@ import { StaleListingsBrandLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
 import { useTypewriter } from '../hooks/useTypewriter';
+import { usePageMeta } from '../hooks/usePageMeta';
+import { HOME_SEO } from '../lib/siteSeo';
 
 // Typography follows /stale-listings/seller: Plus Jakarta Sans for headings
 // and sub-headings, Inter for everything else. Sizes, weights, line breaks
@@ -258,6 +260,7 @@ const Header = () => {
 
 export const StaleListingsHome = () => {
   const typedTail = useTypewriter('a second look.');
+  usePageMeta(HOME_SEO);
 
   return (
     <div className="slh-page">

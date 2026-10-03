@@ -6,6 +6,7 @@ import { useModal } from './hooks/useModal';
 
 // Pages — lazy loaded for code splitting
 const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 const GeoHome = React.lazy(() => import('./pages/GeoHome').then(m => ({ default: m.GeoHome })));
 const AboutUs = React.lazy(() => import('./pages/AboutUs').then(m => ({ default: m.AboutUs })));
 const BuyAbroad = React.lazy(() => import('./pages/BuyAbroad').then(m => ({ default: m.BuyAbroad })));
@@ -25,8 +26,6 @@ const RelaunchAssessment = React.lazy(() => import('./pages/RelaunchAssessment')
 const EliteProperty = React.lazy(() => import('./pages/EliteProperty').then(m => ({ default: m.EliteProperty })));
 const BuyHome = React.lazy(() => import('./pages/BuyHome').then(m => ({ default: m.BuyHome })));
 const CompleteHomeBuying = React.lazy(() => import('./pages/CompleteHomeBuying').then(m => ({ default: m.CompleteHomeBuying })));
-const Marketing = React.lazy(() => import('./pages/Marketing').then(m => ({ default: m.Marketing })));
-const SellFasterAssessment = React.lazy(() => import('./pages/SellFasterAssessment').then(m => ({ default: m.SellFasterAssessment })));
 const Contact = React.lazy(() => import('./pages/Contact').then(m => ({ default: m.Contact })));
 const FAQ = React.lazy(() => import('./pages/FAQ').then(m => ({ default: m.FAQ })));
 const Countries = React.lazy(() => import('./pages/Countries').then(m => ({ default: m.Countries })));
@@ -369,10 +368,6 @@ export default function App() {
               <Route path="/elite-property" element={<EliteProperty />} />
               <Route path="/buy-home" element={<BuyHome />} />
               <Route path="/complete-home-buying" element={<CompleteHomeBuying />} />
-              <Route path="/sell-your-property" element={<Marketing />} />
-              <Route path="/sell-your-property/report" element={<SellFasterAssessment />} />
-              <Route path="/sell-faster" element={<Navigate to="/sell-your-property" replace />} />
-              <Route path="/marketing" element={<Navigate to="/sell-your-property" replace />} />
               <Route path="/contact-us" element={<Contact />} />
               <Route path="/contact" element={<Navigate to="/contact-us" replace />} />
               <Route path="/faq" element={<FAQ />} />
@@ -428,6 +423,7 @@ export default function App() {
               <Route path="/dashboard/stale-prospects" element={<StaleProspectsConsole country="UK" />} />
               <Route path="/dashboard/stale-prospects/america" element={<StaleProspectsConsole country="US" />} />
               <Route path="/dashboard/custom-offers" element={<AdminRoute><DashboardCustomOffers /></AdminRoute>} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </Layout>

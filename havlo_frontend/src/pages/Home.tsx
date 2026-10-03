@@ -107,7 +107,7 @@ export const Home: React.FC = () => {
         customActions={
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-[700px] px-4 sm:px-6 lg:px-0 mb-12 sm:pb-0">
               <button
-                onClick={() => navigate('/sell-your-property')}
+                onClick={() => navigate('/stale-listings')}
                 className="w-full sm:w-auto transition-all duration-200 hover:bg-black/90 active:scale-95 bg-black text-white px-6 py-3 sm:py-4 rounded-full text-sm sm:text-base font-semibold border border-black cursor-pointer sm:h-14 whitespace-nowrap"
               >
                 Sell My Property Faster
@@ -253,12 +253,6 @@ export const Home: React.FC = () => {
                 </div>
                 <div className="flex flex-col gap-5">
                   <ServiceCard
-                    title="Sell Faster (Havlo Relaunch™)"
-                    description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                    href="/sell-your-property"
-                    className="bg-white"
-                  />
-                  <ServiceCard
                     title="Stale Listings"
                     description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                     href="/stale-listings"
@@ -300,16 +294,10 @@ export const Home: React.FC = () => {
             </div>
             <div className="flex flex-1 flex-col gap-5">
               <ServiceCard
-                title="Sell Faster (Havlo Relaunch™)"
-                description="A dedicated programme helping slow-to-sell properties listed for over 6 months find their buyer"
-                href="/sell-your-property"
-                className="flex-1 bg-white"
-              />
-              <ServiceCard
                 title="Stale Listings"
                 description="Uncover why your property hasn’t sold and get a clear, actionable plan to relaunch it successfully. We analyse pricing, presentation, and market positioning to identify obstacles and recommend the best steps to attract serious buyers."
                 href="/stale-listings"
-                className="flex-[2] bg-white"
+                className="flex-1 bg-white"
               />
             </div>
           </div>

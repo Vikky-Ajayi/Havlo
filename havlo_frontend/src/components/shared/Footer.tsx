@@ -37,7 +37,6 @@ export const Footer: React.FC<{ hideNewsletter?: boolean }> = ({ hideNewsletter 
 
   const sellLinks = [
     { name: 'Stale Listings', href: '/stale-listings' },
-    { name: 'Sell Faster (Havlo Relaunch™)', href: '/sell-your-property' },
   ];
 
   const buyLinks = [
