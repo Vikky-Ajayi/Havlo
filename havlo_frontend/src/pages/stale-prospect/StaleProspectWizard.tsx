@@ -31,7 +31,7 @@ import {
   submitProspectDetails,
   type AdsAudience,
 } from './api';
-import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsStyles } from './AdsLanding';
+import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles } from './AdsLanding';
 import {
   formatGbp,
   formatReducedDate,
@@ -194,15 +194,20 @@ const LandingStep = ({
   heading,
   copy,
   form,
+  discover,
+  value,
 }: {
   onSubmit: (code: string) => void;
   loading: boolean;
   error: string;
-  // The ads landing pages (AdsLanding.tsx) swap in their own heading, copy
-  // and listing-link form; the rest of the page is shared.
+  // The ads landing pages (AdsLanding.tsx) swap in their own heading, copy,
+  // listing-link form, "What you'll discover" list and value section; the
+  // rest of the page is shared.
   heading?: ReactNode;
   copy?: ReactNode;
   form?: ReactNode;
+  discover?: string[];
+  value?: { heading: ReactNode; cards: { title: string; text: string }[] };
 }) => {
   const [code, setCode] = useState('');
   const handleSubmit = (e: FormEvent) => {
@@ -260,11 +265,17 @@ const LandingStep = ({
         </form>}
         <h2 className="slw-discover-title">What you&rsquo;ll discover</h2>
         <ul className="slw-discover-grid">
-          <li><CheckIconGreen /> What&rsquo;s weakening your buyer appeal</li>
-          <li><CheckIconGreen /> How you compare to competing listings</li>
-          <li><CheckIconGreen /> Why it may have remained unsold</li>
-          <li><CheckIconGreen /> Changes that could improve its chances</li>
-          <li className="slw-discover-full"><CheckIconGreen /> A practical 30-day action plan</li>
+          {discover ? (
+            discover.map((item) => <li key={item}><CheckIconGreen /> {item}</li>)
+          ) : (
+            <>
+              <li><CheckIconGreen /> What&rsquo;s weakening your buyer appeal</li>
+              <li><CheckIconGreen /> How you compare to competing listings</li>
+              <li><CheckIconGreen /> Why it may have remained unsold</li>
+              <li><CheckIconGreen /> Changes that could improve its chances</li>
+              <li className="slw-discover-full"><CheckIconGreen /> A practical 30-day action plan</li>
+            </>
+          )}
         </ul>
       </section>
       <div className="slw-hero-image">
@@ -283,6 +294,20 @@ const LandingStep = ({
           </div>
         </div>
       </div>
+      {value ? (
+        <section className="slw-value-section">
+          <h2>{value.heading}</h2>
+          <div className="slw-value-grid">
+            {value.cards.map((card, i) => (
+              <div key={card.title}>
+                {[<HouseIcon key="h" />, <BulbIcon key="b" />, <HandshakeIcon key="s" />][i % 3]}
+                <h3>{card.title}</h3>
+                <p>{card.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : (
       <section className="slw-value-section">
         <h2>
           Homes that sit too long lose
@@ -309,6 +334,7 @@ const LandingStep = ({
           </div>
         </div>
       </section>
+      )}
     </>
   );
 };
@@ -1164,6 +1190,9 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
   const [pollHandle, setPollHandle] = useState<number | null>(null);
   const [prefill, setPrefill] = useState<{ first_name?: string; email?: string }>({});
   const [welcomeName, setWelcomeName] = useState('');
+  // Ads homeowners see a summary of the findings on Confirm Property first;
+  // "See all findings" brings up the details form.
+  const [showDetailsForm, setShowDetailsForm] = useState(ads !== 'owner');
   const leadPixelName = ads ? `Meta Ads ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment` : undefined;
 
   useEffect(() => {
@@ -1331,6 +1360,7 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
   const handleGoBack = () => {
     // An agency's copy was opened from its /check/agent portfolio: back there.
     if (step === 'confirm' && prospect?.audience === 'agent' && !ads) navigate('/check/agent');
+    else if (step === 'confirm' && ads === 'owner' && showDetailsForm) setShowDetailsForm(false);
     else if (step === 'not_found' || step === 'confirm') setStep('landing');
     else if (step === 'assessment') setStep('confirm');
     else if (step === 'payment') setStep('assessment');
@@ -1513,7 +1543,7 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
   // button that led to it was.
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [step]);
+  }, [step, showDetailsForm]);
 
   // Reaching Payment starts the ads leads' checkout-recovery emails if they
   // leave without paying (the backend keeps only the first visit).
@@ -1605,12 +1635,22 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
               error={error}
               heading={ADS_COPY[ads].heading}
               copy={ADS_COPY[ads].copy}
+              discover={ADS_COPY[ads].discover}
+              value={ADS_COPY[ads].value}
               form={<AdsListingForm audience={ads} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
           {step === 'not_found' && <NotFoundStep onTryAgain={() => setStep('landing')} />}
-          {step === 'confirm' && prospect && (
+          {step === 'confirm' && prospect && ads === 'owner' && !showDetailsForm && (
+            <AdsSellerSummary
+              prospect={prospect}
+              access={access}
+              totalFactors={totalFactorsFor(prospect)}
+              onContinue={() => setShowDetailsForm(true)}
+            />
+          )}
+          {step === 'confirm' && prospect && showDetailsForm && (
             <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} initial={prefill} />
           )}
           {step === 'assessment' && prospect && (

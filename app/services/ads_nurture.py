@@ -1,7 +1,9 @@
 """Email flows for Meta-ads leads (see app/services/ads_funnel.py).
 
 Three sequences, their copy word for word from the briefs and kept in
-app/services/ads_email_content/:
+app/services/ads_email_content/ (except that the reminders mention only
+Rightmove, the one site we read listings from, where the brief also named
+Zoopla and OnTheMarket):
 
 - url_reminder.json: 5 emails (immediately, days 1, 3, 7, 14) to a visitor
   who asked to be reminded to add their listing link. Stops once a link is

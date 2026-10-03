@@ -8,7 +8,7 @@
    "cta": "ADD MY PROPERTY LINK",
    "paragraphs": [
     "Thanks for your interest in checking your property listing with Havlo.",
-    "We just need the link to where your property is advertised online before you can continue. This could be your Rightmove, Zoopla, OnTheMarket or other online property listing URL.",
+    "We just need the link to your property’s Rightmove listing before you can continue.",
     "When you have the link to hand, click below and paste it in. It should only take a few seconds."
    ],
    "after_cta": [
@@ -19,7 +19,7 @@
    "stage": 2,
    "days": 1,
    "subject": "Have your property link now?",
-   "preview": "Your Havlo assessment can continue as soon as you add your online property listing link.",
+   "preview": "Your Havlo assessment can continue as soon as you add your Rightmove listing link.",
    "cta": "ADD MY PROPERTY LINK",
    "paragraphs": [
     "A quick reminder from Havlo.",
@@ -37,8 +37,8 @@
    "preview": "Here’s the easiest way to find the URL Havlo needs for your property assessment.",
    "cta": "SUBMIT MY PROPERTY LINK",
    "paragraphs": [
-    "If you haven’t added your property link because you’re unsure what we mean, it’s simply the web address of the page where buyers can currently see your property online.",
-    "Open your property on Rightmove, Zoopla, OnTheMarket or your agent’s website, copy the address from the top of your browser, then return to Havlo and paste it into the property link box.",
+    "If you haven’t added your property link because you’re unsure what we mean, it’s simply the web address of the Rightmove page where buyers can currently see your property.",
+    "Open your property on Rightmove, copy the address from the top of your browser, then return to Havlo and paste it into the property link box.",
     "We use the listing link to identify the property and begin the assessment process."
    ],
    "after_cta": [
@@ -49,12 +49,12 @@
    "stage": 4,
    "days": 7,
    "subject": "Still want us to assess your property listing?",
-   "preview": "Add your listing URL to continue and explore factors that may be affecting buyer response.",
+   "preview": "Add your Rightmove listing URL to continue and explore factors that may be affecting buyer response.",
    "cta": "CONTINUE MY ASSESSMENT",
    "paragraphs": [
     "If your property is still on the market, you can still continue your Havlo assessment.",
     "Your property listing contains useful information about how the home is being presented to buyers. Havlo’s assessment is designed to examine areas such as market positioning, buyer appeal, local competition and the presentation of the listing.",
-    "To continue, we just need the URL where your property is currently advertised."
+    "To continue, we just need the URL of your property’s Rightmove listing."
    ],
    "after_cta": [
     "If your property has already sold, you can ignore this reminder."
@@ -64,11 +64,11 @@
    "stage": 5,
    "days": 14,
    "subject": "Complete your Havlo property assessment",
-   "preview": "A final reminder to add your property listing URL and continue your assessment.",
+   "preview": "A final reminder to add your Rightmove listing URL and continue your assessment.",
    "cta": "ADD MY PROPERTY LINK",
    "paragraphs": [
     "This is our final reminder about the property assessment you started with Havlo.",
-    "If you still want to explore how your property listing is positioned and what may be influencing buyer response, add your online listing URL using the button below.",
+    "If you still want to explore how your property listing is positioned and what may be influencing buyer response, add your Rightmove listing URL using the button below.",
     "It only takes a few seconds to submit the link."
    ],
    "after_cta": [

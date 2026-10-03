@@ -808,7 +808,10 @@ def _ads_rate_limit(request: Request, kind: str) -> None:
 
 @public_router.post("/ads/start", response_model=AdsStartResponse)
 async def start_ads_assessment(
-    payload: AdsStartRequest, request: Request, db: AsyncSession = Depends(get_db)
+    payload: AdsStartRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
 ) -> AdsStartResponse:
     """Ads landing pages: the visitor's Rightmove link in, an access token
     for the normal funnel out. Reading a listing that discovery hasn't found
@@ -821,7 +824,30 @@ async def start_ads_assessment(
     except ads_funnel.ListingLinkError as exc:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    prospect_id = result.pop("prospect_id")
+    if result["audience"] == "owner":
+        # The homeowner's Confirm Property summary counts the competing
+        # listings nearby; start that now so it's usually there in time.
+        prospect = await db.get(StaleListingProspect, prospect_id)
+        if prospect is not None and await ads_funnel.mark_competition_pending(db, prospect):
+            background_tasks.add_task(ads_funnel.refresh_competition, prospect_id)
     return AdsStartResponse(**result)
+
+
+@public_router.get("/prospects/ads-summary")
+async def get_ads_assessment_summary(
+    background_tasks: BackgroundTasks,
+    token: str | None = Query(default=None, max_length=200),
+    code: str | None = Query(default=None, max_length=12),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The ads homeowner's Confirm Property summary (ads_funnel.
+    assessment_summary). competition.status is "pending" while the nearby
+    search runs; the page asks again until it isn't."""
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    if await ads_funnel.mark_competition_pending(db, prospect):
+        background_tasks.add_task(ads_funnel.refresh_competition, prospect.id)
+    return ads_funnel.assessment_summary(prospect)
 
 
 @public_router.post("/ads/reminder")

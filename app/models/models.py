@@ -645,6 +645,12 @@ class StaleListingProspect(Base):
     # "Property sold, STC or withdrawn", from the link in the ads emails.
     # A homeowner's emails stop; an agency stops hearing about this property.
     property_closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # How many similar homes are for sale around the property (Rightmove's
+    # search), for the ads Confirm Property summary: {"status": "ready",
+    # "count", "basis", "area"}, {"status": "unavailable"}, or {"status":
+    # "pending"} while the search runs. See ads_funnel.refresh_competition.
+    competition_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    competition_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

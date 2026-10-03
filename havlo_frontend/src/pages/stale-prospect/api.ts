@@ -61,6 +61,23 @@ export async function getUrlReminder(token: string): Promise<{ first_name: strin
   return parseJsonOrThrow(response);
 }
 
+export interface AdsSummary {
+  buyer_appeal: string | null;
+  pricing: string | null;
+  presentation: { count: number; status: string | null };
+  competition: { status: 'pending' | 'ready' | 'unavailable'; count?: number | null; basis?: string | null; area?: string | null; fallback?: string | null };
+  finding: string | null;
+}
+
+/** The ads homeowner's Confirm Property summary, all from their report. */
+export async function getAdsSummary(access: { token?: string; code?: string }): Promise<AdsSummary> {
+  const query = new URLSearchParams();
+  if (access.token) query.set('token', access.token);
+  if (access.code) query.set('code', access.code);
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/ads-summary?${query.toString()}`);
+  return parseJsonOrThrow(response);
+}
+
 /** The Payment step was shown (anchors the checkout-recovery emails). */
 export async function recordCheckoutVisit(access: { token?: string; property_code?: string }): Promise<void> {
   try {

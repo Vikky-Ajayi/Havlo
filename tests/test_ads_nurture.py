@@ -215,6 +215,66 @@ class RenderTests(unittest.TestCase):
 
 
 
+class SummaryTests(unittest.TestCase):
+    REPORT = {
+        "scores": {"buyer_appeal": 41, "pricing": 58, "listing_presentation": 44, "competition": 39},
+        "key_findings": [
+            {"title": "Price reduced but still overlooked", "description": "Your property has undergone a price reduction but continues to compete against newer listings.", "type": "issue", "icon": "price"},
+            {"title": "Lead photo undersells the garden", "description": "The first image is dark.", "type": "issue", "icon": "photos"},
+            {"title": "Generous plot", "description": "A large garden.", "type": "strength", "icon": "location"},
+        ],
+        "action_plan": [
+            {"title": "Reshoot the lead photo", "description": "Bright, wide exterior."},
+            {"title": "Add a floorplan", "description": "Buyers filter for them."},
+            {"title": "Review the asking price", "description": "Against recent sales."},
+        ],
+    }
+
+    def _prospect(self, competition=None, competition_at=None):
+        import json
+        return SimpleNamespace(
+            agent_edited_report_json=None, report_json=json.dumps(self.REPORT), preview_json="{}",
+            competition_json=json.dumps(competition) if competition else None, competition_at=competition_at,
+            country="UK",
+        )
+
+    def test_score_wording(self):
+        self.assertEqual(ads_funnel.score_status(41), "Needs attention")
+        self.assertEqual(ads_funnel.score_status(58), "Review recommended")
+        self.assertEqual(ads_funnel.score_status(80), "Performing well")
+        self.assertIsNone(ads_funnel.score_status(None))
+        self.assertIsNone(ads_funnel.score_status("n/a"))
+
+    def test_presentation_counts_distinct_presentation_points(self):
+        # The photo finding, the reshoot and the floorplan; not price, not the strength.
+        self.assertEqual(ads_funnel.presentation_opportunities(self.REPORT), 3)
+        self.assertEqual(ads_funnel.presentation_opportunities({}), 0)
+
+    def test_summary_comes_from_the_report(self):
+        summary = ads_funnel.assessment_summary(self._prospect({"status": "ready", "count": 7, "basis": "similar", "area": "within a mile"}))
+        self.assertEqual(summary["buyer_appeal"], "Needs attention")
+        self.assertEqual(summary["pricing"], "Review recommended")
+        self.assertEqual(summary["presentation"]["count"], 3)
+        self.assertEqual(summary["competition"]["count"], 7)
+        self.assertEqual(summary["competition"]["fallback"], "Needs attention")
+        self.assertTrue(summary["finding"].startswith("Your property has undergone a price reduction"))
+
+    def test_competition_search_runs_once(self):
+        now = datetime.now(timezone.utc)
+        self.assertTrue(ads_funnel.competition_needs_search(self._prospect()))
+        self.assertFalse(ads_funnel.competition_needs_search(self._prospect({"status": "pending"}, now)))
+        self.assertTrue(ads_funnel.competition_needs_search(self._prospect({"status": "pending"}, now - timedelta(minutes=10))))
+        self.assertFalse(ads_funnel.competition_needs_search(self._prospect({"status": "ready", "count": 3})))
+        self.assertFalse(ads_funnel.competition_needs_search(self._prospect({"status": "unavailable"})))
+
+    def test_reminder_emails_only_mention_rightmove(self):
+        import json
+        text = json.dumps(an.flow_content("url_reminder"), ensure_ascii=False)
+        self.assertNotIn("Zoopla", text)
+        self.assertNotIn("OnTheMarket", text)
+        self.assertIn("Rightmove", text)
+
+
 class RateLimitTests(unittest.TestCase):
     def test_reminders_limited_per_connection(self):
         from fastapi import HTTPException

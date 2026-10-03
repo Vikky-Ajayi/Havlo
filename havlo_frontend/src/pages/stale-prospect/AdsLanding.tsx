@@ -1,33 +1,69 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { requestUrlReminder, type AdsAudience } from './api';
+import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsSummary } from './api';
+import { formatGbp, type ProspectPreview } from './types';
 
 // Meta-ads landing pages (/assess/seller and /assess/agent): the /check
 // wizard with the property-code box swapped for the listing link, and an
 // "email me a reminder" option for visitors without the link to hand
 // (app/services/ads_funnel.py, ads_nurture.py on the backend).
 
-export const ADS_COPY: Record<AdsAudience, { heading: ReactNode; copy: string; placeholder: string; button: string }> = {
+// Wording from the landing-page brief (meta_ad_landing_funnel), with the
+// portal list cut to Rightmove: it's the only site we read listings from.
+type AdsCopy = {
+  heading: ReactNode;
+  copy: string;
+  button: string;
+  discover: string[];
+  value?: { heading: ReactNode; cards: { title: string; text: string }[] };
+};
+
+const DISCOVER_COMMON = [
+  'What’s weakening your buyer appeal',
+  'How you compare to competing listings',
+  'Why it may have remained unsold',
+  'Changes that could improve its chances',
+  'A practical 30-day action plan',
+];
+
+export const ADS_COPY: Record<AdsAudience, AdsCopy> = {
   owner: {
     heading: (
       <>
-        See <span className="slw-accent">What Could Be Holding</span> Back Your Property&rsquo;s Sale
+        Has Your Property Been on the Market <span className="slw-accent">Too Long?</span>
       </>
     ),
-    copy:
-      'Paste your Rightmove listing link. We’ll analyse your property’s market positioning, listing presentation and buyer appeal to identify potential barriers to sale — and the changes that could help.',
-    placeholder: 'Paste your Rightmove listing link',
+    copy: 'See what could be holding back your sale and what you could change to improve your chances.',
     button: 'Assess My Property',
+    discover: [...DISCOVER_COMMON, 'Works with your current estate agent'],
   },
   agent: {
     heading: (
       <>
-        See <span className="slw-accent">What Could Be Holding</span> Back Your Listing
+        Got a Property That&rsquo;s Taking Too Long to Sell?<br />
+        See <span className="slw-accent">What Could Be Holding</span> It Back
       </>
     ),
     copy:
-      'Paste the Rightmove link for an instruction that’s taking longer than expected. We’ll analyse its market position, presentation and buyer appeal, and show you what’s worth reviewing before your next vendor conversation.',
-    placeholder: 'Paste the Rightmove listing link',
+      'See what may be stopping the property from selling, where it’s losing ground to competing listings, and the practical changes that could help get the sale moving again.',
     button: 'Assess This Listing',
+    discover: [...DISCOVER_COMMON, 'Insights for your next vendor conversation'],
+    value: {
+      heading: <>Stale Listings Put Instructions at Risk. Get Ahead of the Conversation.</>,
+      cards: [
+        {
+          title: 'Spot What Buyers Notice',
+          text: 'Identify potential issues affecting buyer interest before they become bigger barriers to the sale.',
+        },
+        {
+          title: 'Strengthen Vendor Conversations',
+          text: 'Use independent, data-informed insights to support pricing, presentation and marketing conversations with your vendor.',
+        },
+        {
+          title: 'Protect Your Instructions',
+          text: 'Demonstrate proactive action and give vendors clearer reasons to continue working with your agency.',
+        },
+      ],
+    },
   },
 };
 
@@ -74,8 +110,7 @@ const ReminderForm = ({ audience }: { audience: AdsAudience }) => {
       ) : (
         <form className="slw-ads-reminder-form" onSubmit={submit}>
           <p className="slw-ads-reminder-copy">
-            We&rsquo;ll send you a short reminder so you can return and add your Rightmove, Zoopla, OnTheMarket or other
-            online property listing link when you have it.
+            We&rsquo;ll send you a short reminder so you can return and add your Rightmove listing link when you have it.
           </p>
           <div className="slw-ads-reminder-fields">
             <input type="text" placeholder="First name" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
@@ -123,6 +158,7 @@ export const AdsListingForm = ({
       {welcomeName && (
         <p className="slw-ads-welcome">Welcome back, {welcomeName}. Paste your property link below to continue.</p>
       )}
+      <p className="slw-ads-form-label">Paste your property listing to get started</p>
       <form id="listing-link" className="slw-ads-form" onSubmit={submit}>
         <label className="slw-id-input slw-ads-input">
           <LinkIcon />
@@ -131,8 +167,8 @@ export const AdsListingForm = ({
             type="url"
             inputMode="url"
             autoComplete="url"
-            placeholder={text.placeholder}
-            aria-label={text.placeholder}
+            placeholder="Rightmove URL"
+            aria-label="Rightmove URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
@@ -143,7 +179,7 @@ export const AdsListingForm = ({
         </button>
       </form>
       <p className="slw-id-hint slw-ads-hint">
-        <span className="slw-info-dot">i</span> Open the property on Rightmove, then copy the link from your browser&rsquo;s address bar.
+        <span className="slw-info-dot">i</span> Your property URL is the link to your property listing on Rightmove.
       </p>
       {error && <p className="slw-error">{error}</p>}
       <ReminderForm audience={audience} />
@@ -177,6 +213,7 @@ export const AdsAnalysingStep = () => {
 export const AdsStyles = () => (
   <style>{`
     .slw-ads-form-wrap{margin:24px auto 0;max-width:600px}
+    .slw-ads-form-label{margin:0 0 10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#202124}
     .slw-ads-welcome{margin:0 0 12px;font-size:15px;font-weight:600;color:#202124}
     .slw-ads-form{display:flex;gap:10px;align-items:stretch}
     .slw-ads-input{flex:1;min-width:0}
@@ -193,9 +230,150 @@ export const AdsStyles = () => (
     .slw-ads-reminder-fields .slw-btn-black{flex:1 1 100%;border-radius:10px}
     .slw-ads-reminder-done{background:#ecfdf3;border:1px solid #abefc6;border-radius:14px;padding:14px 16px;color:#065f46;line-height:1.5}
     .slw-ads-wait{color:#98a2b3;font-size:13px}
+    .slw-ads-facts{margin:8px 0 0;font-size:16px;font-weight:600;color:#202124}
+    .slw-ads-summary .slw-confirm-signals{margin-top:18px}
+    .slw-ads-summary-loading{display:flex;justify-content:center;padding:28px 0}
+    .slw-ads-summary-intro{margin:22px 0 10px;font-size:15px;font-weight:600;color:#202124}
+    .slw-ads-summary-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+    .slw-ads-summary-list li{font-size:15px;line-height:1.45;color:#475467;padding:12px 14px;background:#f8f9fb;border-radius:10px}
+    .slw-ads-summary-list b{color:#202124}
+    .slw-ads-pending{color:#98a2b3}
+    .slw-ads-finding{margin:20px 0 0;padding:14px 16px;border-left:3px solid #a409d2;background:#fbf7fd;border-radius:0 10px 10px 0}
+    .slw-ads-finding b{display:block;font-size:14px;color:#202124;margin-bottom:6px}
+    .slw-ads-finding p{margin:0;font-style:italic;font-size:15px;line-height:1.5;color:#334155}
+    .slw-ads-see-all{margin-top:24px;width:100%}
     @media (max-width:640px){
       .slw-ads-form{flex-direction:column}
       .slw-ads-submit{width:100%;padding:15px 22px}
     }
   `}</style>
 );
+
+const COMPETITION_BASIS: Record<string, string> = {
+  similar: 'similar listings',
+  same_type: 'listings of the same type',
+  nearby: 'homes for sale nearby',
+};
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Ads homeowners' Confirm Property step, before the details form: what the
+ * assessment found, in brief. "See all findings" then asks for their
+ * details. Every line comes from their report (or, for competition, the
+ * homes for sale around it), and a line with nothing behind it is left out. */
+export const AdsSellerSummary = ({
+  prospect,
+  access,
+  totalFactors,
+  onContinue,
+}: {
+  prospect: ProspectPreview;
+  access: { token?: string; code?: string };
+  totalFactors: number;
+  onContinue: () => void;
+}) => {
+  const [summary, setSummary] = useState<AdsSummary | null>(null);
+  const snapshot = prospect.listing_snapshot || {};
+  const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
+
+  // The competing-listings count can still be on its way: ask again until
+  // it's in, giving up after about three minutes.
+  useEffect(() => {
+    let cancelled = false;
+    let tries = 0;
+    let handle: number | undefined;
+    const load = async () => {
+      try {
+        const data = await getAdsSummary(access);
+        if (cancelled) return;
+        setSummary(data);
+        if (data.competition.status === 'pending' && tries++ < 45) handle = window.setTimeout(load, 4000);
+      } catch {
+        if (!cancelled && tries++ < 3) handle = window.setTimeout(load, 4000);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+      if (handle) window.clearTimeout(handle);
+    };
+  }, [access.token, access.code]);
+
+  const facts = [
+    prospect.asking_price ? formatGbp(prospect.asking_price) : null,
+    prospect.bedrooms ? plural(prospect.bedrooms, 'Bedroom', 'Bedrooms') : null,
+    prospect.bathrooms ? plural(prospect.bathrooms, 'Bathroom', 'Bathrooms') : null,
+  ].filter(Boolean);
+
+  const rows: { label: string; text: ReactNode }[] = [];
+  if (summary) {
+    if (summary.buyer_appeal) rows.push({ label: 'Buyer Appeal', text: summary.buyer_appeal });
+    if (summary.pricing) rows.push({ label: 'Pricing Position', text: summary.pricing });
+    if (summary.presentation.count > 0) {
+      rows.push({ label: 'Listing Presentation', text: `${plural(summary.presentation.count, 'opportunity', 'opportunities')} identified` });
+    } else if (summary.presentation.status) {
+      rows.push({ label: 'Listing Presentation', text: summary.presentation.status });
+    }
+    const competition = summary.competition;
+    if (competition.status === 'ready' && competition.count) {
+      rows.push({
+        label: 'Local Competition',
+        text: `Your property is competing with ${competition.count} ${COMPETITION_BASIS[competition.basis || 'nearby'] || 'homes for sale nearby'}`,
+      });
+    } else if (competition.status === 'pending') {
+      rows.push({ label: 'Local Competition', text: <span className="slw-ads-pending">Checking competing listings nearby…</span> });
+    } else if (competition.fallback) {
+      rows.push({ label: 'Local Competition', text: competition.fallback });
+    }
+  }
+
+  return (
+    <section className="slw-confirm">
+      <h1>We Found Your Property</h1>
+      <p className="slw-confirm-copy">
+        See what may be holding your property back. Share our recommendations with your agent or implement them yourself.
+      </p>
+      <div className="slw-confirm-card">
+        <div className="slw-confirm-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
+        <div className="slw-confirm-details slw-ads-summary">
+          <h2>{prospect.property_address}</h2>
+          {facts.length > 0 && <p className="slw-ads-facts">{facts.join(' · ')}</p>}
+          <div className="slw-confirm-signals">
+            <div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <path d="M12 9v4M12 17h.01" />
+              </svg>
+              <span>We found <b>{totalFactors} factors</b> that may be affecting your sale</span>
+            </div>
+          </div>
+          {summary === null ? (
+            <div className="slw-ads-summary-loading"><div className="slw-spinner" /></div>
+          ) : (
+            <>
+              {rows.length > 0 && (
+                <>
+                  <p className="slw-ads-summary-intro">Your assessment identified potential issues across:</p>
+                  <ul className="slw-ads-summary-list">
+                    {rows.map((row) => (
+                      <li key={row.label}><b>{row.label}</b> &mdash; {row.text}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {summary.finding && (
+                <div className="slw-ads-finding">
+                  <b>One finding:</b>
+                  <p>{summary.finding}</p>
+                </div>
+              )}
+            </>
+          )}
+          <button type="button" className="slw-btn-black slw-ads-see-all" onClick={onContinue}>
+            See All {totalFactors} Findings &rarr;
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};

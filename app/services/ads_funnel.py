@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import re
 import uuid
@@ -263,7 +264,10 @@ async def start_from_listing(
             lead.prospect_id = target.id
         prefill = {"first_name": lead.first_name, "email": lead.email}
     await db.commit()
-    return {"token": token, "audience": target.audience, "property_code": target.property_code, "prefill": prefill}
+    return {
+        "token": token, "audience": target.audience, "property_code": target.property_code, "prefill": prefill,
+        "prospect_id": target.id,
+    }
 
 
 # ── "Email me a reminder" leads ────────────────────────────────────────────
@@ -330,3 +334,152 @@ async def create_reminder_lead(
     db.add(lead)
     await db.commit()
     return lead, True
+
+
+# ── Confirm Property summary (ads homeowners) ───────────────────────────────
+# "Your assessment identified potential issues across:" Buyer Appeal,
+# Pricing Position, Listing Presentation and Local Competition, plus one
+# finding. Every line comes from the prospect's own report, or for
+# competition, a count of the similar homes for sale around it on
+# Rightmove; nothing is made up for the page.
+
+COMPETITION_PENDING_LIMIT = 300  # seconds before a "pending" search is retried
+_PRESENTATION_ICONS = {"photos", "description"}
+_PRESENTATION_WORDS = re.compile(
+    r"photo|image|picture|description|floor ?plan|virtual tour|video|headline|wording|presentation|staging|first impression",
+    re.IGNORECASE,
+)
+
+
+def score_status(score: Any) -> str | None:
+    """How a 0-100 report score reads on the summary."""
+    try:
+        value = int(score)
+    except (TypeError, ValueError):
+        return None
+    if value < 50:
+        return "Needs attention"
+    if value < 70:
+        return "Review recommended"
+    return "Performing well"
+
+
+def presentation_opportunities(report: dict[str, Any]) -> int:
+    """Distinct presentation points the report raises: findings marked as
+    photo or description issues, and actions about photos, wording,
+    floorplans, tours and the like."""
+    titles: set[str] = set()
+    for finding in report.get("key_findings") or []:
+        if not isinstance(finding, dict) or finding.get("type") == "strength":
+            continue
+        text = f"{finding.get('title') or ''} {finding.get('description') or ''}"
+        if finding.get("icon") in _PRESENTATION_ICONS or _PRESENTATION_WORDS.search(text):
+            titles.add((finding.get("title") or text).strip().lower())
+    for action in report.get("action_plan") or []:
+        if not isinstance(action, dict):
+            continue
+        text = f"{action.get('title') or ''} {action.get('description') or ''}"
+        if _PRESENTATION_WORDS.search(text):
+            titles.add((action.get("title") or text).strip().lower())
+    return len(titles)
+
+
+def _loads(raw: str | None) -> dict[str, Any]:
+    try:
+        value = json.loads(raw or "{}")
+    except ValueError:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def assessment_summary(prospect: StaleListingProspect) -> dict[str, Any]:
+    report = _loads(sps.current_report_json(prospect))
+    preview = _loads(prospect.preview_json)
+    scores = report.get("scores") or preview.get("scores") or {}
+    issues = [f for f in (report.get("key_findings") or preview.get("key_issues") or [])
+              if isinstance(f, dict) and f.get("type") != "strength"]
+    finding = next((f.get("description") or f.get("title") for f in issues if f.get("description") or f.get("title")), None)
+    presentation = presentation_opportunities(report)
+    competition = _loads(prospect.competition_json)
+    return {
+        "buyer_appeal": score_status(scores.get("buyer_appeal")),
+        "pricing": score_status(scores.get("pricing")),
+        "presentation": {"count": presentation, "status": score_status(scores.get("listing_presentation"))},
+        "competition": {
+            "status": competition.get("status") or "pending",
+            "count": competition.get("count"),
+            "basis": competition.get("basis"),
+            "area": competition.get("area"),
+            "fallback": score_status(scores.get("competition")),
+        },
+        "finding": finding,
+    }
+
+
+def competition_needs_search(prospect: StaleListingProspect, now: datetime | None = None) -> bool:
+    competition = _loads(prospect.competition_json)
+    status = competition.get("status")
+    if status in ("ready", "unavailable"):
+        return False
+    if status == "pending" and prospect.competition_at is not None:
+        now = now or datetime.now(timezone.utc)
+        return (now - prospect.competition_at).total_seconds() > COMPETITION_PENDING_LIMIT
+    return True
+
+
+async def mark_competition_pending(db: AsyncSession, prospect: StaleListingProspect) -> bool:
+    """Claim the search for this prospect (so several requests, or workers,
+    don't each start one). Commits. False if it's done or already running."""
+    if prospect.country != "UK" or not competition_needs_search(prospect):
+        return False
+    prospect.competition_json = json.dumps({"status": "pending"})
+    prospect.competition_at = datetime.now(timezone.utc)
+    await db.commit()
+    return True
+
+
+async def count_competition(prospect: StaleListingProspect) -> dict[str, Any]:
+    """Similar homes for sale around the property, from the same Rightmove
+    search the agent report uses: same type and a bedroom either way when
+    there are enough of those, else the same type, else every home."""
+    from app.services import agent_report, land_registry
+    from app.services import listing_monitor as lm
+
+    snapshot = _loads(prospect.listing_snapshot_json)
+    known = (prospect.postcode, snapshot.get("postcode"), prospect.property_address)
+    query = land_registry.full_postcode(*known) or land_registry.outcode(*known) or ""
+    rows, radius, _own = await agent_report._search_nearby(query, lm.rightmove_listing_id(prospect.rightmove_url))
+    if not rows:
+        return {"status": "unavailable"}
+    property_type = prospect.property_type or snapshot.get("property_type") or ""
+    similar = [r for r in rows if lm.is_similar(r, prospect.bedrooms, property_type)]
+    same_type = [r for r in rows if lm.broad_type(r.get("type") or "") == lm.broad_type(property_type)]
+    if len(similar) >= agent_report.SIMILAR_MIN:
+        chosen, basis = similar, "similar"
+    elif property_type and len(same_type) >= agent_report.SIMILAR_MIN:
+        chosen, basis = same_type, "same_type"
+    else:
+        chosen, basis = rows, "nearby"
+    for_sale = [r for r in chosen if (r.get("status") or "on_market") == "on_market"]
+    return {"status": "ready", "count": len(for_sale), "basis": basis, "area": agent_report.radius_label(radius)}
+
+
+async def refresh_competition(prospect_id: Any) -> None:
+    """Background task: run the search and store the result."""
+    from app.db.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, prospect_id)
+            if prospect is None:
+                return
+            result = await count_competition(prospect)
+    except Exception:  # noqa: BLE001
+        logger.exception("Ads funnel: competition search failed for %s", prospect_id)
+        result = {"status": "unavailable"}
+    async with AsyncSessionLocal() as db:
+        prospect = await db.get(StaleListingProspect, prospect_id)
+        if prospect is not None:
+            prospect.competition_json = json.dumps(result)
+            prospect.competition_at = datetime.now(timezone.utc)
+            await db.commit()
