@@ -633,6 +633,18 @@ class StaleListingProspect(Base):
     audience: Mapped[str] = mapped_column(String(10), nullable=False, default="owner", server_default="owner")
     agent_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     parent_prospect_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    # Set when the prospect came in through a Meta-ads landing page
+    # (app/services/ads_funnel.py): "meta_seller" for a homeowner's own
+    # prospect, "meta_agent" for an agency's copy. Those leads get the ads
+    # email flows (app/services/ads_nurture.py) instead of the letter
+    # funnel's abandonment emails.
+    lead_source: Mapped[Optional[str]] = mapped_column(String(30), nullable=True, index=True)
+    # First time the Payment step was shown; anchors the ads flows'
+    # checkout-recovery emails.
+    checkout_visited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # "Property sold, STC or withdrawn", from the link in the ads emails.
+    # A homeowner's emails stop; an agency stops hearing about this property.
+    property_closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -743,6 +755,58 @@ class StaleProspectPostPurchaseEmail(Base):
             unique=True,
         ),
     )
+
+
+class AdsUrlReminderLead(Base):
+    """Someone on an ads landing page without their listing link to hand
+    who asked to be reminded (app/services/ads_funnel.py). The reminder
+    emails link back with a token whose hash is kept here; they stop once
+    a link is submitted (url_submitted_at) or they unsubscribe."""
+    __tablename__ = "ads_url_reminder_leads"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    audience: Mapped[str] = mapped_column(String(10), nullable=False)  # "owner" or "agent"
+    first_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    prospect_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="SET NULL"), nullable=True
+    )
+    url_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AdsUrlReminderEmail(Base):
+    """One sent reminder email; (lead_id, stage) is unique so the send loop
+    never sends a stage twice."""
+    __tablename__ = "ads_url_reminder_emails"
+    __table_args__ = (UniqueConstraint("lead_id", "stage", name="uq_ads_url_reminder_emails_lead_stage"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    lead_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ads_url_reminder_leads.id", ondelete="CASCADE"), nullable=False
+    )
+    stage: Mapped[int] = mapped_column(Integer, nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AdsNurtureEmail(Base):
+    """One sent email of an ads lead's pre-purchase flows
+    (app/services/ads_nurture.py). flow is "main", "checkout" or "closed";
+    (prospect_id, flow, stage) is unique so nothing is sent twice."""
+    __tablename__ = "ads_nurture_emails"
+    __table_args__ = (
+        UniqueConstraint("prospect_id", "flow", "stage", name="uq_ads_nurture_emails_prospect_flow_stage"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    flow: Mapped[str] = mapped_column(String(20), nullable=False)
+    stage: Mapped[int] = mapped_column(Integer, nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class StaleListingDiscoveryRun(Base):

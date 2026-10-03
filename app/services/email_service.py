@@ -2454,6 +2454,120 @@ def send_stale_prospect_abandonment_email_sync(
     )
 
 
+# ── Meta-ads funnel emails (app/services/ads_nurture.py) ──────────────────
+# The property-link reminders and the vendor / agent pre-purchase nurture
+# flows. Same branded shell as the abandonment drip above; the copy comes
+# word for word from app/services/ads_email_content/*.json.
+
+
+def _ads_flow_paragraphs_html(paragraphs: list[str]) -> str:
+    return "".join(_stale_abandonment_paragraph(_html_lib.escape(p)) for p in paragraphs if p.strip())
+
+
+def _ads_flow_note_html(note: str, link_text: str, link_url: str) -> str:
+    """The "Property sold?" line, with its link on link_text."""
+    escaped = _html_lib.escape(note)
+    phrase = _html_lib.escape(link_text)
+    if link_text and link_url and phrase in escaped:
+        link = (
+            f'<a href="{_html_lib.escape(link_url)}" style="color:#A409D2;text-decoration:underline;">{phrase}</a>'
+        )
+        escaped = escaped.replace(phrase, link, 1)
+    return (
+        '<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:19px;color:#98A2B3;">'
+        f"{escaped}</p>"
+    )
+
+
+def send_ads_flow_email_sync(
+    *,
+    to_email: str,
+    first_name: str,
+    subject: str,
+    preheader: str,
+    paragraphs: list[str],
+    cta_label: str,
+    cta_url: str,
+    unsubscribe_url: str,
+    after_cta: list[str] | None = None,
+    sign_off: bool = True,
+    signature: bool = False,
+    note: str | None = None,
+    note_link_text: str = "",
+    note_link_url: str = "",
+    social_proof: bool = True,
+    frontend_base_url: str | None = None,
+) -> bool:
+    """Send one email of an ads funnel flow. The send loops in
+    app/services/ads_nurture.py record each send so a stage never goes twice;
+    don't call this from a request handler for a stage that may have gone."""
+    brand = _stale_abandonment_brand(frontend_base_url)
+    name = first_name or "there"
+    closing = ""
+    if after_cta:
+        closing += _ads_flow_paragraphs_html(after_cta)
+    if sign_off:
+        closing += _stale_abandonment_paragraph("Regards,<br />The Havlo Team")
+    if signature:
+        closing += _stale_abandonment_paragraph('<strong style="color:#111111;">Havlo</strong><br />Property Listing Intelligence')
+    if note:
+        closing += _ads_flow_note_html(note, note_link_text, note_link_url)
+    body_html = f"""
+        <tr>
+          <td class="hv-pad-x" style="padding:30px 44px 0 44px;">
+            <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#556274;">
+              Hi {_html_lib.escape(name)},
+            </p>
+            <h1 style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:30px;font-weight:800;letter-spacing:-.02em;color:#111111;">
+              {_html_lib.escape(subject)}
+            </h1>
+            {_ads_flow_paragraphs_html(paragraphs)}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" align="center" style="padding:6px 44px 22px 44px;">
+            {_email_button_html(cta_url, f"{cta_label} ›", accent="#000000", text_color="#FFFFFF")}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" style="padding:0 44px 22px 44px;">
+            {closing}
+          </td>
+        </tr>
+    """
+    if social_proof:
+        body_html += f"""
+        <tr>
+          <td class="hv-pad-x" style="padding:0 44px 22px 44px;">
+            {_stale_abandonment_stars_html()}
+          </td>
+        </tr>
+        <tr>
+          <td class="hv-pad-x" style="padding:0 44px 8px 44px;">
+            {_stale_abandonment_testimonials_html()}
+          </td>
+        </tr>
+        """
+    html_body = _stale_abandonment_shell_html(
+        title=subject,
+        preheader=preheader,
+        body_html=body_html,
+        brand=brand,
+        unsubscribe_url=unsubscribe_url,
+    )
+    lines = [f"Hi {name},", "", *[p for p in paragraphs if p.strip()], "", f"{cta_label}: {cta_url}", ""]
+    if after_cta:
+        lines += [*after_cta, ""]
+    if sign_off:
+        lines += ["Regards,", "The Havlo Team", ""]
+    if signature:
+        lines += ["Havlo", "Property Listing Intelligence", ""]
+    if note:
+        lines += [f"{note} {note_link_url}".strip(), ""]
+    lines += [f"Unsubscribe: {unsubscribe_url}", "", "Copyright ©Havlo. All rights reserved."]
+    return _send_sync(to_email=to_email, subject=subject, html_body=html_body, plain_body="\n".join(lines))
+
+
 # ── StaleListings post-purchase nurture / upsell email drip ("phase two") ──
 # Twelve emails counted from unlocked_at (when payment_status becomes
 # "completed") rather than contact_details_submitted_at: immediately, then

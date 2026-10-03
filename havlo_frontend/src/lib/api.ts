@@ -83,6 +83,8 @@ export interface StaleProspectConsoleListItem {
   processing_status: string;
   payment_status: string;
   is_manual: boolean;
+  // Set for listings that came in through a Meta-ads landing page.
+  lead_source?: string | null;
   treated_at?: string | null;
   created_at: string;
   code_looked_up_at?: string | null;

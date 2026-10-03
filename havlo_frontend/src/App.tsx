@@ -55,6 +55,8 @@ const StaleListingsHome = React.lazy(() => import('./pages/StaleListingsHome').t
 const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents').then(m => ({ default: m.StaleListingsAgents })));
 const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListingsPartnerships').then(m => ({ default: m.StaleListingsPartnerships })));
 const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/StaleProspectWizard').then(m => ({ default: m.StaleProspectWizard })));
+const AdsSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.AdsSellerLanding })));
+const AdsAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.AdsAgentLanding })));
 const AgentPortal = React.lazy(() => import('./pages/stale-prospect/AgentPortal').then(m => ({ default: m.AgentPortal })));
 const MonitorDashboard = React.lazy(() => import('./pages/stale-prospect/MonitorDashboard').then(m => ({ default: m.MonitorDashboard })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
@@ -256,6 +258,8 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   // unexplained in the corner. Excluded outright rather than embedded.
   '/check',
   '/check/agent',
+  '/assess/seller',
+  '/assess/agent',
   '/stale-listings/prospect',
   '/stale-listings/prospect/complete',
   '/stale-listings/prospect/report',
@@ -297,7 +301,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   // needs to be named here explicitly or it falls through to the default
   // branch below and gets the global marketing Navbar + Footer wrapped
   // around it, which is not what its own page header/layout expects.
-  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/m/');
+  // The Meta-ads landing pages (/assess/seller, /assess/agent) are the same
+  // wizard, so they get the same treatment.
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/m/');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
@@ -408,6 +414,9 @@ export default function App() {
               <Route path="/check" element={<StaleProspectWizard />} />
               {/* Estate agencies: the code on the agent campaign letter (see AgentPortal.tsx). */}
               <Route path="/check/agent" element={<AgentPortal />} />
+              {/* Meta-ads landing pages: /check with a listing-link box. */}
+              <Route path="/assess/seller" element={<AdsSellerLanding />} />
+              <Route path="/assess/agent" element={<AdsAgentLanding />} />
               {/* The 90-day dashboard that comes with a purchased report (texted once; see MonitorDashboard.tsx). */}
               <Route path="/m/:token" element={<MonitorDashboard />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />

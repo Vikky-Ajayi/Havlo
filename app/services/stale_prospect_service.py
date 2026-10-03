@@ -410,8 +410,11 @@ async def create_prospect_from_listing_snapshot(
     city: str | None = None,
     is_manual: bool = False,
     country: str = "UK",
+    make_letter: bool = True,
 ) -> tuple[StaleListingProspect, str, str]:
-    """Create a fully processed prospect, report, preview and letter PDF."""
+    """Create a fully processed prospect, report, preview and letter PDF.
+    make_letter=False (the ads funnel, where nobody is written to) skips the
+    letter, which is otherwise made on first download from the console."""
     token = create_access_token()
     property_code = await make_property_code(db)
     # Recorded sales are looked up alongside the report so creation takes no
@@ -472,6 +475,8 @@ async def create_prospect_from_listing_snapshot(
         apply_agent_details(prospect, listing_snapshot["agent"])
     db.add(prospect)
     await db.flush()
+    if not make_letter:
+        return prospect, token, ""
     letter_path = generate_letter_pdf(prospect, token, get_settings().FRONTEND_URL or "https://www.heyhavlo.com")
     prospect.letter_pdf_path = letter_path
     prospect.processing_status = "letter_ready"

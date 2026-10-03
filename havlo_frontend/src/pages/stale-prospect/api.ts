@@ -26,6 +26,54 @@ export async function lookupProspect(propertyCode: string): Promise<ProspectPrev
   return parseJsonOrThrow(response);
 }
 
+// ── Meta-ads landing pages (/assess/seller, /assess/agent) ──────────────
+
+export type AdsAudience = 'owner' | 'agent';
+
+/** Reads the pasted Rightmove listing and returns an access token for the
+ * normal funnel. Can take up to a minute for a listing we haven't seen. */
+export async function startAdsAssessment(payload: {
+  listing_url: string;
+  audience: AdsAudience;
+  reminder_token?: string;
+}): Promise<{ token: string; audience: string; property_code: string; prefill: { first_name?: string; email?: string } }> {
+  const response = await fetch(`${API_BASE}/stale-listings/ads/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonOrThrow(response);
+}
+
+/** "Email me a reminder" for a visitor without their listing link. */
+export async function requestUrlReminder(payload: { first_name: string; email: string; audience: AdsAudience }): Promise<{ ok: boolean }> {
+  const response = await fetch(`${API_BASE}/stale-listings/ads/reminder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonOrThrow(response);
+}
+
+/** Who a reminder email's link belongs to. */
+export async function getUrlReminder(token: string): Promise<{ first_name: string; email: string; audience: string; url_submitted: boolean }> {
+  const response = await fetch(`${API_BASE}/stale-listings/ads/reminder?token=${encodeURIComponent(token)}`);
+  return parseJsonOrThrow(response);
+}
+
+/** The Payment step was shown (anchors the checkout-recovery emails). */
+export async function recordCheckoutVisit(access: { token?: string; property_code?: string }): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/stale-listings/prospects/checkout-visit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(access),
+    });
+  } catch {
+    // Best effort: it only times the follow-up emails.
+  }
+}
+
 export async function getProspectPreview(params: { token?: string; code?: string }): Promise<ProspectPreview> {
   const query = new URLSearchParams();
   if (params.token) query.set('token', params.token);

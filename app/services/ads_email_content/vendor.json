@@ -1,0 +1,776 @@
+{
+ "main": [
+  {
+   "stage": 1,
+   "name": "Immediate confirmation",
+   "send": "Immediately after details are submitted",
+   "subject": "We’ve started looking at [Property Address]",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "You’ve already taken the first step by checking how your property is presenting to the market. Your preview is available now, and the full assessment is designed to bring the key signals together in one place.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 0
+  },
+  {
+   "stage": 2,
+   "name": "Preview reminder",
+   "send": "Day 2",
+   "subject": "Your property preview is ready",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A listing can look perfectly reasonable and still contain small points that affect buyer response. The purpose of the assessment is to make those points easier to see before more time passes.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 2
+  },
+  {
+   "stage": 3,
+   "name": "First impression",
+   "send": "Day 5 (approx. Week 1)",
+   "subject": "Would a buyer stop on [Property Address]?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Most buyers meet a property on a search-results screen before they ever read the description. The lead image, price, headline facts and surrounding competition shape whether they stop or scroll.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 5
+  },
+  {
+   "stage": 4,
+   "name": "Price context",
+   "send": "Day 9 (approx. Week 2)",
+   "subject": "Before you change the price, check this",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Price matters, but reducing it should not automatically be the first response to weak interest. First understand how the property sits against comparable alternatives and whether presentation or positioning is weakening perceived value.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 9
+  },
+  {
+   "stage": 5,
+   "name": "Agent collaboration",
+   "send": "Day 12 (approx. Week 2)",
+   "subject": "Your agent can use this report too",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "The Havlo assessment is not a replacement for your estate agent. It can give you and your agent a shared set of observations to discuss, so your next review is based on more than instinct.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 12
+  },
+  {
+   "stage": 6,
+   "name": "Competition",
+   "send": "Day 16 (approx. Week 3)",
+   "subject": "What are buyers comparing your home with?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Your buyer is rarely looking at only one property. They may be comparing several homes at a similar price, in nearby areas, with different photography, condition, space or incentives.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 16
+  },
+  {
+   "stage": 7,
+   "name": "Listing vs property",
+   "send": "Day 19 (approx. Week 3)",
+   "subject": "A good home can still have a weak listing",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "The quality of the property and the quality of the online listing are not the same thing. A strong home can be undersold by photography, ordering, wording or unclear value. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 19
+  },
+  {
+   "stage": 8,
+   "name": "Engagement",
+   "send": "Day 23 (approx. Week 4)",
+   "subject": "Views don’t always mean buyer intent",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Listing views can feel encouraging, but the more useful question is whether the listing is generating the next action: saves, enquiries, viewings and serious conversations. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 23
+  },
+  {
+   "stage": 9,
+   "name": "Five-second test",
+   "send": "Day 26 (approx. Week 4)",
+   "subject": "What does your listing communicate in 5 seconds?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Buyers make very fast judgements online. The opening image, asking price and first visible details need to communicate a reason to explore further. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 26
+  },
+  {
+   "stage": 10,
+   "name": "Value proposition",
+   "send": "Day 30 (approx. Week 5)",
+   "subject": "Could your best selling point be buried?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Sometimes the feature most likely to attract the right buyer is present but not prominent. A garden, school catchment, transport link, layout, extension or development potential can lose impact if it appears too late. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 30
+  },
+  {
+   "stage": 11,
+   "name": "Listing fatigue",
+   "send": "Day 33 (approx. Week 5)",
+   "subject": "Has your listing started to feel familiar?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "As a listing remains visible, repeat buyers may begin to recognise it and scroll past it. That does not automatically mean the property is unsellable; it may mean the presentation or proposition needs a fresh reason to be reconsidered. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 33
+  },
+  {
+   "stage": 12,
+   "name": "Agent meeting",
+   "send": "Day 37 (approx. Week 6)",
+   "subject": "3 questions for your next agent review",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Ask: What feedback pattern are we seeing? Which competing homes are buyers choosing? What single change would we test next? A Havlo assessment can help make that conversation more structured. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 37
+  },
+  {
+   "stage": 13,
+   "name": "Search positioning",
+   "send": "Day 40 (approx. Week 6)",
+   "subject": "Would you choose your listing from the search page?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Imagine you knew nothing about your own home. Put it beside the alternatives a buyer sees at the same price. Does it immediately explain why it deserves the viewing? It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 40
+  },
+  {
+   "stage": 14,
+   "name": "Learning loop",
+   "send": "Day 44 (approx. Week 7)",
+   "subject": "Another week on market: what have you learned?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Time on market should produce information. Viewing feedback, enquiry patterns, competing sales and listing performance should gradually tell you what to preserve and what to reconsider. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 44
+  },
+  {
+   "stage": 15,
+   "name": "Hidden objections",
+   "send": "Day 47 (approx. Week 7)",
+   "subject": "The buyer objection you may not be hearing",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Not every buyer explains why they did not enquire or book a viewing. Some objections happen silently on the listing page. That is why an outside review of positioning can be useful. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 47
+  },
+  {
+   "stage": 16,
+   "name": "Photography",
+   "send": "Day 51 (approx. Week 8)",
+   "subject": "Photography can change perceived value",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Photography does more than show rooms. It establishes scale, light, flow and emotional appeal. Weak sequencing or an unhelpful lead image can reduce interest before the description is read. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 51
+  },
+  {
+   "stage": 17,
+   "name": "Description",
+   "send": "Day 54 (approx. Week 8)",
+   "subject": "Is your description doing enough work?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A property description should do more than list features. It should help the right buyer understand why the home fits their needs and what makes it different from nearby alternatives. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 54
+  },
+  {
+   "stage": 18,
+   "name": "Competition refresh",
+   "send": "Day 58 (approx. Week 9)",
+   "subject": "What changed in your local competition?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "The competitive set around a listing changes. New homes arrive, others reduce price, some go under offer and some return to market. Your original positioning may therefore need reviewing. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 58
+  },
+  {
+   "stage": 19,
+   "name": "Status check",
+   "send": "Day 61 (approx. Week 9)",
+   "subject": "Has anything changed with [Property Address]?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "If your property is still available, this is a useful point to review whether buyer response is matching your expectations. If it has sold, tell us and we’ll stop the sequence. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 61
+  },
+  {
+   "stage": 20,
+   "name": "Abandonment reminder",
+   "send": "Day 65 (approx. Week 10)",
+   "subject": "You already started this assessment",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "You came to Havlo because you wanted another view of your listing. Your assessment route is still available, so you can pick up where you left off rather than starting again. It is easy to focus on one obvious explanation, but property marketing usually works as a system: price, presentation, competition and buyer expectations interact.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 65
+  },
+  {
+   "stage": 21,
+   "name": "Pre-reduction checklist",
+   "send": "Day 68 (approx. Week 10)",
+   "subject": "What should happen before a price reduction?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Before changing price, review comparable competition, photography, description, buyer feedback, viewing conversion and whether the listing clearly communicates value. A price move is more useful when it follows diagnosis rather than guesswork. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 68
+  },
+  {
+   "stage": 22,
+   "name": "Buyer fit",
+   "send": "Day 72 (approx. Week 11)",
+   "subject": "Is the right buyer seeing the right message?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A listing can attract attention without attracting the most relevant buyer. The language, images and highlighted features should make the likely buyer feel that the property was meant for them. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 72
+  },
+  {
+   "stage": 23,
+   "name": "Pre-viewing competition",
+   "send": "Day 75 (approx. Week 11)",
+   "subject": "Your listing is competing before the viewing",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "The first competition happens online. Buyers shortlist before they speak to an agent, which means the listing has to earn its place in the viewing diary. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 75
+  },
+  {
+   "stage": 24,
+   "name": "Relaunch thought experiment",
+   "send": "Day 79 (approx. Week 12)",
+   "subject": "What would you change if you launched today?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Forget the existing listing for a moment. If the property were going live today, would you use the same first photo, same order, same wording and same price position? The differences in your answer are worth examining. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 79
+  },
+  {
+   "stage": 25,
+   "name": "Independent second opinion",
+   "send": "Day 82 (approx. Week 12)",
+   "subject": "One independent review. One better agent conversation.",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Havlo is designed to help you arrive at your next agent conversation with clearer questions and evidence. You do not need to replace your agent to benefit from an independent assessment. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 82
+  },
+  {
+   "stage": 26,
+   "name": "Perceived value",
+   "send": "Day 86 (approx. Week 13)",
+   "subject": "Are buyers seeing value—or just a price?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Buyers do not experience price in isolation. They compare what the asking price appears to buy: condition, space, location, finish, convenience and alternatives. The listing needs to make that value visible. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 86
+  },
+  {
+   "stage": 27,
+   "name": "Conversion",
+   "send": "Day 89 (approx. Week 13)",
+   "subject": "The difference between interest and action",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A property can receive attention but still fail to convert that attention into enquiries or viewings. The useful question is where the journey may be losing momentum. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 89
+  },
+  {
+   "stage": 28,
+   "name": "Feedback synthesis",
+   "send": "Day 93 (approx. Week 14)",
+   "subject": "What has viewing feedback actually told you?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Individual comments can be noisy. Patterns matter more. If several viewers mention the same issue—or if enquiries are weak despite traffic—that pattern deserves attention. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 93
+  },
+  {
+   "stage": 29,
+   "name": "Refresh",
+   "send": "Day 96 (approx. Week 14)",
+   "subject": "Could your listing benefit from a reset?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A reset does not necessarily mean changing agent or dramatically reducing price. Sometimes it means improving the elements that shape first impressions and giving buyers a clearer reason to reconsider. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 96
+  },
+  {
+   "stage": 30,
+   "name": "Monthly review",
+   "send": "Day 100 (approx. Week 15)",
+   "subject": "Still selling? Here’s what to review this month",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "If [Property Address] is still on the market, review four things this month: competitive position, buyer feedback, listing presentation and the next measurable action you and your agent will test. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 100
+  },
+  {
+   "stage": 31,
+   "name": "Competitor learning",
+   "send": "Day 103 (approx. Week 15)",
+   "subject": "What are successful competing listings doing differently?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "You do not need to copy another seller, but nearby listings can reveal what buyers are responding to: presentation, specification, price bands, photography or a clearer proposition. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 103
+  },
+  {
+   "stage": 32,
+   "name": "Market movement",
+   "send": "Day 107 (approx. Week 16)",
+   "subject": "Your home hasn’t changed. The market may have.",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Even when nothing changes inside your home, the context around it can move. New listings, reductions and completed sales can change how buyers interpret your asking price and offer. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 107
+  },
+  {
+   "stage": 33,
+   "name": "Refresh timing",
+   "send": "Day 110 (approx. Week 16)",
+   "subject": "When should you refresh a property listing?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "There is no universal deadline, but a refresh becomes worth discussing when response weakens, feedback repeats, competing listings change or the current presentation no longer reflects your strongest proposition. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 110
+  },
+  {
+   "stage": 34,
+   "name": "Action trigger",
+   "send": "Day 114 (approx. Week 17)",
+   "subject": "What would make a buyer book the viewing today?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Try to identify the strongest reason a buyer should act now rather than save the property for later. If that reason is unclear online, the listing may not be creating enough urgency or differentiation. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 114
+  },
+  {
+   "stage": 35,
+   "name": "Active management",
+   "send": "Day 117 (approx. Week 17)",
+   "subject": "Don’t let ‘no news’ become the strategy",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A quiet week can happen. Repeated quiet weeks should lead to questions. What are buyers doing? What changed locally? What are you testing next? A sale strategy should evolve with evidence. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 117
+  },
+  {
+   "stage": 36,
+   "name": "Price band",
+   "send": "Day 121 (approx. Week 18)",
+   "subject": "Is your asking price in the right conversation?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Buyers often search within price bands. Small differences can change which homes appear beside yours and therefore the comparison set your property enters. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 121
+  },
+  {
+   "stage": 37,
+   "name": "Fresh eyes",
+   "send": "Day 124 (approx. Week 18)",
+   "subject": "Your listing deserves fresh eyes",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "When you have looked at the same listing many times, it becomes difficult to see it as a new buyer does. An independent assessment is useful precisely because it approaches the listing without that familiarity. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 124
+  },
+  {
+   "stage": 38,
+   "name": "Clarity",
+   "send": "Day 128 (approx. Week 19)",
+   "subject": "What might buyers misunderstand about your home?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Online listings compress a complex home into a handful of images and words. If layout, size, parking, outdoor space, condition or location advantages are unclear, buyers may make the wrong assumption before enquiring. The aim is not to make changes for the sake of it. It is to understand the evidence, identify the most plausible friction points and decide what is worth testing with your agent.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 128
+  },
+  {
+   "stage": 39,
+   "name": "Mid-late status",
+   "send": "Day 131 (approx. Week 19)",
+   "subject": "Still available? Let’s check the strategy.",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "If [Property Address] is still available, now is a sensible time to check whether the original marketing strategy is still doing the job you expected. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 131
+  },
+  {
+   "stage": 40,
+   "name": "Time comparison",
+   "send": "Day 135 (approx. Week 20)",
+   "subject": "What has changed since you first checked Havlo?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Since you first opened your Havlo preview, your listing may have gained more feedback and your local competition may have changed. That makes a fresh review more useful, not less. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 135
+  },
+  {
+   "stage": 41,
+   "name": "Time prompt",
+   "send": "Day 138 (approx. Week 20)",
+   "subject": "Before another month passes…",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "If the property remains unsold, decide what you want to learn or change over the next 30 days. Waiting without a test gives you less information than making one considered improvement and measuring the response. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 138
+  },
+  {
+   "stage": 42,
+   "name": "Re-engagement",
+   "send": "Day 142 (approx. Week 21)",
+   "subject": "Could buyers need a new reason to look again?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "For longer-listed properties, the challenge can become getting repeat searchers to reconsider something they have already seen. A refreshed proposition can create that reason. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 142
+  },
+  {
+   "stage": 43,
+   "name": "Strategy evolution",
+   "send": "Day 145 (approx. Week 21)",
+   "subject": "The listing may be familiar. Your strategy doesn’t have to be.",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Time on market should not force panic, but it should encourage review. Keep what is working, challenge what is not and give your agent a clear set of points to discuss. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 145
+  },
+  {
+   "stage": 44,
+   "name": "Lost-choice analysis",
+   "send": "Day 149 (approx. Week 22)",
+   "subject": "What are buyers choosing instead?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "One of the most useful questions is not simply ‘why haven’t we sold?’ but ‘what did comparable buyers choose instead?’ The answer can reveal where your property’s proposition is strongest or weakest. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 149
+  },
+  {
+   "stage": 45,
+   "name": "Practical utility",
+   "send": "Day 152 (approx. Week 22)",
+   "subject": "One report you can take straight to your agent",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "The value of the Havlo assessment is not just reading it. Use it. Take the observations into your agent review, compare them with actual enquiry and viewing data, and agree what is worth testing. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 152
+  },
+  {
+   "stage": 46,
+   "name": "Strategy audit",
+   "send": "Day 156 (approx. Week 23)",
+   "subject": "Is the current strategy still earning its place?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A marketing decision that made sense at launch may not remain the best decision months later. Review the evidence rather than continuing something simply because it is already in place. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 156
+  },
+  {
+   "stage": 47,
+   "name": "Competitive movement",
+   "send": "Day 159 (approx. Week 23)",
+   "subject": "Your competition won’t stand still",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Other sellers can reduce, improve photography, change agents, relaunch or accept offers. Your property's market position is therefore relative and worth revisiting periodically. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 159
+  },
+  {
+   "stage": 48,
+   "name": "Relaunch planning",
+   "send": "Day 163 (approx. Week 24)",
+   "subject": "What would a relaunch need to achieve?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "If you and your agent ever consider refreshing or relaunching the listing, define the objective first: stronger click-through, more enquiries, better-quality viewings or a clearer price position. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 163
+  },
+  {
+   "stage": 49,
+   "name": "Intent check",
+   "send": "Day 166 (approx. Week 24)",
+   "subject": "Still planning to sell [Property Address]?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "If selling is still the goal, your Havlo assessment remains available. If plans have changed or the property has sold, tell us and we will close the loop. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "Your full Havlo assessment reviews the listing from an independent perspective and brings the observations into a practical format you can act on.",
+    "Havlo does not replace your estate agent. You can hand the assessment to your agent and use it as a starting point for a practical conversation about what, if anything, should change."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 166
+  },
+  {
+   "stage": 50,
+   "name": "Agent reassurance",
+   "send": "Day 170 (approx. Week 25)",
+   "subject": "You don’t need to change agent to change the outcome",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "Improvement does not automatically require an agent switch. Your current agent already has valuable context, feedback and buyer conversations. Havlo can add an independent perspective to that existing knowledge. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "It is designed to help you see the listing more like a buyer sees it—alongside the other choices competing for the same attention.",
+    "You do not need to switch agents to use Havlo. Your agent has the live buyer feedback; Havlo adds an independent view of how the listing is positioned and presented online."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 170
+  },
+  {
+   "stage": 51,
+   "name": "Six-month review",
+   "send": "Day 173 (approx. Week 25)",
+   "subject": "Six months later: is it time for a fresh look?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "You first checked Havlo months ago. If the property is still available, you now have more market evidence than you did at the beginning. That makes this a useful moment to reassess the listing with fresh eyes. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "The objective is clarity: what appears strong, what deserves a closer look, and what questions are worth raising at your next sales review.",
+    "Think of Havlo as a second pair of eyes, not a second estate agent. The report is there to help you and your existing agent make a more informed plan together."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 173
+  },
+  {
+   "stage": 52,
+   "name": "Final preference check",
+   "send": "Day 177 (approx. Week 26)",
+   "subject": "Should we stop emailing about [Property Address]?",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "We do not want to keep contacting you about a sale that is already complete or no longer relevant. Tell us whether you are still selling, have sold, or still want to view the assessment. At this stage, the most useful approach is a calm review of what the market has told you so far and whether the current listing still presents the property as strongly as it could.",
+    "You may find that the current strategy is broadly right. You may also uncover a few areas worth improving. Either outcome gives you a more informed basis for your next decision.",
+    "Your estate agent remains central to the sale. Havlo gives you another layer of listing intelligence that you can bring into your next conversation with them."
+   ],
+   "footer": "Property already sold or no longer on the market? Click here to tell us and we’ll stop these property assessment emails.",
+   "days": 177
+  }
+ ],
+ "checkout": [
+  {
+   "stage": 1,
+   "name": "Your assessment is ready when you are",
+   "send": "2 hours after checkout abandonment",
+   "subject": "Your assessment is ready when you are",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "You were close to completing the Havlo assessment for [Property Address]. Your assessment route is still available, so you can continue where you left off.",
+    "The report is designed to give you an independent view of the listing—covering the areas that may influence buyer response and giving you practical points to discuss with your existing estate agent.",
+    "You do not need to change agent. Take the report to your agent, compare it with their enquiry and viewing feedback, and decide together what is worth improving."
+   ],
+   "footer": null,
+   "hours": 2
+  },
+  {
+   "stage": 2,
+   "name": "One report you can take straight to your agent",
+   "send": "24 hours after checkout abandonment",
+   "subject": "One report you can take straight to your agent",
+   "cta": "VIEW MY PROPERTY ASSESSMENT",
+   "paragraphs": [
+    "A Havlo assessment is not another sales instruction and it is not a request to replace your estate agent.",
+    "It is an independent review you can actually use. It gives you a structured way to look at your listing's market position, presentation, competition and buyer appeal—then take those observations into your next conversation with your agent.",
+    "If you still want to understand what may be helping or delaying the sale of [Property Address], your assessment is waiting."
+   ],
+   "footer": null,
+   "hours": 24
+  },
+  {
+   "stage": 3,
+   "name": "Still considering the assessment for [Property Address]?",
+   "send": "72 hours after checkout abandonment",
+   "subject": "Still considering the assessment for [Property Address]?",
+   "cta": "COMPLETE MY ASSESSMENT",
+   "paragraphs": [
+    "Just one final reminder before we return you to our normal property-selling insights.",
+    "If [Property Address] is still on the market, the Havlo assessment can give you a fresh, independent view of how the listing is positioned and where it may be worth looking more closely.",
+    "Use it alongside your agent—not instead of them. Your agent brings buyer conversations and local experience; Havlo gives you another structured perspective on the listing itself."
+   ],
+   "footer": null,
+   "hours": 72
+  }
+ ]
+}

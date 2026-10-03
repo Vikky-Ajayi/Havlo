@@ -751,6 +751,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         .spc-badges{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap}
         .spc-badge{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:4px 8px;border-radius:999px;background:rgba(17,17,17,.72);color:#fff}
         .spc-badge.manual{background:#7C3AED}
+        .spc-badge.ad{background:#1877F2}
         .spc-badge.treated{background:#059669}
         .spc-badge.looked-up{background:#A409D2}
         .spc-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
@@ -1030,6 +1031,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                   <div className={`spc-card-img${item.image_url ? '' : ' empty'}`} style={item.image_url ? { backgroundImage: `url(${item.image_url})` } : undefined}>
                     <div className="spc-badges">
                       {item.is_manual && <span className="spc-badge manual">Manual</span>}
+                      {item.lead_source && <span className="spc-badge ad">{item.lead_source === 'meta_seller' ? 'Meta ad: owner' : 'Meta ad: agent'}</span>}
                       {treated && <span className="spc-badge treated">Treated</span>}
                       {item.code_looked_up_at && <span className="spc-badge looked-up">Looked up {fmtDate(item.code_looked_up_at)}</span>}
                     </div>

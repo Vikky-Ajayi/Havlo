@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
@@ -24,9 +24,14 @@ import {
   getProspectPaymentStatus,
   getProspectPreview,
   getProspectReport,
+  getUrlReminder,
   lookupProspect,
+  recordCheckoutVisit,
+  startAdsAssessment,
   submitProspectDetails,
+  type AdsAudience,
 } from './api';
+import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsStyles } from './AdsLanding';
 import {
   formatGbp,
   formatReducedDate,
@@ -134,7 +139,13 @@ const BackToListings = ({ onClick }: { onClick: () => void }) => (
   </button>
 );
 
-const Stepper = ({ step }: { step: WizardStep }) => {
+// The ads landing pages start from a listing link rather than a letter's code.
+const ADS_STEPPER_LABELS: Partial<Record<string, string>> = {
+  landing: 'Add Listing Link',
+  finding: 'Analysing Listing',
+};
+
+const Stepper = ({ step, ads }: { step: WizardStep; ads?: boolean }) => {
   const activeIndex = stepperIndexFor(step);
   const activeRef = useRef<HTMLLIElement | null>(null);
 
@@ -157,7 +168,7 @@ const Stepper = ({ step }: { step: WizardStep }) => {
               index === activeIndex ? 'slw-step-active' : index < activeIndex ? 'slw-step-done' : ''
             }
           >
-            <span>{item.label}</span>
+            <span>{(ads && ADS_STEPPER_LABELS[item.key]) || item.label}</span>
             {index < STEPPER_ITEMS.length - 1 && <i className="slw-step-sep" />}
           </li>
         ))}
@@ -180,10 +191,18 @@ const LandingStep = ({
   onSubmit,
   loading,
   error,
+  heading,
+  copy,
+  form,
 }: {
   onSubmit: (code: string) => void;
   loading: boolean;
   error: string;
+  // The ads landing pages (AdsLanding.tsx) swap in their own heading, copy
+  // and listing-link form; the rest of the page is shared.
+  heading?: ReactNode;
+  copy?: ReactNode;
+  form?: ReactNode;
 }) => {
   const [code, setCode] = useState('');
   const handleSubmit = (e: FormEvent) => {
@@ -201,14 +220,22 @@ const LandingStep = ({
     <>
       <section className="slw-hero">
         <h1>
-          Your Property Has Been Analysed. See{' '}
-          <span className="slw-accent">What Could Be Holding</span> Back Its Sale
+          {heading ?? (
+            <>
+              Your Property Has Been Analysed. See{' '}
+              <span className="slw-accent">What Could Be Holding</span> Back Its Sale
+            </>
+          )}
         </h1>
         <p className="slw-hero-copy">
-          We analysed your property&rsquo;s market positioning, listing presentation and buyer
-          appeal to identify potential barriers to sale — and the changes that could help.
+          {copy ?? (
+            <>
+              We analysed your property&rsquo;s market positioning, listing presentation and buyer
+              appeal to identify potential barriers to sale — and the changes that could help.
+            </>
+          )}
         </p>
-        <form className="slw-id-form" onSubmit={handleSubmit}>
+        {form ?? <form className="slw-id-form" onSubmit={handleSubmit}>
           <label className="slw-id-input">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M7.26562 7H9.23438L8.73438 9H6.76562L7.26562 7ZM14 3V13C14 13.2652 13.8946 13.5196 13.7071 13.7071C13.5196 13.8946 13.2652 14 13 14H3C2.73478 14 2.48043 13.8946 2.29289 13.7071C2.10536 13.5196 2 13.2652 2 13V3C2 2.73478 2.10536 2.48043 2.29289 2.29289C2.48043 2.10536 2.73478 2 3 2H13C13.2652 2 13.5196 2.10536 13.7071 2.29289C13.8946 2.48043 14 2.73478 14 3ZM13 6.5C13 6.36739 12.9473 6.24021 12.8536 6.14645C12.7598 6.05268 12.6326 6 12.5 6H10.5156L10.985 4.12125C11.0146 3.99351 10.9929 3.85926 10.9244 3.7474C10.856 3.63555 10.7464 3.55504 10.6192 3.52324C10.492 3.49144 10.3574 3.51088 10.2444 3.57738C10.1313 3.64388 10.049 3.7521 10.015 3.87875L9.48438 6H7.51562L7.985 4.12125C8.01462 3.99351 7.99287 3.85926 7.92445 3.7474C7.85602 3.63555 7.7464 3.55504 7.61919 3.52324C7.49198 3.49144 7.35737 3.51088 7.24436 3.57738C7.13135 3.64388 7.04898 3.7521 7.015 3.87875L6.48438 6H4C3.86739 6 3.74021 6.05268 3.64645 6.14645C3.55268 6.24021 3.5 6.36739 3.5 6.5C3.5 6.63261 3.55268 6.75979 3.64645 6.85355C3.74021 6.94732 3.86739 7 4 7H6.23438L5.73438 9H3.5C3.36739 9 3.24021 9.05268 3.14645 9.14645C3.05268 9.24021 3 9.36739 3 9.5C3 9.63261 3.05268 9.75979 3.14645 9.85355C3.24021 9.94732 3.36739 10 3.5 10H5.48438L5.015 11.8787C4.98286 12.0074 5.00313 12.1435 5.07134 12.2572C5.13956 12.3709 5.25013 12.4528 5.37875 12.485C5.41963 12.4952 5.46162 12.5002 5.50375 12.5C5.61514 12.4998 5.72329 12.4625 5.81104 12.3939C5.89879 12.3253 5.96111 12.2293 5.98812 12.1213L6.51562 10H8.48438L8.015 11.8787C7.98286 12.0074 8.00313 12.1435 8.07134 12.2572C8.13956 12.3709 8.25013 12.4528 8.37875 12.485C8.41842 12.4949 8.45913 12.4999 8.5 12.5C8.61139 12.4998 8.71954 12.4625 8.80729 12.3939C8.89504 12.3253 8.95736 12.2293 8.98438 12.1213L9.51562 10H12C12.1326 10 12.2598 9.94732 12.3536 9.85355C12.4473 9.75979 12.5 9.63261 12.5 9.5C12.5 9.36739 12.4473 9.24021 12.3536 9.14645C12.2598 9.05268 12.1326 9 12 9H9.76562L10.2656 7H12.5C12.6326 7 12.7598 6.94732 12.8536 6.85355C12.9473 6.75979 13 6.63261 13 6.5Z" fill="#333E48" />
@@ -230,7 +257,7 @@ const LandingStep = ({
           <button type="submit" className="slw-btn-black slw-id-submit" disabled={loading} aria-label="Find my property">
             {loading ? 'Searching…' : 'Find My Property'}
           </button>
-        </form>
+        </form>}
         <h2 className="slw-discover-title">What you&rsquo;ll discover</h2>
         <ul className="slw-discover-grid">
           <li><CheckIconGreen /> What&rsquo;s weakening your buyer appeal</li>
@@ -316,17 +343,20 @@ const ConfirmStep = ({
   onSubmit,
   loading,
   error,
+  initial,
 }: {
   prospect: ProspectPreview;
   onSubmit: (fields: { full_name: string; email: string; mobile_number: string }) => void;
   loading: boolean;
   error: string;
+  // Already known, e.g. from an ads visitor's "email me a reminder" request.
+  initial?: { first_name?: string; email?: string };
 }) => {
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const totalFactors = totalFactorsFor(prospect);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState(initial?.first_name || '');
+  const [email, setEmail] = useState(initial?.email || '');
   const [dialCode, setDialCode] = useState('+44');
   const [mobile, setMobile] = useState('');
 
@@ -1095,7 +1125,7 @@ const RecommendationModal = ({
 // e.g. a QR scan) and handleLandingSubmit (typed into the landing form).
 // sessionStorage-gated per property_code so refreshing or resuming
 // mid-wizard — the boot effect re-runs on every reload — doesn't re-fire it.
-function fireProspectLeadPixel(data: ProspectPreview) {
+function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listing Prospect Letter Lookup') {
   try {
     const key = `sl_prospect_lead_pixel_${data.property_code}`;
     if (sessionStorage.getItem(key)) return;
@@ -1105,7 +1135,7 @@ function fireProspectLeadPixel(data: ProspectPreview) {
     // rather than not at all.
   }
   trackMetaPixelEvent('Lead', {
-    content_name: 'Stale Listing Prospect Letter Lookup',
+    content_name: contentName,
     content_category: 'stale_listings_prospect',
     content_ids: [data.property_code],
     value: unlockPrice(data.asking_price, data.audience),
@@ -1115,7 +1145,10 @@ function fireProspectLeadPixel(data: ProspectPreview) {
 
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
-export const StaleProspectWizard = () => {
+// `ads` turns this into a Meta-ads landing page (/assess/seller,
+// /assess/agent): the visitor pastes their Rightmove link instead of a
+// letter's property code, and everything after that is the same funnel.
+export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
@@ -1129,6 +1162,9 @@ export const StaleProspectWizard = () => {
   const [showRecommendation, setShowRecommendation] = useState(false);
   const [pendingPrint, setPendingPrint] = useState(false);
   const [pollHandle, setPollHandle] = useState<number | null>(null);
+  const [prefill, setPrefill] = useState<{ first_name?: string; email?: string }>({});
+  const [welcomeName, setWelcomeName] = useState('');
+  const leadPixelName = ads ? `Meta Ads ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment` : undefined;
 
   useEffect(() => {
     // slw-prospect-active also drives an overflow-x:hidden rule (see the
@@ -1158,8 +1194,13 @@ export const StaleProspectWizard = () => {
     // when it adds token/code, a plain refresh later (e.g. after they've
     // since moved on to Payment themselves) would keep re-forcing
     // 'assessment' forever instead of applying just once.
-    const forceStep = params.get('step') === 'assessment' ? 'assessment' as const : undefined;
-    return { token, code, forceStep };
+    // 'payment' comes from the ads checkout-recovery emails ("Complete my
+    // assessment"), for someone who has already given their details.
+    const stepParam = params.get('step');
+    const forceStep = stepParam === 'assessment' || stepParam === 'payment' ? stepParam : undefined;
+    // An ads reminder email's link back to the listing-link box.
+    const reminder = params.get('reminder') || undefined;
+    return { token, code, forceStep, reminder };
   }, [params]);
 
   // Resume mid-flow on reload (or land straight into the right step after a
@@ -1172,6 +1213,17 @@ export const StaleProspectWizard = () => {
     let cancelled = false;
     (async () => {
       if (!query.token && !query.code) {
+        if (ads && query.reminder) {
+          try {
+            const lead = await getUrlReminder(query.reminder);
+            if (!cancelled) {
+              setWelcomeName(lead.first_name);
+              setPrefill({ first_name: lead.first_name, email: lead.email });
+            }
+          } catch {
+            // An old or mistyped link: the page works without the greeting.
+          }
+        }
         setBootLoading(false);
         return;
       }
@@ -1179,9 +1231,9 @@ export const StaleProspectWizard = () => {
         const data = await getProspectPreview(query);
         if (cancelled) return;
         setProspect(data);
-        fireProspectLeadPixel(data);
+        fireProspectLeadPixel(data, leadPixelName);
         setAccess({ token: query.token, code: data.property_code });
-        if (query.forceStep === 'assessment') {
+        if (query.forceStep) {
           // One-shot: consumed above by the payment_status branch below,
           // then removed here so it doesn't linger in the URL and keep
           // overriding the normal resume behaviour on every future reload
@@ -1197,6 +1249,8 @@ export const StaleProspectWizard = () => {
           if (cancelled) return;
           setReport(reportData);
           setStep('report');
+        } else if (data.has_contact_details && query.forceStep === 'payment') {
+          setStep('payment');
         } else if (data.has_contact_details && data.checkout_started && data.payment_status === 'pending' && query.forceStep !== 'assessment') {
           // Started a checkout and isn't unlocked yet - either landed back
           // from a SumUp redirect while still checking out, or is revisiting
@@ -1246,6 +1300,8 @@ export const StaleProspectWizard = () => {
         const next = new URLSearchParams(prev);
         if (access.token) next.set('token', access.token);
         if (access.code) next.set('code', access.code);
+        // An ads reminder link has done its job once the visitor has access.
+        next.delete('reminder');
         return next;
       },
       { replace: true },
@@ -1274,7 +1330,7 @@ export const StaleProspectWizard = () => {
 
   const handleGoBack = () => {
     // An agency's copy was opened from its /check/agent portfolio: back there.
-    if (step === 'confirm' && prospect?.audience === 'agent') navigate('/check/agent');
+    if (step === 'confirm' && prospect?.audience === 'agent' && !ads) navigate('/check/agent');
     else if (step === 'not_found' || step === 'confirm') setStep('landing');
     else if (step === 'assessment') setStep('confirm');
     else if (step === 'payment') setStep('assessment');
@@ -1304,6 +1360,39 @@ export const StaleProspectWizard = () => {
       }
     } catch {
       setStep('not_found');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdsSubmit = async (listingUrl: string) => {
+    if (!ads) return;
+    setLoading(true);
+    setError('');
+    setStep('finding');
+    try {
+      const started = await startAdsAssessment({ listing_url: listingUrl, audience: ads, reminder_token: query.reminder });
+      if (started.prefill?.email) setPrefill(started.prefill);
+      const data = await getProspectPreview({ token: started.token });
+      setProspect(data);
+      fireProspectLeadPixel(data, leadPixelName);
+      setAccess({ token: started.token, code: data.property_code });
+      if (data.is_unlocked) {
+        try {
+          setReport(await getProspectReport({ token: started.token }));
+          setStep('report');
+        } catch {
+          setStep('assessment');
+        }
+      } else {
+        setStep(data.has_contact_details ? 'assessment' : 'confirm');
+      }
+    } catch (e) {
+      const message = (e as Error).message;
+      setError(message && message !== 'request_failed'
+        ? message
+        : 'We couldn’t assess that listing just now. Please check the link and try again.');
+      setStep('landing');
     } finally {
       setLoading(false);
     }
@@ -1420,6 +1509,22 @@ export const StaleProspectWizard = () => {
     if (pollHandle) window.clearInterval(pollHandle);
   }, [pollHandle]);
 
+  // Each step is a new screen: start it at the top rather than wherever the
+  // button that led to it was.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
+  // Reaching Payment starts the ads leads' checkout-recovery emails if they
+  // leave without paying (the backend keeps only the first visit).
+  const paymentVisitRecorded = useRef(false);
+  useEffect(() => {
+    if (step !== 'payment' || paymentVisitRecorded.current || !(access.token || access.code)) return;
+    paymentVisitRecorded.current = true;
+    void recordCheckoutVisit(checkoutAccess());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, access.token, access.code]);
+
   const handleViewReport = async () => {
     if (!report) {
       setLoading(true);
@@ -1475,6 +1580,7 @@ export const StaleProspectWizard = () => {
         <FindingStep />
         <Footer />
         <WizardStyles />
+        {ads && <AdsStyles />}
       </div>
     );
   }
@@ -1486,16 +1592,26 @@ export const StaleProspectWizard = () => {
         {step !== 'landing' && step !== 'finding' && (
           <div className="slw-backrow">
             <GoBack onClick={handleGoBack} />
-            {isAgencyProperty && <BackToListings onClick={handleBackToListings} />}
+            {isAgencyProperty && !ads && <BackToListings onClick={handleBackToListings} />}
           </div>
         )}
-        {step !== 'landing' && step !== 'finding' && <Stepper step={step} />}
+        {step !== 'landing' && step !== 'finding' && <Stepper step={step} ads={!!ads} />}
         <main className="slw-main">
-          {step === 'landing' && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
-          {step === 'finding' && <FindingStep />}
+          {step === 'landing' && !ads && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
+          {step === 'landing' && ads && (
+            <LandingStep
+              onSubmit={handleLandingSubmit}
+              loading={loading}
+              error={error}
+              heading={ADS_COPY[ads].heading}
+              copy={ADS_COPY[ads].copy}
+              form={<AdsListingForm audience={ads} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
+            />
+          )}
+          {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
           {step === 'not_found' && <NotFoundStep onTryAgain={() => setStep('landing')} />}
           {step === 'confirm' && prospect && (
-            <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} />
+            <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} initial={prefill} />
           )}
           {step === 'assessment' && prospect && (
             <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} />
@@ -1536,6 +1652,7 @@ export const StaleProspectWizard = () => {
         />
       )}
       <WizardStyles />
+      {ads && <AdsStyles />}
     </div>
   );
 };

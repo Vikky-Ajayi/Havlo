@@ -578,6 +578,34 @@ class StaleProspectDetailsRequest(BaseModel):
     mobile_number: str = Field(..., min_length=5, max_length=50)
 
 
+class AdsStartRequest(BaseModel):
+    """Ads landing page: the pasted listing link (app/services/ads_funnel.py)."""
+    listing_url: str = Field(..., min_length=10, max_length=1000)
+    audience: Literal["owner", "agent"] = "owner"
+    # From a reminder email's link, when the visitor came back through one.
+    reminder_token: Optional[str] = Field(None, max_length=100)
+
+
+class AdsStartResponse(BaseModel):
+    token: str
+    audience: str
+    property_code: str
+    prefill: dict[str, str] = {}
+
+
+class AdsReminderRequest(BaseModel):
+    first_name: str = Field(..., min_length=1, max_length=200)
+    email: EmailStr
+    audience: Literal["owner", "agent"] = "owner"
+
+
+class AdsReminderLeadResponse(BaseModel):
+    first_name: str
+    email: str
+    audience: str
+    url_submitted: bool
+
+
 class StaleProspectAdminCreateRequest(BaseModel):
     """Manual-create flow (ops console): for a listing that meets every
     automated criterion except having a scrapeable postal-quality address.
@@ -786,6 +814,8 @@ class StaleProspectConsoleListItem(BaseModel):
     processing_status: str
     payment_status: str
     is_manual: bool = False
+    # "meta_seller" / "meta_agent_listing": came in through an ads landing page.
+    lead_source: Optional[str] = None
     treated_at: Optional[str] = None
     created_at: str
     # When the customer first entered this property's code or opened its

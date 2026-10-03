@@ -23,6 +23,7 @@ from app.config import get_settings
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.models import (
+    AdsUrlReminderLead,
     StaleAgentAccount,
     StaleListingAssessment,
     StaleListingDiscoveryRun,
@@ -35,6 +36,10 @@ from app.models.models import (
     User,
 )
 from app.schemas.schemas import (
+    AdsReminderLeadResponse,
+    AdsReminderRequest,
+    AdsStartRequest,
+    AdsStartResponse,
     AgentConsoleItem,
     AgentConsoleListResponse,
     AgentLookupRequest,
@@ -91,6 +96,7 @@ from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services import agent_campaign, agent_report, agent_report_pdf, listing_monitor, land_registry
+from app.services import ads_funnel, ads_nurture
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -739,6 +745,7 @@ async def confirm_stale_prospect_property(
 @public_router.post("/prospects/details", response_model=StaleProspectDetailsResponse)
 async def submit_stale_prospect_details(
     payload: StaleProspectDetailsRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectDetailsResponse:
     """The details form on Confirm Property. confirm_email is optional (the
@@ -757,11 +764,141 @@ async def submit_stale_prospect_details(
         prospect.contact_details_submitted_at = datetime.utcnow()
     await agent_campaign.remember_agency_contact(db, prospect)
     await db.commit()
+    if prospect.lead_source in ads_funnel.NURTURED_LEAD_SOURCES:
+        # The ads nurture's first email goes "immediately".
+        background_tasks.add_task(ads_nurture.run_ads_nurture_cycle, prospect.id)
     return StaleProspectDetailsResponse(
         prospect_id=str(prospect.id),
         property_code=prospect.property_code,
         contact_name=prospect.contact_name,
     )
+
+
+@public_router.post("/prospects/checkout-visit")
+async def record_stale_prospect_checkout_visit(
+    payload: StaleProspectConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, bool]:
+    """The Payment step was shown. The first time anchors the ads flows'
+    checkout-recovery emails (app/services/ads_nurture.py)."""
+    prospect = await _get_prospect_by_access(db, token=payload.token, property_code=payload.property_code)
+    if prospect.checkout_visited_at is None and prospect.payment_status != "completed":
+        prospect.checkout_visited_at = datetime.now(timezone.utc)
+        await db.commit()
+    return {"ok": True}
+
+
+# The ads endpoints are public and each call costs something (reading a
+# listing and writing its report, or sending an email), so one connection
+# gets a handful an hour. Per worker, which is plenty for a real visitor.
+_ADS_LIMIT_WINDOW_SECONDS = 3600
+_ADS_LIMITS = {"start": 12, "reminder": 5}
+_ads_attempts: dict[tuple[str, str], list[float]] = {}
+
+
+def _ads_rate_limit(request: Request, kind: str) -> None:
+    key = (kind, _client_key(request))
+    cutoff = time.monotonic() - _ADS_LIMIT_WINDOW_SECONDS
+    recent = [t for t in _ads_attempts.get(key, []) if t > cutoff]
+    if len(recent) >= _ADS_LIMITS[kind]:
+        _ads_attempts[key] = recent
+        raise HTTPException(status_code=429, detail="Too many requests from this connection. Please try again later.")
+    _ads_attempts[key] = [*recent, time.monotonic()]
+
+
+@public_router.post("/ads/start", response_model=AdsStartResponse)
+async def start_ads_assessment(
+    payload: AdsStartRequest, request: Request, db: AsyncSession = Depends(get_db)
+) -> AdsStartResponse:
+    """Ads landing pages: the visitor's Rightmove link in, an access token
+    for the normal funnel out. Reading a listing that discovery hasn't found
+    yet and writing its report takes a little while (up to a minute)."""
+    _ads_rate_limit(request, "start")
+    try:
+        result = await ads_funnel.start_from_listing(
+            db, listing_url=payload.listing_url, audience=payload.audience, reminder_token=payload.reminder_token
+        )
+    except ads_funnel.ListingLinkError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return AdsStartResponse(**result)
+
+
+@public_router.post("/ads/reminder")
+async def request_ads_url_reminder(
+    payload: AdsReminderRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, bool]:
+    """"Email me a reminder" for a visitor without their listing link."""
+    _ads_rate_limit(request, "reminder")
+    lead, created = await ads_funnel.create_reminder_lead(
+        db, first_name=payload.first_name, email=str(payload.email), audience=payload.audience
+    )
+    if created:
+        background_tasks.add_task(ads_nurture.run_url_reminder_cycle, lead.id)
+    return {"ok": True}
+
+
+@public_router.get("/ads/reminder", response_model=AdsReminderLeadResponse)
+async def get_ads_url_reminder(
+    token: str = Query(..., max_length=100), db: AsyncSession = Depends(get_db)
+) -> AdsReminderLeadResponse:
+    """Who a reminder link belongs to, so the landing page can greet them."""
+    lead = await ads_funnel.find_reminder_lead(db, token)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="Reminder not found.")
+    return AdsReminderLeadResponse(
+        first_name=lead.first_name, email=lead.email, audience=lead.audience,
+        url_submitted=lead.url_submitted_at is not None,
+    )
+
+
+@public_router.get("/ads/reminder-unsubscribe", response_class=HTMLResponse)
+async def unsubscribe_ads_url_reminder(lead_id: str, token: str, db: AsyncSession = Depends(get_db)) -> HTMLResponse:
+    _page = _stale_listing_confirmation_page
+    try:
+        lead_uuid = uuid.UUID(lead_id)
+    except ValueError:
+        return _page("This unsubscribe link is invalid.")
+    if not ads_funnel.verify_reminder_unsubscribe(lead_id, token):
+        return _page("This unsubscribe link is invalid or has expired.")
+    lead = await db.get(AdsUrlReminderLead, lead_uuid)
+    if lead and lead.unsubscribed_at is None:
+        lead.unsubscribed_at = datetime.now(timezone.utc)
+        await db.commit()
+    return _page("You won't receive any more reminders about adding your property link.")
+
+
+@public_router.get("/prospects/property-closed", response_class=HTMLResponse)
+async def report_ads_property_closed(
+    prospect_id: str,
+    token: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> HTMLResponse:
+    """"Property sold or no longer on the market?" from an ads nurture
+    email. A homeowner's emails stop; an agency gets one email inviting it
+    to assess another listing and no more about this one."""
+    _page = _stale_listing_confirmation_page
+    try:
+        prospect_uuid = uuid.UUID(prospect_id)
+    except ValueError:
+        return _page("This link is invalid.")
+    if not hmac.compare_digest(ads_nurture.closed_token(prospect_id), (token or "").strip()):
+        return _page("This link is invalid or has expired.")
+    prospect = await db.get(StaleListingProspect, prospect_uuid)
+    if prospect is None:
+        return _page("This link is invalid or has expired.")
+    if prospect.property_closed_at is None:
+        prospect.property_closed_at = datetime.now(timezone.utc)
+        await db.commit()
+        if prospect.audience == "agent":
+            background_tasks.add_task(ads_nurture.run_ads_nurture_cycle, prospect.id)
+    if prospect.audience == "agent":
+        return _page("Thanks for letting us know. We'll stop emailing you about this property.")
+    return _page("Thanks for letting us know, and congratulations. We'll stop sending you property assessment emails.")
 
 
 @public_router.post("/prospects/checkout", response_model=StaleProspectCheckoutResponse)
@@ -1412,6 +1549,7 @@ def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleLi
         processing_status=prospect.processing_status,
         payment_status=prospect.payment_status,
         is_manual=prospect.is_manual,
+        lead_source=prospect.lead_source,
         treated_at=prospect.treated_at.isoformat() if prospect.treated_at else None,
         created_at=prospect.created_at.isoformat(),
         code_looked_up_at=prospect.code_looked_up_at.isoformat() if prospect.code_looked_up_at else None,
@@ -2427,6 +2565,43 @@ async def send_stale_prospect_test_email(
             detail="Email provider did not accept the test email. Check RESEND_API_KEY, EMAIL_FROM and verified sender/domain.",
         )
     return {"ok": True, "to_email": to_email}
+
+
+@admin_router.post("/admin/ads-emails/test")
+async def send_ads_flow_test_email(
+    flow: str = Query(..., pattern="^(vendor|agent|url_reminder)$"),
+    stage: int = Query(..., ge=1, le=104),
+    branch: str = Query("main", pattern="^(main|checkout|closed)$"),
+    to_email: str | None = Query(None, description="Defaults to ADMIN_NOTIFY_EMAIL if omitted."),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """QA helper: send one email of the ads funnel flows (see
+    app/services/ads_nurture.py) with sample details. Nothing is recorded
+    and the links point at a sample property."""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required.")
+    recipient = (to_email or get_settings().ADMIN_NOTIFY_EMAIL or "").strip()
+    if not recipient:
+        raise HTTPException(status_code=400, detail="Provide to_email or configure ADMIN_NOTIFY_EMAIL.")
+    content = ads_nurture.flow_content(flow)
+    if branch not in content or not any(int(e["stage"]) == stage for e in content[branch]):
+        raise HTTPException(status_code=404, detail=f"{flow} has no {branch} email {stage}.")
+    if flow == "url_reminder":
+        sample = AdsUrlReminderLead(id=uuid.uuid4(), audience="owner", first_name="Sam", email=recipient)
+        email = ads_nurture.render_reminder_email(sample, stage)
+    else:
+        sample = StaleListingProspect(
+            id=uuid.uuid4(), audience="agent" if flow == "agent" else "owner",
+            property_address="12 Oak Lane, Guildford, GU1", postcode="GU1 3AB",
+        )
+        email = ads_nurture.render_nurture_email(sample, branch, stage)
+    sent = await asyncio.to_thread(email_service.send_ads_flow_email_sync, to_email=recipient, first_name="Sam", **email)
+    if not sent:
+        raise HTTPException(
+            status_code=502,
+            detail="Email provider did not accept the test email. Check RESEND_API_KEY, EMAIL_FROM and verified sender/domain.",
+        )
+    return {"ok": True, "to_email": recipient, "flow": flow, "branch": branch, "stage": stage, "subject": email["subject"]}
 
 
 @admin_router.post("/admin/prospects/{prospect_id}/abandonment-test-email")

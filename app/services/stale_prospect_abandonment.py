@@ -97,6 +97,8 @@ async def run_abandonment_email_cycle() -> dict:
                 StaleListingProspect.unsubscribed_at.is_(None),
                 StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_email.is_not(None),
+                # Ads homeowners get their own flow (app/services/ads_nurture.py).
+                StaleListingProspect.lead_source.is_distinct_from("meta_seller"),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())
             .limit(_POLL_LIMIT)

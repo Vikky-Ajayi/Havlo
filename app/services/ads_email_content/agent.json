@@ -1,0 +1,1520 @@
+{
+ "main": [
+  {
+   "stage": 1,
+   "name": "Your listing assessment preview is ready",
+   "send": "Immediately after agent submits details",
+   "subject": "Your listing assessment preview is ready",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "You have already opened the door to a closer look at [Property Address]. The preview gives you the headline view; the full assessment brings the market-positioning signals together in one practical report.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 0
+  },
+  {
+   "stage": 2,
+   "name": "Before your next vendor conversation…",
+   "send": "Day 3",
+   "subject": "Before your next vendor conversation…",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "When a listing is moving more slowly than expected, the next vendor conversation matters. A useful review needs more than reassurance - it needs a clear view of what may be helping or hindering the instruction.",
+    "The commercial risk is not only days on market. As confidence falls, the branch can face more chasing, harder price conversations, competitor valuations and a greater risk of losing the instruction.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 3
+  },
+  {
+   "stage": 3,
+   "name": "Would this listing win the click?",
+   "send": "Day 7 (approx. Week 1)",
+   "subject": "Would this listing win the click?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Buyers rarely experience a listing on its own. They see it beside alternatives, often making a first judgement in seconds from price, imagery and headline facts.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 7
+  },
+  {
+   "stage": 4,
+   "name": "One slow listing can become an at-risk instruction",
+   "send": "Day 10 (approx. Week 2)",
+   "subject": "One slow listing can become an at-risk instruction",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A slow-moving property can become more than a marketing issue. Over time it can create more vendor calls, harder review meetings and an instruction that feels increasingly exposed.",
+    "The commercial risk is not only days on market. As confidence falls, the branch can face more chasing, harder price conversations, competitor valuations and a greater risk of losing the instruction.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 10
+  },
+  {
+   "stage": 5,
+   "name": "What is this property competing against today?",
+   "send": "Day 14 (approx. Week 2)",
+   "subject": "What is this property competing against today?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A listing can be professionally prepared and still be poorly positioned against the choices a buyer sees today. That is why diagnosis should start with context, not assumptions.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 14
+  },
+  {
+   "stage": 6,
+   "name": "A price reduction should not be the first diagnosis",
+   "send": "Day 17 (approx. Week 3)",
+   "subject": "A price reduction should not be the first diagnosis",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Reducing price may be appropriate in some cases, but it is only one lever. Before recommending a change, it helps to examine presentation, competition, proposition and the property's position in its price band.",
+    "The objective is not to force a price reduction. It is to understand the evidence first, then decide whether price, presentation, positioning or another factor deserves attention.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 17
+  },
+  {
+   "stage": 7,
+   "name": "The listing looks fine. So why is it slow?",
+   "send": "Day 21 (approx. Week 3)",
+   "subject": "The listing looks fine. So why is it slow?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "The hardest slow listings are often the ones where nothing looks obviously wrong. Several small frictions can combine to weaken response without producing one dramatic explanation.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 21
+  },
+  {
+   "stage": 8,
+   "name": "Give the vendor something more useful than ‘wait and see’",
+   "send": "Day 24 (approx. Week 4)",
+   "subject": "Give the vendor something more useful than ‘wait and see’",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "'Give it more time' can be reasonable early on. But as an instruction ages, vendors usually want to know what the team has learned and what will happen next.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 24
+  },
+  {
+   "stage": 9,
+   "name": "How strong is the first impression?",
+   "send": "Day 28 (approx. Week 4)",
+   "subject": "How strong is the first impression?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A listing can be professionally prepared and still be poorly positioned against the choices a buyer sees today. That is why diagnosis should start with context, not assumptions.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 28
+  },
+  {
+   "stage": 10,
+   "name": "The buyer sees a comparison page, not an isolated property",
+   "send": "Day 31 (approx. Week 5)",
+   "subject": "The buyer sees a comparison page, not an isolated property",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Reducing price may be appropriate in some cases, but it is only one lever. Before recommending a change, it helps to examine presentation, competition, proposition and the property's position in its price band.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 31
+  },
+  {
+   "stage": 11,
+   "name": "What would another agent say about this listing?",
+   "send": "Day 35 (approx. Week 5)",
+   "subject": "What would another agent say about this listing?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "The hardest slow listings are often the ones where nothing looks obviously wrong. Several small frictions can combine to weaken response without producing one dramatic explanation.",
+    "A competitor may eventually tell the vendor that a different strategy would produce a different result. Having your own evidence-led review before that conversation helps your team explain the current strategy and any proposed changes.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 35
+  },
+  {
+   "stage": 12,
+   "name": "Your assessment is still available",
+   "send": "Day 38 (approx. Week 6)",
+   "subject": "Your assessment is still available",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "'Give it more time' can be reasonable early on. But as an instruction ages, vendors usually want to know what the team has learned and what will happen next.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 38
+  },
+  {
+   "stage": 13,
+   "name": "When vendor confidence starts to soften",
+   "send": "Day 42 (approx. Week 6)",
+   "subject": "When vendor confidence starts to soften",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Vendor confidence is easier to maintain when the review conversation is specific. Independent listing intelligence can help turn a vague discussion about 'the market' into a clearer set of observations and actions.",
+    "The commercial risk is not only days on market. As confidence falls, the branch can face more chasing, harder price conversations, competitor valuations and a greater risk of losing the instruction.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 42
+  },
+  {
+   "stage": 14,
+   "name": "Can you defend the current asking price with evidence?",
+   "send": "Day 45 (approx. Week 7)",
+   "subject": "Can you defend the current asking price with evidence?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Pricing conversations are stronger when they are grounded in the property's current competitive position rather than a single headline number. Havlo helps organise that context for the discussion.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 45
+  },
+  {
+   "stage": 15,
+   "name": "Views are not the same as buyer intent",
+   "send": "Day 49 (approx. Week 7)",
+   "subject": "Views are not the same as buyer intent",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Portal activity can tell you that people have seen a listing. It does not automatically explain why they did or did not progress. Looking at the listing through a buyer-comparison lens can add useful context.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 49
+  },
+  {
+   "stage": 16,
+   "name": "Before the vendor asks what happens next",
+   "send": "Day 52 (approx. Week 8)",
+   "subject": "Before the vendor asks what happens next",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A vendor asking 'what happens next?' is an opportunity to demonstrate active management. The strongest answer is a review that shows what has changed, what has been tested and what should be considered next.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 52
+  },
+  {
+   "stage": 17,
+   "name": "Is the description doing enough work?",
+   "send": "Day 56 (approx. Week 8)",
+   "subject": "Is the description doing enough work?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Vendor confidence is easier to maintain when the review conversation is specific. Independent listing intelligence can help turn a vague discussion about 'the market' into a clearer set of observations and actions.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 56
+  },
+  {
+   "stage": 18,
+   "name": "What changed since this property first launched?",
+   "send": "Day 59 (approx. Week 9)",
+   "subject": "What changed since this property first launched?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Pricing conversations are stronger when they are grounded in the property's current competitive position rather than a single headline number. Havlo helps organise that context for the discussion.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 59
+  },
+  {
+   "stage": 19,
+   "name": "A difficult review meeting needs better evidence",
+   "send": "Day 63 (approx. Week 9)",
+   "subject": "A difficult review meeting needs better evidence",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Portal activity can tell you that people have seen a listing. It does not automatically explain why they did or did not progress. Looking at the listing through a buyer-comparison lens can add useful context.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 63
+  },
+  {
+   "stage": 20,
+   "name": "Not every slow listing needs a price cut",
+   "send": "Day 66 (approx. Week 10)",
+   "subject": "Not every slow listing needs a price cut",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A vendor asking 'what happens next?' is an opportunity to demonstrate active management. The strongest answer is a review that shows what has changed, what has been tested and what should be considered next.",
+    "The objective is not to force a price reduction. It is to understand the evidence first, then decide whether price, presentation, positioning or another factor deserves attention.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 66
+  },
+  {
+   "stage": 21,
+   "name": "Could the lead image be costing attention?",
+   "send": "Day 70 (approx. Week 10)",
+   "subject": "Could the lead image be costing attention?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Vendor confidence is easier to maintain when the review conversation is specific. Independent listing intelligence can help turn a vague discussion about 'the market' into a clearer set of observations and actions.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 70
+  },
+  {
+   "stage": 22,
+   "name": "What are buyers choosing instead?",
+   "send": "Day 73 (approx. Week 11)",
+   "subject": "What are buyers choosing instead?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Pricing conversations are stronger when they are grounded in the property's current competitive position rather than a single headline number. Havlo helps organise that context for the discussion.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 73
+  },
+  {
+   "stage": 23,
+   "name": "The instruction may be fine. The positioning may not be.",
+   "send": "Day 77 (approx. Week 11)",
+   "subject": "The instruction may be fine. The positioning may not be.",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Portal activity can tell you that people have seen a listing. It does not automatically explain why they did or did not progress. Looking at the listing through a buyer-comparison lens can add useful context.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 77
+  },
+  {
+   "stage": 24,
+   "name": "A second opinion before changing strategy",
+   "send": "Day 80 (approx. Week 12)",
+   "subject": "A second opinion before changing strategy",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A vendor asking 'what happens next?' is an opportunity to demonstrate active management. The strongest answer is a review that shows what has changed, what has been tested and what should be considered next.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 80
+  },
+  {
+   "stage": 25,
+   "name": "Which objection keeps repeating?",
+   "send": "Day 84 (approx. Week 12)",
+   "subject": "Which objection keeps repeating?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Vendor confidence is easier to maintain when the review conversation is specific. Independent listing intelligence can help turn a vague discussion about 'the market' into a clearer set of observations and actions.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 84
+  },
+  {
+   "stage": 26,
+   "name": "The market around this listing keeps moving",
+   "send": "Day 87 (approx. Week 13)",
+   "subject": "The market around this listing keeps moving",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Pricing conversations are stronger when they are grounded in the property's current competitive position rather than a single headline number. Havlo helps organise that context for the discussion.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 87
+  },
+  {
+   "stage": 27,
+   "name": "Could this vendor be comparing agents?",
+   "send": "Day 91 (approx. Week 13)",
+   "subject": "Could this vendor be comparing agents?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Not every ageing listing creates the same commercial risk. Some need a presentation refresh, some need a pricing discussion, and some simply need better evidence for the vendor review.",
+    "The commercial risk is not only days on market. As confidence falls, the branch can face more chasing, harder price conversations, competitor valuations and a greater risk of losing the instruction.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 91
+  },
+  {
+   "stage": 28,
+   "name": "Your negotiators need a clearer story",
+   "send": "Day 94 (approx. Week 14)",
+   "subject": "Your negotiators need a clearer story",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Listing intelligence is most valuable before a problem escalates. Identifying which instructions deserve a closer look can help your team prioritise its review time.",
+    "A competitor may eventually tell the vendor that a different strategy would produce a different result. Having your own evidence-led review before that conversation helps your team explain the current strategy and any proposed changes.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 94
+  },
+  {
+   "stage": 29,
+   "name": "The cost of an ageing instruction",
+   "send": "Day 98 (approx. Week 14)",
+   "subject": "The cost of an ageing instruction",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "The original property may not be the only instruction that deserves attention. In a busy branch, ageing stock can build gradually until several vendors need difficult conversations at the same time.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 98
+  },
+  {
+   "stage": 30,
+   "name": "What would you change if this launched today?",
+   "send": "Day 101 (approx. Week 15)",
+   "subject": "What would you change if this launched today?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A branch-level view changes the question from 'what is wrong with this property?' to 'which instructions need intervention first, and why?'. That is a more useful way to manage slow stock.",
+    "The objective is not to force a price reduction. It is to understand the evidence first, then decide whether price, presentation, positioning or another factor deserves attention.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 101
+  },
+  {
+   "stage": 31,
+   "name": "How does the property sit in its price band?",
+   "send": "Day 105 (approx. Week 15)",
+   "subject": "How does the property sit in its price band?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Not every ageing listing creates the same commercial risk. Some need a presentation refresh, some need a pricing discussion, and some simply need better evidence for the vendor review.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 105
+  },
+  {
+   "stage": 32,
+   "name": "Before another competitor goes SSTC",
+   "send": "Day 108 (approx. Week 16)",
+   "subject": "Before another competitor goes SSTC",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Listing intelligence is most valuable before a problem escalates. Identifying which instructions deserve a closer look can help your team prioritise its review time.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 108
+  },
+  {
+   "stage": 33,
+   "name": "Your oldest stock deserves a second look",
+   "send": "Day 112 (approx. Week 16)",
+   "subject": "Your oldest stock deserves a second look",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "The original property may not be the only instruction that deserves attention. In a busy branch, ageing stock can build gradually until several vendors need difficult conversations at the same time.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 112
+  },
+  {
+   "stage": 34,
+   "name": "Which listings need intervention this week?",
+   "send": "Day 115 (approx. Week 17)",
+   "subject": "Which listings need intervention this week?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A branch-level view changes the question from 'what is wrong with this property?' to 'which instructions need intervention first, and why?'. That is a more useful way to manage slow stock.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 115
+  },
+  {
+   "stage": 35,
+   "name": "The vendor may see ‘no sale’. What do you show them?",
+   "send": "Day 119 (approx. Week 17)",
+   "subject": "The vendor may see ‘no sale’. What do you show them?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Not every ageing listing creates the same commercial risk. Some need a presentation refresh, some need a pricing discussion, and some simply need better evidence for the vendor review.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 119
+  },
+  {
+   "stage": 36,
+   "name": "Could a relaunch change the conversation?",
+   "send": "Day 122 (approx. Week 18)",
+   "subject": "Could a relaunch change the conversation?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Listing intelligence is most valuable before a problem escalates. Identifying which instructions deserve a closer look can help your team prioritise its review time.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 122
+  },
+  {
+   "stage": 37,
+   "name": "One report can sharpen the next review",
+   "send": "Day 126 (approx. Week 18)",
+   "subject": "One report can sharpen the next review",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "The original property may not be the only instruction that deserves attention. In a busy branch, ageing stock can build gradually until several vendors need difficult conversations at the same time.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 126
+  },
+  {
+   "stage": 38,
+   "name": "What has the portal page taught you?",
+   "send": "Day 129 (approx. Week 19)",
+   "subject": "What has the portal page taught you?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A branch-level view changes the question from 'what is wrong with this property?' to 'which instructions need intervention first, and why?'. That is a more useful way to manage slow stock.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 129
+  },
+  {
+   "stage": 39,
+   "name": "When ‘more time’ stops being a strategy",
+   "send": "Day 133 (approx. Week 19)",
+   "subject": "When ‘more time’ stops being a strategy",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Not every ageing listing creates the same commercial risk. Some need a presentation refresh, some need a pricing discussion, and some simply need better evidence for the vendor review.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 133
+  },
+  {
+   "stage": 40,
+   "name": "Which slow listing would you assess next?",
+   "send": "Day 136 (approx. Week 20)",
+   "subject": "Which slow listing would you assess next?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Listing intelligence is most valuable before a problem escalates. Identifying which instructions deserve a closer look can help your team prioritise its review time.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 136
+  },
+  {
+   "stage": 41,
+   "name": "Your branch has more than one ageing instruction",
+   "send": "Day 140 (approx. Week 20)",
+   "subject": "Your branch has more than one ageing instruction",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "The original property may not be the only instruction that deserves attention. In a busy branch, ageing stock can build gradually until several vendors need difficult conversations at the same time.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 140
+  },
+  {
+   "stage": 42,
+   "name": "What percentage of your stock needs attention?",
+   "send": "Day 143 (approx. Week 21)",
+   "subject": "What percentage of your stock needs attention?",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "A branch-level view changes the question from 'what is wrong with this property?' to 'which instructions need intervention first, and why?'. That is a more useful way to manage slow stock.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 143
+  },
+  {
+   "stage": 43,
+   "name": "Find the listings most likely to trigger a difficult call",
+   "send": "Day 147 (approx. Week 21)",
+   "subject": "Find the listings most likely to trigger a difficult call",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Not every ageing listing creates the same commercial risk. Some need a presentation refresh, some need a pricing discussion, and some simply need better evidence for the vendor review.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 147
+  },
+  {
+   "stage": 44,
+   "name": "A portfolio problem is different from a property problem",
+   "send": "Day 150 (approx. Week 22)",
+   "subject": "A portfolio problem is different from a property problem",
+   "cta": "VIEW THE LISTING ASSESSMENT",
+   "paragraphs": [
+    "Listing intelligence is most valuable before a problem escalates. Identifying which instructions deserve a closer look can help your team prioritise its review time.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 150
+  },
+  {
+   "stage": 45,
+   "name": "Which vendors need evidence this month?",
+   "send": "Day 154 (approx. Week 22)",
+   "subject": "Which vendors need evidence this month?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Your listing is competing for attention every day, and the competitive set does not stay still. New instructions arrive, prices change, properties improve their presentation and some move to SSTC.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 154
+  },
+  {
+   "stage": 46,
+   "name": "Slow stock can hide inside a busy branch",
+   "send": "Day 157 (approx. Week 23)",
+   "subject": "Slow stock can hide inside a busy branch",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "The buyer's decision is comparative. A property can remain unchanged while becoming relatively weaker because competing stock has changed around it.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 157
+  },
+  {
+   "stage": 47,
+   "name": "Where are your instructions losing momentum?",
+   "send": "Day 161 (approx. Week 23)",
+   "subject": "Where are your instructions losing momentum?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Vendors can see competing boards and portal results too. Showing that your team understands the current competitive landscape can make review conversations more credible.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 161
+  },
+  {
+   "stage": 48,
+   "name": "Use listing intelligence before the escalation",
+   "send": "Day 164 (approx. Week 24)",
+   "subject": "Use listing intelligence before the escalation",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Before a rival agent is invited to value the property, it helps to have a clear account of the listing's current position and the actions you are considering.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 164
+  },
+  {
+   "stage": 49,
+   "name": "Which property is consuming the most team time?",
+   "send": "Day 168 (approx. Week 24)",
+   "subject": "Which property is consuming the most team time?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Your listing is competing for attention every day, and the competitive set does not stay still. New instructions arrive, prices change, properties improve their presentation and some move to SSTC.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 168
+  },
+  {
+   "stage": 50,
+   "name": "The next price review should start with context",
+   "send": "Day 171 (approx. Week 25)",
+   "subject": "The next price review should start with context",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "The buyer's decision is comparative. A property can remain unchanged while becoming relatively weaker because competing stock has changed around it.",
+    "The objective is not to force a price reduction. It is to understand the evidence first, then decide whether price, presentation, positioning or another factor deserves attention.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 171
+  },
+  {
+   "stage": 51,
+   "name": "Are your slow listings slow for the same reason?",
+   "send": "Day 175 (approx. Week 25)",
+   "subject": "Are your slow listings slow for the same reason?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Vendors can see competing boards and portal results too. Showing that your team understands the current competitive landscape can make review conversations more credible.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 175
+  },
+  {
+   "stage": 52,
+   "name": "Turn ageing stock into an action list",
+   "send": "Day 178 (approx. Week 26)",
+   "subject": "Turn ageing stock into an action list",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Before a rival agent is invited to value the property, it helps to have a clear account of the listing's current position and the actions you are considering.",
+    "If [Property Address] is no longer the priority, use the same approach on another slow-moving instruction. Havlo is designed to support repeated listing reviews across your stock.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 178
+  },
+  {
+   "stage": 53,
+   "name": "Your competitors are reviewing the same market",
+   "send": "Day 182 (approx. Week 26)",
+   "subject": "Your competitors are reviewing the same market",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Your listing is competing for attention every day, and the competitive set does not stay still. New instructions arrive, prices change, properties improve their presentation and some move to SSTC.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 182
+  },
+  {
+   "stage": 54,
+   "name": "Which agent is winning the buyer’s attention?",
+   "send": "Day 185 (approx. Week 27)",
+   "subject": "Which agent is winning the buyer’s attention?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "The buyer's decision is comparative. A property can remain unchanged while becoming relatively weaker because competing stock has changed around it.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 185
+  },
+  {
+   "stage": 55,
+   "name": "The buyer has alternatives. Does the listing show enough value?",
+   "send": "Day 189 (approx. Week 27)",
+   "subject": "The buyer has alternatives. Does the listing show enough value?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Vendors can see competing boards and portal results too. Showing that your team understands the current competitive landscape can make review conversations more credible.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 189
+  },
+  {
+   "stage": 56,
+   "name": "What happens when competing stock improves?",
+   "send": "Day 192 (approx. Week 28)",
+   "subject": "What happens when competing stock improves?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Before a rival agent is invited to value the property, it helps to have a clear account of the listing's current position and the actions you are considering.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 192
+  },
+  {
+   "stage": 57,
+   "name": "Your vendor can see competitor boards too",
+   "send": "Day 196 (approx. Week 28)",
+   "subject": "Your vendor can see competitor boards too",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Your listing is competing for attention every day, and the competitive set does not stay still. New instructions arrive, prices change, properties improve their presentation and some move to SSTC.",
+    "A competitor may eventually tell the vendor that a different strategy would produce a different result. Having your own evidence-led review before that conversation helps your team explain the current strategy and any proposed changes.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 196
+  },
+  {
+   "stage": 58,
+   "name": "Before a rival agent gets invited back",
+   "send": "Day 199 (approx. Week 29)",
+   "subject": "Before a rival agent gets invited back",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "The buyer's decision is comparative. A property can remain unchanged while becoming relatively weaker because competing stock has changed around it.",
+    "The commercial risk is not only days on market. As confidence falls, the branch can face more chasing, harder price conversations, competitor valuations and a greater risk of losing the instruction.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 199
+  },
+  {
+   "stage": 59,
+   "name": "How defensible is your current marketing strategy?",
+   "send": "Day 203 (approx. Week 29)",
+   "subject": "How defensible is your current marketing strategy?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Vendors can see competing boards and portal results too. Showing that your team understands the current competitive landscape can make review conversations more credible.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 203
+  },
+  {
+   "stage": 60,
+   "name": "The instruction is not yours forever",
+   "send": "Day 206 (approx. Week 30)",
+   "subject": "The instruction is not yours forever",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Before a rival agent is invited to value the property, it helps to have a clear account of the listing's current position and the actions you are considering.",
+    "A competitor may eventually tell the vendor that a different strategy would produce a different result. Having your own evidence-led review before that conversation helps your team explain the current strategy and any proposed changes.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 206
+  },
+  {
+   "stage": 61,
+   "name": "Protect the relationship before protecting the price",
+   "send": "Day 210 (approx. Week 30)",
+   "subject": "Protect the relationship before protecting the price",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Ageing stock is easier to manage when the branch has a repeatable review rhythm rather than waiting for the vendor to trigger the conversation.",
+    "The commercial risk is not only days on market. As confidence falls, the branch can face more chasing, harder price conversations, competitor valuations and a greater risk of losing the instruction.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 210
+  },
+  {
+   "stage": 62,
+   "name": "Could independent evidence keep the conversation constructive?",
+   "send": "Day 213 (approx. Week 31)",
+   "subject": "Could independent evidence keep the conversation constructive?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Different listing ages should trigger different questions. What is reasonable at 30 days may not be enough at 90 days, especially when the competitive set has changed.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 213
+  },
+  {
+   "stage": 63,
+   "name": "What would make the vendor stay confident?",
+   "send": "Day 217 (approx. Week 31)",
+   "subject": "What would make the vendor stay confident?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "A useful slow-listing process should end with a next action: maintain, test, improve presentation, revisit price, relaunch, or gather more evidence. The assessment helps structure that thinking.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 217
+  },
+  {
+   "stage": 64,
+   "name": "The best time to review is before the complaint",
+   "send": "Day 220 (approx. Week 32)",
+   "subject": "The best time to review is before the complaint",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Fresh eyes are valuable because teams naturally become familiar with listings they have worked on for months. An independent view can surface questions worth re-examining.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 220
+  },
+  {
+   "stage": 65,
+   "name": "Another month on market: what is materially different?",
+   "send": "Day 224 (approx. Week 32)",
+   "subject": "Another month on market: what is materially different?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Ageing stock is easier to manage when the branch has a repeatable review rhythm rather than waiting for the vendor to trigger the conversation.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 224
+  },
+  {
+   "stage": 66,
+   "name": "Are you measuring listing age or managing it?",
+   "send": "Day 227 (approx. Week 33)",
+   "subject": "Are you measuring listing age or managing it?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Different listing ages should trigger different questions. What is reasonable at 30 days may not be enough at 90 days, especially when the competitive set has changed.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 227
+  },
+  {
+   "stage": 67,
+   "name": "Which listings have crossed your internal warning point?",
+   "send": "Day 231 (approx. Week 33)",
+   "subject": "Which listings have crossed your internal warning point?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "A useful slow-listing process should end with a next action: maintain, test, improve presentation, revisit price, relaunch, or gather more evidence. The assessment helps structure that thinking.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 231
+  },
+  {
+   "stage": 68,
+   "name": "Aged stock needs a different rhythm",
+   "send": "Day 234 (approx. Week 34)",
+   "subject": "Aged stock needs a different rhythm",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Fresh eyes are valuable because teams naturally become familiar with listings they have worked on for months. An independent view can surface questions worth re-examining.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 234
+  },
+  {
+   "stage": 69,
+   "name": "When should a branch formally review a listing?",
+   "send": "Day 238 (approx. Week 34)",
+   "subject": "When should a branch formally review a listing?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Ageing stock is easier to manage when the branch has a repeatable review rhythm rather than waiting for the vendor to trigger the conversation.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 238
+  },
+  {
+   "stage": 70,
+   "name": "Give every slow instruction a next action",
+   "send": "Day 241 (approx. Week 35)",
+   "subject": "Give every slow instruction a next action",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Different listing ages should trigger different questions. What is reasonable at 30 days may not be enough at 90 days, especially when the competitive set has changed.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 241
+  },
+  {
+   "stage": 71,
+   "name": "The properties that need attention are not always obvious",
+   "send": "Day 245 (approx. Week 35)",
+   "subject": "The properties that need attention are not always obvious",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "A useful slow-listing process should end with a next action: maintain, test, improve presentation, revisit price, relaunch, or gather more evidence. The assessment helps structure that thinking.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 245
+  },
+  {
+   "stage": 72,
+   "name": "Build a repeatable stale-listing review",
+   "send": "Day 248 (approx. Week 36)",
+   "subject": "Build a repeatable stale-listing review",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Fresh eyes are valuable because teams naturally become familiar with listings they have worked on for months. An independent view can surface questions worth re-examining.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 248
+  },
+  {
+   "stage": 73,
+   "name": "What should happen at 30, 60 and 90 days?",
+   "send": "Day 252 (approx. Week 36)",
+   "subject": "What should happen at 30, 60 and 90 days?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Ageing stock is easier to manage when the branch has a repeatable review rhythm rather than waiting for the vendor to trigger the conversation.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 252
+  },
+  {
+   "stage": 74,
+   "name": "Stop relying on memory to manage ageing stock",
+   "send": "Day 255 (approx. Week 37)",
+   "subject": "Stop relying on memory to manage ageing stock",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Different listing ages should trigger different questions. What is reasonable at 30 days may not be enough at 90 days, especially when the competitive set has changed.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 255
+  },
+  {
+   "stage": 75,
+   "name": "Which listings would benefit from fresh eyes today?",
+   "send": "Day 259 (approx. Week 37)",
+   "subject": "Which listings would benefit from fresh eyes today?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "A useful slow-listing process should end with a next action: maintain, test, improve presentation, revisit price, relaunch, or gather more evidence. The assessment helps structure that thinking.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 259
+  },
+  {
+   "stage": 76,
+   "name": "Make the review process easier for your team",
+   "send": "Day 262 (approx. Week 38)",
+   "subject": "Make the review process easier for your team",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Fresh eyes are valuable because teams naturally become familiar with listings they have worked on for months. An independent view can surface questions worth re-examining.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 262
+  },
+  {
+   "stage": 77,
+   "name": "Your slowest listing right now",
+   "send": "Day 266 (approx. Week 38)",
+   "subject": "Your slowest listing right now",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Ageing stock is easier to manage when the branch has a repeatable review rhythm rather than waiting for the vendor to trigger the conversation.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 266
+  },
+  {
+   "stage": 78,
+   "name": "What is the vendor likely to ask next?",
+   "send": "Day 269 (approx. Week 39)",
+   "subject": "What is the vendor likely to ask next?",
+   "cta": "ASSESS A SLOW-MOVING LISTING",
+   "paragraphs": [
+    "Different listing ages should trigger different questions. What is reasonable at 30 days may not be enough at 90 days, especially when the competitive set has changed.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 269
+  },
+  {
+   "stage": 79,
+   "name": "Can your team answer ‘why hasn’t it sold?’ clearly?",
+   "send": "Day 273 (approx. Week 39)",
+   "subject": "Can your team answer ‘why hasn’t it sold?’ clearly?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "A repeatable evidence-led review can make it easier for negotiators and valuers to communicate consistently with vendors across the branch.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 273
+  },
+  {
+   "stage": 80,
+   "name": "Evidence makes difficult conversations easier",
+   "send": "Day 276 (approx. Week 40)",
+   "subject": "Evidence makes difficult conversations easier",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Think of Havlo as an additional layer of listing intelligence: your team retains the relationship, judgement and live buyer feedback; Havlo adds an independent market-facing review.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 276
+  },
+  {
+   "stage": 81,
+   "name": "One independent report. Multiple internal uses.",
+   "send": "Day 280 (approx. Week 40)",
+   "subject": "One independent report. Multiple internal uses.",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Havlo is most useful when it is available as part of your normal listing-review toolkit, not only when an instruction has already become difficult.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 280
+  },
+  {
+   "stage": 82,
+   "name": "Use Havlo before the next vendor review",
+   "send": "Day 283 (approx. Week 41)",
+   "subject": "Use Havlo before the next vendor review",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Before reducing, relaunching or changing photography, a structured assessment can help your team decide which intervention is actually supported by the listing's current position.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 283
+  },
+  {
+   "stage": 83,
+   "name": "What should your team bring to the meeting?",
+   "send": "Day 287 (approx. Week 41)",
+   "subject": "What should your team bring to the meeting?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "A repeatable evidence-led review can make it easier for negotiators and valuers to communicate consistently with vendors across the branch.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 287
+  },
+  {
+   "stage": 84,
+   "name": "The listing review should end with actions",
+   "send": "Day 290 (approx. Week 42)",
+   "subject": "The listing review should end with actions",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Think of Havlo as an additional layer of listing intelligence: your team retains the relationship, judgement and live buyer feedback; Havlo adds an independent market-facing review.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 290
+  },
+  {
+   "stage": 85,
+   "name": "Could Havlo sit inside your branch process?",
+   "send": "Day 294 (approx. Week 42)",
+   "subject": "Could Havlo sit inside your branch process?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Havlo is most useful when it is available as part of your normal listing-review toolkit, not only when an instruction has already become difficult.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 294
+  },
+  {
+   "stage": 86,
+   "name": "Assess before you reduce, relaunch or re-photograph",
+   "send": "Day 297 (approx. Week 43)",
+   "subject": "Assess before you reduce, relaunch or re-photograph",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Before reducing, relaunching or changing photography, a structured assessment can help your team decide which intervention is actually supported by the listing's current position.",
+    "The objective is not to force a price reduction. It is to understand the evidence first, then decide whether price, presentation, positioning or another factor deserves attention.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 297
+  },
+  {
+   "stage": 87,
+   "name": "Listing intelligence is more useful when it is routine",
+   "send": "Day 301 (approx. Week 43)",
+   "subject": "Listing intelligence is more useful when it is routine",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "A repeatable evidence-led review can make it easier for negotiators and valuers to communicate consistently with vendors across the branch.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 301
+  },
+  {
+   "stage": 88,
+   "name": "Which instruction needs a second pair of eyes?",
+   "send": "Day 304 (approx. Week 44)",
+   "subject": "Which instruction needs a second pair of eyes?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Think of Havlo as an additional layer of listing intelligence: your team retains the relationship, judgement and live buyer feedback; Havlo adds an independent market-facing review.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 304
+  },
+  {
+   "stage": 89,
+   "name": "Your market changed. Has the listing strategy?",
+   "send": "Day 308 (approx. Week 44)",
+   "subject": "Your market changed. Has the listing strategy?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Havlo is most useful when it is available as part of your normal listing-review toolkit, not only when an instruction has already become difficult.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 308
+  },
+  {
+   "stage": 90,
+   "name": "What did this year teach you about slow stock?",
+   "send": "Day 311 (approx. Week 45)",
+   "subject": "What did this year teach you about slow stock?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Before reducing, relaunching or changing photography, a structured assessment can help your team decide which intervention is actually supported by the listing's current position.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 311
+  },
+  {
+   "stage": 91,
+   "name": "Which listings repeatedly become difficult?",
+   "send": "Day 315 (approx. Week 45)",
+   "subject": "Which listings repeatedly become difficult?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "A repeatable evidence-led review can make it easier for negotiators and valuers to communicate consistently with vendors across the branch.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 315
+  },
+  {
+   "stage": 92,
+   "name": "Turn lessons from aged stock into a process",
+   "send": "Day 318 (approx. Week 46)",
+   "subject": "Turn lessons from aged stock into a process",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Think of Havlo as an additional layer of listing intelligence: your team retains the relationship, judgement and live buyer feedback; Havlo adds an independent market-facing review.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 318
+  },
+  {
+   "stage": 93,
+   "name": "A second opinion for the listings that will not move",
+   "send": "Day 322 (approx. Week 46)",
+   "subject": "A second opinion for the listings that will not move",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Havlo is most useful when it is available as part of your normal listing-review toolkit, not only when an instruction has already become difficult.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 322
+  },
+  {
+   "stage": 94,
+   "name": "Your next difficult instruction will come",
+   "send": "Day 325 (approx. Week 47)",
+   "subject": "Your next difficult instruction will come",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Before reducing, relaunching or changing photography, a structured assessment can help your team decide which intervention is actually supported by the listing's current position.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 325
+  },
+  {
+   "stage": 95,
+   "name": "Keep Havlo ready for the property that stalls",
+   "send": "Day 329 (approx. Week 47)",
+   "subject": "Keep Havlo ready for the property that stalls",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Slow stock will keep appearing as markets, vendors and buyer expectations change. The goal is to have a practical way to review it before the conversation becomes reactive.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 329
+  },
+  {
+   "stage": 96,
+   "name": "Which property would you assess today?",
+   "send": "Day 332 (approx. Week 48)",
+   "subject": "Which property would you assess today?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "If listing intelligence is still useful to your team, Havlo remains available whenever an instruction needs a more structured independent review.",
+    "One area worth reviewing is next action: what your team could reasonably test or discuss rather than simply waiting. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 332
+  },
+  {
+   "stage": 97,
+   "name": "The original property may have sold. The problem still exists.",
+   "send": "Day 336 (approx. Week 48)",
+   "subject": "The original property may have sold. The problem still exists.",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "A year can completely change a branch's stock, but the underlying challenge remains: some instructions will take longer than expected and eventually need a fresh review.",
+    "One area worth reviewing is market position: how the property sits against the alternatives a buyer can see now. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 336
+  },
+  {
+   "stage": 98,
+   "name": "Have another instruction taking longer than expected?",
+   "send": "Day 339 (approx. Week 49)",
+   "subject": "Have another instruction taking longer than expected?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "The property that first brought you to Havlo may already have sold, been withdrawn or changed strategy. If so, use Havlo for the next instruction that needs another pair of eyes.",
+    "One area worth reviewing is pricing context: whether the asking price is supported by the property's current competitive position. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 339
+  },
+  {
+   "stage": 99,
+   "name": "Make the next vendor review evidence-led",
+   "send": "Day 343 (approx. Week 49)",
+   "subject": "Make the next vendor review evidence-led",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Slow stock will keep appearing as markets, vendors and buyer expectations change. The goal is to have a practical way to review it before the conversation becomes reactive.",
+    "One area worth reviewing is first impression: what the listing communicates before a buyer reads every detail. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 343
+  },
+  {
+   "stage": 100,
+   "name": "Use Havlo when ‘wait and see’ is no longer enough",
+   "send": "Day 346 (approx. Week 50)",
+   "subject": "Use Havlo when ‘wait and see’ is no longer enough",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "If listing intelligence is still useful to your team, Havlo remains available whenever an instruction needs a more structured independent review.",
+    "One area worth reviewing is presentation: whether imagery, ordering and listing content make the strongest case for the property. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 346
+  },
+  {
+   "stage": 101,
+   "name": "A year of changing stock. One recurring challenge.",
+   "send": "Day 350 (approx. Week 50)",
+   "subject": "A year of changing stock. One recurring challenge.",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "A year can completely change a branch's stock, but the underlying challenge remains: some instructions will take longer than expected and eventually need a fresh review.",
+    "One area worth reviewing is buyer appeal: whether the listing clearly communicates why the right buyer should choose it. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 350
+  },
+  {
+   "stage": 102,
+   "name": "Which listing needs attention before year-end?",
+   "send": "Day 353 (approx. Week 51)",
+   "subject": "Which listing needs attention before year-end?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "The property that first brought you to Havlo may already have sold, been withdrawn or changed strategy. If so, use Havlo for the next instruction that needs another pair of eyes.",
+    "One area worth reviewing is competition: what comparable stock is asking buyers to compare against this instruction. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 353
+  },
+  {
+   "stage": 103,
+   "name": "Your Havlo listing intelligence is still available",
+   "send": "Day 357 (approx. Week 51)",
+   "subject": "Your Havlo listing intelligence is still available",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "Slow stock will keep appearing as markets, vendors and buyer expectations change. The goal is to have a practical way to review it before the conversation becomes reactive.",
+    "One area worth reviewing is vendor conversation: what evidence could make the next review more specific and constructive. The full Havlo assessment brings this together with the other signals so your team can see the listing as a whole.",
+    "Havlo does not replace the estate agent. Your team keeps the client relationship, local knowledge and live buyer feedback. The assessment is an independent second pair of eyes that you can use internally or share in a vendor review."
+   ],
+   "footer": "Property sold, withdrawn or no longer relevant? Tell us and we'll invite you to assess another instruction instead.",
+   "days": 357
+  },
+  {
+   "stage": 104,
+   "name": "Should we keep sending you listing intelligence?",
+   "send": "Day 360 (approx. Week 52)",
+   "subject": "Should we keep sending you listing intelligence?",
+   "cta": "ASSESS A CURRENT LISTING",
+   "paragraphs": [
+    "It has been almost a year since you first used Havlo to take a closer look at one of your listings.",
+    "Your stock will have changed. The original property may have sold. But one challenge does not disappear: some instructions simply take longer than expected, and eventually the team needs a clearer explanation of what to review next.",
+    "Havlo gives estate agents an independent view of a listing's market position, presentation, competition and potential areas to investigate. It does not replace your team's judgement, your live buyer feedback or your relationship with the vendor.",
+    "If you still want practical listing-intelligence emails from us, there is nothing you need to do. If you have a slow-moving instruction now, you can assess it below."
+   ],
+   "footer": "No longer want listing-intelligence emails?",
+   "days": 360
+  }
+ ],
+ "checkout": [
+  {
+   "stage": 1,
+   "name": "Your listing assessment is still waiting",
+   "send": "2 hours after checkout exit",
+   "subject": "Your listing assessment is still waiting",
+   "cta": "COMPLETE THE ASSESSMENT",
+   "paragraphs": [
+    "You were close to completing the assessment for [Property Address]. Your checkout is still available.",
+    "The report is designed to give your team an independent view of the listing's market position, presentation, competition and areas worth reviewing before the next vendor conversation.",
+    "Havlo does not replace your agency expertise - it gives you another evidence layer to work with."
+   ],
+   "footer": null,
+   "hours": 2
+  },
+  {
+   "stage": 2,
+   "name": "Take the report into your next vendor review",
+   "send": "24 hours after checkout exit",
+   "subject": "Take the report into your next vendor review",
+   "cta": "COMPLETE THE ASSESSMENT",
+   "paragraphs": [
+    "If [Property Address] is still moving more slowly than expected, the full Havlo assessment can give you something practical to take into the next review.",
+    "Use it to structure questions around market position, competing stock, presentation, buyer appeal and possible next actions.",
+    "You keep the vendor relationship and make the decisions. Havlo is simply an independent second pair of eyes."
+   ],
+   "footer": null,
+   "hours": 24
+  },
+  {
+   "stage": 3,
+   "name": "Still reviewing [Property Address]?",
+   "send": "72 hours after checkout exit",
+   "subject": "Still reviewing [Property Address]?",
+   "cta": "COMPLETE THE ASSESSMENT",
+   "paragraphs": [
+    "Just one final reminder before we return you to our normal listing-intelligence emails.",
+    "If you still want the full assessment for [Property Address], your checkout remains available below.",
+    "If that property is no longer relevant, keep Havlo in mind for the next instruction that needs a fresh, independent review."
+   ],
+   "footer": null,
+   "hours": 72
+  }
+ ],
+ "closed": [
+  {
+   "stage": 1,
+   "name": "Property sold / withdrawn branch",
+   "send": "Immediately after agent marks original property sold/STC/withdrawn",
+   "subject": "Great news. Have another listing that needs a second look?",
+   "cta": "ASSESS ANOTHER LISTING",
+   "paragraphs": [
+    "If [Property Address] has sold, gone SSTC or is no longer an active instruction, that is good news - we will stop referring to that property.",
+    "If you have another listing that is taking longer than expected, you can use Havlo again without waiting for the problem to become a difficult vendor conversation."
+   ],
+   "footer": null,
+   "days": 0
+  }
+ ]
+}

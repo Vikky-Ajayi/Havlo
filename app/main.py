@@ -628,6 +628,18 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Stale-prospect abandonment SMS disabled (ENABLE_STALE_PROSPECT_ABANDONMENT_SMS not set).")
 
+    # ── Meta-ads funnel emails ────────────────────────────────────────────
+    # Property-link reminders and the vendor / agent pre-purchase nurture
+    # flows for ads leads (app/services/ads_nurture.py). Same advisory-lock
+    # pattern as the drips around it.
+    if HAS_DATABASE and _env_enabled("ENABLE_ADS_FUNNEL_EMAILS", True):
+        from app.services.ads_nurture import start_ads_email_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_ads_email_loop()))
+        logger.info("Ads funnel email loop scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Ads funnel emails disabled by ENABLE_ADS_FUNNEL_EMAILS.")
+
     # ── Post-purchase nurture / upsell email drip ("phase two") ───────────
     # Twelve emails (immediately .. day 56) for prospects who completed
     # checkout, counted from unlocked_at. Same advisory-lock pattern.
