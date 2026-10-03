@@ -15,7 +15,9 @@ Zoopla and OnTheMarket):
   branch, and a "property sold / withdrawn" email.
 
 Nurture exits: purchase (payment_status "completed") or unsubscribe stop
-both flows. "Property sold" stops a homeowner's emails; for an agent it
+both flows, for the person rather than one listing: unsubscribing from any
+of their listings' emails stops them all, and an agent who buys any
+assessment gets no more of these emails. "Property sold" stops a homeowner's emails; for an agent it
 sends the sold email once and from then on skips every email about that
 property, keeping the ones that invite them to assess another listing.
 
@@ -40,7 +42,7 @@ from pathlib import Path
 from typing import Any, Iterable
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
@@ -277,6 +279,39 @@ async def _ensure_link_token(prospect: StaleListingProspect) -> None:
             await db.commit()
 
 
+async def _stopped_leads(db: Any, candidates: list[StaleListingProspect]) -> set[UUID]:
+    """Leads whose emails stop because of something done on another of
+    their prospects: anyone who unsubscribed from any of them, and an agent
+    who has bought any assessment (as has anyone at their agency, when it's
+    in the letter campaign). Purchase and unsubscribe are per person, not
+    per listing."""
+    P = StaleListingProspect
+    emails = {c.contact_email.strip().lower() for c in candidates if c.contact_email}
+    if not emails:
+        return set()
+    email = func.lower(func.trim(P.contact_email))
+    unsubscribed = set((await db.execute(
+        select(email).where(email.in_(emails), P.unsubscribed_at.is_not(None))
+    )).scalars().all())
+    agent_buyers = set((await db.execute(
+        select(email).where(email.in_(emails), P.audience == "agent", P.payment_status == "completed")
+    )).scalars().all())
+    account_ids = {c.agent_account_id for c in candidates if c.audience == "agent" and c.agent_account_id}
+    paid_accounts: set[UUID] = set()
+    if account_ids:
+        paid_accounts = set((await db.execute(
+            select(P.agent_account_id).where(P.agent_account_id.in_(account_ids), P.payment_status == "completed")
+        )).scalars().all())
+    stopped: set[UUID] = set()
+    for c in candidates:
+        key = (c.contact_email or "").strip().lower()
+        if key in unsubscribed:
+            stopped.add(c.id)
+        elif c.audience == "agent" and (key in agent_buyers or c.agent_account_id in paid_accounts):
+            stopped.add(c.id)
+    return stopped
+
+
 async def run_ads_nurture_cycle(only_prospect_id: UUID | None = None) -> dict:
     now = datetime.now(timezone.utc)
     P = StaleListingProspect
@@ -297,6 +332,8 @@ async def run_ads_nurture_cycle(only_prospect_id: UUID | None = None) -> dict:
         if only_prospect_id is not None:
             stmt = stmt.where(P.id == only_prospect_id)
         candidates = list((await db.execute(stmt)).scalars().all())
+        stopped = await _stopped_leads(db, candidates)
+        candidates = [c for c in candidates if c.id not in stopped]
         if not candidates:
             return {"candidates": 0, "sent": 0}
         rows = await db.execute(
