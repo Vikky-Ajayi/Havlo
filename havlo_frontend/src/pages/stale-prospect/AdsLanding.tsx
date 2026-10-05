@@ -212,6 +212,13 @@ export const AdsAnalysingStep = () => {
 
 export const AdsStyles = () => (
   <style>{`
+    /* Hero type matches /stale-listings/seller (StaleListingsLanding.tsx):
+       Plus Jakarta Sans ExtraBold heading, Inter copy, same sizes at each
+       breakpoint. Scoped to the ads pages; /check keeps its own. */
+    .slw-page .slw-hero h1{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:56px;line-height:110%;letter-spacing:-0.03em;color:#1F1F1E}
+    .slw-page .slw-hero-copy{font-family:'Inter',sans-serif;font-weight:400;font-size:16px;line-height:150%;letter-spacing:-0.02em;color:#000}
+    @media (max-width:1024px){.slw-page .slw-hero h1{font-size:38px}}
+    @media (max-width:768px){.slw-page .slw-hero h1{font-size:36px;line-height:120%}}
     .slw-ads-form-wrap{margin:24px auto 0;max-width:600px}
     .slw-ads-form-label{margin:0 0 10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;color:#202124}
     .slw-ads-welcome{margin:0 0 12px;font-size:15px;font-weight:600;color:#202124}
