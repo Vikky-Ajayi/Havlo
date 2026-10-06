@@ -66,10 +66,12 @@ async def book_session(
             redirect_url=redirect_url,
         )
     except SumUpError as exc:
+        # The full SumUp response goes to the logs; the customer gets a
+        # plain message rather than the raw JSON.
         logger.error("SumUp checkout failed: %s body=%s", exc, exc.body)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"SumUp error: {exc} {exc.body or ''}".strip(),
+            detail="We couldn't start your payment. Please try again, or contact us if it keeps happening.",
         )
     except Exception as exc:
         logger.exception("Unexpected error creating SumUp checkout: %s", exc)
