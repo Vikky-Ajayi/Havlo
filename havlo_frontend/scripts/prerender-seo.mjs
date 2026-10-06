@@ -42,9 +42,10 @@ const organisation = {
 };
 
 // The site's main sections, as plain links in the HTML of every page until
-// the app takes over (a fraction of a second for a visitor). Crawlers
-// reading the HTML see how the site is organised, including each Buy
-// Abroad country page.
+// the app takes over. Crawlers reading the HTML see how the site is
+// organised, including each Buy Abroad country page. Visually hidden (the
+// usual screen-reader-only pattern) so visitors never see the list flash
+// up while the app loads.
 const sections = [
   ['Stale Listings', '/stale-listings'],
   ['For Sellers', '/stale-listings/seller'],
@@ -59,9 +60,9 @@ const sections = [
   ['Contact', '/contact-us'],
 ];
 const nav =
-  '<nav aria-label="Havlo" style="max-width:720px;margin:48px auto;padding:0 16px;font-family:Inter,Arial,sans-serif;color:#111">' +
-  '<p style="font-weight:700;margin:0 0 12px">Havlo</p><ul style="list-style:none;padding:0;margin:0;line-height:2">' +
-  sections.map(([label, href]) => `<li><a href="${href}" style="color:#111">${esc(label)}</a></li>`).join('') +
+  '<nav aria-label="Havlo" style="position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0">' +
+  '<ul>' +
+  sections.map(([label, href]) => `<li><a href="${href}">${esc(label)}</a></li>`).join('') +
   '</ul></nav>';
 
 function replaceTag(html, pattern, tag) {
