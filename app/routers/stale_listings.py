@@ -149,11 +149,11 @@ SL_PACKAGES: dict[str, dict] = {
     # likewise kept only for historical orders: agents now pay
     # listing_recovery_assessment for every assessment, and /submit refuses
     # new free-trial orders.
-    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 299.99,  "currency": "GBP"},
+    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 49.99,   "currency": "GBP"},
     "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
-    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 149.99,  "currency": "GBP"},
+    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 49.99,   "currency": "GBP"},
     "free_trial_assessment":         {"name": "Free Trial Assessment",         "amount": 0.00,    "currency": "GBP"},
 }
 

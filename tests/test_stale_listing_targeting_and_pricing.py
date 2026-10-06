@@ -66,7 +66,10 @@ class CheckoutPriceTest(unittest.TestCase):
                 )
 
     def test_seller_assessment_price(self) -> None:
-        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 299.99)
+        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 49.99)
+        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 49.99)
+        # Retired plans keep their price so historical orders still resolve.
+        self.assertEqual(SL_PACKAGES["professional_review"]["amount"], 299.99)
 
 
 if __name__ == "__main__":
