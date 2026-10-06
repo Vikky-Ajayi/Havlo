@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/v1/:path*",
@@ -13,6 +12,114 @@
     {
       "source": "/ua/:path*",
       "destination": "https://havlo.up.railway.app/ua/:path*"
+    },
+    {
+      "source": "/stale-listings",
+      "destination": "/_pages/stale-listings.html"
+    },
+    {
+      "source": "/about-us",
+      "destination": "/_pages/about-us.html"
+    },
+    {
+      "source": "/contact-us",
+      "destination": "/_pages/contact-us.html"
+    },
+    {
+      "source": "/buy-property-abroad",
+      "destination": "/_pages/buy-property-abroad.html"
+    },
+    {
+      "source": "/property-matching",
+      "destination": "/_pages/property-matching.html"
+    },
+    {
+      "source": "/custom-offers",
+      "destination": "/_pages/custom-offers.html"
+    },
+    {
+      "source": "/property-audit",
+      "destination": "/_pages/property-audit.html"
+    },
+    {
+      "source": "/elite-property",
+      "destination": "/_pages/elite-property.html"
+    },
+    {
+      "source": "/buyer-network",
+      "destination": "/_pages/buyer-network.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/_pages/faq.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/_pages/terms.html"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/_pages/privacy-policy.html"
+    },
+    {
+      "source": "/cookie-policy",
+      "destination": "/_pages/cookie-policy.html"
+    },
+    {
+      "source": "/countries",
+      "destination": "/_pages/countries.html"
+    },
+    {
+      "source": "/referrals",
+      "destination": "/_pages/referrals.html"
+    },
+    {
+      "source": "/buy-home",
+      "destination": "/_pages/buy-home.html"
+    },
+    {
+      "source": "/complete-home-buying",
+      "destination": "/_pages/complete-home-buying.html"
+    },
+    {
+      "source": "/property-purchase",
+      "destination": "/_pages/property-purchase.html"
+    },
+    {
+      "source": "/stale-listings/seller",
+      "destination": "/_pages/stale-listings/seller.html"
+    },
+    {
+      "source": "/stale-listings/agents",
+      "destination": "/_pages/stale-listings/agents.html"
+    },
+    {
+      "source": "/stale-listings/partnerships",
+      "destination": "/_pages/stale-listings/partnerships.html"
+    },
+    {
+      "source": "/buyabroad/uk",
+      "destination": "/_pages/buyabroad/uk.html"
+    },
+    {
+      "source": "/buyabroad/ghana",
+      "destination": "/_pages/buyabroad/ghana.html"
+    },
+    {
+      "source": "/buyabroad/kenya",
+      "destination": "/_pages/buyabroad/kenya.html"
+    },
+    {
+      "source": "/buyabroad/egypt",
+      "destination": "/_pages/buyabroad/egypt.html"
+    },
+    {
+      "source": "/buyabroad/southafrica",
+      "destination": "/_pages/buyabroad/southafrica.html"
+    },
+    {
+      "source": "/buyabroad/uk/listings",
+      "destination": "/_pages/buyabroad/uk/listings.html"
     },
     {
       "source": "/(.*)",

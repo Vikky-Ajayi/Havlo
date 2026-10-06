@@ -5,8 +5,9 @@
 // the same index.html (the home page's title) until the app's script runs
 // and sets the real one. Search engines and link previews often read the
 // HTML before (or without) running it. Each page is written as
-// dist/<path>.html; with "cleanUrls" (vercel.json) Vercel serves it at
-// <path>, ahead of the catch-all rewrite to /index.html.
+// dist/_pages/<path>.html, and vercel.json rewrites <path> to it ahead of
+// the catch-all rewrite to /index.html. They live under _pages/ so no
+// folder in dist shares a name with an address the app serves.
 //
 // Pages and wording: ../seo-pages.json (also read by app/seo.py).
 import fs from 'node:fs';
@@ -87,10 +88,22 @@ function pageHtml(page, { canonical }) {
   return html;
 }
 
+// Every page needs its rewrite in vercel.json (Vercel reads that file
+// before building, so it can't be written here). Warn rather than fail, so
+// a missing rule never blocks a deploy; the page still works, it just gets
+// the shared HTML.
+const vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'));
+const routed = new Set((vercel.rewrites || []).map((r) => `${r.source}=>${r.destination}`));
+for (const page of pages) {
+  if (page.path !== '/' && !routed.has(`${page.path}=>/_pages${page.path}.html`)) {
+    console.warn(`prerender-seo: vercel.json has no rewrite for ${page.path}; add { "source": "${page.path}", "destination": "/_pages${page.path}.html" }`);
+  }
+}
+
 let written = 0;
 for (const page of pages) {
   if (page.path === '/') continue;
-  const file = path.join(dist, `${page.path}.html`);
+  const file = path.join(dist, '_pages', `${page.path}.html`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, pageHtml(page, { canonical: true }));
   written += 1;
