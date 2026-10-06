@@ -21,6 +21,7 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException, status
 
 from app.config import get_settings
+from app.routers import bookings
 from app.services import sumup_service
 from app.services.sumup_service import SumUpError
 
@@ -68,8 +69,8 @@ async def diagnose_sumup(
             "SUMUP_MERCHANT_CODE": (
                 f"SET (value={merchant})" if merchant else "MISSING"
             ),
-            "SESSION_FEE_AMOUNT": settings.SESSION_FEE_AMOUNT,
-            "SESSION_FEE_CURRENCY": settings.SESSION_FEE_CURRENCY,
+            "SESSION_FEE_AMOUNT": bookings.SESSION_FEE_AMOUNT,
+            "SESSION_FEE_CURRENCY": bookings.SESSION_FEE_CURRENCY,
             "FRONTEND_URL": frontend or "MISSING",
             "FRONTEND_URL_https": frontend.startswith("https://") if frontend else False,
         },

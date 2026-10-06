@@ -24,6 +24,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bookings", tags=["Session Bookings"])
 
 
+# The consultation deposit (Buy Abroad and the advisory session popup).
+# GBP because SumUp only accepts the merchant account's own currency; a
+# checkout in any other currency is refused. Shown as £99.99 in
+# havlo_frontend/src/pages/BuyAbroadUkMarketplace.tsx (CONSULTATION_FEE).
+SESSION_FEE_AMOUNT = 99.99
+SESSION_FEE_CURRENCY = "GBP"
+
+
 @router.post("/session", response_model=BookSessionResponse, status_code=status.HTTP_201_CREATED)
 async def book_session(
     payload: BookSessionRequest,
@@ -41,8 +49,8 @@ async def book_session(
     reference = f"HAVLO-SESSION-{uuid.uuid4().hex[:12].upper()}"
 
     # Read fee from settings — Railway may inject as string, so cast.
-    amount = float(settings.SESSION_FEE_AMOUNT)
-    currency = str(settings.SESSION_FEE_CURRENCY).upper()
+    amount = SESSION_FEE_AMOUNT
+    currency = SESSION_FEE_CURRENCY
 
     redirect_url = None
     if settings.FRONTEND_URL:
@@ -241,7 +249,7 @@ async def get_session_checkout_page(
 
     return {
         "checkout_id": booking.sumup_checkout_id,
-        "amount": float(get_settings().SESSION_FEE_AMOUNT),
-        "currency": str(get_settings().SESSION_FEE_CURRENCY).upper(),
+        "amount": SESSION_FEE_AMOUNT,
+        "currency": SESSION_FEE_CURRENCY,
         "description": f"Havlo Advisory Session - {current_user.first_name} {current_user.last_name}",
     }

@@ -116,8 +116,10 @@ class Settings(BaseSettings):
     ADMIN_SECRET: str = ""
 
     # ── Session fee ──────────────────────────────────────────────────────
-    SESSION_FEE_AMOUNT: float = 200.0
-    SESSION_FEE_CURRENCY: str = "GBP"
+    # The advisory session / Buy Abroad consultation deposit lives in
+    # app/routers/bookings.py (SESSION_FEE_AMOUNT / SESSION_FEE_CURRENCY):
+    # SumUp only takes the merchant account's currency (GBP), so it's no
+    # longer read from the environment.
 
     # ── Frontend ─────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:5173"

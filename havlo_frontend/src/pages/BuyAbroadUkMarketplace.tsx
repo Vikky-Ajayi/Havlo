@@ -20,7 +20,8 @@ const AUTH_TOKEN_KEY = 'havlo_token';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
 const LISTING_CACHE_PREFIX = 'havlo_buyabroad_listing_';
 const FAVOURITES_PATH = '/buyabroad/uk/favourites';
-const CONSULTATION_FEE = 99.99;
+// The consultation deposit, in pounds (charged by app/routers/bookings.py).
+const CONSULTATION_FEE = '£99.99';
 const LISTINGS_API_BASE = API_BASE.replace(/\/$/, '');
 
 function listingsApiUrl(path: string) {
@@ -1276,7 +1277,7 @@ function CheckoutDetailsModal({
           <label>Post Code<input value={details.postCode} onChange={(e) => setDetails((d) => ({ ...d, postCode: e.target.value }))} placeholder="SY19" /></label>
         </div>
         {error && <p className="baml-error">{error}</p>}
-        <button className="baml-primary" disabled={checkingOut}>{checkingOut ? 'Creating checkout...' : 'Confirm & Pay $99.99'}</button>
+        <button className="baml-primary" disabled={checkingOut}>{checkingOut ? 'Creating checkout...' : `Confirm & Pay ${CONSULTATION_FEE}`}</button>
         <button type="button" className="baml-back" onClick={onBack}><ArrowLeft size={16} /> Back</button>
       </form>
     </div>
@@ -1791,7 +1792,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
       <div className="bad-card-more">
         <a className="bad-how" href="/buyabroad/uk/consultation">How it Works <ChevronRight size={16} /></a>
         <a className="bad-source" href={active.url || '#'} target="_blank" rel="noreferrer">{viewSourceText} <Link2 size={15} /></a>
-        <p className="bad-note"><i className="bad-info">i</i> This property is covered by your one-time ${CONSULTATION_FEE.toFixed(2)} consultation fee — add as many as you like at no extra cost.</p>
+        <p className="bad-note"><i className="bad-info">i</i> This property is covered by your one-time {CONSULTATION_FEE} consultation fee — add as many as you like at no extra cost.</p>
       </div>
     </aside>
   );
@@ -2132,15 +2133,15 @@ export const BuyAbroadUkBasket: React.FC = () => {
           <aside className="bab-summary" aria-label="Order summary">
             <h2>Order Summary</h2>
             <div className="bab-sum-row"><span>Properties selected</span><b className="bab-count">{selected.length}</b></div>
-            <div className="bab-sum-row"><span>Consultation fee ( Refundable)</span><b>${CONSULTATION_FEE}</b></div>
-            <div className="bab-sum-total"><span>Total due today</span><b>${CONSULTATION_FEE}</b></div>
+            <div className="bab-sum-row"><span>Consultation fee ( Refundable)</span><b>{CONSULTATION_FEE}</b></div>
+            <div className="bab-sum-total"><span>Total due today</span><b>{CONSULTATION_FEE}</b></div>
             <div className="bab-note">
               <span className="bab-note-icon" aria-hidden="true">i</span>
               <div>
-                <p>The consultation itself is free. Due to the high number of enquiries we receive, we ask for a ${CONSULTATION_FEE} deposit to confirm you&apos;re serious about buying, this lets our advisor focus their time on genuine buyers rather than casual enquiries.</p>
+                <p>The consultation itself is free. Due to the high number of enquiries we receive, we ask for a {CONSULTATION_FEE} deposit to confirm you&apos;re serious about buying, this lets our advisor focus their time on genuine buyers rather than casual enquiries.</p>
                 <ul>
                   <li>If you don&apos;t move forward: Your deposit is refunded after the consultation, minus any payment processing fees charged by our provider.</li>
-                  <li>If you decide to work with us: The full ${CONSULTATION_FEE} is credited toward your advisory fee — you won&apos;t pay it twice.</li>
+                  <li>If you decide to work with us: The full {CONSULTATION_FEE} is credited toward your advisory fee — you won&apos;t pay it twice.</li>
                 </ul>
               </div>
             </div>
@@ -2224,7 +2225,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
         <h1 className="bab-title">How Your Consultation Works</h1>
         <p className="bab-intro">
           {basketCount > 0 && <>Your basket has <b>{basketCount} {basketCount === 1 ? 'property' : 'properties'}</b> shortlisted. </>}
-          Before you pay the <b>${CONSULTATION_FEE} consultation deposit,</b> watch this 2-minute explainer covering what happens next.
+          Before you pay the <b>{CONSULTATION_FEE} consultation deposit,</b> watch this 2-minute explainer covering what happens next.
         </p>
         <section className="bab-video" aria-label="Consultation explainer video">
           {/* Placeholder until the explainer video is supplied. */}
