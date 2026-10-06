@@ -8,9 +8,11 @@ returning it.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from html import escape
+from pathlib import Path
 
 
 SITE_BASE = "https://www.heyhavlo.com"
@@ -27,184 +29,21 @@ class PageSeo:
         return f"{SITE_BASE}{self.canonical_path}"
 
 
-# Source of truth: HAVLO SEO TASK — Meta Data content (2026-04-24).
-PAGE_SEO: dict[str, PageSeo] = {
-    "/": PageSeo(
-        title="Havlo | Property Listing Intelligence for Sellers & Estate Agents",
-        description=(
-            "Havlo provides property listing intelligence to homeowners and estate "
-            "agents, identifying why properties may not be selling and providing "
-            "actionable insights to improve their performance. Explore Havlo Buy "
-            "Abroad for international property opportunities."
-        ),
-        canonical_path="/",
-    ),
-    # "/" forwards most visitors here, so it carries the home page listing.
-    "/stale-listings": PageSeo(
-        title="Havlo | Property Listing Intelligence for Sellers & Estate Agents",
-        description=(
-            "Havlo provides property listing intelligence to homeowners and estate "
-            "agents, identifying why properties may not be selling and providing "
-            "actionable insights to improve their performance. Explore Havlo Buy "
-            "Abroad for international property opportunities."
-        ),
-        canonical_path="/stale-listings",
-    ),
-    "/about-us": PageSeo(
-        title="About Us | Trusted Global Property Experts | Havlo",
-        description=(
-            "Havlo is a property exposure and advisory platform helping buyers "
-            "discover and access real estate opportunities abroad with "
-            "confidence. Learn about Havlo's mission, values, and expertise "
-            "in international real estate."
-        ),
-        canonical_path="/about-us",
-    ),
-    "/contact-us": PageSeo(
-        title="Contact Us | Speak to Global Property Experts | Havlo",
-        description=(
-            "Get in touch with Havlo for expert advice on buying, selling, or "
-            "managing property abroad. Our team is ready to guide you at "
-            "every step."
-        ),
-        canonical_path="/contact-us",
-    ),
-    "/buy-property-abroad": PageSeo(
-        title="Buy Property Abroad with Confidence | Havlo",
-        description=(
-            "Buy property overseas with ease. Havlo provides expert guidance, "
-            "legal support, and local insights to help you purchase "
-            "international property safely and smoothly."
-        ),
-        canonical_path="/buy-property-abroad",
-    ),
-    "/property-matching": PageSeo(
-        title="Property Matching - Find your Ideal Property with Budget | Havlo",
-        description=(
-            "Havlo offers reliable property matching services for "
-            "international homeowners, find properties with your preferred "
-            "location, type and budget. Our nominated agent finds the homes "
-            "that fit you."
-        ),
-        canonical_path="/property-matching",
-    ),
-    "/custom-offers": PageSeo(
-        title="Custom Offers | Flexible Property Proposals | Havlo",
-        description=(
-            "Make property offers that do not fit the traditional box. "
-            "Present flexible purchase terms directly and professionally so "
-            "homeowners can properly consider your proposal."
-        ),
-        canonical_path="/custom-offers",
-    ),
-    "/property-audit": PageSeo(
-        title="Property Audit Services to Help You Sell Faster | Havlo",
-        description=(
-            "Struggling to sell your property? Havlo's Property Audit "
-            "analyzes pricing, presentation, and marketing to help you "
-            "relaunch and attract the right buyers."
-        ),
-        canonical_path="/property-audit",
-    ),
-    "/elite-property": PageSeo(
-        title="Elite Property | Sell to Global Investors | Havlo",
-        description=(
-            "Showcase your elite property to a curated network of "
-            "ready-to-buy offshore investors. Havlo connects premium listings "
-            "with qualified global buyers."
-        ),
-        canonical_path="/elite-property",
-    ),
-    "/buyer-network": PageSeo(
-        title="Access a Global Buyer Network for Your Property | Havlo",
-        description=(
-            "Connect your property to a curated network of qualified global "
-            "buyers with Havlo. Reach serious investors, increase visibility, "
-            "and close deals faster."
-        ),
-        canonical_path="/buyer-network",
-    ),
-    "/faq": PageSeo(
-        title="FAQs - International Property Buying with Havlo | Havlo",
-        description=(
-            "Find answers to common questions about buying, selling, and "
-            "managing property abroad with Havlo. Clear guidance to help you "
-            "make informed decisions."
-        ),
-        canonical_path="/faq",
-    ),
-    "/terms": PageSeo(
-        title="Terms of Use | Havlo",
-        description=(
-            "Review Havlo's Terms of Use to understand our services, user "
-            "responsibilities, and legal guidelines when using our website "
-            "and property solutions."
-        ),
-        canonical_path="/terms",
-    ),
-    "/privacy-policy": PageSeo(
-        title="Privacy Policy | Havlo",
-        description=(
-            "Learn how Havlo collects, uses, and protects your personal "
-            "information. Your privacy and data security are important to us."
-        ),
-        canonical_path="/privacy-policy",
-    ),
-    "/cookie-policy": PageSeo(
-        title="Cookie Policy | Havlo",
-        description=(
-            "Read Havlo's Cookie Policy to understand how cookies are used "
-            "on our website to enhance user experience and improve site "
-            "performance."
-        ),
-        canonical_path="/cookie-policy",
-    ),
-    "/countries": PageSeo(
-        title="International Property Markets | Countries We Serve | Havlo",
-        description=(
-            "Explore the international property markets Havlo operates in. "
-            "From the UAE to Singapore, discover where we help buyers and "
-            "sellers succeed across borders."
-        ),
-        canonical_path="/countries",
-    ),
-    "/referrals": PageSeo(
-        title="Refer & Earn | Havlo Referral Programme",
-        description=(
-            "Earn rewards by referring buyers, sellers, and agents to Havlo. "
-            "Join our referral programme and get paid for every successful "
-            "introduction you make."
-        ),
-        canonical_path="/referrals",
-    ),
-    "/buy-home": PageSeo(
-        title="Buy a Home Abroad | End-to-End Buying Support | Havlo",
-        description=(
-            "Looking to buy a home abroad? Havlo guides you through every "
-            "step — from search and legal checks to completion — so you can "
-            "purchase overseas with confidence."
-        ),
-        canonical_path="/buy-home",
-    ),
-    "/complete-home-buying": PageSeo(
-        title="Complete Home Buying Experience | Havlo",
-        description=(
-            "Havlo's complete home buying experience covers everything you "
-            "need to purchase property internationally — advisory, legal "
-            "support, and ongoing guidance from start to finish."
-        ),
-        canonical_path="/complete-home-buying",
-    ),
-    "/property-purchase": PageSeo(
-        title="International Property Purchase Service | Havlo",
-        description=(
-            "Get end-to-end support for your international property purchase "
-            "with Havlo. We manage the process from offer to completion so "
-            "you can buy abroad without the stress."
-        ),
-        canonical_path="/property-purchase",
-    ),
-}
+# Source of truth: havlo_frontend/seo-pages.json, shared with the frontend
+# build (havlo_frontend/scripts/prerender-seo.mjs writes each page's own
+# HTML and the sitemap from it), so the two can't drift apart.
+SEO_PAGES_FILE = Path(__file__).resolve().parents[1] / "havlo_frontend" / "seo-pages.json"
+
+
+def _load_pages() -> dict[str, PageSeo]:
+    data = json.loads(SEO_PAGES_FILE.read_text(encoding="utf-8"))
+    return {
+        page["path"]: PageSeo(title=page["title"], description=page["description"], canonical_path=page["path"])
+        for page in data["pages"]
+    }
+
+
+PAGE_SEO: dict[str, PageSeo] = _load_pages()
 
 # Old paths from the brief that should resolve to a new canonical page.
 ALIASES: dict[str, str] = {

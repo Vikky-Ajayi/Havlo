@@ -1,0 +1,145 @@
+{
+ "site": "https://www.heyhavlo.com",
+ "pages": [
+  {
+   "path": "/",
+   "title": "Havlo | Property Listing Intelligence for Sellers & Estate Agents",
+   "description": "Havlo provides property listing intelligence to homeowners and estate agents, identifying why properties may not be selling and providing actionable insights to improve their performance. Explore Havlo Buy Abroad for international property opportunities."
+  },
+  {
+   "path": "/stale-listings",
+   "title": "Havlo | Property Listing Intelligence for Sellers & Estate Agents",
+   "description": "Havlo provides property listing intelligence to homeowners and estate agents, identifying why properties may not be selling and providing actionable insights to improve their performance. Explore Havlo Buy Abroad for international property opportunities."
+  },
+  {
+   "path": "/about-us",
+   "title": "About Us | Trusted Global Property Experts | Havlo",
+   "description": "Havlo is a property exposure and advisory platform helping buyers discover and access real estate opportunities abroad with confidence. Learn about Havlo's mission, values, and expertise in international real estate."
+  },
+  {
+   "path": "/contact-us",
+   "title": "Contact Us | Speak to Global Property Experts | Havlo",
+   "description": "Get in touch with Havlo for expert advice on buying, selling, or managing property abroad. Our team is ready to guide you at every step."
+  },
+  {
+   "path": "/buy-property-abroad",
+   "title": "Buy Property Abroad with Confidence | Havlo",
+   "description": "Buy property overseas with ease. Havlo provides expert guidance, legal support, and local insights to help you purchase international property safely and smoothly."
+  },
+  {
+   "path": "/property-matching",
+   "title": "Property Matching - Find your Ideal Property with Budget | Havlo",
+   "description": "Havlo offers reliable property matching services for international homeowners, find properties with your preferred location, type and budget. Our nominated agent finds the homes that fit you."
+  },
+  {
+   "path": "/custom-offers",
+   "title": "Custom Offers | Flexible Property Proposals | Havlo",
+   "description": "Make property offers that do not fit the traditional box. Present flexible purchase terms directly and professionally so homeowners can properly consider your proposal."
+  },
+  {
+   "path": "/property-audit",
+   "title": "Property Audit Services to Help You Sell Faster | Havlo",
+   "description": "Struggling to sell your property? Havlo's Property Audit analyzes pricing, presentation, and marketing to help you relaunch and attract the right buyers."
+  },
+  {
+   "path": "/elite-property",
+   "title": "Elite Property | Sell to Global Investors | Havlo",
+   "description": "Showcase your elite property to a curated network of ready-to-buy offshore investors. Havlo connects premium listings with qualified global buyers."
+  },
+  {
+   "path": "/buyer-network",
+   "title": "Access a Global Buyer Network for Your Property | Havlo",
+   "description": "Connect your property to a curated network of qualified global buyers with Havlo. Reach serious investors, increase visibility, and close deals faster."
+  },
+  {
+   "path": "/faq",
+   "title": "FAQs - International Property Buying with Havlo | Havlo",
+   "description": "Find answers to common questions about buying, selling, and managing property abroad with Havlo. Clear guidance to help you make informed decisions."
+  },
+  {
+   "path": "/terms",
+   "title": "Terms of Use | Havlo",
+   "description": "Review Havlo's Terms of Use to understand our services, user responsibilities, and legal guidelines when using our website and property solutions."
+  },
+  {
+   "path": "/privacy-policy",
+   "title": "Privacy Policy | Havlo",
+   "description": "Learn how Havlo collects, uses, and protects your personal information. Your privacy and data security are important to us."
+  },
+  {
+   "path": "/cookie-policy",
+   "title": "Cookie Policy | Havlo",
+   "description": "Read Havlo's Cookie Policy to understand how cookies are used on our website to enhance user experience and improve site performance."
+  },
+  {
+   "path": "/countries",
+   "title": "International Property Markets | Countries We Serve | Havlo",
+   "description": "Explore the international property markets Havlo operates in. From the UAE to Singapore, discover where we help buyers and sellers succeed across borders."
+  },
+  {
+   "path": "/referrals",
+   "title": "Refer & Earn | Havlo Referral Programme",
+   "description": "Earn rewards by referring buyers, sellers, and agents to Havlo. Join our referral programme and get paid for every successful introduction you make."
+  },
+  {
+   "path": "/buy-home",
+   "title": "Buy a Home Abroad | End-to-End Buying Support | Havlo",
+   "description": "Looking to buy a home abroad? Havlo guides you through every step — from search and legal checks to completion — so you can purchase overseas with confidence."
+  },
+  {
+   "path": "/complete-home-buying",
+   "title": "Complete Home Buying Experience | Havlo",
+   "description": "Havlo's complete home buying experience covers everything you need to purchase property internationally — advisory, legal support, and ongoing guidance from start to finish."
+  },
+  {
+   "path": "/property-purchase",
+   "title": "International Property Purchase Service | Havlo",
+   "description": "Get end-to-end support for your international property purchase with Havlo. We manage the process from offer to completion so you can buy abroad without the stress."
+  },
+  {
+   "path": "/stale-listings/seller",
+   "title": "Is Your Property Not Selling? Get a Free Listing Audit | Havlo",
+   "description": "Find out exactly why your property isn't selling. Stale Listings by Havlo gives you an expert review, pricing analysis, and action plan to attract buyers again."
+  },
+  {
+   "path": "/stale-listings/agents",
+   "title": "Listing Recovery for Estate Agents | Stale Listings by Havlo",
+   "description": "Independent listing recovery intelligence for estate agents with stalled, low-enquiry or at-risk instructions."
+  },
+  {
+   "path": "/stale-listings/partnerships",
+   "title": "Partner with Havlo | Stale Listings Partnerships",
+   "description": "Partner with Havlo to give homeowners and estate agents independent listing intelligence on properties that aren't selling."
+  },
+  {
+   "path": "/buyabroad/uk",
+   "title": "Buy UK Property from Nigeria | Havlo Buy Abroad",
+   "description": "A dedicated advisory service for Nigerian buyers purchasing residential, commercial, and investment property in the UK."
+  },
+  {
+   "path": "/buyabroad/ghana",
+   "title": "Buy UK Property from Ghana | Havlo Buy Abroad",
+   "description": "A dedicated advisory service for Ghanaian buyers purchasing residential, commercial, and investment property in the UK."
+  },
+  {
+   "path": "/buyabroad/kenya",
+   "title": "Buy UK Property from Kenya | Havlo Buy Abroad",
+   "description": "A dedicated advisory service for Kenyan buyers purchasing residential, commercial, and investment property in the UK."
+  },
+  {
+   "path": "/buyabroad/egypt",
+   "title": "Buy UK Property from Egypt | Havlo Buy Abroad",
+   "description": "A dedicated advisory service for Egyptian buyers purchasing residential, commercial, and investment property in the UK."
+  },
+  {
+   "path": "/buyabroad/southafrica",
+   "title": "Buy UK Property from South Africa | Havlo Buy Abroad",
+   "description": "A dedicated advisory service for South African buyers purchasing residential, commercial, and investment property in the UK."
+  },
+  {
+   "path": "/buyabroad/uk/listings",
+   "title": "Browse United Kingdom Properties in Pounds & Naira | Havlo",
+   "description": "Browse homes across the United Kingdom, the United States, Dubai and Canada with Havlo Buy Abroad."
+  }
+ ]
+}

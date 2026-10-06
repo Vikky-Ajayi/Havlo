@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { StaleListingsBrandLogo } from '../components/shared/StaleListingsLogo';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
@@ -43,7 +44,12 @@ const shapes = [
   { label: 'REFERRAL', title: 'Send us your stale listings', desc: 'Point your customers to Havlo directly and we handle delivery — a lighter-lift way to start.' },
 ];
 
-export const StaleListingsPartnerships = () => (
+export const StaleListingsPartnerships = () => {
+  usePageMeta({
+    title: 'Partner with Havlo | Stale Listings Partnerships',
+    description: "Partner with Havlo to give homeowners and estate agents independent listing intelligence on properties that aren't selling.",
+  });
+  return (
   <div className="slp-page">
     <header className="slp-header">
       <Link className="slp-logo" to="/stale-listings"><StaleListingsBrandLogo className="slp-logo-mark" /></Link>
@@ -231,4 +237,5 @@ export const StaleListingsPartnerships = () => (
       }
     `}</style>
   </div>
-);
+  );
+};
