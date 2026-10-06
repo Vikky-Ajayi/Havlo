@@ -687,10 +687,20 @@ export const AgentFullReport = ({
         <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>Open the instruction watch</button>
       </div>
 
-      <p className="agr-footnote">
-        How this is worked out: homes for sale around the listing on Rightmove (price, status, when listed, agency), recorded sales from HM Land Registry, the listing&rsquo;s own Rightmove page and Havlo&rsquo;s assessment of it.
-        {' '}The local benchmark is the typical time similar homes still for sale nearby have been listed, not how long sold homes took. The comparable success gap counts similar homes listed after this one that are now under offer or sold STC, plus similar homes nearby that completed a sale after it was listed. Commission is an estimate at the fee you enter, plus VAT.
-      </p>
+      <div className="agr-footnote">
+        <p>
+          <b>How this is worked out:</b> The assessment uses the Havlo Index &mdash; Havlo&rsquo;s proprietary scoring model designed to identify the factors that may be affecting a property listing&rsquo;s ability to secure a buyer &mdash; alongside the listing&rsquo;s market position, performance, local competition and Havlo&rsquo;s assessment of its buyer appeal.
+        </p>
+        <p>
+          The local benchmark is the typical time similar homes still for sale nearby have been listed, rather than how long previously sold homes took to sell.
+        </p>
+        <p>
+          The Comparable Success Gap measures similar homes listed after this property that have already progressed to under offer or Sold STC, together with comparable nearby homes that completed a sale after this property was listed.
+        </p>
+        <p>
+          Commission is an estimate based on the agency fee you enter, plus VAT.
+        </p>
+      </div>
       <AgentReportStyles />
     </section>
   );
@@ -708,6 +718,8 @@ const AgentReportStyles = () => (
     .agr-note{margin:12px 2px 0}
     .agr-error{color:#c02626;font-size:14px;margin:10px 0 0}
     .agr-footnote{color:#8A93A3;font-size:12.5px;line-height:1.55;margin:28px 0 0}
+    .agr-footnote p{margin:0 0 8px}
+    .agr-footnote b{font-weight:600}
     .agr-section{margin-top:48px}
     .agr-section-head{margin:0 0 16px}
     .agr-section-intro p{color:var(--agr-muted);font-size:15px;line-height:1.55;margin:8px 0 0;max-width:820px}

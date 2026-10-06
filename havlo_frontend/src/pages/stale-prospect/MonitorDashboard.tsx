@@ -14,6 +14,7 @@ import {
   type MonitorNearbyListing,
   type MonitorPulse,
 } from './types';
+import { ShareSheet } from './ShareSheet';
 import { CheckIconGreen, Footer, Header, Spinner, WizardStyles } from './StaleProspectWizard';
 
 // /m/:token -- the 90-day monitoring dashboard that comes with a purchased
@@ -274,20 +275,19 @@ export const MonitorDashboard = () => {
     }
   }, [token]);
 
+  // The share panel (ShareSheet) with a view-only link, made on first open.
+  const [sharing, setSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareError, setShareError] = useState('');
+
   const share = async () => {
+    setSharing(true);
+    setShareError('');
+    if (shareUrl) return;
     try {
-      const { url } = await shareMonitorDashboard(token);
-      const text = data?.audience === 'agent'
-        ? 'The 90-day dashboard for your property, from Havlo'
-        : 'My 90-day listing dashboard from Havlo';
-      if (navigator.share) {
-        await navigator.share({ title: 'Havlo listing dashboard', text, url }).catch(() => undefined);
-      } else {
-        await navigator.clipboard.writeText(url);
-        flash('View-only link copied. Paste it into an email or message.');
-      }
+      setShareUrl((await shareMonitorDashboard(token)).url);
     } catch {
-      flash("Couldn't create a share link. Please try again.");
+      setShareError("We couldn't create a share link just now. Please try again.");
     }
   };
 
@@ -560,6 +560,18 @@ export const MonitorDashboard = () => {
             </section>
           )}
           {notice && <div className="lmd-toast" role="status">{notice}</div>}
+          {sharing && (
+            <ShareSheet
+              url={shareUrl}
+              title={data.audience === 'agent' ? 'Share with your vendor' : 'Share with your agent'}
+              subtitle="Anyone with the link can view this dashboard. They can't change anything."
+              text={data.audience === 'agent'
+                ? `The 90-day instruction watch for ${data.property.address}, from Havlo:`
+                : `My 90-day listing dashboard for ${data.property.address}, from Havlo:`}
+              error={shareError}
+              onClose={() => setSharing(false)}
+            />
+          )}
         </main>
       </div>
       <Footer />
