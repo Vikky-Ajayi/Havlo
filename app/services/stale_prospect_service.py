@@ -185,16 +185,15 @@ def verify_sms_unsubscribe_short_token(property_code: str, token: str) -> bool:
     return hmac.compare_digest(expected, (token or "").strip())
 
 
-AGENT_UNLOCK_PRICE = 149.99
-OWNER_UNLOCK_PRICE = 299.99
+AGENT_UNLOCK_PRICE = 49.99
+OWNER_UNLOCK_PRICE = 49.99
 
 
 def prospect_unlock_price(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report price for a letter prospect: GBP 149.99 when the letter
-    went to the listing's estate agency (audience "agent" — the same
-    per-assessment price as on /stale-listings/agents), otherwise a flat
-    GBP 299.99 whatever the asking price. asking_price is kept so callers
-    don't change if per-price tiering ever comes back.
+    """Full-report price for a letter prospect: GBP 49.99 for owners and
+    estate agencies alike (audience "agent" has its own constant so the two
+    can differ again), whatever the asking price. asking_price is kept so
+    callers don't change if per-price tiering ever comes back.
 
     The checkout route (_stale_prospect_checkout_amount) and the email
     drips call this; the frontend's unlockPrice() in

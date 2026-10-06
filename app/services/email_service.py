@@ -2165,7 +2165,7 @@ def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text:
         intended copy.
       - Price mentions that quote the recipient's own assessment cost
         (stages 1, 5, 6) use their actual tiered price (price_html) rather
-        than the mockup's hardcoded "£499.99". Email 4's "£299.99 Havlo
+        than the mockup's hardcoded "£499.99". Email 4's "£49.99 Havlo
         assessment" is a different customer's (John's) anecdote, not the
         recipient's price, so it stays a fixed illustrative figure (the
         current seller price — it quoted £499.99 until that was retired).
@@ -2229,7 +2229,7 @@ def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text:
                     "John's property had been sitting on the market for 7 months with barely any viewings."
                 )
                 + _stale_abandonment_paragraph(
-                    "Their £299.99 Havlo assessment flagged pricing 8% above comparable sales, they made the "
+                    "Their £49.99 Havlo assessment flagged pricing 8% above comparable sales, they made the "
                     "change, and had an offer within 3 weeks."
                 )
                 + _stale_abandonment_paragraph("Worth finding out what your own assessment would flag.")

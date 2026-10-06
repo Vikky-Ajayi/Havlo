@@ -159,10 +159,9 @@ SL_PACKAGES: dict[str, dict] = {
 
 
 def _stale_prospect_checkout_amount(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report checkout price for a letter prospect: GBP 149.99 for an
-    estate agency's listing (the same per-assessment price agents pay on
-    /stale-listings/agents), otherwise a flat GBP 299.99 regardless of
-    asking price. See prospect_unlock_price, which this delegates to.
+    """Full-report checkout price for a letter prospect: GBP 49.99, for
+    owners and estate agencies alike, regardless of asking price. See
+    prospect_unlock_price, which this delegates to.
     """
     return prospect_unlock_price(asking_price, audience)
 

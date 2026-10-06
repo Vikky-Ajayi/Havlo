@@ -76,7 +76,7 @@ class ContentTests(unittest.TestCase):
     def test_every_email_stage_renders(self):
         for stage, _ in af.EMAIL_STAGES:
             config = email_service._stale_agent_followup_content(
-                stage, brand="Smith & Jones", count=7, price_text="£299.99", agent_code="12345"
+                stage, brand="Smith & Jones", count=7, price_text="£49.99", agent_code="12345"
             )
             self.assertTrue(config["subject"] and config["heading"] and config["cta_label"])
             self.assertNotIn("{", config["content_html"])
