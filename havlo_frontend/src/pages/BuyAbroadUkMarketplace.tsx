@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bath, Bed, Bitcoin, BriefcaseBusiness, CheckCircle, ChevronLeft, ChevronRight, CreditCard, Eye, EyeOff, Heart, Home, Info, Landmark, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react';
+import { ArrowLeft, Bath, Bed, Bitcoin, BriefcaseBusiness, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard, Eye, EyeOff, Heart, Home, Info, Landmark, Link2, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react';
 import { api, API_BASE } from '../lib/api';
 import { redirectToCheckout } from '../lib/paymentReturn';
 import { useAuth } from '../context/AuthContext';
@@ -1685,6 +1685,13 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const [term, setTerm] = useState(25);
   const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
   const openFavourites = () => requireAuth(() => navigate(FAVOURITES_PATH));
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const carouselRef = useRef<HTMLElement | null>(null);
+  const onCarouselScroll = () => {
+    const el = carouselRef.current;
+    if (el && el.clientWidth) setPhotoIndex(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
   usePageMeta({
     title: `${listing?.title || 'Property Details'} | Havlo Buy Abroad`,
@@ -1760,118 +1767,136 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     navigate('/buyabroad/uk/basket');
   };
 
+  const location = cleanText([active.city, countryLabel(active.country)].filter(Boolean).join(', '));
+  const costCard = (where: 'side' | 'sheet') => (
+    <aside className={`bad-card bad-card-${where}${where === 'sheet' && !sheetOpen ? ' is-collapsed' : ''}`}>
+      <div className="bad-card-head">
+        <small>TOTAL ESTIMATED COST</small>
+        {where === 'sheet' && (
+          <button type="button" className="bad-card-toggle" onClick={() => setSheetOpen((v) => !v)} aria-expanded={sheetOpen}>
+            {sheetOpen ? <>See Less <ChevronDown size={18} /></> : <>See More <ChevronUp size={18} /></>}
+          </button>
+        )}
+      </div>
+      <h2>{formatGbp(totalEstimated)}</h2>
+      <div className="bad-card-more">
+        <div className="bad-bar"><span style={{ width: `${totalEstimated ? Math.max(4, Math.min(96, (propertyPrice / totalEstimated) * 100)) : 90}%` }} /></div>
+        <p className="bad-legend">
+          <span><i className="bad-dot" /> Property <strong>{formatGbp(propertyPrice)}</strong></span>
+          <span><i className="bad-dot purple" /> Fees <strong>{formatGbp(fees)}</strong></span>
+        </p>
+        <p className="bad-question">Interested in purchasing this property?</p>
+      </div>
+      <button type="button" className="bad-basket" onClick={addToBasket}>Add to Basket <ShoppingBasket size={17} /></button>
+      <div className="bad-card-more">
+        <a className="bad-how" href="/buyabroad/uk/consultation">How it Works <ChevronRight size={16} /></a>
+        <a className="bad-source" href={active.url || '#'} target="_blank" rel="noreferrer">{viewSourceText} <Link2 size={15} /></a>
+        <p className="bad-note"><i className="bad-info">i</i> This property is covered by your one-time ${CONSULTATION_FEE.toFixed(2)} consultation fee — add as many as you like at no extra cost.</p>
+      </div>
+    </aside>
+  );
+
   return (
-    <div className="baml-page">
+    <div className="baml-page bad-page">
       <MarketplaceStyles />
+      <DetailStyles />
       <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
-      <main className="baml-detail-main">
-        <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
-        <div className="baml-detail-top">
-          <div>
-            <h1>{cleanText(active.title) || cleanText(active.address) || 'Property for sale'}</h1>
-            <p className="baml-detail-price">{displayPrice(active)}</p>
-          </div>
-          <button className="baml-save-button" onClick={toggleFav}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Saved' : 'Save'}</button>
+      <main className="bad-main">
+        <a href="/buyabroad/uk/listings" className="bad-back"><Undo2 size={18} /> Go Back</a>
+        <div className="bad-top">
+          <h1>{cleanText(active.title) || cleanText(active.address) || 'Property for sale'}</h1>
+          <button className="bad-save" onClick={toggleFav}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Saved' : 'Save'}</button>
         </div>
-        <section className="baml-gallery">
-          <div
-            className="baml-gallery-main"
-            role="button"
-            tabIndex={0}
-            onClick={() => setLightboxIndex(0)}
-            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setLightboxIndex(0); }}
-          >
-            <img src={images[0] || fallbackImages[0]} alt={active.title} />
-          </div>
-          {[1, 2, 3, 4].map((slot) => (
+        <section className="bad-gallery">
+          {[0, 1, 2, 3, 4].map((slot) => (
             <div
               key={slot}
+              className={`bad-tile bad-tile-${slot}`}
               role="button"
               tabIndex={0}
               onClick={() => setLightboxIndex(slot)}
               onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') setLightboxIndex(slot); }}
             >
-              <img src={images[slot] || fallbackImages[slot % fallbackImages.length]} alt={`${active.title} ${slot + 1}`} />
+              <img src={images[slot] || fallbackImages[slot % fallbackImages.length]} alt={slot ? `${active.title} ${slot + 1}` : active.title} />
+              {slot === 4 && <span className="bad-pill">View All Photos</span>}
             </div>
           ))}
         </section>
-        <section className="baml-detail-content">
-          <div className="baml-detail-copy">
-            <h2>{active.property_type || 'Property'} in {cleanText([active.city, countryLabel(active.country)].filter(Boolean).join(', ')) || 'this market'}</h2>
-            <p className="baml-detail-meta">
-              <span>Source <strong>{sourceLabel(active)}</strong></span>
+        {/* Phones: every photo, swiped sideways, with a counter. */}
+        <section className="bad-carousel" ref={carouselRef} onScroll={onCarouselScroll}>
+          {images.map((src, index) => (
+            <img key={`${src}-${index}`} src={src} alt={`${active.title} ${index + 1}`} onClick={() => setLightboxIndex(index)} />
+          ))}
+        </section>
+        <span className="bad-counter">{photoIndex + 1}/{images.length}</span>
+        <section className="bad-content">
+          <div className="bad-copy">
+            <h2>{active.property_type || 'Property'} In {location || 'this market'}</h2>
+            <p className="bad-meta">
+              <span>Location <strong>{location || 'United Kingdom'}</strong></span>
               <span>Property Status <strong>For Sale</strong></span>
-              {detailMeta}
+              {active.bedrooms > 0 && <span>{active.bedrooms} <strong>{active.bedrooms === 1 ? 'Bedroom' : 'Bedrooms'}</strong></span>}
             </p>
-            <p className="baml-description">{cleanText(active.description) || cleanText(active.address) || 'Contact Havlo for a full property review, local due diligence, and purchase guidance.'}</p>
-            <div className="baml-cost-table">
-              <div className="tabs">
+            <p className="bad-description">{cleanText(active.description) || cleanText(active.address) || 'Contact Havlo for a full property review, local due diligence, and purchase guidance.'}</p>
+            <div className="bad-table">
+              <div className="bad-tabs">
                 <button type="button" className={costTab === 'cash' ? 'active' : ''} onClick={() => setCostTab('cash')}>Cash Buyer</button>
                 <button type="button" className={costTab === 'mortgage' ? 'active' : ''} onClick={() => setCostTab('mortgage')}>Mortgage Buyer</button>
               </div>
-              {costTab === 'cash' ? (
-                <>
-                  <h3>Other Associated Costs</h3>
-                  {costRows.map((row) => (
-                    <div className="baml-cost-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatGbp(row.amount)}</strong></div>
-                  ))}
-                  <div className="baml-cost-row"><span>Property price:</span><strong>{formatGbp(propertyPrice)}</strong></div>
-                  <div className="baml-cost-row baml-total"><span>Total Estimated cost including other fees:</span><strong>{formatGbp(totalEstimated)}</strong></div>
-                </>
-              ) : (
-                <>
-                  <h3>Mortgage Calculator</h3>
-                  <p className="baml-mortgage-sub">Based on a 7% p.a. non-resident mortgage rate</p>
-                  <div className="baml-mortgage-row">
-                    <label>Deposit: <strong>{deposit}%</strong> ({formatGbp(Math.round(propertyPrice * deposit / 100))})</label>
-                    <input
-                      type="range" min={10} max={50} step={5}
-                      value={deposit}
-                      onChange={(event) => setDeposit(Number(event.target.value))}
-                      className="baml-slider"
-                    />
-                    <div className="baml-slider-labels"><span>10%</span><span>50%</span></div>
-                  </div>
-                  <div className="baml-mortgage-row">
-                    <label>Loan term: <strong>{term} years</strong></label>
-                    <input
-                      type="range" min={5} max={30} step={5}
-                      value={term}
-                      onChange={(event) => setTerm(Number(event.target.value))}
-                      className="baml-slider"
-                    />
-                    <div className="baml-slider-labels"><span>5 yrs</span><span>30 yrs</span></div>
-                  </div>
-                  {(() => {
-                    const mortgage = calcMortgage(propertyPrice, deposit, term);
-                    return (
-                      <>
-                        <div className="baml-cost-row"><span>Loan amount:</span><strong>{formatGbp(mortgage.loanGbp)}</strong></div>
-                        <div className="baml-cost-row"><span>Total interest:</span><strong>{formatGbp(mortgage.interestGbp)}</strong></div>
-                        <div className="baml-cost-row baml-total"><span>Monthly payment:</span><strong>{formatGbp(mortgage.monthlyGbp)}/mo</strong></div>
-                      </>
-                    );
-                  })()}
-                  <p className="baml-mortgage-disc">Indicative only. Actual rates vary by lender. We connect you with specialist non-resident mortgage brokers.</p>
-                </>
-              )}
+              <div className="bad-table-body">
+                {costTab === 'cash' ? (
+                  <>
+                    <h3>Other Associated Costs <i className="bad-info" title="Estimates for a typical purchase; your advisor confirms the exact figures.">i</i></h3>
+                    {costRows.map((row) => (
+                      <div className="bad-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatGbp(row.amount)}</strong></div>
+                    ))}
+                    <div className="bad-row"><span>Property price:</span><strong>{formatGbp(propertyPrice)}</strong></div>
+                    <div className="bad-row bad-total"><span>Total Estimated cost including other fees:</span><strong>{formatGbp(totalEstimated)}</strong></div>
+                  </>
+                ) : (
+                  <>
+                    <h3>Mortgage Calculator <i className="bad-info" title="Indicative only.">i</i></h3>
+                    <p className="baml-mortgage-sub">Based on a 7% p.a. non-resident mortgage rate</p>
+                    <div className="baml-mortgage-row">
+                      <label>Deposit: <strong>{deposit}%</strong> ({formatGbp(Math.round(propertyPrice * deposit / 100))})</label>
+                      <input type="range" min={10} max={50} step={5} value={deposit} onChange={(event) => setDeposit(Number(event.target.value))} className="baml-slider" />
+                      <div className="baml-slider-labels"><span>10%</span><span>50%</span></div>
+                    </div>
+                    <div className="baml-mortgage-row">
+                      <label>Loan term: <strong>{term} years</strong></label>
+                      <input type="range" min={5} max={30} step={5} value={term} onChange={(event) => setTerm(Number(event.target.value))} className="baml-slider" />
+                      <div className="baml-slider-labels"><span>5 yrs</span><span>30 yrs</span></div>
+                    </div>
+                    {(() => {
+                      const mortgage = calcMortgage(propertyPrice, deposit, term);
+                      return (
+                        <>
+                          <div className="bad-row"><span>Loan amount:</span><strong>{formatGbp(mortgage.loanGbp)}</strong></div>
+                          <div className="bad-row"><span>Total interest:</span><strong>{formatGbp(mortgage.interestGbp)}</strong></div>
+                          <div className="bad-row bad-total"><span>Monthly payment:</span><strong>{formatGbp(mortgage.monthlyGbp)}/mo</strong></div>
+                        </>
+                      );
+                    })()}
+                    <p className="baml-mortgage-disc">Indicative only. Actual rates vary by lender. We connect you with specialist non-resident mortgage brokers.</p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <aside className="baml-cost-card">
-            <small>TOTAL ESTIMATED COST</small>
-            <h2>{formatGbp(totalEstimated)}</h2>
-            <div className="baml-progress"><span /></div>
-            <p className="baml-cost-legend"><strong><span className="baml-dot" /> Property {formatGbp(propertyPrice)}</strong> <strong className="purple"><span className="baml-dot purple-dot" /> Fees {formatGbp(fees)}</strong></p>
-            <div className="baml-sidebar-actions">
-              <button onClick={addToBasket}>Add to Basket <ShoppingBasket size={17} /></button>
-              <a href="/buyabroad/uk/consultation">How it Works <ChevronRight size={17} /></a>
-              <a href={active.url || '#'} target="_blank" rel="noreferrer">{viewSourceText}</a>
-            </div>
-            <p className="baml-info-note"><Info size={16} /> This property is covered by your one-time $99.99 consultation deposit. Add as many as you like at no extra cost.</p>
-          </aside>
+          {costCard('side')}
         </section>
       </main>
-      <FooterCta />
+      <section className="baml-cta bad-cta">
+        <div>
+          <h2>Can&apos;t find what you&apos;re <br className="baml-br" />looking for?</h2>
+          <p>Our advisors source off-market and exclusive properties not listed on any portal. <br className="baml-br" />Tell us what you want and we&apos;ll find it.</p>
+        </div>
+        <a href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call" target="_blank" rel="noreferrer" className="baml-call"><img src="/calendly-icon.svg" alt="" className="baml-call-mark" width={22} height={22} /> Book a Call</a>
+      </section>
+      {/* Phones: the cost card sits at the bottom of the screen until the
+          page reaches it, collapsed to the total and Add to Basket. */}
+      {costCard('sheet')}
+      <Footer />
       {authView && <AuthModal view={authView} setView={setAuthView} onClose={() => { setAuthView(null); clearPending(); }} onAuthenticated={onAuthenticated} />}
       {lightboxIndex !== null && (
         <ImageLightbox
@@ -1885,6 +1910,95 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     </div>
   );
 };
+
+// Listing detail page, to the design (desktop 1440 and phone).
+function DetailStyles() {
+  return (
+    <style>{`
+      .bad-page{overflow-x:clip;background:#fff}
+      .bad-page h1,.bad-page h2,.bad-page h3{font-family:Inter,Arial,sans-serif}
+      .bad-main{max-width:1440px;margin:0 auto;padding:40px 80px 0}
+      .bad-back{display:none;align-items:center;gap:10px;color:#666;text-decoration:none;font-size:16px;font-weight:500}
+      .bad-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+      .bad-top h1{margin:0;font-size:30px;line-height:1.2;font-weight:700;letter-spacing:-.02em;color:#111}
+      .bad-save{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-size:16px;font-weight:500;color:#111;cursor:pointer;flex:none}
+      .bad-gallery{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:268px 268px;gap:12px;margin:28px 0 30px;border-radius:30px;overflow:hidden}
+      .bad-tile{position:relative;cursor:pointer;overflow:hidden;background:#eee}
+      .bad-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+      .bad-tile:hover img{transform:scale(1.03)}
+      .bad-tile-0{grid-row:span 2}
+      .bad-pill{position:absolute;right:16px;bottom:16px;background:rgba(17,17,17,.85);color:#fff;font-size:13px;font-weight:600;padding:7px 12px;border-radius:999px}
+      .bad-carousel,.bad-counter{display:none}
+      .bad-content{display:grid;grid-template-columns:minmax(0,1fr) 412px;gap:32px;align-items:start}
+      .bad-copy h2{margin:0 0 12px;font-size:23px;font-weight:600;letter-spacing:-.02em;color:#1a2a1a}
+      .bad-meta{display:flex;flex-wrap:wrap;gap:6px 0;margin:0;padding-bottom:18px;border-bottom:1px solid #e6e6e6;font-size:15px;color:#777}
+      .bad-meta span+span::before{content:"·";margin:0 10px;color:#999}
+      .bad-meta strong{color:#111;font-weight:600}
+      .bad-description{margin:0;padding:18px 0 20px;border-bottom:1px solid #e6e6e6;font-size:19px;line-height:1.3;color:#222}
+      .bad-table{margin-top:48px;border:1px solid #e3e3e3;border-radius:22px;overflow:hidden}
+      .bad-tabs{display:grid;grid-template-columns:1fr 1fr}
+      .bad-tabs button{height:54px;border:0;border-bottom:1px solid #d9d9d9;background:#f1f2f4;font:inherit;font-size:18px;color:#333;cursor:pointer}
+      .bad-tabs button.active{background:#fff;color:#111;border-bottom:2px solid #a409d2}
+      .bad-table-body{padding:22px 20px 26px}
+      .bad-table-body h3{display:flex;align-items:center;justify-content:space-between;margin:12px 0 22px;font-size:18px;font-weight:600;color:#111}
+      .bad-info{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#a409d2;color:#fff;font-size:11px;font-style:normal;font-weight:800;font-family:Georgia,serif;flex:none}
+      .bad-row{display:flex;justify-content:space-between;gap:16px;margin:0 0 26px;font-size:18px;color:#222}
+      .bad-row strong{font-weight:600;color:#111;text-align:right}
+      .bad-row strong.purple{color:#a409d2}
+      .bad-total{margin:0;padding-top:20px;border-top:1px solid #e3e3e3;align-items:center}
+      .bad-total strong{font-size:34px;font-weight:700}
+      .bad-card{border:1px solid #e3e3e3;border-radius:20px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.05);background:#fff}
+      .bad-card-head{display:flex;justify-content:space-between;align-items:center}
+      .bad-card small{font-size:13px;color:#666;letter-spacing:.01em}
+      .bad-card h2{margin:4px 0 14px;font-size:32px;font-weight:600;letter-spacing:-.02em;color:#111}
+      .bad-bar{height:4px;background:#a409d2;border-radius:2px;overflow:hidden}
+      .bad-bar span{display:block;height:100%;background:#111;border-right:3px solid #fff}
+      .bad-legend{display:flex;justify-content:space-between;margin:6px 0 22px;font-size:13px;color:#777}
+      .bad-legend strong{color:#111;font-weight:600}
+      .bad-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#111;margin-right:3px;vertical-align:1px}
+      .bad-dot.purple{background:#a409d2}
+      .bad-question{margin:0 0 10px;font-size:14px;font-weight:600;color:#222}
+      .bad-basket{width:100%;height:40px;border:0;border-radius:6px;background:#000;color:#fff;font:inherit;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+      .bad-how{display:flex;align-items:center;justify-content:center;gap:4px;height:40px;margin-top:10px;border:1px solid #e3e3e3;border-radius:6px;color:#111;text-decoration:none;font-size:14px;font-weight:600}
+      .bad-source{display:flex;align-items:center;justify-content:center;gap:8px;margin:20px 0 0;color:#555;text-decoration:none;font-size:14px}
+      .bad-note{display:flex;gap:12px;align-items:flex-start;margin:36px 0 0;padding:16px;border-radius:10px;background:#f0f1f5;color:#4b006c;font-size:12px;line-height:1.5}
+      .bad-note .bad-info{background:#4b006c;margin-top:2px}
+      .bad-card-toggle{display:none}
+      .bad-card-sheet{display:none}
+      .bad-cta{margin-top:150px}
+      @media(max-width:900px){
+        .bad-main{padding:24px 16px 0}
+        .bad-back{display:inline-flex;margin:8px 0 26px}
+        .bad-top h1{font-size:20px}
+        .bad-gallery{display:none}
+        .bad-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:20px -16px 0;scrollbar-width:none}
+        .bad-carousel::-webkit-scrollbar{display:none}
+        .bad-carousel img{flex:0 0 100%;width:100%;height:min(470px,62vh);object-fit:cover;scroll-snap-align:start;display:block}
+        .bad-counter{display:block;position:relative;float:right;margin:-74px 10px 0 0;z-index:3;background:rgba(17,17,17,.85);color:#fff;font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px}
+        .bad-content{display:block;position:relative;z-index:2;margin:-24px -16px 0;background:#fff;border-radius:24px 24px 0 0;padding:20px 16px 0;clear:both}
+        .bad-copy h2{font-size:17px;line-height:1.3}
+        .bad-meta{font-size:15px;line-height:1.7}
+        .bad-description{font-size:15px;line-height:1.4}
+        .bad-table{margin:24px -16px 0;border-left:0;border-right:0;border-radius:0}
+        .bad-tabs button{font-size:16px}
+        .bad-table-body{padding:18px 16px 22px}
+        .bad-row{font-size:16px;margin-bottom:22px}
+        .bad-total span{font-size:14px;max-width:120px}
+        .bad-total strong{font-size:24px}
+        .bad-card-side{display:none}
+        .bad-cta{margin-top:24px;margin-bottom:0}
+        .bad-card-sheet{display:block;position:sticky;bottom:0;z-index:30;border-radius:0;border-width:1px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.08);padding:20px 20px 22px}
+        .bad-card-sheet .bad-card-toggle{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;font-size:15px;color:#444;cursor:pointer}
+        .bad-card-sheet.is-collapsed .bad-card-more{display:none}
+        .bad-card-sheet.is-collapsed h2{margin-bottom:12px}
+        .bad-card-sheet h2{font-size:28px}
+        .bad-card-sheet .bad-basket{height:44px;font-size:16px}
+        .bad-card-sheet .bad-how{height:44px;font-size:15px}
+        .bad-card-sheet .bad-note{font-size:13px}
+      }
+    `}</style>
+  );
+}
 
 // Bed / shower / pin emoji, as in the basket design.
 function BasketMeta({ listing }: { listing: Listing }) {
