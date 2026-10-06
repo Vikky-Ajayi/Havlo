@@ -149,20 +149,19 @@ SL_PACKAGES: dict[str, dict] = {
     # likewise kept only for historical orders: agents now pay
     # listing_recovery_assessment for every assessment, and /submit refuses
     # new free-trial orders.
-    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 299.99,  "currency": "GBP"},
+    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 49.99,   "currency": "GBP"},
     "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
-    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 149.99,  "currency": "GBP"},
+    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 49.99,   "currency": "GBP"},
     "free_trial_assessment":         {"name": "Free Trial Assessment",         "amount": 0.00,    "currency": "GBP"},
 }
 
 
 def _stale_prospect_checkout_amount(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report checkout price for a letter prospect: GBP 149.99 for an
-    estate agency's listing (the same per-assessment price agents pay on
-    /stale-listings/agents), otherwise a flat GBP 299.99 regardless of
-    asking price. See prospect_unlock_price, which this delegates to.
+    """Full-report checkout price for a letter prospect: GBP 49.99, for
+    owners and estate agencies alike, regardless of asking price. See
+    prospect_unlock_price, which this delegates to.
     """
     return prospect_unlock_price(asking_price, audience)
 

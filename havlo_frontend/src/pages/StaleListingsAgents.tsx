@@ -1780,10 +1780,10 @@ export function StaleListingsAgents() {
         <section className="sla-dark" id="pricing">
           <div className="sla-shell sla-pricing">
             <h2>Simple, per-listing pricing.</h2>
-            <p>£149.99 for each property assessment, with no subscription. Reviewing listings every month? Ask about agency pricing.</p>
+            <p>£49.99 for each property assessment, with no subscription. Reviewing listings every month? Ask about agency pricing.</p>
             <div className="sla-plan-grid">
               <PlanCard
-                price="£149.99"
+                price="£49.99"
                 title="Listing Recovery Assessment"
                 subtitle="For individual stale listings."
                 features={['Full Listing Recovery Report', 'Pricing review', 'Photography review', 'Listing copy review', 'Competitive analysis', 'Recovery recommendations']}

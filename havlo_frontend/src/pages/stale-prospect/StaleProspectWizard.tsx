@@ -897,7 +897,7 @@ const SuccessStep = ({
       {prospect.audience === 'agent' ? 'View the Agent Report' : 'View My Property Assessment Report'}
     </button>
     <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>
-      {prospect.audience === 'agent' ? 'Open the 90-Day Instruction Watch' : 'Open My 90-Day Listing Dashboard'}
+      Open my 90-Day Instruction Watch
     </button>
     <button type="button" className="slw-btn-outline" onClick={onDownloadPdf}>Download PDF Report</button>
     {error && <p className="slw-error">{error}</p>}

@@ -1,7 +1,7 @@
 """Regression tests for the property-targeting rules (minimum £500,000
 asking price, detached/semi-detached/terrace houses only — no
 flats/apartments/etc.) and the full-report checkout prices: a flat
-£299.99 for owners, £149.99 for estate agencies.
+£49.99 for owners and estate agencies alike.
 """
 from __future__ import annotations
 
@@ -49,14 +49,13 @@ class CheckoutPriceTest(unittest.TestCase):
     def test_flat_price_regardless_of_asking_price(self) -> None:
         for price in [None, 0, 350000, 499999, 500000, 750000, 999999, 1000000, 5000000]:
             with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price), 299.99)
-                self.assertEqual(_stale_prospect_checkout_amount(price, "owner"), 299.99)
+                self.assertEqual(_stale_prospect_checkout_amount(price), 49.99)
+                self.assertEqual(_stale_prospect_checkout_amount(price, "owner"), 49.99)
 
-    def test_agencies_pay_the_agent_assessment_price(self) -> None:
+    def test_agencies_pay_the_same_price(self) -> None:
         for price in [None, 350000, 1000000]:
             with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price, "agent"), 149.99)
-        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 149.99)
+                self.assertEqual(_stale_prospect_checkout_amount(price, "agent"), 49.99)
 
     def test_emails_quote_the_checkout_price(self) -> None:
         for audience in [None, "owner", "agent"]:
@@ -67,7 +66,10 @@ class CheckoutPriceTest(unittest.TestCase):
                 )
 
     def test_seller_assessment_price(self) -> None:
-        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 299.99)
+        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 49.99)
+        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 49.99)
+        # Retired plans keep their price so historical orders still resolve.
+        self.assertEqual(SL_PACKAGES["professional_review"]["amount"], 299.99)
 
 
 if __name__ == "__main__":

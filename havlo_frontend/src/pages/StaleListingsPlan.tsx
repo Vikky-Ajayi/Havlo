@@ -87,11 +87,11 @@ const PLANS = [
   {
     id: 'property_sale_assessment' as const,
     name: 'Havlo Property Sale Assessment',
-    price: '£299.99',
-    amount: 299.99,
+    price: '£49.99',
+    amount: 49.99,
     tagline: 'For serious sellers wanting expert guidance to improve saleability.',
     turnaround: 'Turnaround: 24 hours',
-    priceLabel: '£299.99 per report',
+    priceLabel: '£49.99 per report',
     preNote: null as string | null,
     features: [
       'Market analysis',
@@ -123,11 +123,11 @@ const PLANS = [
 const AGENT_PLAN = {
   id: 'listing_recovery_assessment' as const,
   name: 'Listing Recovery Assessment',
-  price: '£149.99',
-  amount: 149.99,
+  price: '£49.99',
+  amount: 49.99,
   tagline: 'For individual stale listings.',
   turnaround: 'Delivered within 5 working days',
-  priceLabel: '£149.99 per report',
+  priceLabel: '£49.99 per report',
   preNote: null as string | null,
   features: [
     'Full Listing Recovery Report',
