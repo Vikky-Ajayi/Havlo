@@ -307,6 +307,28 @@ class AdsListingsSheetTests(unittest.TestCase):
             gs.update_ads_funnel_listing_contact(property_code="1234", rightmove_url=url, name="Sam", email="s@x.com", phone="+44 1")
         ws.update.assert_called_once_with("J2:L2", [["Sam", "s@x.com", "+44 1"]])
 
+    def test_batch_append_fixes_the_header_row_first(self):
+        from unittest import mock
+        from app.services import google_sheets as gs
+
+        headers = gs.SHEET_TABS["Ads Funnel Listings"]
+        self.assertEqual(headers[1:3], ["Ad Source (Meta / Google)", "Seller or Agent"])
+        ws = mock.Mock()
+        ws.row_values.return_value = ["Timestamp", "Source", "Audience"]  # the tab as first created
+        sheet = mock.Mock()
+        sheet.worksheet.return_value = ws
+        listing = {"source": "Meta ad", "audience": "Seller", "rightmove_url": "u", "property_code": "1234"}
+        with mock.patch.object(gs, "is_configured", return_value=True), mock.patch.object(gs, "_get_spreadsheet", return_value=sheet):
+            gs.append_ads_funnel_listings([listing, dict(listing, audience="Agent")])
+            ws.update.assert_called_once_with("A1", [headers])
+            rows = ws.append_rows.call_args.args[0]
+            self.assertEqual([r[1:3] for r in rows], [["Meta ad", "Seller"], ["Meta ad", "Agent"]])
+            self.assertEqual(len(rows[0]), len(headers))
+            ws.reset_mock()
+            ws.row_values.return_value = headers
+            gs.append_ads_funnel_listings([listing])
+            ws.update.assert_not_called()
+
     def test_sheet_row(self):
         p = SimpleNamespace(
             lead_source="google_agent", audience="agent", rightmove_url="https://www.rightmove.co.uk/properties/9",

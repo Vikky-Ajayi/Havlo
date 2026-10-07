@@ -27,6 +27,7 @@ them alone.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -36,12 +37,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.models import AdsUrlReminderLead, StaleAgentAccount, StaleListingProspect
-from app.services import agent_campaign
+from app.services import agent_campaign, google_sheets
 from app.services import stale_prospect_service as sps
 from app.services.listing_scraper import scrape_single_listing
 
@@ -325,6 +326,63 @@ def sheet_row(prospect: StaleListingProspect) -> dict[str, str]:
         "contact_email": prospect.contact_email or "",
         "contact_phone": prospect.contact_phone or "",
     }
+
+
+SHEET_BATCH = 200
+
+
+async def log_listings_to_sheet(only_prospect_id: Any | None = None) -> dict[str, int]:
+    """Add ads leads not yet on the "Ads Funnel Listings" tab: run for one
+    lead straight after its link is pasted, and every few minutes for any
+    still missing (which also backfilled everyone from before the tab
+    existed). Each lead is claimed in the database before the sheet write
+    (ads_sheet_logged_at), so two runs never add the same row; a failed
+    write releases the claim and the next run tries again."""
+    from app.db.database import AsyncSessionLocal
+
+    if not google_sheets.is_configured():
+        return {"logged": 0}
+    P = StaleListingProspect
+    now = datetime.now(timezone.utc)
+    pending = (
+        select(P.id)
+        .where(P.lead_source.in_(NURTURED_LEAD_SOURCES), P.ads_sheet_logged_at.is_(None))
+        .order_by(P.created_at.asc())
+        .limit(SHEET_BATCH)
+    )
+    if only_prospect_id is not None:
+        pending = pending.where(P.id == only_prospect_id)
+    async with AsyncSessionLocal() as db:
+        stmt = (
+            update(P)
+            .where(P.id.in_(pending), P.ads_sheet_logged_at.is_(None))
+            .values(ads_sheet_logged_at=now)
+            .returning(P.id)
+        )
+        claimed = list((await db.execute(stmt)).scalars().all())
+        await db.commit()
+        if not claimed:
+            return {"logged": 0}
+        prospects = list((await db.execute(
+            select(P).where(P.id.in_(claimed)).order_by(P.created_at.asc())
+        )).scalars().all())
+        rows = []
+        for p in prospects:
+            row = sheet_row(p)
+            # When they came through the ads (a reused discovery listing was
+            # created long before).
+            came = p.code_looked_up_at or p.created_at or now
+            row["logged_at"] = came.astimezone(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
+            rows.append(row)
+    try:
+        await asyncio.to_thread(google_sheets.append_ads_funnel_listings, rows)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Ads funnel sheet: %d row(s) not written, will retry: %s", len(rows), exc)
+        async with AsyncSessionLocal() as db:
+            await db.execute(update(P).where(P.id.in_(claimed), P.ads_sheet_logged_at == now).values(ads_sheet_logged_at=None))
+            await db.commit()
+        return {"logged": 0, "failed": len(rows)}
+    return {"logged": len(rows)}
 
 
 # ── "Email me a reminder" leads ────────────────────────────────────────────

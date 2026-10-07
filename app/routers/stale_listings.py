@@ -838,10 +838,8 @@ async def start_ads_assessment(
     prospect = await db.get(StaleListingProspect, prospect_id)
     if prospect is not None and prospect.ads_sheet_logged_at is None:
         # Every listing from the ads pages goes on the sheet once, for the
-        # follow-up letters.
-        prospect.ads_sheet_logged_at = datetime.now(timezone.utc)
-        await db.commit()
-        background_tasks.add_task(google_sheets.record_ads_funnel_listing, ads_funnel.sheet_row(prospect))
+        # follow-up letters (retried by the ads loop if the sheet fails).
+        background_tasks.add_task(ads_funnel.log_listings_to_sheet, prospect_id)
     if prospect is not None and result["audience"] == "owner":
         # The homeowner's Confirm Property summary counts the competing
         # listings nearby; start that now so it's usually there in time.

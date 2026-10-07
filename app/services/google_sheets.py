@@ -121,7 +121,7 @@ SHEET_TABS: dict[str, list[str]] = {
     # follow-up letters. Contact details are filled in when the visitor gives
     # them; Mailing Address is left for someone to look up by hand.
     "Ads Funnel Listings": [
-        "Timestamp", "Source", "Audience", "Rightmove URL", "Listing Address",
+        "Timestamp", "Ad Source (Meta / Google)", "Seller or Agent", "Rightmove URL", "Listing Address",
         "Postcode", "Asking Price", "Listing Agent", "Property Code",
         "Contact Name", "Contact Email", "Contact Phone", "Mailing Address",
     ],
@@ -744,11 +744,9 @@ def record_url_reminder_request(first_name: str, email: str, audience: str, chan
 ADS_LISTINGS_TAB = "Ads Funnel Listings"
 
 
-def record_ads_funnel_listing(listing: dict[str, Any]) -> None:
-    """A listing pasted into an ads landing page (see
-    app/services/ads_funnel.py sheet_row)."""
-    row = [
-        datetime.utcnow().isoformat(),
+def _ads_listing_row(listing: dict[str, Any]) -> list[Any]:
+    return [
+        listing.get("logged_at") or datetime.utcnow().isoformat(),
         listing.get("source", ""),
         listing.get("audience", ""),
         listing.get("rightmove_url", ""),
@@ -762,7 +760,29 @@ def record_ads_funnel_listing(listing: dict[str, Any]) -> None:
         listing.get("contact_phone", ""),
         "",
     ]
-    _append_row(ADS_LISTINGS_TAB, row)
+
+
+def append_ads_funnel_listings(listings: list[dict[str, Any]]) -> None:
+    """Add listings from the ads landing pages (app/services/ads_funnel.py
+    sheet_row) to the "Ads Funnel Listings" tab in one write, first bringing
+    the tab's header row up to date if its column names have changed.
+    Raises on failure, so the caller can try again later."""
+    if not listings:
+        return
+    if not is_configured():
+        raise RuntimeError("Google Sheets is not configured")
+    sheet = _get_spreadsheet()
+    headers = SHEET_TABS[ADS_LISTINGS_TAB]
+    try:
+        ws = sheet.worksheet(ADS_LISTINGS_TAB)
+    except gspread.exceptions.WorksheetNotFound:
+        # Startup tab setup can miss it (e.g. a rate-limited boot).
+        ws = sheet.add_worksheet(title=ADS_LISTINGS_TAB, rows=1000, cols=len(headers))
+    if _with_retry(lambda: ws.row_values(1)) != headers:
+        _with_retry(lambda: ws.update("A1", [headers]))
+    rows = [_ads_listing_row(listing) for listing in listings]
+    _with_retry(lambda: ws.append_rows(rows, value_input_option="USER_ENTERED"))
+    logger.info("Added %d row(s) to %s.", len(rows), ADS_LISTINGS_TAB)
 
 
 def update_ads_funnel_listing_contact(*, property_code: str, rightmove_url: str, name: str, email: str, phone: str) -> None:
