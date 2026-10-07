@@ -275,6 +275,21 @@ class SummaryTests(unittest.TestCase):
         self.assertIn("Rightmove", text)
 
 
+class SheetTests(unittest.TestCase):
+    def test_reminder_request_row(self):
+        from unittest import mock
+        from app.services import google_sheets as gs
+
+        self.assertEqual(gs.SHEET_TABS["URL Reminder Requests"], ["Timestamp", "First Name", "Email", "Audience"])
+        with mock.patch.object(gs, "_append_row") as append:
+            gs.record_url_reminder_request("Sam", "sam@example.com", "owner")
+            gs.record_url_reminder_request("Kim", "kim@example.com", "agent")
+        tab, row = append.call_args_list[0].args
+        self.assertEqual(tab, "URL Reminder Requests")
+        self.assertEqual(row[1:], ["Sam", "sam@example.com", "Seller"])
+        self.assertEqual(append.call_args_list[1].args[1][3], "Agent")
+
+
 class RateLimitTests(unittest.TestCase):
     def test_reminders_limited_per_connection(self):
         from fastapi import HTTPException

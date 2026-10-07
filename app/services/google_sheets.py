@@ -112,6 +112,11 @@ SHEET_TABS: dict[str, list[str]] = {
     "Marketing Opt-Out": [
         "Timestamp", "Email", "Notes",
     ],
+    # Meta-ads landing pages: people without their Rightmove link to hand who
+    # asked to be emailed a reminder (app/services/ads_funnel.py).
+    "URL Reminder Requests": [
+        "Timestamp", "First Name", "Email", "Audience",
+    ],
     "Property Demand Checks": [
         "Timestamp", "User ID", "Full Name", "Email",
         "Property Address", "City", "Postcode", "Listing URL",
@@ -711,6 +716,18 @@ def record_contact_form(form: dict[str, Any]) -> None:
 def record_newsletter(email: str, source: str = "footer") -> None:
     row = [datetime.utcnow().isoformat(), email, source]
     _append_row("Newsletter", row)
+
+
+def record_url_reminder_request(first_name: str, email: str, audience: str) -> None:
+    """A visitor to an ads landing page asked for a property-link reminder.
+    audience is "owner" (seller page) or "agent" (agent page)."""
+    row = [
+        datetime.utcnow().isoformat(),
+        first_name,
+        email,
+        "Agent" if audience == "agent" else "Seller",
+    ]
+    _append_row("URL Reminder Requests", row)
 
 
 def record_marketing_opt_out(email: str, notes: str = "") -> None:

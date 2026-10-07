@@ -863,6 +863,11 @@ async def request_ads_url_reminder(
     )
     if created:
         background_tasks.add_task(ads_nurture.run_url_reminder_cycle, lead.id)
+        # Their name and email also go on the Google Sheet (a failure there
+        # is logged and never affects the visitor).
+        background_tasks.add_task(
+            google_sheets.record_url_reminder_request, lead.first_name, lead.email, lead.audience
+        )
     return {"ok": True}
 
 
