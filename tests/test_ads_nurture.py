@@ -156,10 +156,11 @@ class LinkTests(unittest.TestCase):
         self.assertFalse(ads_funnel.verify_reminder_unsubscribe(str(b), ads_funnel.reminder_unsubscribe_token(a)))
 
 
-def _prospect(audience="owner", closed=None):
+def _prospect(audience="owner", closed=None, lead_source=None):
     return SimpleNamespace(
         id=uuid4(), audience=audience, property_address="12 Oak Lane, Guildford, GU1",
         postcode="GU1 3AB", property_closed_at=closed,
+        lead_source=lead_source or ("meta_agent" if audience == "agent" else "meta_seller"),
     )
 
 
@@ -283,11 +284,36 @@ class SheetTests(unittest.TestCase):
         self.assertEqual(gs.SHEET_TABS["URL Reminder Requests"], ["Timestamp", "First Name", "Email", "Audience"])
         with mock.patch.object(gs, "_append_row") as append:
             gs.record_url_reminder_request("Sam", "sam@example.com", "owner")
-            gs.record_url_reminder_request("Kim", "kim@example.com", "agent")
+            gs.record_url_reminder_request("Kim", "kim@example.com", "agent", "google")
         tab, row = append.call_args_list[0].args
         self.assertEqual(tab, "URL Reminder Requests")
-        self.assertEqual(row[1:], ["Sam", "sam@example.com", "Seller"])
-        self.assertEqual(append.call_args_list[1].args[1][3], "Agent")
+        self.assertEqual(row[1:], ["Sam", "sam@example.com", "Seller - Meta ad"])
+        self.assertEqual(append.call_args_list[1].args[1][3], "Agent - Google ad")
+
+
+class GoogleChannelTests(unittest.TestCase):
+    def test_tags_per_channel(self):
+        self.assertEqual(ads_funnel.seller_source("google"), "google_seller")
+        self.assertEqual(ads_funnel.agent_source("google"), "google_agent")
+        self.assertEqual(ads_funnel.agent_listing_source("google"), "google_agent_listing")
+        self.assertEqual(ads_funnel.seller_source("anything else"), "meta_seller")
+        self.assertIn("google_seller", ads_funnel.NURTURED_LEAD_SOURCES)
+        self.assertIn("google_agent", ads_funnel.NURTURED_LEAD_SOURCES)
+        self.assertNotIn("google_agent_listing", ads_funnel.NURTURED_LEAD_SOURCES)
+        self.assertEqual(ads_funnel.channel_of("google_agent"), "google")
+        self.assertEqual(ads_funnel.channel_of("meta_seller"), "meta")
+        self.assertEqual(ads_funnel.channel_of(None), "meta")
+
+    def test_email_links_go_back_to_the_google_pages(self):
+        seller = an.render_nurture_email(_prospect(lead_source="google_seller"), "main", 1)
+        self.assertIn("/property-assessment/seller?token=", seller["cta_url"])
+        agent_entry = next(e for e in an.flow_content("agent")["main"] if e["cta"].startswith("ASSESS "))
+        agent = an.render_nurture_email(_prospect("agent", lead_source="google_agent"), "main", agent_entry["stage"])
+        self.assertTrue(agent["cta_url"].endswith("/property-assessment/agent"))
+        lead = SimpleNamespace(id=uuid4(), audience="agent", channel="google")
+        self.assertIn("/property-assessment/agent?reminder=", an.render_reminder_email(lead, 1)["cta_url"])
+        # Meta leads still go to /assess/...
+        self.assertIn("/assess/seller?token=", an.render_nurture_email(_prospect(), "main", 1)["cta_url"])
 
 
 class RateLimitTests(unittest.TestCase):

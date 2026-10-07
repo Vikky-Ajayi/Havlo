@@ -1,9 +1,13 @@
-"""Meta-ads landing pages (/assess/seller and /assess/agent).
+"""Ads landing pages: Meta (/assess/seller, /assess/agent) and Google
+(/property-assessment/seller, /property-assessment/agent).
 
 A visitor pastes their Rightmove listing link instead of entering the
 property code from a letter. The listing is read, the prospect, report and
 preview are made exactly as discovery makes them, and the visitor carries
 on through the normal /check funnel by access token.
+
+Tags below are for Meta; Google leads get the same with "google_" in
+place of "meta_" (seller_source() etc.).
 
 - A homeowner gets the listing's owner prospect (made here when discovery
   hasn't found the listing already), tagged lead_source "meta_seller". If
@@ -43,10 +47,39 @@ from app.services.listing_scraper import scrape_single_listing
 
 logger = logging.getLogger(__name__)
 
-LEAD_SELLER = "meta_seller"
-LEAD_AGENT = "meta_agent"
-LEAD_AGENT_LISTING = "meta_agent_listing"
-NURTURED_LEAD_SOURCES = (LEAD_SELLER, LEAD_AGENT)
+# Which ads the visitor came from: the Meta landing pages (/assess/...) or
+# the Google ones (/property-assessment/...). Same pages and funnel; the
+# channel only changes the lead_source tag and where links back point.
+CHANNELS = ("meta", "google")
+
+
+def seller_source(channel: str) -> str:
+    return f"{_channel(channel)}_seller"
+
+
+def agent_source(channel: str) -> str:
+    return f"{_channel(channel)}_agent"
+
+
+def agent_listing_source(channel: str) -> str:
+    return f"{_channel(channel)}_agent_listing"
+
+
+def _channel(channel: str | None) -> str:
+    return channel if channel in CHANNELS else "meta"
+
+
+def channel_of(lead_source: str | None) -> str:
+    return "google" if (lead_source or "").startswith("google_") else "meta"
+
+
+LEAD_SELLER = seller_source("meta")
+LEAD_AGENT = agent_source("meta")
+LEAD_AGENT_LISTING = agent_listing_source("meta")
+SELLER_SOURCES = tuple(seller_source(c) for c in CHANNELS)
+AGENT_SOURCES = tuple(agent_source(c) for c in CHANNELS)
+AGENT_LISTING_SOURCES = tuple(agent_listing_source(c) for c in CHANNELS)
+NURTURED_LEAD_SOURCES = SELLER_SOURCES + AGENT_SOURCES
 
 AUDIENCES = ("owner", "agent")
 
@@ -132,7 +165,7 @@ async def _create_owner_prospect(db: AsyncSession, url: str, lead_source: str) -
     return prospect
 
 
-async def _agent_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleListingProspect:
+async def _agent_copy(db: AsyncSession, owner: StaleListingProspect, lead_source: str) -> StaleListingProspect:
     """An agent's own copy of the listing: its own details, checkout and
     unlock. Reused until someone has given their details on it; after that
     each new visitor gets a fresh copy, so two people at one agency never
@@ -142,7 +175,7 @@ async def _agent_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleLis
         select(StaleListingProspect)
         .where(
             StaleListingProspect.parent_prospect_id == owner.id,
-            StaleListingProspect.lead_source == LEAD_AGENT,
+            StaleListingProspect.lead_source == lead_source,
             StaleListingProspect.contact_email.is_(None),
         )
         .limit(1)
@@ -165,7 +198,7 @@ async def _agent_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleLis
         audience="agent",
         agent_account_id=account_id,
         parent_prospect_id=owner.id,
-        lead_source=LEAD_AGENT,
+        lead_source=lead_source,
         source_status="active",
         processing_status="report_ready",
         discovered_at=now,
@@ -178,7 +211,7 @@ async def _agent_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleLis
     return copy
 
 
-async def _seller_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleListingProspect:
+async def _seller_copy(db: AsyncSession, owner: StaleListingProspect, lead_source: str) -> StaleListingProspect:
     """A homeowner funnel of its own for a listing whose prospect is already
     taken. Like an agent copy, but audience "owner" and a 4-digit code (the
     homeowner emails link by code). Reused until someone gives details."""
@@ -186,7 +219,7 @@ async def _seller_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleLi
         select(StaleListingProspect)
         .where(
             StaleListingProspect.parent_prospect_id == owner.id,
-            StaleListingProspect.lead_source == LEAD_SELLER,
+            StaleListingProspect.lead_source == lead_source,
             StaleListingProspect.contact_email.is_(None),
             StaleListingProspect.payment_status != "completed",
         )
@@ -203,7 +236,7 @@ async def _seller_copy(db: AsyncSession, owner: StaleListingProspect) -> StaleLi
         qr_token_hashes=[],
         audience="owner",
         parent_prospect_id=owner.id,
-        lead_source=LEAD_SELLER,
+        lead_source=lead_source,
         source_status="active",
         processing_status="report_ready",
         discovered_at=now,
@@ -227,31 +260,32 @@ def _grant_access(prospect: StaleListingProspect) -> str:
 
 
 async def start_from_listing(
-    db: AsyncSession, *, listing_url: str, audience: str, reminder_token: str | None = None
+    db: AsyncSession, *, listing_url: str, audience: str, reminder_token: str | None = None, channel: str = "meta"
 ) -> dict[str, Any]:
     """The access token for the pasted listing, making whatever is needed.
     Commits. Raises ListingLinkError for a link we can't use."""
     if audience not in AUDIENCES:
         raise ListingLinkError("Unknown audience.")
+    channel = _channel(channel)
     url = clean_rightmove_url(listing_url)
     owner = await _owner_prospect(db, url)
     if audience == "owner":
         if owner is None:
-            target = await _create_owner_prospect(db, url, LEAD_SELLER)
+            target = await _create_owner_prospect(db, url, seller_source(channel))
         elif not owner.contact_email and owner.payment_status != "completed":
             # Found by discovery (or made for an agent's link) but nobody
             # has started its funnel: the ads visitor is the one doing so.
-            owner.lead_source = LEAD_SELLER
+            owner.lead_source = seller_source(channel)
             target = owner
         else:
             # Someone has already given their details on this listing, or
             # paid for its report. Anyone can paste a Rightmove link, so the
             # visitor gets a funnel of their own rather than that one.
-            target = await _seller_copy(db, owner)
+            target = await _seller_copy(db, owner, seller_source(channel))
     else:
         if owner is None:
-            owner = await _create_owner_prospect(db, url, LEAD_AGENT_LISTING)
-        target = await _agent_copy(db, owner)
+            owner = await _create_owner_prospect(db, url, agent_listing_source(channel))
+        target = await _agent_copy(db, owner, agent_source(channel))
     if target.code_looked_up_at is None:
         target.code_looked_up_at = datetime.now(timezone.utc)
     token = _grant_access(target)
@@ -303,7 +337,7 @@ async def find_reminder_lead(db: AsyncSession, token: str | None) -> AdsUrlRemin
 
 
 async def create_reminder_lead(
-    db: AsyncSession, *, first_name: str, email: str, audience: str
+    db: AsyncSession, *, first_name: str, email: str, audience: str, channel: str = "meta"
 ) -> tuple[AdsUrlReminderLead, bool]:
     """The visitor's reminder lead and whether it's new. Asking twice while
     the first sequence is still running doesn't start a second one. Commits."""
@@ -327,6 +361,7 @@ async def create_reminder_lead(
     lead = AdsUrlReminderLead(
         id=lead_id,
         audience=audience,
+        channel=_channel(channel),
         first_name=first_name,
         email=email,
         token_hash=sps.hash_access_token(reminder_token(lead_id)),

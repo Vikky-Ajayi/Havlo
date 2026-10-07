@@ -818,7 +818,8 @@ async def start_ads_assessment(
     _ads_rate_limit(request, "start")
     try:
         result = await ads_funnel.start_from_listing(
-            db, listing_url=payload.listing_url, audience=payload.audience, reminder_token=payload.reminder_token
+            db, listing_url=payload.listing_url, audience=payload.audience, reminder_token=payload.reminder_token,
+            channel=payload.channel,
         )
     except ads_funnel.ListingLinkError as exc:
         await db.rollback()
@@ -859,14 +860,15 @@ async def request_ads_url_reminder(
     """"Email me a reminder" for a visitor without their listing link."""
     _ads_rate_limit(request, "reminder")
     lead, created = await ads_funnel.create_reminder_lead(
-        db, first_name=payload.first_name, email=str(payload.email), audience=payload.audience
+        db, first_name=payload.first_name, email=str(payload.email), audience=payload.audience,
+        channel=payload.channel,
     )
     if created:
         background_tasks.add_task(ads_nurture.run_url_reminder_cycle, lead.id)
         # Their name and email also go on the Google Sheet (a failure there
         # is logged and never affects the visitor).
         background_tasks.add_task(
-            google_sheets.record_url_reminder_request, lead.first_name, lead.email, lead.audience
+            google_sheets.record_url_reminder_request, lead.first_name, lead.email, lead.audience, lead.channel
         )
     return {"ok": True}
 

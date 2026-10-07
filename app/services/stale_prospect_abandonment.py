@@ -32,7 +32,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
@@ -98,7 +98,10 @@ async def run_abandonment_email_cycle() -> dict:
                 StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_email.is_not(None),
                 # Ads homeowners get their own flow (app/services/ads_nurture.py).
-                StaleListingProspect.lead_source.is_distinct_from("meta_seller"),
+                or_(
+                    StaleListingProspect.lead_source.is_(None),
+                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller")),
+                ),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())
             .limit(_POLL_LIMIT)

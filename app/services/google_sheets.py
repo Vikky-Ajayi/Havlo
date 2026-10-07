@@ -718,14 +718,17 @@ def record_newsletter(email: str, source: str = "footer") -> None:
     _append_row("Newsletter", row)
 
 
-def record_url_reminder_request(first_name: str, email: str, audience: str) -> None:
+def record_url_reminder_request(first_name: str, email: str, audience: str, channel: str = "meta") -> None:
     """A visitor to an ads landing page asked for a property-link reminder.
-    audience is "owner" (seller page) or "agent" (agent page)."""
+    audience is "owner" (seller page) or "agent" (agent page); channel is
+    "meta" or "google" (which ads' page), shown alongside it, e.g. "Seller -
+    Google ad"."""
+    who = "Agent" if audience == "agent" else "Seller"
     row = [
         datetime.utcnow().isoformat(),
         first_name,
         email,
-        "Agent" if audience == "agent" else "Seller",
+        f"{who} - {'Google' if channel == 'google' else 'Meta'} ad",
     ]
     _append_row("URL Reminder Requests", row)
 

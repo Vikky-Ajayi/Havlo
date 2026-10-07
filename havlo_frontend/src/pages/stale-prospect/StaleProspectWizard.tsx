@@ -30,6 +30,7 @@ import {
   startAdsAssessment,
   submitProspectDetails,
   type AdsAudience,
+  type AdsChannel,
 } from './api';
 import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles } from './AdsLanding';
 import {
@@ -1171,10 +1172,11 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
 
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
-// `ads` turns this into a Meta-ads landing page (/assess/seller,
-// /assess/agent): the visitor pastes their Rightmove link instead of a
-// letter's property code, and everything after that is the same funnel.
-export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
+// `ads` turns this into an ads landing page (Meta: /assess/seller,
+// /assess/agent; Google, with channel="google": /property-assessment/...):
+// the visitor pastes their Rightmove link instead of a letter's property
+// code, and everything after that is the same funnel.
+export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudience; channel?: AdsChannel } = {}) => {
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
@@ -1193,7 +1195,9 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
   // Ads homeowners see a summary of the findings on Confirm Property first;
   // "See all findings" brings up the details form.
   const [showDetailsForm, setShowDetailsForm] = useState(ads !== 'owner');
-  const leadPixelName = ads ? `Meta Ads ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment` : undefined;
+  const leadPixelName = ads
+    ? `${channel === 'google' ? 'Google' : 'Meta'} Ads ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
+    : undefined;
 
   useEffect(() => {
     // slw-prospect-active also drives an overflow-x:hidden rule (see the
@@ -1401,7 +1405,7 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
     setError('');
     setStep('finding');
     try {
-      const started = await startAdsAssessment({ listing_url: listingUrl, audience: ads, reminder_token: query.reminder });
+      const started = await startAdsAssessment({ listing_url: listingUrl, audience: ads, channel, reminder_token: query.reminder });
       if (started.prefill?.email) setPrefill(started.prefill);
       const data = await getProspectPreview({ token: started.token });
       setProspect(data);
@@ -1637,7 +1641,7 @@ export const StaleProspectWizard = ({ ads }: { ads?: AdsAudience } = {}) => {
               copy={ADS_COPY[ads].copy}
               discover={ADS_COPY[ads].discover}
               value={ADS_COPY[ads].value}
-              form={<AdsListingForm audience={ads} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
+              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}

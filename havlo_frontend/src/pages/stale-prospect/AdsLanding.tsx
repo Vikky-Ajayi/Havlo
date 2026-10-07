@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsSummary } from './api';
+import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsChannel, type AdsSummary } from './api';
 import { formatGbp, type ProspectPreview } from './types';
 
-// Meta-ads landing pages (/assess/seller and /assess/agent): the /check
+// Ads landing pages, Meta (/assess/seller, /assess/agent) and Google
+// (/property-assessment/seller, /property-assessment/agent): the /check
 // wizard with the property-code box swapped for the listing link, and an
 // "email me a reminder" option for visitors without the link to hand
 // (app/services/ads_funnel.py, ads_nurture.py on the backend).
@@ -74,7 +75,7 @@ const LinkIcon = () => (
   </svg>
 );
 
-const ReminderForm = ({ audience }: { audience: AdsAudience }) => {
+const ReminderForm = ({ audience, channel }: { audience: AdsAudience; channel: AdsChannel }) => {
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
@@ -84,7 +85,7 @@ const ReminderForm = ({ audience }: { audience: AdsAudience }) => {
     e.preventDefault();
     setState('sending');
     try {
-      await requestUrlReminder({ first_name: firstName.trim(), email: email.trim(), audience });
+      await requestUrlReminder({ first_name: firstName.trim(), email: email.trim(), audience, channel });
       setState('sent');
     } catch {
       setState('error');
@@ -128,12 +129,14 @@ const ReminderForm = ({ audience }: { audience: AdsAudience }) => {
 
 export const AdsListingForm = ({
   audience,
+  channel = 'meta',
   onSubmit,
   loading,
   error,
   welcomeName,
 }: {
   audience: AdsAudience;
+  channel?: AdsChannel;
   onSubmit: (listingUrl: string) => void;
   loading: boolean;
   error: string;
@@ -182,7 +185,7 @@ export const AdsListingForm = ({
         <span className="slw-info-dot">i</span> Your property URL is the link to your property listing on Rightmove.
       </p>
       {error && <p className="slw-error">{error}</p>}
-      <ReminderForm audience={audience} />
+      <ReminderForm audience={audience} channel={channel} />
     </div>
   );
 };

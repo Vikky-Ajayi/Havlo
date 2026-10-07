@@ -29,12 +29,15 @@ export async function lookupProspect(propertyCode: string): Promise<ProspectPrev
 // ── Meta-ads landing pages (/assess/seller, /assess/agent) ──────────────
 
 export type AdsAudience = 'owner' | 'agent';
+// Which ads' landing page: Meta (/assess/...) or Google (/property-assessment/...).
+export type AdsChannel = 'meta' | 'google';
 
 /** Reads the pasted Rightmove listing and returns an access token for the
  * normal funnel. Can take up to a minute for a listing we haven't seen. */
 export async function startAdsAssessment(payload: {
   listing_url: string;
   audience: AdsAudience;
+  channel?: AdsChannel;
   reminder_token?: string;
 }): Promise<{ token: string; audience: string; property_code: string; prefill: { first_name?: string; email?: string } }> {
   const response = await fetch(`${API_BASE}/stale-listings/ads/start`, {
@@ -46,7 +49,7 @@ export async function startAdsAssessment(payload: {
 }
 
 /** "Email me a reminder" for a visitor without their listing link. */
-export async function requestUrlReminder(payload: { first_name: string; email: string; audience: AdsAudience }): Promise<{ ok: boolean }> {
+export async function requestUrlReminder(payload: { first_name: string; email: string; audience: AdsAudience; channel?: AdsChannel }): Promise<{ ok: boolean }> {
   const response = await fetch(`${API_BASE}/stale-listings/ads/reminder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

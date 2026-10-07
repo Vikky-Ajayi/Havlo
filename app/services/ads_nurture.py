@@ -50,7 +50,13 @@ from app.db.database import AsyncSessionLocal
 from app.models.models import AdsNurtureEmail, AdsUrlReminderEmail, AdsUrlReminderLead, StaleListingProspect
 from app.services import email_service
 from app.services import stale_prospect_service as sps
-from app.services.ads_funnel import NURTURED_LEAD_SOURCES, _signed, reminder_token, reminder_unsubscribe_token
+from app.services.ads_funnel import (
+    NURTURED_LEAD_SOURCES,
+    _signed,
+    channel_of,
+    reminder_token,
+    reminder_unsubscribe_token,
+)
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_abandonment import build_unsubscribe_url
 
@@ -58,7 +64,18 @@ logger = logging.getLogger(__name__)
 
 CONTENT_DIR = Path(__file__).resolve().parent / "ads_email_content"
 
-LANDING_PATHS = {"owner": "/assess/seller", "agent": "/assess/agent"}
+# Landing page per (channel, audience): email links go back to the page the
+# lead came from.
+LANDING_PATHS = {
+    ("meta", "owner"): "/assess/seller",
+    ("meta", "agent"): "/assess/agent",
+    ("google", "owner"): "/property-assessment/seller",
+    ("google", "agent"): "/property-assessment/agent",
+}
+
+
+def landing_path(channel: str | None, audience: str | None) -> str:
+    return LANDING_PATHS.get((channel or "meta", audience or "owner")) or LANDING_PATHS[("meta", "owner")]
 
 MIN_GAP = timedelta(hours=20)
 # A branch email more than this late (the loop was down) is skipped.
@@ -118,13 +135,13 @@ def build_reminder_unsubscribe_url(lead_id: Any) -> str:
 
 
 def build_reminder_link(lead: AdsUrlReminderLead) -> str:
-    path = LANDING_PATHS.get(lead.audience, LANDING_PATHS["owner"])
+    path = landing_path(getattr(lead, "channel", None), lead.audience)
     return f"{_public_base()}{path}?reminder={reminder_token(lead.id)}#listing-link"
 
 
 def _cta_url(prospect: StaleListingProspect, cta: str) -> str:
     label = cta.upper()
-    landing = f"{_public_base()}{LANDING_PATHS.get(prospect.audience, LANDING_PATHS['owner'])}"
+    landing = f"{_public_base()}{landing_path(channel_of(prospect.lead_source), prospect.audience)}"
     if label.startswith("ASSESS "):
         # "Assess another / a current / a slow-moving listing": a fresh start.
         return landing

@@ -633,9 +633,11 @@ class StaleListingProspect(Base):
     audience: Mapped[str] = mapped_column(String(10), nullable=False, default="owner", server_default="owner")
     agent_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     parent_prospect_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    # Set when the prospect came in through a Meta-ads landing page
-    # (app/services/ads_funnel.py): "meta_seller" for a homeowner's own
-    # prospect, "meta_agent" for an agency's copy. Those leads get the ads
+    # Set when the prospect came in through an ads landing page
+    # (app/services/ads_funnel.py): "meta_seller" / "google_seller" for a
+    # homeowner's own prospect, "meta_agent" / "google_agent" for an agency's
+    # copy, "meta_agent_listing" / "google_agent_listing" for a listing first
+    # added by an agent. Those leads get the ads
     # email flows (app/services/ads_nurture.py) instead of the letter
     # funnel's abandonment emails.
     lead_source: Mapped[Optional[str]] = mapped_column(String(30), nullable=True, index=True)
@@ -772,6 +774,9 @@ class AdsUrlReminderLead(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     audience: Mapped[str] = mapped_column(String(10), nullable=False)  # "owner" or "agent"
+    # Which ads they came from ("meta" or "google"): the reminder emails link
+    # back to that channel's landing page.
+    channel: Mapped[str] = mapped_column(String(10), nullable=False, default="meta", server_default="meta")
     first_name: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)

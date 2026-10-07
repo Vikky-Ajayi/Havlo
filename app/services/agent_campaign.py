@@ -310,7 +310,7 @@ async def remember_agency_contact(db: AsyncSession, copy: StaleListingProspect) 
     The caller commits."""
     if copy.audience != "agent" or not copy.agent_account_id:
         return
-    if copy.lead_source == "meta_agent":
+    if copy.lead_source in ("meta_agent", "google_agent"):
         # Came in through an ads landing page: the ads emails cover them, so
         # the agency doesn't also start the letter campaign's follow-ups.
         return

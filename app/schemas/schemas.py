@@ -582,6 +582,8 @@ class AdsStartRequest(BaseModel):
     """Ads landing page: the pasted listing link (app/services/ads_funnel.py)."""
     listing_url: str = Field(..., min_length=10, max_length=1000)
     audience: Literal["owner", "agent"] = "owner"
+    # Which ads' landing page: "meta" (/assess/...) or "google" (/property-assessment/...).
+    channel: Literal["meta", "google"] = "meta"
     # From a reminder email's link, when the visitor came back through one.
     reminder_token: Optional[str] = Field(None, max_length=100)
 
@@ -597,6 +599,7 @@ class AdsReminderRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     audience: Literal["owner", "agent"] = "owner"
+    channel: Literal["meta", "google"] = "meta"
 
 
 class AdsReminderLeadResponse(BaseModel):
@@ -814,7 +817,8 @@ class StaleProspectConsoleListItem(BaseModel):
     processing_status: str
     payment_status: str
     is_manual: bool = False
-    # "meta_seller" / "meta_agent_listing": came in through an ads landing page.
+    # "meta_seller" / "meta_agent_listing" / "google_seller" /
+    # "google_agent_listing": came in through an ads landing page.
     lead_source: Optional[str] = None
     treated_at: Optional[str] = None
     created_at: str
