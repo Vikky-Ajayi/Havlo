@@ -250,7 +250,7 @@ export const AdsStyles = () => (
     .slw-ads-pending{color:#98a2b3}
     .slw-ads-finding{margin:20px 0 0;padding:14px 16px;border-left:3px solid #a409d2;background:#fbf7fd;border-radius:0 10px 10px 0}
     .slw-ads-finding b{display:block;font-size:14px;color:#202124;margin-bottom:6px}
-    .slw-ads-finding p{margin:0;font-style:italic;font-size:15px;line-height:1.5;color:#334155}
+    .slw-ads-finding p{margin:0;font-size:15px;line-height:1.5;color:#334155}
     .slw-ads-see-all{margin-top:24px;width:100%}
     @media (max-width:640px){
       .slw-ads-form{flex-direction:column}
@@ -371,16 +371,17 @@ export const AdsSellerSummary = ({
                   </ul>
                 </>
               )}
-              {summary.finding && (
-                <div className="slw-ads-finding">
-                  <b>One finding:</b>
-                  <p>{summary.finding}</p>
-                </div>
-              )}
             </>
           )}
+          <div className="slw-ads-finding">
+            <b>There may already be factors limiting buyer interest.</b>
+            <p>
+              See what we identified, what to improve, and the recommended actions that could increase your chances of a
+              faster sale.
+            </p>
+          </div>
           <button type="button" className="slw-btn-black slw-ads-see-all" onClick={onContinue}>
-            See All {totalFactors} Findings &rarr;
+            See All {totalFactors} Findings &amp; Recommendations &rarr;
           </button>
         </div>
       </div>
