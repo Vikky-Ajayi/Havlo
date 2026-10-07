@@ -1173,7 +1173,7 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
 // `ads` turns this into an ads landing page (Meta: /assess/seller,
-// /assess/agent; Google, with channel="google": /property-assessment/...):
+// /assess/agent; Google, with channel="google": /g/seller, /g/agent):
 // the visitor pastes their Rightmove link instead of a letter's property
 // code, and everything after that is the same funnel.
 export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudience; channel?: AdsChannel } = {}) => {

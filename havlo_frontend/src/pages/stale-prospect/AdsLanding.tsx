@@ -3,7 +3,7 @@ import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsChannel, t
 import { formatGbp, type ProspectPreview } from './types';
 
 // Ads landing pages, Meta (/assess/seller, /assess/agent) and Google
-// (/property-assessment/seller, /property-assessment/agent): the /check
+// (/g/seller, /g/agent): the /check
 // wizard with the property-code box swapped for the listing link, and an
 // "email me a reminder" option for visitors without the link to hand
 // (app/services/ads_funnel.py, ads_nurture.py on the backend).

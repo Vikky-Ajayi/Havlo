@@ -1,5 +1,5 @@
 """Ads landing pages: Meta (/assess/seller, /assess/agent) and Google
-(/property-assessment/seller, /property-assessment/agent).
+(/g/seller, /g/agent).
 
 A visitor pastes their Rightmove listing link instead of entering the
 property code from a letter. The listing is read, the prospect, report and
@@ -49,7 +49,7 @@ from app.services.listing_scraper import scrape_single_listing
 logger = logging.getLogger(__name__)
 
 # Which ads the visitor came from: the Meta landing pages (/assess/...) or
-# the Google ones (/property-assessment/...). Same pages and funnel; the
+# the Google ones (/g/...). Same pages and funnel; the
 # channel only changes the lead_source tag and where links back point.
 CHANNELS = ("meta", "google")
 

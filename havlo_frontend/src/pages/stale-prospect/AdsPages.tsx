@@ -3,7 +3,7 @@ import type { AdsChannel } from './api';
 import { StaleProspectWizard } from './StaleProspectWizard';
 
 // Ads landing pages. See AdsLanding.tsx for what differs from /check. The
-// same pages run for Meta (/assess/...) and Google (/property-assessment/...);
+// same pages run for Meta (/assess/...) and Google (/g/...);
 // the channel only tags the leads (and where their emails link back to).
 export const AdsSellerLanding = ({ channel = 'meta' }: { channel?: AdsChannel }) => {
   usePageMeta({

@@ -69,8 +69,8 @@ CONTENT_DIR = Path(__file__).resolve().parent / "ads_email_content"
 LANDING_PATHS = {
     ("meta", "owner"): "/assess/seller",
     ("meta", "agent"): "/assess/agent",
-    ("google", "owner"): "/property-assessment/seller",
-    ("google", "agent"): "/property-assessment/agent",
+    ("google", "owner"): "/g/seller",
+    ("google", "agent"): "/g/agent",
 }
 
 

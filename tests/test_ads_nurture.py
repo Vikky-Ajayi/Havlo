@@ -357,12 +357,12 @@ class GoogleChannelTests(unittest.TestCase):
 
     def test_email_links_go_back_to_the_google_pages(self):
         seller = an.render_nurture_email(_prospect(lead_source="google_seller"), "main", 1)
-        self.assertIn("/property-assessment/seller?token=", seller["cta_url"])
+        self.assertIn("/g/seller?token=", seller["cta_url"])
         agent_entry = next(e for e in an.flow_content("agent")["main"] if e["cta"].startswith("ASSESS "))
         agent = an.render_nurture_email(_prospect("agent", lead_source="google_agent"), "main", agent_entry["stage"])
-        self.assertTrue(agent["cta_url"].endswith("/property-assessment/agent"))
+        self.assertTrue(agent["cta_url"].endswith("/g/agent"))
         lead = SimpleNamespace(id=uuid4(), audience="agent", channel="google")
-        self.assertIn("/property-assessment/agent?reminder=", an.render_reminder_email(lead, 1)["cta_url"])
+        self.assertIn("/g/agent?reminder=", an.render_reminder_email(lead, 1)["cta_url"])
         # Meta leads still go to /assess/...
         self.assertIn("/assess/seller?token=", an.render_nurture_email(_prospect(), "main", 1)["cta_url"])
 

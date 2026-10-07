@@ -249,6 +249,12 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 // for everything else under the same route prefixes — mid-funnel/checkout
 // screens (e.g. /stale-listings/prospect, /custom-offers/plan) that have
 // no persistent header of their own to embed into.
+// A redirect that keeps the ?query and #hash (ad click IDs, email links' tokens).
+const KeepQueryRedirect = ({ to }: { to: string }) => {
+  const { search, hash } = useLocation();
+  return <Navigate to={{ pathname: to, search, hash }} replace />;
+};
+
 const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/stale-listings',
   '/stale-listings/seller',
@@ -262,6 +268,8 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/check/agent',
   '/assess/seller',
   '/assess/agent',
+  '/g/seller',
+  '/g/agent',
   '/property-assessment/seller',
   '/property-assessment/agent',
   '/stale-listings/prospect',
@@ -305,9 +313,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   // needs to be named here explicitly or it falls through to the default
   // branch below and gets the global marketing Navbar + Footer wrapped
   // around it, which is not what its own page header/layout expects.
-  // The ads landing pages (Meta: /assess/..., Google: /property-assessment/...) are the same
+  // The ads landing pages (Meta: /assess/..., Google: /g/..., formerly
+  // /property-assessment/...) are the same
   // wizard, so they get the same treatment.
-  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/g/') || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
@@ -422,8 +431,11 @@ export default function App() {
               <Route path="/assess/seller" element={<AdsSellerLanding />} />
               <Route path="/assess/agent" element={<AdsAgentLanding />} />
               {/* The same pages for Google Ads; leads are tagged "Google ad". */}
-              <Route path="/property-assessment/seller" element={<GoogleAdsSellerLanding />} />
-              <Route path="/property-assessment/agent" element={<GoogleAdsAgentLanding />} />
+              <Route path="/g/seller" element={<GoogleAdsSellerLanding />} />
+              <Route path="/g/agent" element={<GoogleAdsAgentLanding />} />
+              {/* Their first, longer addresses: ads and emails already out may still use them. */}
+              <Route path="/property-assessment/seller" element={<KeepQueryRedirect to="/g/seller" />} />
+              <Route path="/property-assessment/agent" element={<KeepQueryRedirect to="/g/agent" />} />
               {/* The 90-day dashboard that comes with a purchased report (texted once; see MonitorDashboard.tsx). */}
               <Route path="/m/:token" element={<MonitorDashboard />} />
               <Route path="/stale-listings/access" element={<StaleListingsAccess />} />

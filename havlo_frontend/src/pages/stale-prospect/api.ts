@@ -29,7 +29,7 @@ export async function lookupProspect(propertyCode: string): Promise<ProspectPrev
 // ── Meta-ads landing pages (/assess/seller, /assess/agent) ──────────────
 
 export type AdsAudience = 'owner' | 'agent';
-// Which ads' landing page: Meta (/assess/...) or Google (/property-assessment/...).
+// Which ads' landing page: Meta (/assess/...) or Google (/g/...).
 export type AdsChannel = 'meta' | 'google';
 
 /** Reads the pasted Rightmove listing and returns an access token for the
