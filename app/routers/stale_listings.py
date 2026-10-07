@@ -766,6 +766,16 @@ async def submit_stale_prospect_details(
     if prospect.lead_source in ads_funnel.NURTURED_LEAD_SOURCES:
         # The ads nurture's first email goes "immediately".
         background_tasks.add_task(ads_nurture.run_ads_nurture_cycle, prospect.id)
+    if prospect.ads_sheet_logged_at is not None:
+        # Their name, email and phone go on the listing's sheet row.
+        background_tasks.add_task(
+            google_sheets.update_ads_funnel_listing_contact,
+            property_code=prospect.property_code,
+            rightmove_url=prospect.rightmove_url,
+            name=prospect.contact_name or "",
+            email=prospect.contact_email or "",
+            phone=prospect.contact_phone or "",
+        )
     return StaleProspectDetailsResponse(
         prospect_id=str(prospect.id),
         property_code=prospect.property_code,
@@ -825,11 +835,17 @@ async def start_ads_assessment(
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     prospect_id = result.pop("prospect_id")
-    if result["audience"] == "owner":
+    prospect = await db.get(StaleListingProspect, prospect_id)
+    if prospect is not None and prospect.ads_sheet_logged_at is None:
+        # Every listing from the ads pages goes on the sheet once, for the
+        # follow-up letters.
+        prospect.ads_sheet_logged_at = datetime.now(timezone.utc)
+        await db.commit()
+        background_tasks.add_task(google_sheets.record_ads_funnel_listing, ads_funnel.sheet_row(prospect))
+    if prospect is not None and result["audience"] == "owner":
         # The homeowner's Confirm Property summary counts the competing
         # listings nearby; start that now so it's usually there in time.
-        prospect = await db.get(StaleListingProspect, prospect_id)
-        if prospect is not None and await ads_funnel.mark_competition_pending(db, prospect):
+        if await ads_funnel.mark_competition_pending(db, prospect):
             background_tasks.add_task(ads_funnel.refresh_competition, prospect_id)
     return AdsStartResponse(**result)
 

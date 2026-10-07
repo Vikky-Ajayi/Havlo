@@ -652,6 +652,9 @@ class StaleListingProspect(Base):
     # "count", "basis", "area"}, {"status": "unavailable"}, or {"status":
     # "pending"} while the search runs. See ads_funnel.refresh_competition.
     competition_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # When an ads lead's listing was added to the "Ads Funnel Listings" sheet
+    # tab (for follow-up letters), so it's only added once.
+    ads_sheet_logged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     competition_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

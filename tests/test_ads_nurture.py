@@ -291,6 +291,35 @@ class SheetTests(unittest.TestCase):
         self.assertEqual(append.call_args_list[1].args[1][3], "Agent - Google ad")
 
 
+class AdsListingsSheetTests(unittest.TestCase):
+    def test_contact_details_go_on_the_matching_row(self):
+        from unittest import mock
+        from app.services import google_sheets as gs
+
+        headers = gs.SHEET_TABS["Ads Funnel Listings"]
+        url = "https://www.rightmove.co.uk/properties/1"
+        row = lambda code, link: ["t", "Meta ad", "Seller", link, "addr", "pc", "£1", "agent", code, "", "", "", ""]  # noqa: E731
+        ws = mock.Mock()
+        ws.get_all_values.return_value = [headers, row("1234", url), row("5678", url), row("1234", "https://other")]
+        sheet = mock.Mock()
+        sheet.worksheet.return_value = ws
+        with mock.patch.object(gs, "is_configured", return_value=True), mock.patch.object(gs, "_get_spreadsheet", return_value=sheet):
+            gs.update_ads_funnel_listing_contact(property_code="1234", rightmove_url=url, name="Sam", email="s@x.com", phone="+44 1")
+        ws.update.assert_called_once_with("J2:L2", [["Sam", "s@x.com", "+44 1"]])
+
+    def test_sheet_row(self):
+        p = SimpleNamespace(
+            lead_source="google_agent", audience="agent", rightmove_url="https://www.rightmove.co.uk/properties/9",
+            property_address="12 Oak Lane, Guildford, GU1", postcode="GU1 3AB", asking_price=875000.0,
+            agent_brand="Oak Estates", agent_company_name="OAK ESTATES LTD", agent_branch_name="Guildford",
+            property_code="AB12", contact_name=None, contact_email=None, contact_phone=None,
+        )
+        r = ads_funnel.sheet_row(p)
+        self.assertEqual((r["source"], r["audience"], r["asking_price"], r["listing_agent"]),
+                         ("Google ad", "Agent", "£875,000", "Oak Estates - Guildford"))
+        self.assertEqual(r["address"], "12 Oak Lane, Guildford, GU1 3AB")
+
+
 class GoogleChannelTests(unittest.TestCase):
     def test_tags_per_channel(self):
         self.assertEqual(ads_funnel.seller_source("google"), "google_seller")

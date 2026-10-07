@@ -117,6 +117,14 @@ SHEET_TABS: dict[str, list[str]] = {
     "URL Reminder Requests": [
         "Timestamp", "First Name", "Email", "Audience",
     ],
+    # Every listing pasted into a Meta or Google ads landing page, for
+    # follow-up letters. Contact details are filled in when the visitor gives
+    # them; Mailing Address is left for someone to look up by hand.
+    "Ads Funnel Listings": [
+        "Timestamp", "Source", "Audience", "Rightmove URL", "Listing Address",
+        "Postcode", "Asking Price", "Listing Agent", "Property Code",
+        "Contact Name", "Contact Email", "Contact Phone", "Mailing Address",
+    ],
     "Property Demand Checks": [
         "Timestamp", "User ID", "Full Name", "Email",
         "Property Address", "City", "Postcode", "Listing URL",
@@ -731,6 +739,63 @@ def record_url_reminder_request(first_name: str, email: str, audience: str, chan
         f"{who} - {'Google' if channel == 'google' else 'Meta'} ad",
     ]
     _append_row("URL Reminder Requests", row)
+
+
+ADS_LISTINGS_TAB = "Ads Funnel Listings"
+
+
+def record_ads_funnel_listing(listing: dict[str, Any]) -> None:
+    """A listing pasted into an ads landing page (see
+    app/services/ads_funnel.py sheet_row)."""
+    row = [
+        datetime.utcnow().isoformat(),
+        listing.get("source", ""),
+        listing.get("audience", ""),
+        listing.get("rightmove_url", ""),
+        listing.get("address", ""),
+        listing.get("postcode", ""),
+        listing.get("asking_price", ""),
+        listing.get("listing_agent", ""),
+        listing.get("property_code", ""),
+        listing.get("contact_name", ""),
+        listing.get("contact_email", ""),
+        listing.get("contact_phone", ""),
+        "",
+    ]
+    _append_row(ADS_LISTINGS_TAB, row)
+
+
+def update_ads_funnel_listing_contact(*, property_code: str, rightmove_url: str, name: str, email: str, phone: str) -> None:
+    """Fill in the contact columns of a listing's row once the visitor gives
+    their details. Matched on Property Code and Rightmove URL, newest row
+    first; leaves Mailing Address alone."""
+    if not is_configured() or not property_code:
+        return
+    try:
+        ws = _get_spreadsheet().worksheet(ADS_LISTINGS_TAB)
+        values = _with_retry(ws.get_all_values)
+        if not values:
+            return
+        headers = values[0]
+        try:
+            code_i = headers.index("Property Code")
+            url_i = headers.index("Rightmove URL")
+            name_i = headers.index("Contact Name")
+        except ValueError:
+            logger.error("%s tab has unexpected headers; skipping contact update.", ADS_LISTINGS_TAB)
+            return
+        for row_num in range(len(values), 1, -1):
+            existing = values[row_num - 1]
+            cell = lambda i: existing[i].strip() if i < len(existing) else ""  # noqa: E731
+            if cell(code_i) == property_code and cell(url_i) == rightmove_url:
+                start = gspread.utils.rowcol_to_a1(row_num, name_i + 1)
+                end = gspread.utils.rowcol_to_a1(row_num, name_i + 3)
+                _with_retry(lambda: ws.update(f"{start}:{end}", [[name, email, phone]]))
+                logger.info("Added contact details to %s row %d.", ADS_LISTINGS_TAB, row_num)
+                return
+        logger.debug("No %s row found for property code %s.", ADS_LISTINGS_TAB, property_code)
+    except Exception as exc:
+        logger.error("Failed to update %s contact: [%s] %r", ADS_LISTINGS_TAB, type(exc).__name__, exc)
 
 
 def record_marketing_opt_out(email: str, notes: str = "") -> None:

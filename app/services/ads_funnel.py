@@ -304,6 +304,29 @@ async def start_from_listing(
     }
 
 
+def sheet_row(prospect: StaleListingProspect) -> dict[str, str]:
+    """The listing's row on the "Ads Funnel Listings" sheet tab, which the
+    team uses to send ads leads a follow-up letter (they look up the full
+    mailing address by hand from the Rightmove link)."""
+    source = "Google ad" if channel_of(prospect.lead_source) == "google" else "Meta ad"
+    agent = " - ".join(
+        part for part in (prospect.agent_brand or prospect.agent_company_name, prospect.agent_branch_name) if part
+    )
+    return {
+        "source": source,
+        "audience": "Agent" if prospect.audience == "agent" else "Seller",
+        "rightmove_url": prospect.rightmove_url or "",
+        "address": sps.address_with_full_postcode(prospect.property_address, prospect.postcode),
+        "postcode": prospect.postcode or "",
+        "asking_price": f"£{prospect.asking_price:,.0f}" if prospect.asking_price else "",
+        "listing_agent": agent,
+        "property_code": prospect.property_code or "",
+        "contact_name": prospect.contact_name or "",
+        "contact_email": prospect.contact_email or "",
+        "contact_phone": prospect.contact_phone or "",
+    }
+
+
 # ── "Email me a reminder" leads ────────────────────────────────────────────
 
 
