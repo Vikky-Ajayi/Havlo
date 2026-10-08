@@ -1753,6 +1753,7 @@ async def list_abandoned_prospects(
                 StaleListingProspect.property_code.ilike(like),
                 StaleListingProspect.contact_name.ilike(like),
                 StaleListingProspect.contact_email.ilike(like),
+                StaleListingProspect.rightmove_url.ilike(like),
                 StaleListingProspect.agent_account_id.in_(
                     select(StaleAgentAccount.id).where(StaleAgentAccount.agent_code.ilike(like))
                 ),
@@ -1836,6 +1837,8 @@ async def list_abandoned_prospects(
             audience=p.audience or "owner",
             agent_company=(p.agent_brand or p.agent_company_name) if p.audience == "agent" else None,
             agent_code=agent_codes.get(p.agent_account_id) if p.agent_account_id else None,
+            lead_source=p.lead_source if p.lead_source in ads_funnel.NURTURED_LEAD_SOURCES else None,
+            rightmove_url=p.rightmove_url if p.lead_source in ads_funnel.NURTURED_LEAD_SOURCES else None,
         )
         for p, emails_sent, sms_sent in rows
     ]

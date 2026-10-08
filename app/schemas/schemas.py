@@ -876,6 +876,10 @@ class StaleProspectAbandonedItem(BaseModel):
     audience: str = "owner"
     agent_company: Optional[str] = None
     agent_code: Optional[str] = None
+    # Leads from the Meta / Google ads pages: their lead_source (e.g.
+    # "meta_seller", "google_agent") and the Rightmove link they pasted.
+    lead_source: Optional[str] = None
+    rightmove_url: Optional[str] = None
 
 
 class StaleProspectAbandonedResponse(BaseModel):

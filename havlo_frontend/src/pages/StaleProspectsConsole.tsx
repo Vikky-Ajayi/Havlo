@@ -67,6 +67,11 @@ function parseReport(data: Record<string, unknown>): ReportEdit {
   };
 }
 
+// Leads from the ads landing pages, by lead_source ('meta_seller', 'google_agent', ...).
+function adLeadLabel(leadSource: string) {
+  return `${leadSource.startsWith('google_') ? 'Google' : 'Meta'} ads ${leadSource.endsWith('_seller') ? 'vendor' : 'agent'}`;
+}
+
 function emptyManualForm() {
   return { rightmove_url: '', address: '' };
 }
@@ -1034,7 +1039,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                       {item.is_manual && <span className="spc-badge manual">Manual</span>}
                       {item.lead_source && (
                         <span className={`spc-badge ad${item.lead_source.startsWith('google_') ? ' google' : ''}`}>
-                          {item.lead_source.startsWith('google_') ? 'Google ad' : 'Meta ad'}: {item.lead_source.endsWith('_seller') ? 'owner' : 'agent'}
+                          {adLeadLabel(item.lead_source)}
                         </span>
                       )}
                       {treated && <span className="spc-badge treated">Treated</span>}
@@ -1072,7 +1077,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               <div className="spc-stat"><b>{abandonedTotal}</b><span>{STAGE_LABELS[stageFilter] || 'in the funnel'}</span></div>
             </div>
             <div className="spc-filters" style={{ flexWrap: 'wrap' }}>
-              <input className="spc-input" placeholder="Search address, property or agency code, contact name or email..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
+              <input className="spc-input" placeholder="Search address, property or agency code, contact name or email, Rightmove link..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['', 'looked_up', 'details_submitted', 'paid'] as const).map(s => (
                   <button
@@ -1122,6 +1127,18 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         <td style={{ padding: '10px 12px' }}>
                           <div style={{ fontWeight: 600 }}>{item.property_address}</div>
                           <div style={{ color: '#888', fontSize: 12 }}>{item.property_code}{item.postcode ? ` · ${item.postcode}` : ''}</div>
+                          {item.lead_source && (
+                            <>
+                              <span style={{ display: 'inline-block', marginTop: 4, marginRight: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, color: '#fff', background: item.lead_source.startsWith('google_') ? '#34A853' : '#1877F2', whiteSpace: 'nowrap' }}>
+                                {adLeadLabel(item.lead_source)}
+                              </span>
+                              {item.rightmove_url && (
+                                <div style={{ fontSize: 12, marginTop: 4, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <a href={item.rightmove_url} target="_blank" rel="noreferrer" className="spc-link" title={item.rightmove_url}>{item.rightmove_url.replace(/^https?:\/\/(www\.)?/, '')}</a>
+                                </div>
+                              )}
+                            </>
+                          )}
                           {item.audience === 'agent' && (
                             <>
                               <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#F3E6FB', color: '#A409D2', whiteSpace: 'nowrap' }}>

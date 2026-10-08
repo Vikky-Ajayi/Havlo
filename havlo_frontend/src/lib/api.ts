@@ -132,6 +132,9 @@ export interface StaleProspectAbandonedItem {
   audience?: 'owner' | 'agent';
   agent_company?: string | null;
   agent_code?: string | null;
+  /** Ads leads only: e.g. 'meta_seller', 'google_agent', and the Rightmove link they pasted. */
+  lead_source?: string | null;
+  rightmove_url?: string | null;
 }
 
 export interface StaleProspectAbandonedResponse {
