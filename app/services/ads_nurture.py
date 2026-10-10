@@ -71,6 +71,8 @@ LANDING_PATHS = {
     ("meta", "agent"): "/assess/agent",
     ("google", "owner"): "/g/seller",
     ("google", "agent"): "/g/agent",
+    ("review", "owner"): "/review/seller",
+    ("review", "agent"): "/review/agent",
 }
 
 
@@ -341,6 +343,8 @@ async def run_ads_nurture_cycle(only_prospect_id: UUID | None = None) -> dict:
                 P.contact_email.is_not(None),
                 P.payment_status != "completed",
                 P.unsubscribed_at.is_(None),
+                # Left "send me occasional tips" unticked (the analyst-review funnel).
+                P.marketing_opt_in.is_not(False),
                 (P.audience == "agent") | P.property_closed_at.is_(None),
             )
             .order_by(P.contact_details_submitted_at.asc())

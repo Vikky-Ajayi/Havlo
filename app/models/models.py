@@ -637,6 +637,7 @@ class StaleListingProspect(Base):
     # (app/services/ads_funnel.py): "meta_seller" / "google_seller" for a
     # homeowner's own prospect, "meta_agent" / "google_agent" for an agency's
     # copy, "meta_agent_listing" / "google_agent_listing" for a listing first
+    # (and "review_..." the same way for the analyst-review pages, /review/...)
     # added by an agent. Those leads get the ads
     # email flows (app/services/ads_nurture.py) instead of the letter
     # funnel's abandonment emails.
@@ -644,6 +645,21 @@ class StaleListingProspect(Base):
     # First time the Payment step was shown; anchors the ads flows'
     # checkout-recovery emails.
     checkout_visited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The analyst-review funnel (/review/...) sells an analyst-reviewed report: on
+    # payment the report is held until analyst_review_due_at (48 hours on),
+    # or earlier when released from the console. report_released_at is set
+    # when it goes out, with the "your report is ready" email. Both stay
+    # NULL for every other funnel, whose reports unlock on payment.
+    # See app/services/analyst_review.py.
+    analyst_review_due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    report_released_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When that email was delivered; the release loop retries until it is.
+    report_ready_emailed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The analyst-review funnel's details form asks "Send me occasional tips on
+    # selling faster". False: no marketing emails or texts (the ads nurture,
+    # abandonment SMS, post-purchase drip after its first email). NULL where
+    # the form didn't ask, which keeps those funnels' existing behaviour.
+    marketing_opt_in: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     # "Property sold, STC or withdrawn", from the link in the ads emails.
     # A homeowner's emails stop; an agency stops hearing about this property.
     property_closed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

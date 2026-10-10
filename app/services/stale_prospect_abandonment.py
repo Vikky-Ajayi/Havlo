@@ -100,7 +100,7 @@ async def run_abandonment_email_cycle() -> dict:
                 # Ads homeowners get their own flow (app/services/ads_nurture.py).
                 or_(
                     StaleListingProspect.lead_source.is_(None),
-                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller")),
+                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller", "review_seller")),
                 ),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())
@@ -254,6 +254,7 @@ async def run_abandonment_sms_cycle() -> dict:
                 StaleListingProspect.contact_details_submitted_at.is_not(None),
                 StaleListingProspect.payment_status != "completed",
                 StaleListingProspect.sms_unsubscribed_at.is_(None),
+                StaleListingProspect.marketing_opt_in.is_not(False),
                 StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_phone.is_not(None),
             )

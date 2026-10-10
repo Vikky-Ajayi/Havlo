@@ -2140,6 +2140,9 @@ def _stale_abandonment_shell_html(
 
 
 def _stale_abandonment_format_price(amount: float) -> str:
+    # Prices are whole pounds now (prospect_unlock_price): "£99", not "£99.00".
+    if float(amount).is_integer():
+        return f"£{amount:,.0f}"
     return f"£{amount:,.2f}"
 
 
@@ -2165,10 +2168,9 @@ def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text:
         intended copy.
       - Price mentions that quote the recipient's own assessment cost
         (stages 1, 5, 6) use their actual tiered price (price_html) rather
-        than the mockup's hardcoded "£499.99". Email 4's "£49.99 Havlo
-        assessment" is a different customer's (John's) anecdote, not the
-        recipient's price, so it stays a fixed illustrative figure (the
-        current seller price — it quoted £499.99 until that was retired).
+        than the mockup's hardcoded "£499.99". Email 4's anecdote about
+        another customer (John) no longer quotes a price: since prices
+        follow the asking price, any figure there would mislead.
     """
     if stage == 1:
         return {
@@ -2229,7 +2231,7 @@ def _stale_abandonment_stage_content(stage: int, *, price_html: str, price_text:
                     "John's property had been sitting on the market for 7 months with barely any viewings."
                 )
                 + _stale_abandonment_paragraph(
-                    "Their £49.99 Havlo assessment flagged pricing 8% above comparable sales, they made the "
+                    "Their Havlo assessment flagged pricing 8% above comparable sales, they made the "
                     "change, and had an offer within 3 weeks."
                 )
                 + _stale_abandonment_paragraph("Worth finding out what your own assessment would flag.")
@@ -2868,6 +2870,70 @@ def send_stale_prospect_post_purchase_email_sync(
     )
 
 
+def send_analyst_report_ready_email_sync(
+    *,
+    to_email: str,
+    first_name: str,
+    property_address: str,
+    report_url: str,
+    unsubscribe_url: str,
+    audience: str | None = None,
+    frontend_base_url: str | None = None,
+) -> bool:
+    """"Your report is ready", for an analyst-review funnel (/review/...) customer whose
+    analyst-reviewed report has just been released (app/services/
+    analyst_review.py). Transactional: it delivers what they paid for, so
+    it goes out whatever their marketing-email preference."""
+    address = (property_address or "your property").strip().rstrip(".")
+    address_html = f'<strong style="color:#111111;">{_html_lib.escape(address)}</strong>'
+    if audience == "agent":
+        subject = "Your analyst-reviewed listing report is ready"
+        lead = (
+            f"Your Havlo analyst has finished reviewing {address_html}. The full report is ready: what may be "
+            "holding the listing back, how it compares with the competition, and the changes worth taking to "
+            "your vendor."
+        )
+    else:
+        subject = "Your analyst-reviewed property report is ready"
+        lead = (
+            f"Your Havlo analyst has finished reviewing {address_html}. Your full report is ready: what may be "
+            "holding your sale back, how your listing compares with the competition, and a 30-day action plan "
+            "you can share with your estate agent."
+        )
+    content_html = (
+        _stale_abandonment_paragraph(lead)
+        + _stale_abandonment_paragraph(
+            "Open it with the button below. The link is personal to you, so keep this email to come back to it."
+        )
+        + _stale_abandonment_paragraph("If anything in it is unclear, just reply to this email.")
+    )
+    heading = "Your report is ready"
+    cta_label = "View my report"
+    brand = _stale_abandonment_brand(frontend_base_url)
+    body_html = _stale_abandonment_body_html(
+        first_name=first_name or "there",
+        heading=heading,
+        content_html=content_html,
+        cta_url=report_url,
+        cta_label=cta_label,
+    )
+    html_body = _stale_abandonment_shell_html(
+        title=subject,
+        preheader=f"Your analyst has finished reviewing {address}.",
+        body_html=body_html,
+        brand=brand,
+        unsubscribe_url=unsubscribe_url,
+    )
+    plain_body = (
+        f"Hi {first_name or 'there'},\n\n"
+        f"Your Havlo analyst has finished reviewing {address}. Your full report is ready.\n\n"
+        f"{cta_label}: {report_url}\n\n"
+        "If anything in it is unclear, just reply to this email.\n\n"
+        "Copyright ©Havlo. All rights reserved."
+    )
+    return _send_sync(to_email=to_email, subject=subject, html_body=html_body, plain_body=plain_body)
+
+
 # Sync helpers exposed for FastAPI BackgroundTasks (which prefer sync callables).
 __all__ = [
     "send_welcome_email",
@@ -2876,6 +2942,7 @@ __all__ = [
     "send_inbox_notification_sync",
     "send_stale_prospect_abandonment_email_sync",
     "send_stale_prospect_post_purchase_email_sync",
+    "send_analyst_report_ready_email_sync",
     "send_product_access_magic_link",
     "send_product_access_magic_link_sync",
     "send_stale_prospect_letter_sync",
@@ -2937,7 +3004,7 @@ def _stale_agent_followup_content(stage: int, *, brand: str, count: int, price_t
             "cta_label": "View your portfolio",
             "content_html": p(
                 f"Every stale listing we found for {brand_html} is waiting in your portfolio. Unlock the full report "
-                f"for any property for <strong style=\"color:#111111;\">{_html_lib.escape(price_text)}</strong> and "
+                f"for any property from <strong style=\"color:#111111;\">{_html_lib.escape(price_text)}</strong> and "
                 "share it with the vendor."
             ),
         }
@@ -2980,9 +3047,10 @@ def send_stale_agent_followup_email_sync(
     """One stage of the agency follow-up sequence. Only the send loop in
     app/services/agent_followups.py should call this: it records each
     (agency, stage) so nothing is sent twice."""
-    from app.services.stale_prospect_service import prospect_unlock_price
+    from app.services.stale_prospect_service import MIN_UNLOCK_PRICE
 
-    price_text = _stale_abandonment_format_price(prospect_unlock_price(None, "agent"))
+    # "from £99": the price of each report follows that listing's asking price.
+    price_text = _stale_abandonment_format_price(MIN_UNLOCK_PRICE)
     config = _stale_agent_followup_content(
         stage, brand=brand, count=listing_count, price_text=price_text, agent_code=agent_code
     )

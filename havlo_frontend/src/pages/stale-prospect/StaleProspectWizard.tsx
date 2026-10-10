@@ -34,10 +34,18 @@ import {
 } from './api';
 import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles } from './AdsLanding';
 import {
+  ReviewDetailsStep,
+  ReviewInProgressStep,
+  ReviewPreviewPayStep,
+  ReviewScanStep,
+  ReviewStepper,
+  ReviewStyles,
+} from './ReviewFunnel';
+import {
   formatGbp,
   formatReducedDate,
   stepperIndexFor,
-  unlockPrice,
+  prospectPrice,
   STEPPER_ITEMS,
   type ActiveCompetitor,
   type ComparableSale,
@@ -714,7 +722,7 @@ const AssessmentStep = ({
           <p>You&rsquo;ve seen <b className="slw-hl">{revealed.length}</b> of the <b className="slw-hl">{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
             <button type="button" className="slw-btn-white" onClick={onUnlock}>
-              View Full Assessment &ndash; {formatGbp(unlockPrice(prospect.asking_price, prospect.audience), { maximumFractionDigits: 2 })}
+              View Full Assessment &ndash; {formatGbp(prospectPrice(prospect))}
             </button>
           </div>
           <PreparedFor address={prospect.property_address} />
@@ -783,7 +791,7 @@ const PaymentStep = ({
   const [promoCode, setPromoCode] = useState('');
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
-  const price = unlockPrice(prospect.asking_price, prospect.audience);
+  const price = prospectPrice(prospect);
 
   const handlePayClick = () => {
     if (method === 'card') onPayCard();
@@ -826,8 +834,8 @@ const PaymentStep = ({
           <div className="slw-payment-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
           <h2>{prospect.property_address}</h2>
           <div className="slw-payment-breakdown">
-            <div><span>Havlo Property Assessment</span><b>{formatGbp(price, { maximumFractionDigits: 2 })}</b></div>
-            <div className="slw-payment-total"><span>Total due today</span><b>{formatGbp(price, { maximumFractionDigits: 2 })}</b></div>
+            <div><span>Havlo Property Assessment</span><b>{formatGbp(price)}</b></div>
+            <div className="slw-payment-total"><span>Total due today</span><b>{formatGbp(price)}</b></div>
           </div>
         </div>
       </div>
@@ -835,7 +843,7 @@ const PaymentStep = ({
       {bankDetails ? (
         <div className="slw-bank-details">
           <b>Bank transfer details</b>
-          <p>Transfer {formatGbp(price, { maximumFractionDigits: 2 })} using the details below, including the reference &mdash; your report unlocks once we confirm the payment.</p>
+          <p>Transfer {formatGbp(price)} using the details below, including the reference &mdash; your report unlocks once we confirm the payment.</p>
           <div className="slw-bank-details-grid">
             <div><span>Account Name</span><b>{bankDetails.accountName}</b></div>
             <div><span>Account Number</span><b>{bankDetails.accountNumber}</b></div>
@@ -855,7 +863,7 @@ const PaymentStep = ({
             {loading
               ? 'Processing…'
               : method === 'card'
-                ? `Pay ${formatGbp(price, { maximumFractionDigits: 2 })} & View My Report`
+                ? `Pay ${formatGbp(price)} & View My Report`
                 : 'Apply Code & View My Report'}
           </button>
           <PreparedFor address={prospect.property_address} />
@@ -1165,7 +1173,7 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
     content_name: contentName,
     content_category: 'stale_listings_prospect',
     content_ids: [data.property_code],
-    value: unlockPrice(data.asking_price, data.audience),
+    value: prospectPrice(data),
     currency: 'GBP',
   }, `sl_prospect_lead_${data.property_code}`);
 }
@@ -1175,8 +1183,13 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
 // `ads` turns this into an ads landing page (Meta: /assess/seller,
 // /assess/agent; Google, with channel="google": /g/seller, /g/agent):
 // the visitor pastes their Rightmove link instead of a letter's property
-// code, and everything after that is the same funnel.
+// code. The Meta and Google pages then carry on through the same funnel as
+// /check. channel="review" (/review/seller, /review/agent) is the
+// analyst-review funnel (ReviewFunnel.tsx): Initial scan and Your details on
+// 'confirm', Preview & pay on 'payment', and on 'success' the wait for the
+// analyst until the report is released.
 export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudience; channel?: AdsChannel } = {}) => {
+  const review = !!ads && channel === 'review';
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
@@ -1194,9 +1207,11 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   const [welcomeName, setWelcomeName] = useState('');
   // Ads homeowners see a summary of the findings on Confirm Property first;
   // "See all findings" brings up the details form.
-  const [showDetailsForm, setShowDetailsForm] = useState(ads !== 'owner');
+  // The analyst-review funnel starts owners and agents on its Initial scan.
+  const [showDetailsForm, setShowDetailsForm] = useState(review ? false : ads !== 'owner');
+  const [switchingRole, setSwitchingRole] = useState(false);
   const leadPixelName = ads
-    ? `${channel === 'google' ? 'Google' : 'Meta'} Ads ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
+    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
 
   useEffect(() => {
@@ -1277,7 +1292,10 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
             return next;
           }, { replace: true });
         }
-        if (data.is_unlocked) {
+        if (data.is_unlocked && data.report_on_hold) {
+          // Paid on the analyst-review funnel; the review isn't finished.
+          setStep('success');
+        } else if (data.is_unlocked) {
           const reportData = await getProspectReport({ token: query.token, code: data.property_code });
           if (cancelled) return;
           setReport(reportData);
@@ -1298,8 +1316,9 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
               const status = await getProspectPaymentStatus({ token: query.token, code: data.property_code });
               if (status.payment_status === 'completed') {
                 window.clearInterval(handle);
-                const reportData = await getProspectReport({ token: query.token, code: data.property_code });
-                setReport(reportData);
+                const fresh = await getProspectPreview({ token: query.token, code: data.property_code });
+                setProspect(fresh);
+                if (!fresh.report_on_hold) setReport(await getProspectReport({ token: query.token, code: data.property_code }));
                 setStep('success');
               }
             } catch {
@@ -1342,6 +1361,13 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   }, [access.token, access.code, setSearchParams]);
 
   const isAgencyProperty = prospect?.audience === 'agent' || report?.audience === 'agent';
+  // Initial scan, Your details, Preview & pay, Analyst review, Full report.
+  const reviewStepIndex =
+    step === 'confirm' ? (showDetailsForm ? 2 : 1)
+      : step === 'assessment' || step === 'payment' ? 3
+        : step === 'success' && prospect?.report_on_hold ? 4
+          : step === 'success' || step === 'report' ? 5
+            : 1;
 
   const handleBackToListings = async () => {
     const saved = readAgencyToken();
@@ -1362,6 +1388,16 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   };
 
   const handleGoBack = () => {
+    if (review) {
+      if (step === 'confirm' && showDetailsForm) setShowDetailsForm(false);
+      else if (step === 'confirm' || step === 'not_found') setStep('landing');
+      else if (step === 'payment' || step === 'assessment') {
+        setShowDetailsForm(true);
+        setStep('confirm');
+      } else if (step === 'report') setStep('success');
+      else navigate(-1);
+      return;
+    }
     // An agency's copy was opened from its /check/agent portfolio: back there.
     if (step === 'confirm' && prospect?.audience === 'agent' && !ads) navigate('/check/agent');
     else if (step === 'confirm' && ads === 'owner' && showDetailsForm) setShowDetailsForm(false);
@@ -1411,7 +1447,9 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       setProspect(data);
       fireProspectLeadPixel(data, leadPixelName);
       setAccess({ token: started.token, code: data.property_code });
-      if (data.is_unlocked) {
+      if (data.is_unlocked && data.report_on_hold) {
+        setStep('success');
+      } else if (data.is_unlocked) {
         try {
           setReport(await getProspectReport({ token: started.token }));
           setStep('report');
@@ -1419,7 +1457,8 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
           setStep('assessment');
         }
       } else {
-        setStep(data.has_contact_details ? 'assessment' : 'confirm');
+        setShowDetailsForm(review ? false : ads !== 'owner');
+        setStep(data.has_contact_details ? (review ? 'payment' : 'assessment') : 'confirm');
       }
     } catch (e) {
       const message = (e as Error).message;
@@ -1432,13 +1471,13 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     }
   };
 
-  const handleDetailsSubmit = async (fields: { full_name: string; email: string; mobile_number: string }) => {
+  const handleDetailsSubmit = async (fields: { full_name: string; email: string; mobile_number: string; marketing_opt_in?: boolean }) => {
     setLoading(true);
     setError('');
     try {
       await submitProspectDetails({ ...fields, token: access.token, property_code: access.code });
       if (prospect) setProspect({ ...prospect, has_contact_details: true });
-      setStep('assessment');
+      setStep(review ? 'payment' : 'assessment');
     } catch (e: any) {
       setError('We could not save your details. Please check them and try again.');
     } finally {
@@ -1459,6 +1498,40 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   // must translate through this instead of `...access`.
   const checkoutAccess = () => (access.token ? { token: access.token } : { property_code: access.code });
 
+  // Paid (or a promo code took the price to nothing). The analyst-review
+  // funnel's report is usually still with the analyst, so it shows that wait rather
+  // than the report.
+  const afterUnlock = async () => {
+    if (review) {
+      const fresh = await getProspectPreview(access.token ? { token: access.token } : { code: access.code });
+      setProspect(fresh);
+      if (!fresh.report_on_hold) await loadReport();
+    } else {
+      await loadReport();
+    }
+    setStep('success');
+  };
+
+  // "I am the Owner / Estate agent" on the analyst-review details form:
+  // the other side's own copy of the same listing (ads_funnel.start_from_listing).
+  const handleSwitchRole = async (audience: 'owner' | 'agent') => {
+    if (!prospect) return;
+    setSwitchingRole(true);
+    setError('');
+    try {
+      const started = await startAdsAssessment({ listing_url: prospect.rightmove_url, audience, channel });
+      const data = await getProspectPreview({ token: started.token });
+      setProspect(data);
+      setAccess({ token: started.token, code: data.property_code });
+      if (data.has_contact_details) setStep('payment');
+    } catch (e) {
+      const message = (e as Error).message;
+      setError(message && message !== 'request_failed' ? message : 'We couldn’t switch that just now. Please try again.');
+    } finally {
+      setSwitchingRole(false);
+    }
+  };
+
   const handlePayCard = async () => {
     setLoading(true);
     setError('');
@@ -1466,8 +1539,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       const redirectUrl = window.location.href.split('#')[0];
       const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', redirect_url: redirectUrl });
       if (result.unlocked) {
-        await loadReport();
-        setStep('success');
+        await afterUnlock();
       } else if (result.checkout_url) {
         window.location.href = result.checkout_url;
       }
@@ -1487,8 +1559,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       // it ever looks at how payment would otherwise have been taken.
       const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', promo_code: code });
       if (result.unlocked) {
-        await loadReport();
-        setStep('success');
+        await afterUnlock();
       } else {
         setError('That promo code is not valid. Please check it and try again.');
       }
@@ -1505,8 +1576,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     try {
       const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'bank_transfer' });
       if (result.unlocked) {
-        await loadReport();
-        setStep('success');
+        await afterUnlock();
         return;
       }
       setBankDetails({
@@ -1523,9 +1593,8 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
           const status = await getProspectPaymentStatus(access);
           if (status.payment_status === 'completed') {
             window.clearInterval(handle);
-            await loadReport();
             setBankDetails(null);
-            setStep('success');
+            await afterUnlock();
           }
         } catch {
           // ignore transient poll failures
@@ -1542,6 +1611,12 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   useEffect(() => () => {
     if (pollHandle) window.clearInterval(pollHandle);
   }, [pollHandle]);
+
+  // The analyst-review funnel has no separate Assessment: its Preview & pay is the
+  // page after the details (and where a returning visitor with details lands).
+  useEffect(() => {
+    if (review && step === 'assessment') setStep('payment');
+  }, [review, step]);
 
   // Each step is a new screen: start it at the top rather than wherever the
   // button that led to it was.
@@ -1623,13 +1698,14 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}`}>
       <Header />
       <div className="slw-shell">
-        {step !== 'landing' && step !== 'finding' && (
+        {step !== 'landing' && step !== 'finding' && !(review && step === 'success') && (
           <div className="slw-backrow">
             <GoBack onClick={handleGoBack} />
             {isAgencyProperty && !ads && <BackToListings onClick={handleBackToListings} />}
           </div>
         )}
-        {step !== 'landing' && step !== 'finding' && <Stepper step={step} ads={!!ads} />}
+        {step !== 'landing' && step !== 'finding' && !review && <Stepper step={step} ads={!!ads} />}
+        {step !== 'landing' && step !== 'finding' && review && <ReviewStepper active={reviewStepIndex} />}
         <main className="slw-main">
           {step === 'landing' && !ads && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
           {step === 'landing' && ads && (
@@ -1646,7 +1722,41 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
           {step === 'not_found' && <NotFoundStep onTryAgain={() => setStep('landing')} />}
-          {step === 'confirm' && prospect && ads === 'owner' && !showDetailsForm && (
+          {review && step === 'confirm' && prospect && !showDetailsForm && (
+            <ReviewScanStep
+              prospect={prospect}
+              access={access}
+              totalFactors={totalFactorsFor(prospect)}
+              onContinue={() => setShowDetailsForm(true)}
+              onChangeLink={() => setStep('landing')}
+            />
+          )}
+          {review && step === 'confirm' && prospect && showDetailsForm && (
+            <ReviewDetailsStep
+              prospect={prospect}
+              totalFactors={totalFactorsFor(prospect)}
+              onSubmit={handleDetailsSubmit}
+              onSwitchRole={handleSwitchRole}
+              switching={switchingRole}
+              loading={loading}
+              error={error}
+              initial={prefill}
+            />
+          )}
+          {review && step === 'payment' && prospect && (
+            <ReviewPreviewPayStep
+              prospect={prospect}
+              totalFactors={totalFactorsFor(prospect)}
+              onPay={handlePayCard}
+              onApplyPromo={handleApplyPromo}
+              loading={loading}
+              error={error}
+            />
+          )}
+          {review && step === 'success' && prospect?.report_on_hold && (
+            <ReviewInProgressStep prospect={prospect} totalFactors={totalFactorsFor(prospect)} />
+          )}
+          {!review && step === 'confirm' && prospect && ads === 'owner' && !showDetailsForm && (
             <AdsSellerSummary
               prospect={prospect}
               access={access}
@@ -1654,13 +1764,13 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
               onContinue={() => setShowDetailsForm(true)}
             />
           )}
-          {step === 'confirm' && prospect && showDetailsForm && (
+          {!review && step === 'confirm' && prospect && showDetailsForm && (
             <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} initial={prefill} />
           )}
-          {step === 'assessment' && prospect && (
+          {!review && step === 'assessment' && prospect && (
             <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} />
           )}
-          {step === 'payment' && prospect && (
+          {!review && step === 'payment' && prospect && (
             <PaymentStep
               prospect={prospect}
               onPayCard={handlePayCard}
@@ -1671,7 +1781,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
               error={error}
             />
           )}
-          {step === 'success' && prospect && (
+          {step === 'success' && prospect && !(review && prospect.report_on_hold) && (
             <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} error={error} />
           )}
           {step === 'report' && report && report.audience === 'agent' && (
@@ -1697,6 +1807,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       )}
       <WizardStyles />
       {ads && <AdsStyles />}
+      {review && <ReviewStyles />}
     </div>
   );
 };

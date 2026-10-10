@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing, StaleListingProspect
-from app.services import land_registry
+from app.services import analyst_review, land_registry
 from app.services.groq_service import generate_stale_listing_report
 
 logger = logging.getLogger(__name__)
@@ -185,22 +185,32 @@ def verify_sms_unsubscribe_short_token(property_code: str, token: str) -> bool:
     return hmac.compare_digest(expected, (token or "").strip())
 
 
-AGENT_UNLOCK_PRICE = 49.99
-OWNER_UNLOCK_PRICE = 49.99
+UNLOCK_PRICE_RATE = 0.00025  # 0.025% of the asking price
+MIN_UNLOCK_PRICE = 99.0
+MAX_UNLOCK_PRICE = 498.0
 
 
 def prospect_unlock_price(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report price for a letter prospect: GBP 49.99 for owners and
-    estate agencies alike (audience "agent" has its own constant so the two
-    can differ again), whatever the asking price. asking_price is kept so
-    callers don't change if per-price tiering ever comes back.
+    """Full-report price: 0.025% of the asking price to the nearest pound,
+    never less than GBP 99 or more than GBP 498 (so GBP 99 up to a
+    GBP 396,000 asking price, GBP 498 from GBP 1,992,000). The same for
+    owners and estate agencies; audience is kept so the two can differ
+    again. GBP 99 when the asking price isn't known.
 
     The checkout route (_stale_prospect_checkout_amount) and the email
     drips call this; the frontend's unlockPrice() in
     havlo_frontend/src/pages/stale-prospect/types.ts mirrors it because the
     page needs the figure before checkout resolves. Keep the two in sync.
     """
-    return AGENT_UNLOCK_PRICE if audience == "agent" else OWNER_UNLOCK_PRICE
+    try:
+        price = float(asking_price or 0)
+    except (TypeError, ValueError):
+        price = 0.0
+    if not math.isfinite(price) or price <= 0:
+        return MIN_UNLOCK_PRICE
+    # Half up, as the frontend's Math.round does (round() is half-even).
+    pounds = math.floor(price * UNLOCK_PRICE_RATE + 0.5)
+    return float(min(MAX_UNLOCK_PRICE, max(MIN_UNLOCK_PRICE, pounds)))
 
 
 def normalize_property_code(code: str) -> str:
@@ -700,6 +710,13 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "has_contact_details": bool(prospect.contact_email),
         "checkout_started": bool(prospect.sumup_checkout_id or prospect.bank_transfer_reference),
         "audience": prospect.audience or "owner",
+        "unlock_price": prospect_unlock_price(prospect.asking_price, prospect.audience),
+        # Analyst-review funnel (/review/...) purchases: paid, but the review isn't
+        # finished, so the report isn't open yet (app/services/analyst_review.py).
+        "report_on_hold": analyst_review.report_on_hold(prospect),
+        "analyst_review_due_at": (
+            prospect.analyst_review_due_at.isoformat() if prospect.analyst_review_due_at else None
+        ),
     }
 
 

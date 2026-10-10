@@ -48,10 +48,13 @@ from app.services.listing_scraper import scrape_single_listing
 
 logger = logging.getLogger(__name__)
 
-# Which ads the visitor came from: the Meta landing pages (/assess/...) or
-# the Google ones (/g/...). Same pages and funnel; the
-# channel only changes the lead_source tag and where links back point.
-CHANNELS = ("meta", "google")
+# Which landing pages the visitor came from: Meta's (/assess/...), Google's
+# (/g/...), or the analyst-review funnel's (/review/..., app/services/
+# analyst_review.py), which holds a paid report 48 hours for an analyst. The
+# listing link in works the same for all three; the channel changes the
+# lead_source tag, where links back point and (for "review") what happens
+# after payment.
+CHANNELS = ("meta", "google", "review")
 
 
 def seller_source(channel: str) -> str:
@@ -71,7 +74,11 @@ def _channel(channel: str | None) -> str:
 
 
 def channel_of(lead_source: str | None) -> str:
-    return "google" if (lead_source or "").startswith("google_") else "meta"
+    prefix = (lead_source or "").split("_", 1)[0]
+    return prefix if prefix in CHANNELS else "meta"
+
+
+CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review"}
 
 
 LEAD_SELLER = seller_source("meta")
@@ -309,7 +316,7 @@ def sheet_row(prospect: StaleListingProspect) -> dict[str, str]:
     """The listing's row on the "Ads Funnel Listings" sheet tab, which the
     team uses to send ads leads a follow-up letter (they look up the full
     mailing address by hand from the Rightmove link)."""
-    source = "Google ad" if channel_of(prospect.lead_source) == "google" else "Meta ad"
+    source = CHANNEL_LABELS[channel_of(prospect.lead_source)]
     agent = " - ".join(
         part for part in (prospect.agent_brand or prospect.agent_company_name, prospect.agent_branch_name) if part
     )

@@ -57,6 +57,7 @@ from app.schemas.schemas import (
     AgencyPricingRequest,
     StaleProspectAbandonedItem,
     StaleProspectAbandonedResponse,
+    StaleProspectReleaseReportResponse,
     StaleProspectAdminCreateRequest,
     StaleProspectAdminCreateResponse,
     StaleProspectCheckoutRequest,
@@ -96,7 +97,7 @@ from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services import agent_campaign, agent_report, agent_report_pdf, listing_monitor, land_registry
-from app.services import ads_funnel, ads_nurture
+from app.services import ads_funnel, ads_nurture, analyst_review
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -148,20 +149,22 @@ SL_PACKAGES: dict[str, dict] = {
     # name/amount correctly — do not remove them. free_trial_assessment is
     # likewise kept only for historical orders: agents now pay
     # listing_recovery_assessment for every assessment, and /submit refuses
-    # new free-trial orders.
-    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 49.99,   "currency": "GBP"},
+    # new free-trial orders. The two live packages charge the "From £99"
+    # starting price: this flow takes an address or link, never an asking
+    # price, so prospect_unlock_price's 0.025% can't be worked out here.
+    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 99.00,   "currency": "GBP"},
     "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
-    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 49.99,   "currency": "GBP"},
+    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 99.00,   "currency": "GBP"},
     "free_trial_assessment":         {"name": "Free Trial Assessment",         "amount": 0.00,    "currency": "GBP"},
 }
 
 
 def _stale_prospect_checkout_amount(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report checkout price for a letter prospect: GBP 49.99, for
-    owners and estate agencies alike, regardless of asking price. See
-    prospect_unlock_price, which this delegates to.
+    """Full-report checkout price for a prospect: 0.025% of the asking
+    price, GBP 99 to GBP 498. See prospect_unlock_price, which this
+    delegates to.
     """
     return prospect_unlock_price(asking_price, audience)
 
@@ -757,6 +760,8 @@ async def submit_stale_prospect_details(
     prospect.contact_name = payload.full_name.strip()[:200]
     prospect.contact_email = str(payload.email).strip().lower()[:255]
     prospect.contact_phone = payload.mobile_number.strip()[:50]
+    if payload.marketing_opt_in is not None:
+        prospect.marketing_opt_in = payload.marketing_opt_in
     # Anchor for the pre-purchase / cart-abandonment email drip — set once,
     # never reset by a later edit of the same details.
     if prospect.contact_details_submitted_at is None:
@@ -985,8 +990,7 @@ async def create_stale_prospect_checkout(
         )
 
     if _stale_prospect_promo_valid(payload.promo_code):
-        prospect.payment_status = "completed"
-        prospect.unlocked_at = datetime.utcnow()
+        analyst_review.mark_paid(prospect)
         await db.commit()
         logger.info("Stale prospect %s unlocked via promo code (no payment taken).", prospect.property_code)
         # Kick off the full-detail report generation now, in the background,
@@ -1075,8 +1079,7 @@ async def get_stale_prospect_payment_status(
         checkout_data = await sumup_service.get_checkout_status(prospect.sumup_checkout_id)
         sumup_status = (checkout_data.get("status") or "").upper()
         if sumup_status == "PAID":
-            prospect.payment_status = "completed"
-            prospect.unlocked_at = datetime.utcnow()
+            analyst_review.mark_paid(prospect)
             await db.commit()
             # Same head start as the promo path — SumUp confirmation is the
             # other moment a prospect actually becomes unlocked.
@@ -1099,6 +1102,12 @@ async def get_stale_prospect_report(
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
     if prospect.payment_status != "completed":
         raise HTTPException(status_code=402, detail="This full report is locked until payment is complete.")
+    if analyst_review.report_on_hold(prospect):
+        # An analyst-review funnel purchase: the review isn't finished. Keep the
+        # expansion going so the analyst has the full report to work on.
+        if not is_report_expanded(prospect):
+            background_tasks.add_task(expand_report_in_background, str(prospect.id))
+        raise HTTPException(status_code=423, detail="Your report is with your analyst and will be ready soon.")
     # This used to await the LLM expansion inline, which is exactly why the
     # page took a long time to load — the browser sat on a multi-second Groq
     # round trip before anything could render. Serve whatever's already
@@ -1699,6 +1708,8 @@ def _prospect_funnel_status(p: StaleListingProspect) -> str:
     _FUNNEL_STATUS_FILTERS, which partition the same prospects the same way."""
     if p.payment_status == "completed":
         return "paid"
+    if p.checkout_visited_at is not None:
+        return "reached_checkout"
     if p.contact_details_submitted_at is not None:
         return "details_submitted"
     return "looked_up"
@@ -1706,17 +1717,55 @@ def _prospect_funnel_status(p: StaleListingProspect) -> str:
 
 # Mutually exclusive and together exhaustive: every looked-up prospect is in
 # exactly one, so the stage counts add up to the funnel total.
+# "reached_checkout": shown the checkout page (Payment, or the analyst-review funnel's
+# Preview & pay) but hasn't paid; checkout_visited_at is recorded by every
+# funnel's wizard (POST /prospects/checkout-visit).
 _FUNNEL_STATUS_FILTERS = {
     "looked_up": lambda: and_(
         StaleListingProspect.contact_details_submitted_at.is_(None),
+        StaleListingProspect.checkout_visited_at.is_(None),
         StaleListingProspect.payment_status != "completed",
     ),
     "details_submitted": lambda: and_(
         StaleListingProspect.contact_details_submitted_at.is_not(None),
+        StaleListingProspect.checkout_visited_at.is_(None),
+        StaleListingProspect.payment_status != "completed",
+    ),
+    "reached_checkout": lambda: and_(
+        StaleListingProspect.checkout_visited_at.is_not(None),
         StaleListingProspect.payment_status != "completed",
     ),
     "paid": lambda: StaleListingProspect.payment_status == "completed",
 }
+
+# Which funnel a prospect came through, for the Follow Up filter: the letter
+# (/check, /check/agent), the Meta (/assess/...) or Google (/g/...) ads pages, or
+# the analyst-review pages (/review/...).
+_FUNNEL_SOURCE_FILTERS = {
+    "letter": lambda: or_(
+        StaleListingProspect.lead_source.is_(None),
+        and_(
+            StaleListingProspect.lead_source.not_like("meta\\_%"),
+            StaleListingProspect.lead_source.not_like("google\\_%"),
+            StaleListingProspect.lead_source.not_like("review\\_%"),
+        ),
+    ),
+    "meta": lambda: StaleListingProspect.lead_source.like("meta\\_%"),
+    "google": lambda: StaleListingProspect.lead_source.like("google\\_%"),
+    "review": lambda: StaleListingProspect.lead_source.like("review\\_%"),
+}
+
+
+def _awaiting_review_filter():
+    return and_(
+        StaleListingProspect.payment_status == "completed",
+        StaleListingProspect.analyst_review_due_at.is_not(None),
+        StaleListingProspect.report_released_at.is_(None),
+    )
+
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value else None
 
 
 @public_router.get("/prospects-console/abandoned", response_model=StaleProspectAbandonedResponse)
@@ -1725,7 +1774,15 @@ async def list_abandoned_prospects(
     include_unsubscribed: bool = Query(default=False),
     stage: str | None = Query(
         default=None,
-        description="Funnel stage to filter to: looked_up | details_submitted | paid. Omit for every stage.",
+        description="Funnel stage to filter to: looked_up | details_submitted | reached_checkout | paid. "
+        "Omit for every stage.",
+    ),
+    source: str | None = Query(
+        default=None, description="Funnel to filter to: letter | meta | google. Omit for every funnel."
+    ),
+    audience: str | None = Query(default=None, pattern="^(owner|agent)$", description="Homeowners or agencies only."),
+    awaiting_review: bool = Query(
+        default=False, description="Only paid analyst-review reports still held for the analyst."
     ),
     q: str | None = Query(default=None, description="Search property address, property code, contact name, or contact email"),
     country: str = Query(default="UK", pattern="^(UK|US)$"),
@@ -1741,8 +1798,14 @@ async def list_abandoned_prospects(
     explicitly opted out of further contact."""
     if stage is not None and stage not in _FUNNEL_STATUS_FILTERS:
         raise HTTPException(status_code=422, detail=f"stage must be one of {sorted(_FUNNEL_STATUS_FILTERS)}.")
+    if source is not None and source not in _FUNNEL_SOURCE_FILTERS:
+        raise HTTPException(status_code=422, detail=f"source must be one of {sorted(_FUNNEL_SOURCE_FILTERS)}.")
 
     filters = [StaleListingProspect.code_looked_up_at.is_not(None), StaleListingProspect.country == country]
+    if source:
+        filters.append(_FUNNEL_SOURCE_FILTERS[source]())
+    if audience:
+        filters.append(StaleListingProspect.audience == audience)
     if not include_unsubscribed:
         filters.append(StaleListingProspect.unsubscribed_at.is_(None))
     if q:
@@ -1766,9 +1829,15 @@ async def list_abandoned_prospects(
             select(func.count()).select_from(StaleListingProspect).where(*filters, stage_filter())
         )
         stage_counts[name] = int(stage_result.scalar() or 0)
+    awaiting_result = await db.execute(
+        select(func.count()).select_from(StaleListingProspect).where(*filters, _awaiting_review_filter())
+    )
+    awaiting_count = int(awaiting_result.scalar() or 0)
 
     if stage:
         filters.append(_FUNNEL_STATUS_FILTERS[stage]())
+    if awaiting_review:
+        filters.append(_awaiting_review_filter())
     count_result = await db.execute(
         select(func.count()).select_from(StaleListingProspect).where(*filters)
     )
@@ -1792,6 +1861,8 @@ async def list_abandoned_prospects(
     # a NULL contact_details_submitted_at (e.g. a looked-up-only prospect)
     # would otherwise sort first under a plain DESC order.
     last_activity_at = func.coalesce(
+        StaleListingProspect.unlocked_at,
+        StaleListingProspect.checkout_visited_at,
         StaleListingProspect.contact_details_submitted_at,
         StaleListingProspect.property_confirmed_at,
         StaleListingProspect.code_looked_up_at,
@@ -1839,10 +1910,46 @@ async def list_abandoned_prospects(
             agent_code=agent_codes.get(p.agent_account_id) if p.agent_account_id else None,
             lead_source=p.lead_source if p.lead_source in ads_funnel.NURTURED_LEAD_SOURCES else None,
             rightmove_url=p.rightmove_url if p.lead_source in ads_funnel.NURTURED_LEAD_SOURCES else None,
+            checkout_visited_at=_iso(p.checkout_visited_at),
+            unlocked_at=_iso(p.unlocked_at),
+            analyst_review_due_at=_iso(p.analyst_review_due_at),
+            report_released_at=_iso(p.report_released_at),
+            report_ready_emailed_at=_iso(p.report_ready_emailed_at),
         )
         for p, emails_sent, sms_sent in rows
     ]
-    return StaleProspectAbandonedResponse(items=items, total=total, stage_counts=stage_counts)
+    return StaleProspectAbandonedResponse(
+        items=items, total=total, stage_counts=stage_counts, awaiting_review=awaiting_count
+    )
+
+
+@public_router.post(
+    "/prospects-console/prospects/{prospect_id}/release-report",
+    response_model=StaleProspectReleaseReportResponse,
+)
+async def release_console_prospect_report(
+    prospect_id: str,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectReleaseReportResponse:
+    """"Release now" for an analyst-review funnel report held for the analyst:
+    opens it to the customer and emails them its link straight away, rather
+    than waiting out the 48 hours (app/services/analyst_review.py)."""
+    try:
+        prospect = await db.get(StaleListingProspect, uuid.UUID(prospect_id))
+    except ValueError:
+        prospect = None
+    if not prospect:
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+    if prospect.payment_status != "completed":
+        raise HTTPException(status_code=409, detail="This report hasn't been paid for yet.")
+    released = analyst_review.release(prospect)
+    await db.commit()
+    if prospect.report_released_at is not None:
+        background_tasks.add_task(analyst_review.deliver_report_ready, prospect.id)
+    return StaleProspectReleaseReportResponse(
+        prospect_id=str(prospect.id), released=released, report_released_at=_iso(prospect.report_released_at)
+    )
 
 
 @public_router.get("/prospects-console/prospects/{prospect_id}", response_model=StaleProspectConsoleDetail)
@@ -2915,6 +3022,8 @@ async def prospect_monitor_link(payload: ProspectMonitorLinkRequest, db: AsyncSe
     prospect = await _get_prospect_by_access(db, token=payload.token, property_code=payload.property_code)
     if prospect.unlocked_at is None:
         raise HTTPException(status_code=403, detail="The dashboard comes with the full report.")
+    if analyst_review.report_on_hold(prospect):
+        raise HTTPException(status_code=423, detail="Your dashboard opens with your report, once your analyst has reviewed it.")
     if not listing_monitor.rightmove_listing_id(prospect.rightmove_url):
         raise HTTPException(status_code=404, detail="The dashboard is only available for Rightmove listings.")
     monitor = await listing_monitor.get_or_create_monitor(db, prospect)
@@ -3083,8 +3192,7 @@ async def mark_stale_prospect_bank_transfer_paid(
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found.")
     if prospect.payment_status != "completed":
-        prospect.payment_status = "completed"
-        prospect.unlocked_at = datetime.utcnow()
+        analyst_review.mark_paid(prospect)
         await db.commit()
         background_tasks.add_task(expand_report_in_background, str(prospect.id))
     return {
@@ -3246,7 +3354,9 @@ async def prospect_agent_intel(
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
     if prospect.audience != "agent":
         raise HTTPException(status_code=404, detail="The agent report is only for agencies' listings.")
-    unlocked = prospect.unlocked_at is not None or prospect.payment_status == "completed"
+    unlocked = (
+        prospect.unlocked_at is not None or prospect.payment_status == "completed"
+    ) and not analyst_review.report_on_hold(prospect)
     if not agent_report.is_fresh(prospect):
         agent_report.start_refresh(prospect.id)
     intel = agent_report.stored_intel(prospect)
@@ -3277,6 +3387,8 @@ async def download_agent_report_pdf(
         raise HTTPException(status_code=404, detail="The agent report is only for agencies' listings.")
     if not (prospect.unlocked_at is not None or prospect.payment_status == "completed"):
         raise HTTPException(status_code=402, detail="The full agent report unlocks once it's purchased.")
+    if analyst_review.report_on_hold(prospect):
+        raise HTTPException(status_code=423, detail="Your report is with your analyst and will be ready soon.")
     intel = agent_report.stored_intel(prospect)
     if not agent_report.is_current(intel):
         try:

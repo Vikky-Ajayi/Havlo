@@ -44,7 +44,7 @@ from app.models.models import (
     StaleListingMonitorEvent,
     StaleListingProspect,
 )
-from app.services import listing_scraper, twilio_service
+from app.services import analyst_review, listing_scraper, twilio_service
 from app.services.rightmove_scraper import _parse_next_data, build_proxied_request
 from app.services.stale_prospect_abandonment import _within_sms_send_window
 from app.services.stale_prospect_service import current_report_json, hash_access_token
@@ -481,9 +481,9 @@ async def create_monitor(db: AsyncSession, prospect: StaleListingProspect, *, no
     """The caller commits. Purchases from before the dashboard existed are
     marked not to be texted."""
     now = now or datetime.now(timezone.utc)
-    started = prospect.unlocked_at or now
-    if started.tzinfo is None:
-        started = started.replace(tzinfo=timezone.utc)
+    # From release for an analyst-reviewed (/review/...) report, which can be
+    # two days after payment; otherwise SMS_MAX_PURCHASE_AGE would skip its text.
+    started = analyst_review.purchase_started_at(prospect) or now
     monitor = StaleListingMonitor(
         prospect_id=prospect.id,
         started_at=started,
@@ -511,6 +511,11 @@ async def ensure_monitors(now: datetime) -> int:
             select(StaleListingProspect)
             .where(StaleListingProspect.unlocked_at.is_not(None))
             .where(StaleListingProspect.unlocked_at >= now - timedelta(days=MONITOR_DAYS))
+            # Not while the report is held for its analyst review.
+            .where(or_(
+                StaleListingProspect.analyst_review_due_at.is_(None),
+                StaleListingProspect.report_released_at.is_not(None),
+            ))
             .where(StaleListingProspect.rightmove_url.ilike("%rightmove.co.uk/properties/%"))
             .where(StaleListingProspect.id.not_in(existing))
             .limit(200)

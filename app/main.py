@@ -651,6 +651,15 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Stale-prospect post-purchase emails disabled by ENABLE_STALE_PROSPECT_POST_PURCHASE_EMAILS.")
 
+    # ── Analyst-review funnel: release held reports after 48 hours ────────
+    # and email each customer their report link (app/services/analyst_review.py).
+    # Not behind a flag: a paid report must always go out.
+    if HAS_DATABASE:
+        from app.services.analyst_review import start_release_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_release_loop()))
+        logger.info("Analyst-review release loop scheduled.")
+
     # ── HM Land Registry price paid data (our own copy) ───────────────────
     # Loads Land Registry's yearly sales files into land_registry_sales and
     # reloads any year they re-issue (monthly), checking hourly (cheap HEAD

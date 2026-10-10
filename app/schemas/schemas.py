@@ -576,14 +576,17 @@ class StaleProspectDetailsRequest(BaseModel):
     # The form no longer asks for it; still checked when a client sends it.
     confirm_email: Optional[EmailStr] = None
     mobile_number: str = Field(..., min_length=5, max_length=50)
+    # The analyst-review funnel's "send me occasional tips" box (None: not asked).
+    marketing_opt_in: Optional[bool] = None
 
 
 class AdsStartRequest(BaseModel):
     """Ads landing page: the pasted listing link (app/services/ads_funnel.py)."""
     listing_url: str = Field(..., min_length=10, max_length=1000)
     audience: Literal["owner", "agent"] = "owner"
-    # Which ads' landing page: "meta" (/assess/...) or "google" (/g/...).
-    channel: Literal["meta", "google"] = "meta"
+    # Which landing page: "meta" (/assess/...), "google" (/g/...) or
+    # "review" (/review/..., the analyst-review funnel).
+    channel: Literal["meta", "google", "review"] = "meta"
     # From a reminder email's link, when the visitor came back through one.
     reminder_token: Optional[str] = Field(None, max_length=100)
 
@@ -599,7 +602,7 @@ class AdsReminderRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     audience: Literal["owner", "agent"] = "owner"
-    channel: Literal["meta", "google"] = "meta"
+    channel: Literal["meta", "google", "review"] = "meta"
 
 
 class AdsReminderLeadResponse(BaseModel):
@@ -650,6 +653,14 @@ class StaleProspectPreviewResponse(BaseModel):
     # "agent" for an agency's own copy opened from /check/agent (see
     # app/services/agent_campaign.py), so the funnel can word things for agents.
     audience: str = "owner"
+    # The full report's price (prospect_unlock_price): 0.025% of the asking
+    # price, £99 to £498.
+    unlock_price: Optional[float] = None
+    # Analyst-review funnel (/review/...) purchases: paid (is_unlocked) but the analyst
+    # review isn't finished, so the report opens at analyst_review_due_at at
+    # the latest. See app/services/analyst_review.py.
+    report_on_hold: bool = False
+    analyst_review_due_at: Optional[str] = None
 
 
 class AgentLookupRequest(BaseModel):
@@ -850,7 +861,7 @@ class StaleProspectAbandonedItem(BaseModel):
     """One prospect a customer actually interacted with by code/token — the
     Follow Up console worklist, spanning the full funnel from "just looked
     up the code" through to paid. `status` is the furthest stage reached:
-    "looked_up" | "details_submitted" | "paid"."""
+    "looked_up" | "details_submitted" | "reached_checkout" | "paid"."""
     prospect_id: str
     property_code: str
     property_address: str
@@ -876,16 +887,34 @@ class StaleProspectAbandonedItem(BaseModel):
     audience: str = "owner"
     agent_company: Optional[str] = None
     agent_code: Optional[str] = None
-    # Leads from the Meta / Google ads pages: their lead_source (e.g.
-    # "meta_seller", "google_agent") and the Rightmove link they pasted.
+    # Leads from the Meta / Google / analyst-review landing pages: their
+    # lead_source (e.g. "meta_seller", "review_agent") and the Rightmove link they pasted.
     lead_source: Optional[str] = None
     rightmove_url: Optional[str] = None
+    # First time they reached the checkout page (Payment / Preview & pay).
+    checkout_visited_at: Optional[str] = None
+    unlocked_at: Optional[str] = None
+    # Analyst-review funnel purchases (app/services/analyst_review.py):
+    # when the report is due out, when it went out, and when the "report
+    # ready" email was delivered. All None for every other funnel.
+    analyst_review_due_at: Optional[str] = None
+    report_released_at: Optional[str] = None
+    report_ready_emailed_at: Optional[str] = None
 
 
 class StaleProspectAbandonedResponse(BaseModel):
     items: list[StaleProspectAbandonedItem]
     total: int
     stage_counts: dict[str, int] = Field(default_factory=dict)
+    # Paid analyst-review reports still held for the analyst, under the
+    # same search / funnel filters (for the "Awaiting analyst review" filter).
+    awaiting_review: int = 0
+
+
+class StaleProspectReleaseReportResponse(BaseModel):
+    prospect_id: str
+    released: bool
+    report_released_at: Optional[str] = None
 
 
 class StaleProspectConsoleEditRequest(BaseModel):

@@ -46,16 +46,23 @@ class PropertyTypeTargetingTest(unittest.TestCase):
 
 
 class CheckoutPriceTest(unittest.TestCase):
-    def test_flat_price_regardless_of_asking_price(self) -> None:
-        for price in [None, 0, 350000, 499999, 500000, 750000, 999999, 1000000, 5000000]:
+    def test_price_follows_the_asking_price(self) -> None:
+        # 0.025% of the asking price to the pound, between £99 and £498.
+        cases = {
+            None: 99.0, 0: 99.0, 250000: 99.0, 396000: 99.0, 500000: 125.0, 750000: 188.0,
+            1000000: 250.0, 1992000: 498.0, 5000000: 498.0,
+        }
+        for price, expected in cases.items():
             with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price), 49.99)
-                self.assertEqual(_stale_prospect_checkout_amount(price, "owner"), 49.99)
+                self.assertEqual(_stale_prospect_checkout_amount(price), expected)
+                self.assertEqual(_stale_prospect_checkout_amount(price, "owner"), expected)
 
     def test_agencies_pay_the_same_price(self) -> None:
-        for price in [None, 350000, 1000000]:
+        for price in [None, 350000, 1000000, 3000000]:
             with self.subTest(price=price):
-                self.assertEqual(_stale_prospect_checkout_amount(price, "agent"), 49.99)
+                self.assertEqual(
+                    _stale_prospect_checkout_amount(price, "agent"), _stale_prospect_checkout_amount(price, "owner")
+                )
 
     def test_emails_quote_the_checkout_price(self) -> None:
         for audience in [None, "owner", "agent"]:
@@ -66,8 +73,9 @@ class CheckoutPriceTest(unittest.TestCase):
                 )
 
     def test_seller_assessment_price(self) -> None:
-        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 49.99)
-        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 49.99)
+        # The /stale-listings/plan checkout has no asking price: "From £99".
+        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 99.0)
+        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 99.0)
         # Retired plans keep their price so historical orders still resolve.
         self.assertEqual(SL_PACKAGES["professional_review"]["amount"], 299.99)
 

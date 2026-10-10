@@ -736,7 +736,7 @@ def record_url_reminder_request(first_name: str, email: str, audience: str, chan
         datetime.utcnow().isoformat(),
         first_name,
         email,
-        f"{who} - {'Google' if channel == 'google' else 'Meta'} ad",
+        f"{who} - {'Analyst review' if channel == 'review' else ('Google' if channel == 'google' else 'Meta') + ' ad'}",
     ]
     _append_row("URL Reminder Requests", row)
 

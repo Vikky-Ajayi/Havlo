@@ -119,7 +119,7 @@ export interface StaleProspectAbandonedItem {
   contact_email?: string | null;
   contact_phone?: string | null;
   payment_status: string;
-  status: 'looked_up' | 'confirmed' | 'details_submitted' | 'paid';
+  status: 'looked_up' | 'confirmed' | 'details_submitted' | 'reached_checkout' | 'paid';
   code_looked_up_at?: string | null;
   property_confirmed_at?: string | null;
   contact_details_submitted_at?: string | null;
@@ -135,12 +135,21 @@ export interface StaleProspectAbandonedItem {
   /** Ads leads only: e.g. 'meta_seller', 'google_agent', and the Rightmove link they pasted. */
   lead_source?: string | null;
   rightmove_url?: string | null;
+  /** First time they were shown the checkout page (any funnel). */
+  checkout_visited_at?: string | null;
+  unlocked_at?: string | null;
+  /** Analyst-review funnel (/review/...) purchases: due out, released, emailed. */
+  analyst_review_due_at?: string | null;
+  report_released_at?: string | null;
+  report_ready_emailed_at?: string | null;
 }
 
 export interface StaleProspectAbandonedResponse {
   items: StaleProspectAbandonedItem[];
   total: number;
   stage_counts?: Record<string, number>;
+  /** Paid analyst-review reports still with the analyst, under the same filters. */
+  awaiting_review?: number;
 }
 
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
@@ -1194,16 +1203,36 @@ export const api = {
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
   },
 
-  staleProspectsConsoleListAbandoned: (params: { includeUnsubscribed?: boolean; stage?: string; q?: string; country?: 'UK' | 'US'; limit?: number; offset?: number } = {}) => {
+  staleProspectsConsoleListAbandoned: (params: {
+    includeUnsubscribed?: boolean;
+    stage?: string;
+    source?: 'letter' | 'meta' | 'google' | 'review';
+    audience?: 'owner' | 'agent';
+    awaitingReview?: boolean;
+    q?: string;
+    country?: 'UK' | 'US';
+    limit?: number;
+    offset?: number;
+  } = {}) => {
     const queryParams: Record<string, string> = {};
     if (params.includeUnsubscribed !== undefined) queryParams.include_unsubscribed = String(params.includeUnsubscribed);
     if (params.stage) queryParams.stage = params.stage;
+    if (params.source) queryParams.source = params.source;
+    if (params.audience) queryParams.audience = params.audience;
+    if (params.awaitingReview) queryParams.awaiting_review = 'true';
     if (params.country) queryParams.country = params.country;
     if (params.q) queryParams.q = params.q;
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
     return request<StaleProspectAbandonedResponse>('/stale-listings/prospects-console/abandoned', { queryParams });
   },
+
+  /** "Release now": open a held analyst-review report and email its link. */
+  staleProspectsConsoleReleaseReport: (prospectId: string) =>
+    request<{ prospect_id: string; released: boolean; report_released_at?: string | null }>(
+      `/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}/release-report`,
+      { method: 'POST' },
+    ),
 
   staleProspectsConsoleGet: (prospectId: string) =>
     request<StaleProspectConsoleDetail>(`/stale-listings/prospects-console/prospects/${encodeURIComponent(prospectId)}`),

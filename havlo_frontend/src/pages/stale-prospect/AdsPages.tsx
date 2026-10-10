@@ -25,3 +25,23 @@ export const AdsAgentLanding = ({ channel = 'meta' }: { channel?: AdsChannel }) 
 
 export const GoogleAdsSellerLanding = () => <AdsSellerLanding channel="google" />;
 export const GoogleAdsAgentLanding = () => <AdsAgentLanding channel="google" />;
+
+// The analyst-review funnel (ReviewFunnel.tsx): the same listing-link
+// landing page, then an analyst-reviewed report within 48 hours of payment.
+export const ReviewSellerLanding = () => {
+  usePageMeta({
+    title: 'Why Hasn’t My Property Sold? | Analyst-Reviewed Property Report | Havlo',
+    description:
+      'Paste your Rightmove link for a free first scan. A Havlo property analyst then checks every point and sends you a clear report within 48 hours.',
+  });
+  return <StaleProspectWizard ads="owner" channel="review" />;
+};
+
+export const ReviewAgentLanding = () => {
+  usePageMeta({
+    title: 'Slow-Moving Instruction? | Analyst-Reviewed Listing Report | Havlo',
+    description:
+      'Paste the Rightmove link for a free first scan. A Havlo property analyst then reviews the listing and sends you a report for your vendor within 48 hours.',
+  });
+  return <StaleProspectWizard ads="agent" channel="review" />;
+};

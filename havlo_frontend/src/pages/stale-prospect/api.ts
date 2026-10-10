@@ -29,8 +29,9 @@ export async function lookupProspect(propertyCode: string): Promise<ProspectPrev
 // ── Meta-ads landing pages (/assess/seller, /assess/agent) ──────────────
 
 export type AdsAudience = 'owner' | 'agent';
-// Which ads' landing page: Meta (/assess/...) or Google (/g/...).
-export type AdsChannel = 'meta' | 'google';
+// Which landing page: Meta (/assess/...), Google (/g/...), or the
+// analyst-review funnel (/review/..., ReviewFunnel.tsx).
+export type AdsChannel = 'meta' | 'google' | 'review';
 
 /** Reads the pasted Rightmove listing and returns an access token for the
  * normal funnel. Can take up to a minute for a listing we haven't seen. */
@@ -128,6 +129,8 @@ export async function submitProspectDetails(payload: {
   email: string;
   confirm_email?: string;
   mobile_number: string;
+  /** The analyst-review funnel's "send me occasional tips" box. */
+  marketing_opt_in?: boolean;
 }): Promise<{ contact_name: string }> {
   const response = await fetch(`${API_BASE}/stale-listings/prospects/details`, {
     method: 'POST',

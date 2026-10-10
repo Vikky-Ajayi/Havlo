@@ -67,10 +67,15 @@ function parseReport(data: Record<string, unknown>): ReportEdit {
   };
 }
 
-// Leads from the ads landing pages, by lead_source ('meta_seller', 'google_agent', ...).
+// Leads from the ads and analyst-review landing pages, by lead_source
+// ('meta_seller', 'google_agent', 'review_seller', ...).
 function adLeadLabel(leadSource: string) {
-  return `${leadSource.startsWith('google_') ? 'Google' : 'Meta'} ads ${leadSource.endsWith('_seller') ? 'vendor' : 'agent'}`;
+  const who = leadSource.endsWith('_seller') ? 'vendor' : 'agent';
+  if (leadSource.startsWith('review_')) return `Analyst review ${who}`;
+  return `${leadSource.startsWith('google_') ? 'Google' : 'Meta'} ads ${who}`;
 }
+const adLeadColor = (leadSource: string) =>
+  leadSource.startsWith('review_') ? '#A409D2' : leadSource.startsWith('google_') ? '#34A853' : '#1877F2';
 
 function emptyManualForm() {
   return { rightmove_url: '', address: '' };
@@ -83,13 +88,23 @@ const STATUS_LABELS: Record<string, string> = {
 
 // Follow Up tab funnel stages — furthest one each prospect reached.
 const STAGE_LABELS: Record<string, string> = {
-  looked_up: 'Looked up', details_submitted: 'Details submitted', paid: 'Paid',
+  looked_up: 'Looked up', details_submitted: 'Details submitted', reached_checkout: 'Reached checkout', paid: 'Paid',
 };
 const STAGE_COLORS: Record<string, { background: string; color: string }> = {
   looked_up: { background: '#F1F5F9', color: '#475569' },
   details_submitted: { background: '#FEF3C7', color: '#92400E' },
+  reached_checkout: { background: '#FFEDD5', color: '#C2410C' },
   paid: { background: '#DCFCE7', color: '#15803D' },
 };
+type FunnelStage = '' | 'looked_up' | 'details_submitted' | 'reached_checkout' | 'paid';
+type FunnelSource = '' | 'letter' | 'meta' | 'google' | 'review';
+// Which funnel a Follow Up row came through (the backend's `source` filter).
+const SOURCE_LABELS: Record<string, string> = {
+  '': 'All funnels', letter: 'Letters (/check)', meta: 'Meta ads (/assess)', google: 'Google ads (/g)',
+  review: 'Analyst review (/review)',
+};
+const fmtDateTime = (v?: string | null) =>
+  v ? new Date(v).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
 const formatMoney = (v: number | null | undefined, us: boolean) =>
   v == null ? '—' : `${us ? '$' : '£'}${Math.round(v).toLocaleString(us ? 'en-US' : 'en-GB')}`;
@@ -219,14 +234,22 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   const [abandonedError, setAbandonedError] = useState('');
   const [abandonedSearchRaw, setAbandonedSearchRaw] = useState('');
   const [includeUnsubscribedRaw, setIncludeUnsubscribedRaw] = useState(false);
-  const [stageFilterRaw, setStageFilterRaw] = useState<'' | 'looked_up' | 'details_submitted' | 'paid'>('');
+  const [stageFilterRaw, setStageFilterRaw] = useState<FunnelStage>('');
+  const [sourceFilter, setSourceFilterRaw] = useState<FunnelSource>('');
+  const [audienceFilter, setAudienceFilterRaw] = useState<'' | 'owner' | 'agent'>('');
+  const [awaitingReviewOnly, setAwaitingReviewOnlyRaw] = useState(false);
+  const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
+  const [releasingId, setReleasingId] = useState<string | null>(null);
   const [abandonedPage, setAbandonedPage] = useState(0);
   const abandonedSearch = abandonedSearchRaw;
   const includeUnsubscribed = includeUnsubscribedRaw;
   const stageFilter = stageFilterRaw;
   const setAbandonedSearch = (v: string) => { setAbandonedSearchRaw(v); setAbandonedPage(0); };
   const setIncludeUnsubscribed = (v: boolean) => { setIncludeUnsubscribedRaw(v); setAbandonedPage(0); };
-  const setStageFilter = (v: '' | 'looked_up' | 'details_submitted' | 'paid') => { setStageFilterRaw(v); setAbandonedPage(0); };
+  const setStageFilter = (v: FunnelStage) => { setStageFilterRaw(v); setAwaitingReviewOnlyRaw(false); setAbandonedPage(0); };
+  const setSourceFilter = (v: FunnelSource) => { setSourceFilterRaw(v); setAbandonedPage(0); };
+  const setAudienceFilter = (v: '' | 'owner' | 'agent') => { setAudienceFilterRaw(v); setAbandonedPage(0); };
+  const setAwaitingReviewOnly = (v: boolean) => { setAwaitingReviewOnlyRaw(v); if (v) setStageFilterRaw(''); setAbandonedPage(0); };
 
   const loadAbandoned = useCallback(async () => {
     setAbandonedLoading(true);
@@ -235,6 +258,9 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
       const res = await api.staleProspectsConsoleListAbandoned({
         includeUnsubscribed,
         stage: stageFilter || undefined,
+        source: sourceFilter || undefined,
+        audience: audienceFilter || undefined,
+        awaitingReview: awaitingReviewOnly,
         q: abandonedSearch.trim() || undefined,
         country,
         limit: PAGE_SIZE,
@@ -243,12 +269,30 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
       setAbandonedItems(res.items);
       setAbandonedTotal(res.total);
       setStageCounts(res.stage_counts || {});
+      setAwaitingReviewCount(res.awaiting_review || 0);
     } catch (e) {
       setAbandonedError(e instanceof Error ? e.message : 'Could not load follow-up list.');
     } finally {
       setAbandonedLoading(false);
     }
-  }, [includeUnsubscribed, stageFilter, abandonedSearch, abandonedPage, country]);
+  }, [includeUnsubscribed, stageFilter, sourceFilter, audienceFilter, awaitingReviewOnly, abandonedSearch, abandonedPage, country]);
+
+  // "Release now" for an analyst-review report held for the analyst.
+  const releaseReport = async (item: StaleProspectAbandonedItem) => {
+    if (!window.confirm(`Release the report for ${item.property_address} now and email ${item.contact_email || 'the customer'} its link?`)) return;
+    setReleasingId(item.prospect_id);
+    setFollowUpNotice('');
+    setAbandonedError('');
+    try {
+      await api.staleProspectsConsoleReleaseReport(item.prospect_id);
+      setFollowUpNotice(`Report released for ${item.property_address}. The "report ready" email is on its way.`);
+      await loadAbandoned();
+    } catch (e) {
+      setAbandonedError(e instanceof Error ? e.message : 'Could not release that report.');
+    } finally {
+      setReleasingId(null);
+    }
+  };
 
   useEffect(() => {
     if (tab !== 'abandoned') return;
@@ -758,6 +802,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         .spc-badge.manual{background:#7C3AED}
         .spc-badge.ad{background:#1877F2}
         .spc-badge.ad.google{background:#34A853}
+        .spc-badge.ad.review{background:#A409D2}
         .spc-badge.treated{background:#059669}
         .spc-badge.looked-up{background:#A409D2}
         .spc-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
@@ -1038,7 +1083,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                     <div className="spc-badges">
                       {item.is_manual && <span className="spc-badge manual">Manual</span>}
                       {item.lead_source && (
-                        <span className={`spc-badge ad${item.lead_source.startsWith('google_') ? ' google' : ''}`}>
+                        <span className={`spc-badge ad${item.lead_source.startsWith('google_') ? ' google' : item.lead_source.startsWith('review_') ? ' review' : ''}`}>
                           {adLeadLabel(item.lead_source)}
                         </span>
                       )}
@@ -1074,21 +1119,23 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         {tab === 'abandoned' && (
           <>
             <div className="spc-stats">
-              <div className="spc-stat"><b>{abandonedTotal}</b><span>{STAGE_LABELS[stageFilter] || 'in the funnel'}</span></div>
+              <div className="spc-stat"><b>{abandonedTotal}</b><span>{awaitingReviewOnly ? 'Awaiting analyst review' : STAGE_LABELS[stageFilter] || 'in the funnel'}</span></div>
+              <div className="spc-stat"><b>{stageCounts.reached_checkout ?? 0}</b><span>Reached checkout, not paid</span></div>
+              <div className="spc-stat"><b>{awaitingReviewCount}</b><span>Awaiting analyst review</span></div>
             </div>
             <div className="spc-filters" style={{ flexWrap: 'wrap' }}>
               <input className="spc-input" placeholder="Search address, property or agency code, contact name or email, Rightmove link..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
               <div style={{ display: 'flex', gap: 6 }}>
-                {(['', 'looked_up', 'details_submitted', 'paid'] as const).map(s => (
+                {(['', 'looked_up', 'details_submitted', 'reached_checkout', 'paid'] as const).map(s => (
                   <button
                     key={s || 'all'}
                     type="button"
                     onClick={() => setStageFilter(s)}
                     style={{
                       padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                      border: stageFilter === s ? '1px solid #111111' : '1px solid #E5E7EB',
-                      background: stageFilter === s ? '#111111' : '#fff',
-                      color: stageFilter === s ? '#fff' : '#555',
+                      border: stageFilter === s && !awaitingReviewOnly ? '1px solid #111111' : '1px solid #E5E7EB',
+                      background: stageFilter === s && !awaitingReviewOnly ? '#111111' : '#fff',
+                      color: stageFilter === s && !awaitingReviewOnly ? '#fff' : '#555',
                     }}
                   >
                     {s ? STAGE_LABELS[s] : 'All'}
@@ -1097,7 +1144,27 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                       : ''}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setAwaitingReviewOnly(!awaitingReviewOnly)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    border: awaitingReviewOnly ? '1px solid #A409D2' : '1px solid #E5E7EB',
+                    background: awaitingReviewOnly ? '#A409D2' : '#fff',
+                    color: awaitingReviewOnly ? '#fff' : '#A409D2',
+                  }}
+                >
+                  Awaiting analyst review · {awaitingReviewCount}
+                </button>
               </div>
+              <select className="spc-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value as FunnelSource)} aria-label="Funnel">
+                {Object.entries(SOURCE_LABELS).map(([value, label]) => <option key={value || 'all'} value={value}>{label}</option>)}
+              </select>
+              <select className="spc-select" value={audienceFilter} onChange={e => setAudienceFilter(e.target.value as '' | 'owner' | 'agent')} aria-label="Seller or agent">
+                <option value="">Sellers and agents</option>
+                <option value="owner">Sellers only</option>
+                <option value="agent">Agents only</option>
+              </select>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#555' }}>
                 <input type="checkbox" checked={includeUnsubscribed} onChange={e => setIncludeUnsubscribed(e.target.checked)} />
                 Include unsubscribed
@@ -1116,7 +1183,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#F7F8F8', textAlign: 'left' }}>
-                      {['Property', 'Contact', 'Price', 'Stage', 'First looked up', 'Details submitted', 'Payment', 'Follow-ups sent', 'Status', ''].map(h => (
+                      {['Property', 'Contact', 'Price', 'Stage', 'First looked up', 'Details submitted', 'Reached checkout', 'Payment / report', 'Follow-ups sent', 'Status', ''].map(h => (
                         <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: '#555', whiteSpace: 'nowrap', borderBottom: '1px solid #E5E7EB' }}>{h}</th>
                       ))}
                     </tr>
@@ -1129,7 +1196,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                           <div style={{ color: '#888', fontSize: 12 }}>{item.property_code}{item.postcode ? ` · ${item.postcode}` : ''}</div>
                           {item.lead_source && (
                             <>
-                              <span style={{ display: 'inline-block', marginTop: 4, marginRight: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, color: '#fff', background: item.lead_source.startsWith('google_') ? '#34A853' : '#1877F2', whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'inline-block', marginTop: 4, marginRight: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, color: '#fff', background: adLeadColor(item.lead_source), whiteSpace: 'nowrap' }}>
                                 {adLeadLabel(item.lead_source)}
                               </span>
                               {item.rightmove_url && (
@@ -1165,7 +1232,37 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.code_looked_up_at)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.contact_details_submitted_at)}</td>
-                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{item.payment_status}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          {item.checkout_visited_at ? (
+                            <span style={{ fontWeight: item.status === 'reached_checkout' ? 700 : 400, color: item.status === 'reached_checkout' ? '#C2410C' : undefined }}>
+                              {fmtDateTime(item.checkout_visited_at)}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <div>{item.payment_status}{item.unlocked_at ? ` · ${fmtDate(item.unlocked_at)}` : ''}</div>
+                          {item.analyst_review_due_at && !item.report_released_at && (
+                            <div style={{ marginTop: 4 }}>
+                              <div style={{ color: '#A409D2', fontWeight: 700, fontSize: 12 }}>In analyst review · due {fmtDateTime(item.analyst_review_due_at)}</div>
+                              <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                                <button type="button" className="spc-btn spc-btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => openDetail(item.prospect_id)}>
+                                  Review report
+                                </button>
+                                <button type="button" className="spc-btn spc-btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} disabled={releasingId === item.prospect_id} onClick={() => releaseReport(item)}>
+                                  {releasingId === item.prospect_id ? 'Releasing…' : 'Release now'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {item.report_released_at && (
+                            <div style={{ marginTop: 4, color: '#15803D', fontSize: 12, fontWeight: 700 }}>
+                              Report released {fmtDateTime(item.report_released_at)}
+                              <div style={{ color: item.report_ready_emailed_at ? '#555' : '#92400E', fontWeight: 400 }}>
+                                {item.report_ready_emailed_at ? `Emailed ${fmtDateTime(item.report_ready_emailed_at)}` : 'Email not sent yet (retrying)'}
+                              </div>
+                            </div>
+                          )}
+                        </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           {item.abandonment_emails_sent} email{item.abandonment_emails_sent === 1 ? '' : 's'}
                           {item.abandonment_sms_sent > 0 && `, ${item.abandonment_sms_sent} SMS`}

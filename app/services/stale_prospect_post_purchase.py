@@ -16,6 +16,11 @@ paid for, not marketing, and a prior opt-out on the pre-purchase drip must
 never block a paying customer from being told their purchase is ready.
 Stages 2-12 (all nurture/upsell) skip once unsubscribed_at is set, same as
 the pre-purchase drip.
+
+Analyst-review funnel (/review/...) purchases are held for an analyst review
+(app/services/analyst_review.py): nothing goes while the report is held,
+the schedule counts from its release instead, and stage 1 is skipped
+because the release's own "your report is ready" email replaces it.
 """
 from __future__ import annotations
 
@@ -24,12 +29,12 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectPostPurchaseEmail
-from app.services import email_service
+from app.services import analyst_review, email_service
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_abandonment import build_unsubscribe_url
 
@@ -71,6 +76,11 @@ async def run_post_purchase_email_cycle() -> dict:
                 StaleListingProspect.unlocked_at.is_not(None),
                 StaleListingProspect.contact_email.is_not(None),
                 StaleListingProspect.audience == "owner",  # owner wording; agents not yet
+                # Held for the analyst review: nothing until it's released.
+                or_(
+                    StaleListingProspect.analyst_review_due_at.is_(None),
+                    StaleListingProspect.report_released_at.is_not(None),
+                ),
             )
             .order_by(StaleListingProspect.unlocked_at.asc())
             .limit(_POLL_LIMIT)
@@ -93,15 +103,17 @@ async def run_post_purchase_email_cycle() -> dict:
     for prospect in candidates:
         if len(due) >= _MAX_SENDS_PER_CYCLE:
             break
-        elapsed = now - prospect.unlocked_at
+        elapsed = now - analyst_review.purchase_started_at(prospect)
         already_sent = sent_map.get(prospect.id, set())
+        if prospect.analyst_review_due_at is not None:
+            already_sent = already_sent | {1}
         for stage, delay in POST_PURCHASE_STAGES:
             if stage in already_sent:
                 continue
             # Stage 1 is transactional (delivering the purchase itself) and
             # always sends. Stages 2-12 are nurture/upsell and respect an
             # earlier unsubscribe from either drip.
-            if stage > 1 and prospect.unsubscribed_at is not None:
+            if stage > 1 and (prospect.unsubscribed_at is not None or prospect.marketing_opt_in is False):
                 break
             if elapsed >= delay:
                 due.append((prospect, stage))

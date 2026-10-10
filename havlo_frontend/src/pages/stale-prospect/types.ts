@@ -55,6 +55,12 @@ export interface ProspectPreview {
   property_confirmed: boolean;
   has_contact_details: boolean;
   checkout_started?: boolean;
+  /** The full report's price from the backend (prospect_unlock_price). */
+  unlock_price?: number | null;
+  /** Analyst-review funnel (/review/...) purchase whose review isn't finished: paid
+   * (is_unlocked) but the report opens at analyst_review_due_at at the latest. */
+  report_on_hold?: boolean;
+  analyst_review_due_at?: string | null;
 }
 
 export interface ReportFinding {
@@ -187,11 +193,22 @@ export function stepperIndexFor(step: WizardStep): number {
 }
 
 // Mirrors prospect_unlock_price in app/services/stale_prospect_service.py
-// (what the checkout route charges): £49.99 for owners and estate agencies
-// alike, whatever the asking price. Keeps the askingPrice parameter
-// so callers don't change if per-price tiering is ever reintroduced.
+// (what the checkout route charges): 0.025% of the asking price to the
+// nearest pound, never under £99 or over £498, for owners and estate
+// agencies alike; £99 when the asking price isn't known.
+export const MIN_UNLOCK_PRICE = 99;
+export const MAX_UNLOCK_PRICE = 498;
+const UNLOCK_PRICE_RATE = 0.00025;
+
 export function unlockPrice(askingPrice?: number | null, audience?: 'owner' | 'agent'): number {
-  return audience === 'agent' ? 49.99 : 49.99;
+  const price = Number(askingPrice);
+  if (!Number.isFinite(price) || price <= 0) return MIN_UNLOCK_PRICE;
+  return Math.min(MAX_UNLOCK_PRICE, Math.max(MIN_UNLOCK_PRICE, Math.round(price * UNLOCK_PRICE_RATE)));
+}
+
+/** The prospect's report price: the backend's figure when it sent one. */
+export function prospectPrice(prospect: { unlock_price?: number | null; asking_price?: number | null; audience?: 'owner' | 'agent' }): number {
+  return prospect.unlock_price ?? unlockPrice(prospect.asking_price, prospect.audience);
 }
 
 /** "12 Aug 2026" for a reduced_date; "Recently" when the date couldn't be read. */
