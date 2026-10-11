@@ -1,4 +1,6 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
+import { REVIEW_COPIES, ReviewStars, staleListingsReviews } from '../../components/shared/StaleListingsReviews';
 import { getAdsSummary, type AdsSummary } from './api';
 import { formatGbp, formatReducedDate, prospectPrice, type ProspectPreview } from './types';
 
@@ -11,7 +13,7 @@ import { formatGbp, formatReducedDate, prospectPrice, type ProspectPreview } fro
 //
 // Parts of the design wait for real content and are left out until then:
 // the analyst's name and photo, the Trustpilot score, customer quotes, a
-// sample report to link to, and press mentions other than The Guardian.
+// sample report to link to, and the Forbes press mention.
 
 const PURPLE = '#A409D2';
 
@@ -210,19 +212,34 @@ export const ReviewScanStep = ({
 
 // ── Step: Your details ──────────────────────────────────────────────────────
 
+// The same press logos as the Stale Listings home page (public/press-logos).
+const PRESS_LOGOS = [
+  { alt: 'The Times', src: '/press-logos/the-times.svg' },
+  { alt: 'The Guardian', src: '/press-logos/the-guardian.svg' },
+  { alt: 'Daily Mail', src: '/press-logos/daily-mail.svg' },
+];
+
 const PressStrip = () => (
   <div className="rv-press">
     <span>As featured in</span>
-    <img src="/press-logos/the-guardian.svg" alt="The Guardian" />
+    <div className="rv-press-logos">
+      {PRESS_LOGOS.map((logo) => <img key={logo.src} src={logo.src} alt={logo.alt} />)}
+    </div>
   </div>
 );
+
+/** The number as typed, without the country code if they typed that too
+ * (it's already chosen in the dropdown beside the box). */
+function withoutDialCode(mobile: string, dialCode: string): string {
+  const digits = dialCode.replace(/\D/g, '');
+  const text = mobile.trim();
+  return digits ? text.replace(new RegExp(`^(\\+|00)${digits}\\s*`), '') : text;
+}
 
 export const ReviewDetailsStep = ({
   prospect,
   totalFactors,
   onSubmit,
-  onSwitchRole,
-  switching,
   loading,
   error,
   initial,
@@ -230,16 +247,14 @@ export const ReviewDetailsStep = ({
   prospect: ProspectPreview;
   totalFactors: number;
   onSubmit: (fields: { full_name: string; email: string; mobile_number: string; marketing_opt_in: boolean }) => void;
-  onSwitchRole: (audience: 'owner' | 'agent') => void;
-  switching: boolean;
   loading: boolean;
   error: string;
   initial?: { first_name?: string; email?: string };
 }) => {
   const image = propertyImage(prospect);
-  const role = prospect.audience === 'agent' ? 'agent' : 'owner';
   const [fullName, setFullName] = useState(initial?.first_name || '');
   const [email, setEmail] = useState(initial?.email || '');
+  const [dialCode, setDialCode] = useState('+44');
   const [mobile, setMobile] = useState('');
   const [tips, setTips] = useState(false);
   const facts = [
@@ -253,8 +268,7 @@ export const ReviewDetailsStep = ({
     onSubmit({
       full_name: fullName.trim(),
       email: email.trim(),
-      // The +44 is fixed beside the box; don't double it if they typed it too.
-      mobile_number: `+44 ${mobile.trim().replace(/^(\+|00)?44\s*/, '')}`,
+      mobile_number: `${dialCode} ${withoutDialCode(mobile, dialCode)}`,
       marketing_opt_in: tips,
     });
   };
@@ -272,23 +286,6 @@ export const ReviewDetailsStep = ({
       </aside>
       <form className="rv-details-form" onSubmit={submit}>
         <h1 className="rv-h1 rv-h1-left">Where should we send your preview and report?</h1>
-        <span className="rv-label">I am the</span>
-        <div className="rv-toggle" role="radiogroup" aria-label="I am the">
-          {(['owner', 'agent'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={role === value}
-              className={role === value ? 'rv-toggle-on' : ''}
-              disabled={switching || loading}
-              onClick={() => role !== value && onSwitchRole(value)}
-            >
-              {value === 'owner' ? 'Owner' : 'Estate agent'}
-            </button>
-          ))}
-        </div>
-        {switching && <p className="rv-muted">Switching&hellip;</p>}
         <label className="rv-field">
           <span>Name</span>
           <input type="text" autoComplete="name" placeholder="Your full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
@@ -300,7 +297,7 @@ export const ReviewDetailsStep = ({
         <label className="rv-field">
           <span>Mobile number</span>
           <div className="rv-phone">
-            <b>+44</b>
+            <CountryCodeSelect value={dialCode} onChange={setDialCode} className="rv-phone-code" buttonClassName="rv-phone-code-btn" />
             <input type="tel" autoComplete="tel-national" placeholder="07700 900123" value={mobile} onChange={(e) => setMobile(e.target.value)} required minLength={9} />
           </div>
           <small>So we can text you a link to your listing dashboard when your report is ready.</small>
@@ -310,7 +307,7 @@ export const ReviewDetailsStep = ({
           <span>Send me occasional tips on selling faster (you can unsubscribe anytime).</span>
         </label>
         {error && <p className="slw-error">{error}</p>}
-        <button type="submit" className="rv-btn" disabled={loading || switching}>
+        <button type="submit" className="rv-btn" disabled={loading}>
           {loading ? 'Saving…' : 'Show my free preview'}
         </button>
         <p className="rv-privacy">
@@ -340,41 +337,91 @@ const ANALYST_CHECKS_AGENT: [string, string][] = [
   ['A 30-day action plan', ' to take to your vendor'],
 ];
 
-const SamplePanels = () => (
-  <div className="rv-sample-grid">
-    <figure>
-      <div className="rv-sample rv-sample-cover">
-        <b>HAVLO</b>
-        <div>
-          <small>Listing assessment</small>
-          <strong>Your property</strong>
-        </div>
-        <small>Reviewed by your Havlo analyst</small>
-      </div>
-      <figcaption>Your personalised report</figcaption>
-    </figure>
-    <figure>
-      <div className="rv-sample">
-        <b className="rv-sample-title">Findings</b>
-        {[0, 1, 2].map((i) => (
-          <div className="rv-sample-finding" key={i}>
-            <i style={{ width: `${[62, 46, 68][i]}%` }} />
-            <i className="rv-sample-faint" style={{ width: `${[84, 66, 80][i]}%` }} />
+// A preview of this property's own report, laid out as the full report is:
+// the cover, the first scan's findings and the start of its action plan.
+// Everything here is already in the free preview.
+const SamplePanels = ({ prospect, totalFactors }: { prospect: ProspectPreview; totalFactors: number }) => {
+  const preview = prospect.preview || {};
+  const findings = (preview.key_issues || []).filter((f) => f.title).slice(0, 3);
+  const steps = (preview.recommendations || []).filter((r) => r.title).slice(0, 4);
+  const score = preview.overall_score;
+  const postcode = postcodeOf(prospect.property_address);
+  const facts = [
+    prospect.asking_price ? formatGbp(prospect.asking_price) : null,
+    prospect.listing_duration_days ? `${prospect.listing_duration_days} days on the market` : null,
+  ].filter(Boolean);
+  const moreFindings = Math.max(totalFactors - findings.length, 0);
+  return (
+    <div className="rv-sample-grid">
+      <figure>
+        <div className="rv-sample rv-sample-cover">
+          <b>HAVLO</b>
+          <div>
+            <small>Listing assessment</small>
+            <strong>{prospect.property_address.replace(/\.$/, '')}</strong>
+            {facts.length > 0 && <small className="rv-sample-facts">{facts.join(' · ')}</small>}
           </div>
-        ))}
+          <div className="rv-sample-cover-foot">
+            {score != null && <span><b>{score}</b>/100 saleability score</span>}
+            <small>Reviewed by your Havlo analyst{postcode ? ` · Prepared for ${postcode}` : ''}</small>
+          </div>
+        </div>
+        <figcaption>Your personalised report</figcaption>
+      </figure>
+      <figure>
+        <div className="rv-sample">
+          <b className="rv-sample-title">Findings</b>
+          {findings.map((f, i) => (
+            <div className="rv-sample-finding" key={f.title}>
+              <strong>{f.title}</strong>
+              {f.description && <p>{f.description}</p>}
+            </div>
+          ))}
+          {moreFindings > 0 && <small className="rv-sample-more">+ {plural(moreFindings, 'more factor', 'more factors')} for your analyst to check</small>}
+        </div>
+        <figcaption>Each finding explained in plain English</figcaption>
+      </figure>
+      <figure>
+        <div className="rv-sample">
+          <b className="rv-sample-title">30-day action plan</b>
+          {steps.map((step, n) => (
+            <div className="rv-sample-step" key={step.title}>
+              <span>{n + 1}</span>
+              <div>
+                <strong>{step.title}</strong>
+                {step.description && <p>{step.description}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+        <figcaption>Step-by-step plan to share with your agent</figcaption>
+      </figure>
+    </div>
+  );
+};
+
+// "Trusted by sellers and agents": the /stale-listings reviews, scrolling
+// the same way (paused on hover, still for reduced motion).
+const TrustedReviews = () => (
+  <section className="rv-trusted">
+    <h2 className="rv-h2">Trusted by sellers and agents</h2>
+    <p className="rv-muted">Havlo has worked with independent agents from some of the UK&rsquo;s big estate agency chains.</p>
+    <div className="rv-reviews-viewport">
+      <div
+        className="rv-reviews-track"
+        style={{ '--rv-copies': REVIEW_COPIES, '--rv-reviews-duration': `${staleListingsReviews.length * 10}s` } as CSSProperties}
+      >
+        {Array.from({ length: REVIEW_COPIES }, (_, copy) => staleListingsReviews.map(({ role, quote, tag }) => (
+          <article key={`${copy}-${quote[0]}`} className="rv-review" aria-hidden={copy > 0 || undefined}>
+            <ReviewStars />
+            <p className="rv-review-role">{role}</p>
+            <p className="rv-review-quote">{quote.join(' ')}</p>
+            <p className="rv-review-tag">{tag}</p>
+          </article>
+        )))}
       </div>
-      <figcaption>Each finding explained in plain English</figcaption>
-    </figure>
-    <figure>
-      <div className="rv-sample">
-        <b className="rv-sample-title">30-day action plan</b>
-        {[1, 2, 3, 4].map((n) => (
-          <div className="rv-sample-step" key={n}><span>{n}</span><i /></div>
-        ))}
-      </div>
-      <figcaption>Step-by-step plan to share with your agent</figcaption>
-    </figure>
-  </div>
+    </div>
+  </section>
 );
 
 export const ReviewPreviewPayStep = ({
@@ -453,7 +500,7 @@ export const ReviewPreviewPayStep = ({
 
           <div className="rv-card rv-checks">
             <h3>What your analyst will check</h3>
-            <p className="rv-muted">Every finding is checked by a person before it reaches you.</p>
+            <p className="rv-muted">Every finding is checked by an analyst before it reaches you.</p>
             <ul>
               {checks.map(([bold, rest]) => (
                 <li key={bold}><CheckIcon color={PURPLE} /><span><b>{bold}</b>{rest}</span></li>
@@ -511,10 +558,12 @@ export const ReviewPreviewPayStep = ({
       <div className="rv-sample-head">
         <div>
           <h2 className="rv-h2">See exactly what you&rsquo;ll get</h2>
-          <p className="rv-muted">Every report is laid out like this.</p>
+          <p className="rv-muted">A preview of your report. Your analyst checks and completes every section.</p>
         </div>
       </div>
-      <SamplePanels />
+      <SamplePanels prospect={prospect} totalFactors={totalFactors} />
+
+      <TrustedReviews />
 
       <div className="rv-banner">
         <div>
@@ -572,9 +621,10 @@ export const ReviewInProgressStep = ({ prospect, totalFactors }: { prospect: Pro
 
 export const ReviewStyles = () => (
   <style>{`
-    .rv-h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:48px;line-height:1.02;letter-spacing:-0.01em;color:#111;margin:0;text-align:center}
+    /* Headings: the /stale-listings home page's type (Plus Jakarta Sans ExtraBold). */
+    .rv-h1{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:48px;line-height:110%;letter-spacing:-0.03em;color:#1F1F1E;margin:0;text-align:center}
     .rv-h1-left{text-align:left}
-    .rv-h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:30px;line-height:1.1;color:#111;margin:0}
+    .rv-h2{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:34px;line-height:44px;letter-spacing:-0.03em;color:#1F1F1E;margin:0}
     .rv-lede{max-width:760px;margin:16px auto 0;text-align:center;font-size:18px;line-height:1.55;color:#334155}
     .rv-muted{color:#667085;font-size:14px;margin:6px 0 0}
     .rv-purple{color:${PURPLE}}
@@ -598,7 +648,11 @@ export const ReviewStyles = () => (
     .rv-scan-image,.rv-details-image,.rv-prop-image{background:#EEF0F3 center/cover no-repeat}
     .rv-scan-image{min-height:420px}
     .rv-scan-body{padding:32px}
-    .rv-scan-body h2,.rv-details-prop h3,.rv-prop-body h2{font-family:'Inter',sans-serif}
+    /* Addresses are set in Inter, as in the design, not the heading type. */
+    .slw-page.slw-ads .rv-scan-body h2,.slw-page.slw-ads .rv-details-prop h3,.slw-page.slw-ads .rv-prop-body h2{font-family:'Inter',sans-serif;letter-spacing:-0.01em;line-height:1.3}
+    .slw-page.slw-ads .rv-scan-body h2{font-weight:500;line-height:1.2}
+    .slw-page.slw-ads .rv-details-prop h3,.slw-page.slw-ads .rv-prop-body h2{font-weight:600}
+    .slw-page.slw-ads .rv-h1{line-height:110%}
     .rv-scan-body h2{font-size:30px;line-height:1.2;font-weight:500;color:#111;margin:0;letter-spacing:-0.01em}
     .rv-facts{margin:16px 0 0;font-weight:700;color:#111}
     .rv-signals{margin:18px 0 0;padding:14px 16px;background:#FAF5FD;border:1px solid #E9D5F5;border-radius:12px;display:grid;gap:10px;font-size:16px;color:#1f2024}
@@ -612,7 +666,10 @@ export const ReviewStyles = () => (
     .rv-scan .rv-btn{margin-top:18px}
     .rv-scan-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:14px;color:#344054}
 
-    .rv-details{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);overflow:hidden;margin-top:8px}
+    /* No overflow:hidden here: it would clip the country-code dropdown.
+       The photo's column rounds its own corners instead. */
+    .rv-details{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);margin-top:8px}
+    .rv-details-side{overflow:hidden;border-radius:17px 0 0 17px}
     /* The photo stretches so the left column is as tall as the form. */
     .rv-details-side{display:flex;flex-direction:column}
     .rv-details-image{flex:1 1 auto;min-height:360px}
@@ -621,17 +678,14 @@ export const ReviewStyles = () => (
     .rv-details-prop p{margin:4px 0;color:#475467;font-size:15px}
     .rv-details-form{padding:36px}
     .rv-details-form .rv-h1{font-size:40px;margin-bottom:22px}
-    .rv-label{display:block;font-size:14px;font-weight:700;color:#111;margin-bottom:8px}
-    .rv-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-    .rv-toggle button{border:1px solid #D0D5DD;background:#fff;border-radius:10px;padding:15px;font:inherit;font-size:16px;font-weight:700;color:#111;cursor:pointer}
-    .rv-toggle .rv-toggle-on{background:#111;border-color:#111;color:#fff}
     .rv-field{display:block;margin-bottom:16px}
     .rv-field>span{display:block;font-size:14px;font-weight:700;color:#111;margin-bottom:8px}
     .rv-field input{width:100%;box-sizing:border-box;border:1px solid #E4E7EC;background:#F5F6F8;border-radius:10px;padding:15px 16px;font:inherit;font-size:16px;color:#111;outline:none}
     .rv-field input:focus{border-color:${PURPLE};background:#fff}
     .rv-field small{display:block;margin-top:8px;color:#475467;font-size:13px}
     .rv-phone{display:flex;gap:8px}
-    .rv-phone b{display:flex;align-items:center;padding:0 14px;border:1px solid #E4E7EC;background:#F5F6F8;border-radius:10px;font-size:15px}
+    .rv-phone-code{flex:none}
+    .rv-phone .rv-phone-code-btn{height:100%;min-height:52px;box-sizing:border-box;padding:0 12px;border:1px solid #E4E7EC;background:#F5F6F8;border-radius:10px;font-size:15px;font-weight:700}
     .rv-phone input{flex:1;min-width:0}
     .rv-check{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#344054;margin:4px 0 18px;cursor:pointer}
     .rv-check input{width:18px;height:18px;margin:1px 0 0;accent-color:#111;flex:none}
@@ -639,7 +693,8 @@ export const ReviewStyles = () => (
     .rv-privacy svg{flex:none}
     .rv-press{display:flex;align-items:center;gap:18px;margin-top:22px;padding-top:18px;border-top:1px solid #EAECF0}
     .rv-press span{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#475467}
-    .rv-press img{height:24px;width:auto}
+    .rv-press-logos{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+    .rv-press img{height:22px;width:auto;max-width:130px;object-fit:contain}
 
     .rv-preview-head{max-width:760px}
     .rv-preview-head p{margin:14px 0 0;font-size:17px;line-height:1.6;color:#344054}
@@ -665,16 +720,16 @@ export const ReviewStyles = () => (
     .rv-checks li{display:flex;gap:10px;font-size:15px;color:#344054;line-height:1.45}
     .rv-checks li svg{flex:none;margin-top:3px}
     .rv-checks b{color:#111}
-    .rv-subhead{margin:6px 0 0;font-size:19px;color:#111}
+    .rv-subhead{margin:6px 0 0;font-size:20px;color:#1F1F1E}
     .rv-next{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .rv-next div{background:#F5F6F8;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px}
-    .rv-next b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:26px;font-weight:900;color:${PURPLE}}
+    .rv-next b{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;letter-spacing:-0.03em;color:${PURPLE}}
     .rv-next strong{font-size:17px;color:#111;line-height:1.25}
     .rv-next span{font-size:13.5px;color:#475467;line-height:1.45}
     .rv-price{padding:24px;position:sticky;top:20px;box-shadow:0 12px 32px rgba(16,24,40,.06)}
     .rv-eyebrow{display:block;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#475467}
     .rv-price-figure{display:flex;align-items:baseline;gap:8px;margin:8px 0 18px}
-    .rv-price-figure b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:48px;font-weight:900;color:#111;line-height:1}
+    .rv-price-figure b{font-family:'Plus Jakarta Sans',sans-serif;font-size:48px;font-weight:800;letter-spacing:-0.03em;color:#1F1F1E;line-height:1}
     .rv-price-figure span{color:#475467;font-size:14px}
     .rv-price-list{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:10px;font-size:15px;color:#1f2024}
     .rv-price-list li{display:flex;align-items:center;gap:10px}
@@ -687,26 +742,47 @@ export const ReviewStyles = () => (
     .rv-guarantee svg{flex:none;margin-top:2px}
     .rv-guarantee p{margin:0}
     .rv-secure{margin:14px 0 0;text-align:center;font-size:13px;color:#475467}
-    .rv-price-press .rv-press{margin-top:16px}
+    .rv-price-press .rv-press{margin-top:16px;flex-direction:column;align-items:flex-start;gap:12px}
+    .rv-price-press .rv-press-logos{gap:18px}
+    .rv-price-press .rv-press img{height:18px}
 
     .rv-sample-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:64px 0 18px}
     .rv-sample-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
     .rv-sample-grid figure{margin:0}
     .rv-sample-grid figcaption{margin-top:10px;font-size:13.5px;color:#475467}
-    .rv-sample{height:320px;box-sizing:border-box;border:1px solid #E4E7EC;border-radius:14px;padding:18px;background:#fff;display:flex;flex-direction:column;gap:12px}
+    .rv-sample{height:340px;overflow:hidden;box-sizing:border-box;border:1px solid #E4E7EC;border-radius:14px;padding:18px;background:#fff;display:flex;flex-direction:column;gap:10px}
     .rv-sample-cover{background:#111;border-color:#111;color:#fff;justify-content:space-between}
     .rv-sample-cover b{font-size:18px;letter-spacing:.04em}
     .rv-sample-cover small{display:block;font-size:12px;color:#D0D5DD}
-    .rv-sample-cover strong{display:block;margin-top:6px;font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:24px;font-weight:900}
+    .rv-sample.rv-sample-cover strong{display:block;margin-top:6px;font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:800;letter-spacing:-0.03em;line-height:1.15;color:#fff}
+    .rv-sample-cover .rv-sample-facts{margin-top:10px}
+    .rv-sample-cover-foot span{display:block;font-size:13px;color:#D0D5DD;margin-bottom:8px}
+    .rv-sample-cover-foot span b{font-size:22px;color:#fff;letter-spacing:0}
     .rv-sample-title{font-size:14px;color:#111}
-    .rv-sample-finding{border:1px solid #EAECF0;border-radius:10px;padding:12px;display:grid;gap:8px}
-    .rv-sample i{display:block;height:5px;border-radius:4px;background:#111}
-    .rv-sample .rv-sample-faint{background:#E4E7EC}
-    .rv-sample-step{display:flex;align-items:center;gap:10px}
+    .rv-sample-finding{border:1px solid #EAECF0;border-radius:10px;padding:10px 12px}
+    .rv-sample strong{display:block;font-size:13px;color:#111;line-height:1.3}
+    .rv-sample p{margin:4px 0 0;font-size:12px;line-height:1.45;color:#475467;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .rv-sample-more{font-size:12px;font-weight:700;color:${PURPLE}}
+    .rv-sample-step{display:flex;align-items:flex-start;gap:10px}
     .rv-sample-step span{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#F5ECFA;color:${PURPLE};font-size:11px;font-weight:800;flex:none}
-    .rv-sample-step i{flex:1;background:#E4E7EC}
+    .rv-trusted{margin-top:64px}
+    .rv-trusted .rv-muted{margin-top:8px}
+    .rv-reviews-viewport{margin-top:22px;overflow:hidden;border-radius:14px}
+    .rv-reviews-track{display:flex;width:max-content;animation:rv-reviews-scroll var(--rv-reviews-duration,30s) linear infinite}
+    .rv-reviews-viewport:hover .rv-reviews-track{animation-play-state:paused}
+    @keyframes rv-reviews-scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(calc(-100% / var(--rv-copies)),0,0)}}
+    .rv-review{flex:none;display:flex;flex-direction:column;width:340px;min-height:260px;box-sizing:border-box;margin-right:20px;padding:20px;border-radius:12px;background:#F2F3F7}
+    .rv-review svg{flex:none}
+    .rv-review-role{margin:12px 0 0;font-weight:600;font-size:15px;color:#191E32}
+    .rv-review-quote{flex:1;margin:10px 0 0;font-size:15px;line-height:1.55;color:#24262B}
+    .rv-review-tag{margin:14px 0 0;font-weight:600;font-size:14px;color:#191E32}
+    @media (prefers-reduced-motion:reduce){
+      .rv-reviews-track{animation:none}
+      .rv-review[aria-hidden]{display:none}
+      .rv-reviews-viewport{overflow-x:auto}
+    }
     .rv-banner{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:56px;background:#111;color:#fff;border-radius:18px;padding:32px}
-    .rv-banner .rv-h2{color:#fff}
+    .slw-page.slw-ads .rv-banner .rv-h2{color:#fff}
     .rv-banner p{margin:10px 0 0;color:#D0D5DD;font-size:15px;line-height:1.55}
     .rv-banner button{flex:none;background:#fff;color:#111;border:none;border-radius:10px;padding:15px 22px;font:inherit;font-weight:700;cursor:pointer}
 
@@ -734,12 +810,14 @@ export const ReviewStyles = () => (
       .rv-scan-card,.rv-details{grid-template-columns:1fr}
       .rv-scan-image{min-height:240px}
       .rv-details-image{flex:none;min-height:0;height:220px}
+      .rv-details-side{border-radius:17px 17px 0 0}
       .rv-scan-body,.rv-details-form{padding:22px 18px}
       .rv-scan-body h2{font-size:22px}
       .rv-prop{grid-template-columns:1fr}
       .rv-prop-image{min-height:180px}
       .rv-next,.rv-sample-grid{grid-template-columns:1fr}
-      .rv-sample{height:220px}
+      .rv-sample{height:auto;min-height:220px}
+      .rv-review{width:280px;min-height:240px;margin-right:14px}
       .rv-banner{flex-direction:column;align-items:stretch;padding:24px}
       .rv-scan-foot{flex-direction:column}
       .rv-stepper{font-size:12.5px;gap:20px}

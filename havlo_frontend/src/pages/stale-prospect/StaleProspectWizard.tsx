@@ -1209,7 +1209,6 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   // "See all findings" brings up the details form.
   // The analyst-review funnel starts owners and agents on its Initial scan.
   const [showDetailsForm, setShowDetailsForm] = useState(review ? false : ads !== 'owner');
-  const [switchingRole, setSwitchingRole] = useState(false);
   const leadPixelName = ads
     ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
@@ -1512,26 +1511,6 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     setStep('success');
   };
 
-  // "I am the Owner / Estate agent" on the analyst-review details form:
-  // the other side's own copy of the same listing (ads_funnel.start_from_listing).
-  const handleSwitchRole = async (audience: 'owner' | 'agent') => {
-    if (!prospect) return;
-    setSwitchingRole(true);
-    setError('');
-    try {
-      const started = await startAdsAssessment({ listing_url: prospect.rightmove_url, audience, channel });
-      const data = await getProspectPreview({ token: started.token });
-      setProspect(data);
-      setAccess({ token: started.token, code: data.property_code });
-      if (data.has_contact_details) setStep('payment');
-    } catch (e) {
-      const message = (e as Error).message;
-      setError(message && message !== 'request_failed' ? message : 'We couldn’t switch that just now. Please try again.');
-    } finally {
-      setSwitchingRole(false);
-    }
-  };
-
   const handlePayCard = async () => {
     setLoading(true);
     setError('');
@@ -1695,7 +1674,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   }
 
   return (
-    <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}`}>
+    <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}${ads ? ' slw-ads' : ''}`}>
       <Header />
       <div className="slw-shell">
         {step !== 'landing' && step !== 'finding' && !(review && step === 'success') && (
@@ -1736,8 +1715,6 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
               prospect={prospect}
               totalFactors={totalFactorsFor(prospect)}
               onSubmit={handleDetailsSubmit}
-              onSwitchRole={handleSwitchRole}
-              switching={switchingRole}
               loading={loading}
               error={error}
               initial={prefill}
@@ -1823,6 +1800,27 @@ export const WizardStyles = () => (
     .slw-agent .slw-not-found h1,.slw-agent .slw-portfolio-head h1,.slw-agent .lmd-h1{font-weight:800}
     .slw-agent .slw-assess-heading,.slw-agent .slw-agent-note h3,.slw-agent .slw-unlock-cta-copy h2,.slw-agent .lmd-h2,
     .slw-agent .slw-section-heading,.slw-agent .slw-recommendation-callout b{font-weight:700}
+    /* The ads and analyst-review pages (/assess/..., /g/..., /review/...)
+       use the /stale-listings home page's heading type on every step:
+       Plus Jakarta Sans ExtraBold, -0.03em, 110% line height, #1F1F1E.
+       ".slw-page.slw-ads" outranks each step's own heading rule. Property
+       addresses keep their own Bricolage Grotesque style. */
+    .slw-page.slw-ads h1,.slw-page.slw-ads h2,.slw-page.slw-ads h3,.slw-page.slw-ads h4,.slw-page.slw-ads .slw-price-box b,
+    .slw-page.slw-ads .slw-report-summary-card b,.slw-page.slw-ads .slw-recommendation-callout b{font-family:'Plus Jakarta Sans','Inter',sans-serif;letter-spacing:-0.03em;color:#1F1F1E}
+    .slw-page.slw-ads h1,.slw-page.slw-ads h2,.slw-page.slw-ads .slw-price-box b{font-weight:800;line-height:110%}
+    .slw-page.slw-ads h3,.slw-page.slw-ads h4{font-weight:700;line-height:130%}
+    .slw-page.slw-ads .slw-assess-heading,.slw-page.slw-ads .slw-unlock-cta-copy h2,.slw-page.slw-ads .slw-section-heading{font-size:34px;line-height:44px}
+    .slw-page.slw-ads .slw-unlock-cta-copy h2,.slw-page.slw-ads .slw-modal-head h2{color:inherit}
+    .slw-page.slw-ads .slw-confirm-details h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:300;line-height:100%}
+    .slw-page.slw-ads .slw-assess-property-info h2,.slw-page.slw-ads .slw-payment-summary h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:500;line-height:100%}
+    .slw-page.slw-ads .slw-discover-title{font-family:'Inter',sans-serif;font-weight:700;letter-spacing:-0.02em}
+    .slw-page.slw-ads .slw-value-section h2{font-size:34px;line-height:44px}
+    .slw-page.slw-ads .slw-value-grid h3{font-size:20px;line-height:130%;letter-spacing:-0.02em}
+    @media (max-width:768px){
+      .slw-page.slw-ads .slw-value-section h2{font-size:28px;line-height:36px}
+      .slw-page.slw-ads .slw-value-grid h3{font-size:18px}
+      .slw-page.slw-ads .slw-assess-heading,.slw-page.slw-ads .slw-unlock-cta-copy h2,.slw-page.slw-ads .slw-section-heading{font-size:28px;line-height:36px}
+    }
     body.slw-prospect-active{overflow-x:hidden}
     .slw-page *{box-sizing:border-box}
     .slw-header{display:flex;align-items:center;justify-content:space-between;padding:16px max(24px,calc((100vw - 1240px)/2));border-bottom:1px solid #eee;position:relative}
