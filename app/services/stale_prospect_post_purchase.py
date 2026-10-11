@@ -130,6 +130,9 @@ async def run_post_purchase_email_cycle() -> dict:
                 property_code=prospect.property_code,
                 unsubscribe_url=build_unsubscribe_url(prospect.id),
                 audience=prospect.audience,
+                report_path=(
+                    "/review/seller" if prospect.lead_source == "review_seller" else "/stale-listings/prospect/report"
+                ),
             )
         except Exception:
             logger.exception(

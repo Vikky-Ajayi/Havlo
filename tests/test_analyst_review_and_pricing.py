@@ -169,5 +169,50 @@ class ChannelTests(unittest.TestCase):
         self.assertEqual(ads_nurture.landing_path("google", "agent"), "/g/agent")
 
 
+
+class ReviewSellerStaleListingsFlowTests(unittest.TestCase):
+    """The analyst-review funnel's homeowners get the Stale Listings email and
+    text flows, with every link back to /review/seller."""
+
+    def _capture(self, fn, **kw):
+        captured = {}
+        original = email_service._send_sync
+        email_service._send_sync = lambda **k: captured.update(k) or True
+        try:
+            fn(**kw)
+        finally:
+            email_service._send_sync = original
+        return captured
+
+    def test_funnel_path(self):
+        self.assertEqual(analyst_review.funnel_path(prospect(lead_source="review_seller")), "/review/seller")
+        for source in (None, "meta_seller", "google_seller"):
+            self.assertEqual(analyst_review.funnel_path(prospect(lead_source=source)), "/stale-listings/prospect")
+
+    def test_pre_purchase_email_links_to_review_page(self):
+        sent = self._capture(
+            email_service.send_stale_prospect_abandonment_email_sync,
+            to_email="a@b.co", first_name="Jane", stage=1, asking_price=600_000, property_code="4822",
+            unsubscribe_url="https://x/u", frontend_base_url="https://www.heyhavlo.com", landing_path="/review/seller",
+        )
+        self.assertIn("https://www.heyhavlo.com/review/seller?code=4822", sent["html_body"])
+
+    def test_pre_purchase_email_default_link_unchanged(self):
+        sent = self._capture(
+            email_service.send_stale_prospect_abandonment_email_sync,
+            to_email="a@b.co", first_name="Jane", stage=1, asking_price=600_000, property_code="4822",
+            unsubscribe_url="https://x/u", frontend_base_url="https://www.heyhavlo.com",
+        )
+        self.assertIn("https://www.heyhavlo.com/stale-listings/prospect?code=4822", sent["html_body"])
+
+    def test_post_purchase_email_links_to_review_page(self):
+        sent = self._capture(
+            email_service.send_stale_prospect_post_purchase_email_sync,
+            to_email="a@b.co", first_name="Jane", stage=2, asking_price=600_000, property_code="4822",
+            unsubscribe_url="https://x/u", frontend_base_url="https://www.heyhavlo.com", report_path="/review/seller",
+        )
+        self.assertIn("https://www.heyhavlo.com/review/seller?code=4822", sent["html_body"])
+
+
 if __name__ == "__main__":
     unittest.main()

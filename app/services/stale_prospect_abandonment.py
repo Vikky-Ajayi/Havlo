@@ -37,7 +37,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectAbandonmentEmail, StaleProspectAbandonmentSms
-from app.services import email_service, twilio_service
+from app.services import analyst_review, email_service, twilio_service
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_service import sms_unsubscribe_short_token, unsubscribe_token
 from app.config import get_settings
@@ -97,10 +97,14 @@ async def run_abandonment_email_cycle() -> dict:
                 StaleListingProspect.unsubscribed_at.is_(None),
                 StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_email.is_not(None),
-                # Ads homeowners get their own flow (app/services/ads_nurture.py).
+                # Left "send me occasional tips" unticked (the analyst-review funnel).
+                StaleListingProspect.marketing_opt_in.is_not(False),
+                # Meta and Google ads homeowners get their own flow
+                # (app/services/ads_nurture.py); the analyst-review funnel's
+                # homeowners (review_seller) get this one.
                 or_(
                     StaleListingProspect.lead_source.is_(None),
-                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller", "review_seller")),
+                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller")),
                 ),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())
@@ -146,6 +150,7 @@ async def run_abandonment_email_cycle() -> dict:
                 property_code=prospect.property_code,
                 unsubscribe_url=build_unsubscribe_url(prospect.id),
                 audience=prospect.audience,
+                landing_path=analyst_review.funnel_path(prospect),
             )
         except Exception:
             logger.exception(
@@ -304,7 +309,7 @@ async def run_abandonment_sms_cycle() -> dict:
         # someone revisiting their own link mid-checkout, wrong for a
         # re-engagement nudge, which should show the value again (the free
         # assessment snippet) before asking them to pay a second time.
-        preview_url = f"{base_url}/stale-listings/prospect?code={prospect.property_code}&step=assessment"
+        preview_url = f"{base_url}{analyst_review.funnel_path(prospect)}?code={prospect.property_code}&step=assessment"
         unsubscribe_url = build_sms_unsubscribe_url(prospect.property_code)
 
         if not e164:

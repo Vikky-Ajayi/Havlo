@@ -339,6 +339,9 @@ async def run_ads_nurture_cycle(only_prospect_id: UUID | None = None) -> dict:
             select(P)
             .where(
                 P.lead_source.in_(NURTURED_LEAD_SOURCES),
+                # The analyst-review funnel's homeowners get the Stale
+                # Listings drip instead (stale_prospect_abandonment.py).
+                P.lead_source != "review_seller",
                 P.contact_details_submitted_at.is_not(None),
                 P.contact_email.is_not(None),
                 P.payment_status != "completed",

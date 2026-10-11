@@ -2408,8 +2408,10 @@ def send_stale_prospect_abandonment_email_sync(
     unsubscribe_url: str,
     frontend_base_url: str | None = None,
     audience: str | None = None,
+    landing_path: str = "/stale-listings/prospect",
 ) -> bool:
     """Send one stage of the pre-purchase / cart-abandonment drip.
+    landing_path is the funnel page the button opens (analyst_review.funnel_path).
 
     Called by app/services/stale_prospect_abandonment.py's send loop — never
     call this directly from a request handler for a stage a prospect may
@@ -2425,7 +2427,7 @@ def send_stale_prospect_abandonment_email_sync(
 
     brand = _stale_abandonment_brand(frontend_base_url)
     base_url = _frontend_base_url(override=frontend_base_url)
-    cta_url = f"{base_url}/stale-listings/prospect?code={quote(property_code)}"
+    cta_url = f"{base_url}{landing_path}?code={quote(property_code)}"
 
     body_html = _stale_abandonment_body_html(
         first_name=first_name or "there",
@@ -2813,6 +2815,7 @@ def send_stale_prospect_post_purchase_email_sync(
     unsubscribe_url: str,
     frontend_base_url: str | None = None,
     audience: str | None = None,
+    report_path: str = "/stale-listings/prospect/report",
 ) -> bool:
     """Send one stage of the post-purchase nurture / upsell drip.
 
@@ -2831,7 +2834,8 @@ def send_stale_prospect_post_purchase_email_sync(
     brand = _stale_abandonment_brand(frontend_base_url)
     base_url = _frontend_base_url(override=frontend_base_url)
     if config["cta_kind"] == "report":
-        cta_url = f"{base_url}/stale-listings/prospect/report?code={quote(property_code)}"
+        # report_path: the analyst-review page for its sellers (analyst_review.funnel_path).
+        cta_url = f"{base_url}{report_path}?code={quote(property_code)}"
     else:
         support_email = (get_settings().SUPPORT_EMAIL or "hello@heyhavlo.com").strip()
         mailto_subject = quote(f"Premium Strategy report — property {property_code}")

@@ -93,6 +93,12 @@ def release(prospect: StaleListingProspect, now: datetime | None = None) -> bool
     return True
 
 
+def funnel_path(prospect: StaleListingProspect) -> str:
+    """The page a homeowner's Stale Listings emails and texts link back to:
+    the analyst-review page for its sellers, the letter funnel otherwise."""
+    return "/review/seller" if prospect.lead_source == "review_seller" else "/stale-listings/prospect"
+
+
 def report_access_token(prospect_id: Any) -> str:
     """The access token in the "report ready" email's link. Derived from the
     prospect id, so a retried email carries the same link and only one hash
