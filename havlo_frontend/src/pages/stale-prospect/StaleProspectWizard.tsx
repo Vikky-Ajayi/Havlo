@@ -1212,6 +1212,10 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   const leadPixelName = ads
     ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
+  // No Meta Pixel 'Lead' event on the Meta ads pages (/assess/...): the ads
+  // agency sets up those events itself. The base pixel (PageView, in
+  // index.html) still loads there as on every page.
+  const firesLeadPixel = !(ads && channel === 'meta');
 
   useEffect(() => {
     // slw-prospect-active also drives an overflow-x:hidden rule (see the
@@ -1278,7 +1282,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
         const data = await getProspectPreview(query);
         if (cancelled) return;
         setProspect(data);
-        fireProspectLeadPixel(data, leadPixelName);
+        if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
         setAccess({ token: query.token, code: data.property_code });
         if (query.forceStep) {
           // One-shot: consumed above by the payment_status branch below,
@@ -1444,7 +1448,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       if (started.prefill?.email) setPrefill(started.prefill);
       const data = await getProspectPreview({ token: started.token });
       setProspect(data);
-      fireProspectLeadPixel(data, leadPixelName);
+      if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
       setAccess({ token: started.token, code: data.property_code });
       if (data.is_unlocked && data.report_on_hold) {
         setStep('success');
