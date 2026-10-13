@@ -1201,6 +1201,34 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
   }, `sl_prospect_lead_${data.property_code}`);
 }
 
+// A "Purchase" is a customer who paid by card on a Meta ads page: fired when
+// "Your full assessment is ready" shows after SumUp sends them back
+// (/assess/complete?...&paid=card), never for a promo-code unlock
+// (?paid=promo), so Meta counts paying customers only. Gated per property in
+// sessionStorage, and given a fixed event id so Meta drops a repeat.
+function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience) {
+  const key = `sl_prospect_purchase_pixel_${data.property_code}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+  } catch {
+    // Storage unavailable: the event id still lets Meta drop a repeat.
+  }
+  const fired = trackMetaPixelEvent('Purchase', {
+    content_name: `Meta Ads ${audience === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`,
+    content_category: 'stale_listings_prospect',
+    content_type: 'product',
+    content_ids: [data.property_code],
+    value: prospectPrice(data),
+    currency: 'GBP',
+  }, `sl_prospect_purchase_${data.property_code}`);
+  if (!fired) return;
+  try {
+    sessionStorage.setItem(key, '1');
+  } catch {
+    // ignore
+  }
+}
+
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
 // `ads` turns this into an ads landing page (Meta: /assess/seller,
@@ -1254,6 +1282,13 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       document.body.classList.remove('slw-prospect-active');
     };
   }, []);
+
+  // Card payment confirmed on a Meta ads page: tell Meta (see fireProspectPurchasePixel).
+  useEffect(() => {
+    if (step !== 'success' || !prospect || !ads || channel !== 'meta') return;
+    if (params.get('paid') !== 'card') return;
+    fireProspectPurchasePixel(prospect, ads);
+  }, [step, prospect, params, ads, channel]);
 
   const query = useMemo(() => {
     const token = params.get('token') || undefined;
