@@ -55,8 +55,7 @@ const StaleListingsHome = React.lazy(() => import('./pages/StaleListingsHome').t
 const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents').then(m => ({ default: m.StaleListingsAgents })));
 const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListingsPartnerships').then(m => ({ default: m.StaleListingsPartnerships })));
 const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/StaleProspectWizard').then(m => ({ default: m.StaleProspectWizard })));
-const AdsSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.AdsSellerLanding })));
-const AdsAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.AdsAgentLanding })));
+const MetaAdsFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.MetaAdsFunnel })));
 const GoogleAdsSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsSellerLanding })));
 const GoogleAdsAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsAgentLanding })));
 const ReviewSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.ReviewSellerLanding })));
@@ -270,6 +269,7 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/check/agent',
   '/assess/seller',
   '/assess/agent',
+  '/assess/complete',
   '/g/seller',
   '/g/agent',
   '/review/seller',
@@ -432,8 +432,8 @@ export default function App() {
               {/* Estate agencies: the code on the agent campaign letter (see AgentPortal.tsx). */}
               <Route path="/check/agent" element={<AgentPortal />} />
               {/* Meta-ads landing pages: /check with a listing-link box. */}
-              <Route path="/assess/seller" element={<AdsSellerLanding />} />
-              <Route path="/assess/agent" element={<AdsAgentLanding />} />
+              {/* /assess/seller, /assess/agent and /assess/complete (where payment ends, the same address for both) share this route. */}
+              <Route path="/assess/:page" element={<MetaAdsFunnel />} />
               {/* The same pages for Google Ads; leads are tagged "Google ad". */}
               <Route path="/g/seller" element={<GoogleAdsSellerLanding />} />
               <Route path="/g/agent" element={<GoogleAdsAgentLanding />} />

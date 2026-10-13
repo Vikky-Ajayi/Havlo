@@ -1152,6 +1152,29 @@ const RecommendationModal = ({
   </div>
 );
 
+// How someone paid shows in the address they end up on, so ad and analytics
+// tools (a Meta custom conversion, a Google goal) can count real payments
+// apart from promo-code unlocks: SumUp's "back to merchant" link comes back
+// with ?paid=card, and a promo-code unlock lands on ?paid=promo. The page
+// itself is the same either way.
+type PaidHow = 'card' | 'promo';
+
+// On the Meta ads pages that address is /assess/complete for owners and agents
+// alike; elsewhere the page's own address. `step` is a one-shot instruction
+// for the page's first load and never belongs on the way back from paying.
+function paidAddress(href: string, how: PaidHow, metaAds: boolean): URL {
+  const url = new URL(href);
+  url.hash = '';
+  if (metaAds) url.pathname = '/assess/complete';
+  url.searchParams.delete('step');
+  url.searchParams.set('paid', how);
+  return url;
+}
+
+function withPaidMarker(href: string, how: PaidHow, metaAds = false): string {
+  return paidAddress(href, how, metaAds).toString();
+}
+
 // A "Lead" is this specific prospect actually being found (a real letter
 // code/QR token resolving to a real property) — not just landing on /check
 // or /stale-listings/prospect, which the sitewide pixel in index.html
@@ -1519,7 +1542,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     setLoading(true);
     setError('');
     try {
-      const redirectUrl = window.location.href.split('#')[0];
+      const redirectUrl = withPaidMarker(window.location.href, 'card', !!ads && channel === 'meta');
       const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', redirect_url: redirectUrl });
       if (result.unlocked) {
         await afterUnlock();
@@ -1543,6 +1566,10 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', promo_code: code });
       if (result.unlocked) {
         await afterUnlock();
+        // A new address (a history entry, not a replacement, so page-view
+        // tracking sees it) that says this unlock was a promo code.
+        const address = paidAddress(window.location.href, 'promo', !!ads && channel === 'meta');
+        navigate({ pathname: address.pathname, search: address.search });
       } else {
         setError('That promo code is not valid. Please check it and try again.');
       }

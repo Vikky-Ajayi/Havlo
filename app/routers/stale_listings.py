@@ -991,6 +991,7 @@ async def create_stale_prospect_checkout(
 
     if _stale_prospect_promo_valid(payload.promo_code):
         analyst_review.mark_paid(prospect)
+        prospect.payment_method = "promo"  # unlocked by code, no payment taken
         await db.commit()
         logger.info("Stale prospect %s unlocked via promo code (no payment taken).", prospect.property_code)
         # Kick off the full-detail report generation now, in the background,
@@ -1004,6 +1005,7 @@ async def create_stale_prospect_checkout(
             checkout_id="",
             amount=0.0,
             currency=currency,
+            payment_method="promo",
             unlocked=True,
         )
 
