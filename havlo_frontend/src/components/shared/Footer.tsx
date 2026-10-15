@@ -53,7 +53,7 @@ export const Footer: React.FC<{ hideNewsletter?: boolean }> = ({ hideNewsletter 
     { name: 'About', href: '/about-us' },
     { name: 'FAQ', href: '/faq' },
     { name: 'Contact Us', href: '/contact-us' },
-    { name: 'Press', href: '#' },
+    { name: 'Press', href: '/press' },
   ];
 
   const legalLinks = [

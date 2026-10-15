@@ -19,7 +19,7 @@ Per product decision, this only applies to prospects whose contact_details_
 submitted_at is set after this feature shipped — no backfill of prospects
 who already had contact details before then.
 
-Alongside the email ladder, a separate SMS ladder runs Day 1 -> Day 91 every
+Alongside the email ladder, a separate SMS ladder runs Day 0 -> Day 91 every
 3 days (see run_abandonment_sms_cycle below) — its own table
 (StaleProspectAbandonmentSms), its own opt-out (sms_unsubscribed_at, not
 unsubscribed_at), and a business-hours (8am-7pm Europe/London) send window.
@@ -199,7 +199,7 @@ async def start_abandonment_email_loop() -> None:
     )
 
 
-# Day 1 -> Day 91 SMS ladder, every 3 days (31 stages) — separate from the
+# Day 0 -> Day 91 SMS ladder, every 3 days (31 stages) — separate from the
 # 12-stage email ladder above: own table (StaleProspectAbandonmentSms), own
 # opt-out (sms_unsubscribed_at rather than unsubscribed_at), own channel.
 # Links via ?code={property_code} rather than a token — the same param the
@@ -286,6 +286,10 @@ async def run_abandonment_sms_cycle() -> dict:
             break
         elapsed = now - prospect.contact_details_submitted_at
         already_sent = sent_map.get(prospect.id, set())
+        # The first text was stage 1 (day 1) before it moved to stage 0 (straight
+        # away): whoever already had it isn't sent it again.
+        if 1 in already_sent:
+            already_sent = already_sent | {0}
         # Only the earliest due-but-unsent stage — self-healing catch-up
         # instead of a burst if the loop was down (or outside send hours)
         # for a while, same pattern as the email ladder.

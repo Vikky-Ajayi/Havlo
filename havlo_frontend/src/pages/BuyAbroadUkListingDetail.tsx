@@ -97,10 +97,10 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
           `Address: ${listing.address}`,
           `Price: £${listing.price_gbp.toLocaleString()} (${formatNgn(listing.price_ngn)} NGN)`,
           `Bedrooms: ${listing.bedrooms}`,
-          `Havlo Property Page: https://heyhavlo.com/buyabroad/uk/listings/${listing.rightmove_id}`,
+          `Havlo Property Page: https://heyhavlo.com/buyabroad/listings/${listing.rightmove_id}`,
           `Rightmove URL: ${listing.url}`,
           `WhatsApp: ${whatsapp}`,
-          `Source: /buyabroad/uk/listings/${listing.rightmove_id}`,
+          `Source: /buyabroad/listings/${listing.rightmove_id}`,
         ].join('\n'),
       });
     } catch {
@@ -111,7 +111,7 @@ function ConsultModal({ listing, onClose }: ConsultModalProps) {
     }
   };
 
-  const propertyPageUrl = `https://heyhavlo.com/buyabroad/uk/listings/${listing.rightmove_id}`;
+  const propertyPageUrl = `https://heyhavlo.com/buyabroad/listings/${listing.rightmove_id}`;
   const waMsg = encodeURIComponent(
     `Hi Havlo, I requested a free consultation about ${listing.title} at ${listing.address} (£${listing.price_gbp.toLocaleString()}). My name is ${fullName || 'a buyer'}. Property link: ${propertyPageUrl}`
   );
@@ -584,7 +584,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
   usePageMeta({
     title: listing ? `${listing.title} | Havlo Buy Abroad` : 'Property Details | Havlo Buy Abroad',
     description: listing ? `${listing.address} — ${formatGbp(listing.price_gbp)} — View full details and enquire via WhatsApp.` : '',
-    canonical: `https://www.heyhavlo.com/buyabroad/uk/listings/${id ?? ''}`,
+    canonical: `https://www.heyhavlo.com/buyabroad/listings/${id ?? ''}`,
   });
 
   useEffect(() => {
@@ -831,7 +831,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
           <span>Buy Abroad</span>
         </a>
         <div className="bld-header-spacer" />
-        <a href={`/buyabroad/uk/listings${country !== 'nigeria' ? `?country=${country}` : ''}`} className="bld-header-back">← All listings</a>
+        <a href={`/buyabroad/listings${country !== 'nigeria' ? `?country=${country}` : ''}`} className="bld-header-back">← All listings</a>
         <button className="bld-header-cta" onClick={() => setConsultOpen(true)}>
           Get Free Consultation
         </button>
@@ -841,7 +841,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
       <nav className="bld-breadcrumb" aria-label="Breadcrumb">
         <a href={localCurrency.backPath}>Buy Abroad {localCurrency.backCountryLabel}</a>
         <span>›</span>
-        <a href={`/buyabroad/uk/listings${country !== 'nigeria' ? `?country=${country}` : ''}`}>Listings</a>
+        <a href={`/buyabroad/listings${country !== 'nigeria' ? `?country=${country}` : ''}`}>Listings</a>
         {listing && <><span>›</span><span style={{ color: '#111' }}>{listing.city}</span></>}
       </nav>
 
@@ -858,7 +858,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
         <div className="bld-error">
           <h2>Property not found</h2>
           <p>{error}</p>
-          <a href="/buyabroad/uk/listings" className="bld-back-link">← Back to listings</a>
+          <a href="/buyabroad/listings" className="bld-back-link">← Back to listings</a>
         </div>
       )}
 
@@ -948,7 +948,7 @@ export const BuyAbroadUkListingDetail: React.FC = () => {
       <footer className="bld-footer">
         <p>© {new Date().getFullYear()} Havlo. Property data sourced from Rightmove. {localCurrency.code} prices indicative only.</p>
         <nav>
-          <a href={`/buyabroad/uk/listings${country !== 'nigeria' ? `?country=${country}` : ''}`}>All Listings</a>
+          <a href={`/buyabroad/listings${country !== 'nigeria' ? `?country=${country}` : ''}`}>All Listings</a>
           <a href="/privacy-policy">Privacy</a>
           <a href="/terms-of-use">Terms</a>
         </nav>

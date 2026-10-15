@@ -326,7 +326,7 @@ def _item_to_model_values(item: dict[str, Any], country: str) -> dict[str, Any]:
     price_currency = _clean_text(item.get("price_currency") or currency).upper()[:3]
     return {
         "rightmove_id": _listing_identity(item),
-        "url": url or f"https://www.heyhavlo.com/buyabroad/uk/listings",
+        "url": url or f"https://www.heyhavlo.com/buyabroad/listings",
         "title": title[:500],
         "price_gbp": price or 0,
         "price_native": price_native or price or 0,

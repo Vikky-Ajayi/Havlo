@@ -772,6 +772,17 @@ export const api = {
     return res.json();
   },
 
+  /** Buy Abroad consultation deposit: a Flutterwave payment link to send the buyer to. */
+  buyAbroadCheckout: (
+    token: string,
+    payload: { first_name: string; last_name: string; email: string; phone_country_code?: string; phone_number?: string; payment_method?: 'card' | 'bank' | 'crypto' },
+  ) =>
+    request<{ booking_id: string; checkout_url: string; tx_ref: string; amount: number; currency: string }>('/bookings/buy-abroad/checkout', { method: 'POST', token, body: payload, timeout: 30000 }),
+
+  /** Back from Flutterwave: has the deposit with this reference been paid? (Checked with Flutterwave.) */
+  buyAbroadVerify: (txRef: string) =>
+    request<{ paid: boolean; status: string; calendly_url?: string | null }>('/bookings/buy-abroad/verify', { method: 'POST', body: { tx_ref: txRef }, timeout: 30000 }),
+
   bookSession: (token: string, payload: BookSessionPayload) =>
     request<{ booking_id: string; checkout_url: string; checkout_id: string; amount: number; currency: string; message: string }>('/bookings/session', { method: 'POST', token, body: payload }),
 

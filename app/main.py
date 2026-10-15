@@ -595,7 +595,14 @@ async def startup() -> None:
     # This is intentionally not the marketplace inventory scraper. It searches
     # Rightmove directly and runs until the per-cycle prospect email target is
     # reached. A PostgreSQL advisory lock prevents duplicate work per cycle.
-    if HAS_DATABASE and _env_enabled("ENABLE_STALE_LISTING_DISCOVERY", True):
+    # PAUSED (Oct 2026, at the owner's request): the automatic address search
+    # and letter generation stay off whatever ENABLE_STALE_LISTING_DISCOVERY
+    # is set to. Set STALE_LISTING_DISCOVERY_PAUSED back to False to resume.
+    # Manual adds, CSV uploads and the ads/review funnels are unaffected.
+    STALE_LISTING_DISCOVERY_PAUSED = True
+    if HAS_DATABASE and STALE_LISTING_DISCOVERY_PAUSED:
+        logger.info("Automatic stale-listing discovery (address search + letters) is paused in code.")
+    elif HAS_DATABASE and _env_enabled("ENABLE_STALE_LISTING_DISCOVERY", True):
         from app.services.stale_listing_scraper import start_stale_listing_scraper_loop
 
         app.state.scraper_tasks.append(asyncio.create_task(start_stale_listing_scraper_loop()))

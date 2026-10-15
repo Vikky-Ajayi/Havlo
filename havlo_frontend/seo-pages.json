@@ -13,8 +13,13 @@
   },
   {
    "path": "/about-us",
-   "title": "About Us | Trusted Global Property Experts | Havlo",
-   "description": "Havlo is a property exposure and advisory platform helping buyers discover and access real estate opportunities abroad with confidence. Learn about Havlo's mission, values, and expertise in international real estate."
+   "title": "About Us | Property Listing Intelligence & Advisory | Havlo",
+   "description": "Havlo is a property listing intelligence and advisory platform. We help sellers and estate agents understand why a property isn't selling, and exactly what to do about it."
+  },
+  {
+   "path": "/press",
+   "title": "Press | Havlo",
+   "description": "Havlo is a UK property intelligence and advisory platform that helps sellers and estate agents understand why a listing isn't moving, and what to do about it. Press enquiries: hello@heyhavlo.com."
   },
   {
    "path": "/contact-us",
@@ -137,7 +142,7 @@
    "description": "A dedicated advisory service for South African buyers purchasing residential, commercial, and investment property in the UK."
   },
   {
-   "path": "/buyabroad/uk/listings",
+   "path": "/buyabroad/listings",
    "title": "Browse United Kingdom Properties in Pounds & Naira | Havlo",
    "description": "Browse homes across the United Kingdom, the United States, Dubai and Canada with Havlo Buy Abroad."
   }

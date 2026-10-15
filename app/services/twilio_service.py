@@ -121,15 +121,16 @@ def send_test_sms(to_phone: str) -> bool:
 
 
 # ── Stale-prospect abandonment SMS ladder ───────────────────────────────────
-# Day 1 -> Day 91, every 3 days (31 stages) -- see
-# stale_prospect_abandonment.run_abandonment_sms_cycle for the scheduling
-# (business-hours gating, per-stage idempotency). The stage key is the day
-# number itself, matching StaleProspectAbandonmentSms.stage. Starts at day 1
-# rather than immediately so someone who checks out same-day never gets a
-# follow-up nudge at all. Copy approved verbatim; only the {link}
-# substitution and the unsubscribe line are added on top of it.
+# Day 0 (as soon as their details are in) -> Day 91, then every 3 days from
+# day 4 -- see stale_prospect_abandonment.run_abandonment_sms_cycle for the
+# scheduling (business-hours gating, per-stage idempotency). The stage key
+# is the day number itself, matching StaleProspectAbandonmentSms.stage. The
+# first text used to wait until day 1 (stage 1); since Oct 2026 it goes
+# straight away, and a prospect already sent the old stage 1 counts as
+# having had stage 0. Copy approved verbatim; only the {link} substitution
+# and the unsubscribe line are added on top of it.
 SMS_ABANDONMENT_TEMPLATES: dict[int, str] = {
-    1: "Your property assessment is ready. We’ve taken a closer look at what could be standing between your property and its next buyer. See what we found: {link}",
+    0: "Your property assessment is ready. We’ve taken a closer look at what could be standing between your property and its next buyer. See what we found: {link}",
     4: "What if the reason your property hasn’t sold isn’t what you think? We’ve identified some possibilities in your property assessment: {link}",
     7: "Your property is competing for attention with hundreds of others. The question is: what makes yours stand out? See your property assessment: {link}",
     10: "A property can be beautifully presented and still struggle to sell. Your assessment looks at some of the reasons why: {link}",
@@ -166,7 +167,7 @@ SMS_ABANDONMENT_STAGE_DAYS: tuple[int, ...] = tuple(sorted(SMS_ABANDONMENT_TEMPL
 
 
 def send_stale_prospect_abandonment_sms(to_phone: str, stage: int, preview_url: str, unsubscribe_url: str) -> bool:
-    """One stage of the Day 1 -> Day 91 abandonment SMS ladder. `stage` is
+    """One stage of the Day 0 -> Day 91 abandonment SMS ladder. `stage` is
     the day number (see SMS_ABANDONMENT_TEMPLATES). Always appends an
     unsubscribe link distinct from the email drip's — see
     StaleListingProspect.sms_unsubscribed_at.

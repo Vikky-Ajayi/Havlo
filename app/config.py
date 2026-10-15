@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     SUMUP_API_KEY: str = ""
     SUMUP_MERCHANT_CODE: str = ""
 
+    # ── Flutterwave (Buy Abroad consultation deposit) ────────────────────
+    # The secret key (FLWSECK-...) from the Flutterwave dashboard, and the
+    # webhook "secret hash" set there (Settings > Webhooks).
+    FLUTTERWAVE_SECRET_KEY: str = ""
+    FLUTTERWAVE_WEBHOOK_HASH: str = ""
+
     # ── Bank transfer (manual reconciliation) ───────────────────────────
     # Same account already shown to Buy Abroad UK applicants as a bank
     # transfer option (see BuyAbroadUkApply.tsx) — reused here as the

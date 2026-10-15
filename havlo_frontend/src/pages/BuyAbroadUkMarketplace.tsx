@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bath, Bed, Bitcoin, BriefcaseBusiness, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard, Eye, EyeOff, Heart, Home, Info, Landmark, Link2, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react';
+import { ArrowLeft, Bath, Bed, Bitcoin, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard, Eye, EyeOff, Heart, Info, Landmark, Link2, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react';
 import { api, API_BASE } from '../lib/api';
-import { redirectToCheckout } from '../lib/paymentReturn';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useTypewriter } from '../hooks/useTypewriter';
@@ -19,7 +18,7 @@ const MARKETPLACE_FAVS_OWNER = 'havlo_buyabroad_favs_owner';
 const AUTH_TOKEN_KEY = 'havlo_token';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
 const LISTING_CACHE_PREFIX = 'havlo_buyabroad_listing_';
-const FAVOURITES_PATH = '/buyabroad/uk/favourites';
+const FAVOURITES_PATH = '/buyabroad/favourites';
 // The consultation deposit, in pounds (charged by app/routers/bookings.py).
 const CONSULTATION_FEE = '£99.99';
 const LISTINGS_API_BASE = API_BASE.replace(/\/$/, '');
@@ -234,7 +233,7 @@ function sourceLabel(listing: Listing) {
 }
 
 function detailUrl(listing: Listing) {
-  return `/buyabroad/uk/listings/${encodeURIComponent(listing.rightmove_id)}`;
+  return `/buyabroad/listings/${encodeURIComponent(listing.rightmove_id)}`;
 }
 
 function listingMetaParts(listing: Listing) {
@@ -353,8 +352,8 @@ function Header({
   // Pricing has no page yet: it's shown, but deliberately inert.
   const links = (
     <>
-      <a className={active === 'homes' ? 'active' : undefined} aria-current={active === 'homes' ? 'page' : undefined} href="/buyabroad/uk/listings">Homes</a>
-      <a className={active === 'how' ? 'active' : undefined} aria-current={active === 'how' ? 'page' : undefined} href="/buyabroad/uk/consultation">How it Works</a>
+      <a className={active === 'homes' ? 'active' : undefined} aria-current={active === 'homes' ? 'page' : undefined} href="/buyabroad/listings">Homes</a>
+      <a className={active === 'how' ? 'active' : undefined} aria-current={active === 'how' ? 'page' : undefined} href="/buyabroad/consultation">How it Works</a>
       <span className="baml-nav-inert">Pricing</span>
     </>
   );
@@ -710,16 +709,25 @@ function FilterPanel({
   filters,
   onChange,
   onClose,
+  hideCountry = false,
+  toggleRef,
 }: {
   filters: ListingFilters;
   onChange: (next: ListingFilters) => void;
   onClose: () => void;
+  // The "All Properties in <country>" popup is already one country's.
+  hideCountry?: boolean;
+  // The button that opens and closes the panel: a tap on it isn't an
+  // "outside" tap (that would close the panel and the button reopen it).
+  toggleRef?: React.RefObject<HTMLElement | null>;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose();
+      const target = e.target as Node;
+      if (toggleRef?.current?.contains(target)) return;
+      if (rootRef.current && !rootRef.current.contains(target)) onClose();
     };
     const onEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -730,21 +738,23 @@ function FilterPanel({
       document.removeEventListener('mousedown', onClickOutside);
       document.removeEventListener('keydown', onEscape);
     };
-  }, [onClose]);
+  }, [onClose, toggleRef]);
 
   const set = (patch: Partial<ListingFilters>) => onChange({ ...filters, ...patch });
 
   return (
     <div ref={rootRef} className="baml-filter-panel" role="dialog" aria-label="Filter listings">
-      <label className="baml-filter-field">
-        <span>Country</span>
-        <select value={filters.country} onChange={(e) => set({ country: e.target.value as CountryKey | '' })}>
-          <option value="">All countries</option>
-          {COUNTRY_SECTIONS.map((section) => (
-            <option key={section.key} value={section.key}>{countryLabel(section.key)}</option>
-          ))}
-        </select>
-      </label>
+      {!hideCountry && (
+        <label className="baml-filter-field">
+          <span>Country</span>
+          <select value={filters.country} onChange={(e) => set({ country: e.target.value as CountryKey | '' })}>
+            <option value="">All countries</option>
+            {COUNTRY_SECTIONS.map((section) => (
+              <option key={section.key} value={section.key}>{countryLabel(section.key)}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="baml-filter-split">
         <label className="baml-filter-field">
           <span>Min price (£)</span>
@@ -774,7 +784,7 @@ function FilterPanel({
         </label>
       </div>
       <div className="baml-filter-actions">
-        <button type="button" className="baml-filter-clear" onClick={() => onChange(EMPTY_FILTERS)} disabled={!hasActiveFilters(filters)}>
+        <button type="button" className="baml-filter-clear" onClick={() => onChange({ ...EMPTY_FILTERS, country: hideCountry ? filters.country : '' })} disabled={!hasActiveFilters(hideCountry ? { ...filters, country: '' } : filters)}>
           Clear all
         </button>
         <button type="button" className="baml-filter-apply" onClick={onClose}>
@@ -806,10 +816,16 @@ function AllHomesModal({
   const [data, setData] = useState<ListingsResponse>({ listings: [], page: 1, pages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // This popup's own filters (price, bedrooms, type) within its country,
+  // starting from whatever the page was already filtered by.
+  const [modalFilters, setModalFilters] = useState<ListingFilters>(() => ({ ...filters, country }));
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const activeFilters = hasActiveFilters({ ...modalFilters, country: '' });
 
   useEffect(() => {
     setPage(1);
-  }, [country, searchTerm, filters]);
+  }, [country, searchTerm, modalFilters]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -818,7 +834,7 @@ function AllHomesModal({
     const params = new URLSearchParams({ country, page: String(page), per_page: '40' });
     const term = searchTerm.trim();
     if (term) params.set('search', term);
-    appendListingFilterParams(params, filters);
+    appendListingFilterParams(params, modalFilters);
       fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
       .then((res) => res.ok ? res.json() : Promise.reject())
       .then((payload: ListingsResponse) => {
@@ -832,7 +848,7 @@ function AllHomesModal({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [country, page, searchTerm, filters]);
+  }, [country, page, searchTerm, modalFilters]);
 
   const pages = Math.max(1, data.pages || 1);
   const pageButtons = Array.from(
@@ -843,7 +859,39 @@ function AllHomesModal({
     <div className="baml-overlay baml-homes-overlay">
       <div className="baml-all-homes">
         <button className="baml-close" onClick={onClose} aria-label="Close"><X size={22} /></button>
-        <h2>{title}</h2>
+        <div className="baml-all-head">
+          <h2>{title}</h2>
+          <div className="baml-all-tools">
+            <div className="baml-all-toolbar">
+              <button
+                ref={filterButtonRef}
+                type="button"
+                className={`baml-all-filter-btn${activeFilters ? ' active' : ''}`}
+                aria-expanded={filterOpen}
+                onClick={() => setFilterOpen((v) => !v)}
+              >
+                <SlidersHorizontal size={18} /> Filter{activeFilters ? ' (on)' : ''}
+              </button>
+              {activeFilters && (
+                <button type="button" className="baml-all-clear" onClick={() => setModalFilters({ ...EMPTY_FILTERS, country })}>
+                  Clear
+                </button>
+              )}
+              {!loading && !error && (
+                <span className="baml-all-count">{data.total} {data.total === 1 ? 'home' : 'homes'}</span>
+              )}
+            </div>
+            {filterOpen && (
+              <FilterPanel
+                filters={modalFilters}
+                onChange={setModalFilters}
+                onClose={() => setFilterOpen(false)}
+                hideCountry
+                toggleRef={filterButtonRef}
+              />
+            )}
+          </div>
+        </div>
         <div className="baml-all-scroll">
           <div className="baml-all-grid">
             {loading && <ListingsLoadingState />}
@@ -1001,7 +1049,8 @@ function AuthModal({
   onAuthenticated?: () => void;
 }) {
   const auth = useAuth();
-  const [role, setRole] = useState<'buyer' | 'agent'>('buyer');
+  // Buy Abroad sign-ups are buyers (the popup no longer offers an agent option).
+  const role = 'buyer' as const;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -1145,12 +1194,8 @@ function AuthModal({
         )}
         {view === 'register' && (
           <form onSubmit={submitRegister}>
-            <h2>Create Your Account</h2>
-            <p className="baml-auth-copy">Are you buying a home or listing as an agent?</p>
-            <div className="baml-role-grid">
-              <button type="button" className={role === 'buyer' ? 'active' : ''} onClick={() => setRole('buyer')}><Home size={22} fill="#b20adc" strokeWidth={1.8} /><strong>I&apos;m a Buyer</strong><small>Search and Save homes</small></button>
-              <button type="button" className={role === 'agent' ? 'active' : ''} onClick={() => setRole('agent')}><BriefcaseBusiness size={22} strokeWidth={2} /><strong>I&apos;m an Agent</strong><small>List and Manage Properties</small></button>
-            </div>
+            <h2>Find Your Dream Property Abroad</h2>
+            <p className="baml-auth-copy">Create your free Havlo account to explore overseas properties, save your favourites and take the next step towards buying your dream home abroad.</p>
             <label>Full name<input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" autoComplete="name" required /></label>
             <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="e.g Johndoe@email.com" autoComplete="email" required /></label>
             <PasswordField label="Password" value={password} onChange={setPassword} placeholder="******" minLength={8} autoComplete="new-password" />
@@ -1311,9 +1356,13 @@ function MarketplaceStyles() {
   return (
     <>
     <style>{`
-      .baml-page{min-height:100vh;background:#f3f4f6;color:#111;font-family:Inter,Arial,sans-serif;overflow-x:hidden}.baml-page,.baml-page *{box-sizing:border-box}.baml-header{height:90px;background:#fff;display:flex;align-items:center;padding:0 clamp(18px,5vw,80px);gap:38px;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:20}.baml-logo{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#111;line-height:1;flex:0 0 auto}.baml-logo img{width:136px;height:auto;display:block}.baml-logo span{font-size:16px;margin-top:0;font-weight:400}.baml-nav{display:flex;align-items:center;justify-content:center;gap:45px;flex:1;min-width:0}.baml-nav a{font-size:18px;font-weight:700;color:#222;text-decoration:none;padding:17px 0 11px;border-bottom:4px solid transparent;display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.baml-nav-icon{flex:0 0 auto}.baml-nav-icon.home{color:#111;fill:#e39a53}.baml-nav-icon.bulb{color:#d59b02;fill:#ffe37d}.baml-nav-icon.money{color:#111;fill:#d79a30}.baml-nav a.active{border-color:#111}.baml-consult{border:0;background:transparent;font-weight:800;font-size:16px}.baml-actions{display:flex;align-items:center;gap:14px}.baml-pill{height:48px;min-width:70px;border:0;border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.05);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800}.baml-pill span{background:#b20adc;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}.baml-menu{border:0;background:transparent;display:none}.baml-hero{padding:72px 24px 64px;text-align:center}.baml-hero h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:42px;line-height:1.1;margin:0 0 22px;font-weight:900;text-transform:uppercase}.baml-hero-cursor{display:inline-block;width:3px;margin-left:2px;background:currentColor;animation:baml-cursor-blink 0.85s step-end infinite;vertical-align:-0.08em;height:0.85em}@keyframes baml-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.baml-hero p{max-width:540px;margin:0 auto 42px;color:#6b6b6b;font-size:17px;line-height:1.45}.baml-search-wrap{position:relative;width:min(690px,calc(100% - 48px));margin:0 auto}.baml-search{width:100%;height:52px;display:grid;grid-template-columns:58px minmax(0,1fr) 52px;border-radius:28px;background:#fff;box-shadow:0 7px 22px rgba(0,0,0,.1);overflow:visible}.baml-search button,.baml-search input{border:0;background:#fff}.baml-search button{display:flex;align-items:center;justify-content:center;cursor:pointer;color:#111}.baml-search>button:first-child{border-radius:28px 0 0 28px;border-right:2px solid #f0f0f0}.baml-search>button:first-child.active{color:#b20adc}.baml-search input{font-size:12px;padding:0 14px;min-width:0}.baml-search .search{background:#b20adc;color:#fff;border-radius:50%;width:52px;height:52px;align-self:center;justify-self:center;box-shadow:0 4px 12px rgba(178,10,220,.25)}.baml-filter-panel{position:absolute;top:calc(100% + 10px);left:0;width:min(360px,100%);background:#fff;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.16);padding:20px;text-align:left;z-index:30;display:flex;flex-direction:column;gap:16px}.baml-filter-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:#444}.baml-filter-field select,.baml-filter-field input{height:44px;border:1px solid #e4e4e4;border-radius:10px;padding:0 12px;font-size:14px;font-weight:600;color:#111;font-family:inherit;background:#fff}.baml-filter-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.baml-filter-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:4px;border-top:1px solid #f0f0f0}.baml-filter-clear{border:0;background:transparent;font-weight:800;color:#666;cursor:pointer;padding:8px 0}.baml-filter-clear:disabled{color:#ccc;cursor:default}.baml-filter-apply{border:0;background:#111;color:#fff;font-weight:800;padding:10px 22px;border-radius:10px;cursor:pointer}.baml-market{background:#fff;border-radius:26px 26px 0 0;padding:70px clamp(18px,5vw,80px) 90px}.baml-row-section{margin-bottom:78px}.baml-row-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}.baml-row-head h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:28px;font-weight:900;margin:0}.baml-row-head>button,.baml-row-arrows button{border:0;border-radius:50%;background:#f3f4f6;width:35px;height:35px;font-weight:900;font-size:24px;display:inline-flex;align-items:center;justify-content:center}.baml-row-head>button img{width:32px;height:32px;display:block}.baml-row-arrows{margin-left:auto;display:flex;gap:16px}.baml-row-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px}.baml-card{position:relative;min-width:0}.baml-card-img{display:block;aspect-ratio:1.23;border-radius:18px;overflow:hidden;background:#eee}.baml-card-img img{width:100%;height:100%;object-fit:cover;display:block}.baml-heart{position:absolute;top:23px;left:22px;border:0;background:transparent;color:#777;text-shadow:0 1px 8px rgba(255,255,255,.9);line-height:1;padding:0}.baml-heart.active{color:#b20adc}.baml-card-title{display:block;margin:16px 0 7px;color:#111;text-decoration:none;font-size:16px;font-weight:900}.baml-meta{font-size:14px;color:#555;margin:0 0 8px;white-space:nowrap;display:flex;align-items:center;gap:3px;min-width:0}.baml-meta svg{flex:0 0 auto;color:#6b6b6b}.baml-price{font-size:15px;color:#666;margin:0}.baml-cta{width:min(1200px,calc(100% - 48px));margin:25px auto 80px;background:#050505;color:#fff;border-radius:18px;padding:48px 56px;display:flex;align-items:center;justify-content:space-between;gap:30px}.baml-cta h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:31px;line-height:1.05;margin:0 0 18px;font-weight:900}.baml-cta p{margin:0;color:#fff;font-size:15px;max-width:560px;line-height:1.45}.baml-call{background:#fff;color:#111;border-radius:10px;text-decoration:none;font-weight:900;padding:13px 25px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}.baml-call-mark{display:block;flex:0 0 auto}.baml-footer{padding:0 clamp(24px,6vw,90px) 40px;display:flex;align-items:end;justify-content:space-between}.baml-footer p{font-size:17px}.baml-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}.baml-auth{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:22px;padding:24px;position:relative;scrollbar-width:none}.baml-auth::-webkit-scrollbar,.baml-all-homes::-webkit-scrollbar{display:none}.baml-close{position:absolute;right:18px;top:18px;border:0;background:#f1f2f4;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}.baml-auth h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;margin:0 0 32px;font-size:25px;font-weight:900;letter-spacing:-.04em}.baml-auth-copy{font-size:19px;line-height:1.35;color:#666;margin:-15px 0 34px}.baml-auth-copy.strong{font-weight:700;color:#111;font-size:16px}.baml-auth label{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:800;margin-bottom:22px}.baml-auth input{height:50px;border:0;border-radius:12px;background:#f1f2f5;padding:0 16px;font-size:16px}.baml-password{display:flex;background:#f1f2f5;border-radius:12px;overflow:hidden}.baml-password input{flex:1}.baml-password svg{margin:auto 15px}.baml-primary,.baml-secondary{width:100%;height:50px;border-radius:8px;font-size:15px}.baml-primary{border:0;background:#000;color:#fff;font-weight:700;margin-top:18px}.baml-secondary{border:1px solid #e9e9e9;background:#fff;margin-top:12px}.baml-link,.baml-back{border:0;background:transparent;font-weight:800;color:#081735;margin:4px 0 25px;text-align:left}.baml-back{text-align:center;width:100%;font-size:15px;color:#111;display:inline-flex;align-items:center;justify-content:center;gap:6px}.baml-error{color:#b00020;font-weight:700}.baml-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:34px}.baml-role-grid button{height:137px;border:0;border-radius:12px;background:#f1f2f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.baml-role-grid button.active{border:1.5px solid #b20adc;background:#fff}.baml-role-grid strong{font-size:15px}.baml-role-grid small{font-size:14px;color:#666}.baml-otp{display:flex;gap:14px;margin:0 0 28px}.baml-otp input{width:51px;height:49px;text-align:center;font-size:34px;font-weight:900;border:1.5px solid #00c986}.baml-resend{text-align:center;color:#555}.baml-resend button{border:0;background:transparent;color:#06f;font-size:16px}.baml-all-homes{position:relative;background:#fff;border-radius:32px 32px 0 0;align-self:end;width:100%;max-height:calc(100dvh - 90px);overflow:auto;padding:44px clamp(18px,5vw,84px)}.baml-all-homes h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px;margin:0 0 92px;font-weight:900}.baml-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:86px 33px}.baml-pagination{display:flex;justify-content:center;gap:20px;margin-top:78px}.baml-pagination button{width:40px;height:40px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800}.baml-pagination .active{background:#b20adc;color:#fff}.baml-basket-main{padding:70px clamp(18px,6vw,86px)}.baml-basket-main h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px}.baml-basket-layout{display:grid;grid-template-columns:1fr 430px;gap:35px}.baml-basket-item{height:123px;border:1px solid #ddd;border-radius:18px;display:flex;align-items:center;margin-bottom:36px;overflow:hidden}.baml-basket-item img{width:126px;height:100%;object-fit:cover}.baml-basket-info{padding:0 25px;flex:1}.baml-basket-info h3{margin:0 0 8px}.baml-trash{border:0;background:transparent;margin-right:25px}.baml-summary{border:1px solid #ddd;border-radius:20px;padding:22px;box-shadow:0 8px 22px rgba(0,0,0,.06)}.baml-summary-row{display:flex;justify-content:space-between;margin:26px 0;font-size:17px}.baml-total{border-top:1px solid #ddd;padding-top:22px;font-size:22px}.baml-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}.baml-back-link{color:#b20adc;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px}.baml-empty{grid-column:1/-1;padding:60px 0;color:#666}.baml-loading-state{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:56px 0}.baml-loading-house{stroke-dasharray:340;stroke-dashoffset:340;animation:baml-loading-draw 2.6s ease-in-out infinite}.baml-loading-dot{animation:baml-loading-float 1.8s ease-in-out infinite;transform-origin:center}.baml-loading-dot.d2{animation-delay:.3s}.baml-loading-dot.d3{animation-delay:.6s}@keyframes baml-loading-draw{0%{stroke-dashoffset:340;opacity:.35}55%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:-340;opacity:.35}}@keyframes baml-loading-float{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}}.baml-card-img{position:relative;display:flex;align-items:center;justify-content:center}.baml-card-img.is-loading{background:linear-gradient(90deg,#ececec 25%,#f6f6f6 37%,#ececec 63%);background-size:400% 100%;animation:baml-shimmer 1.5s ease infinite}.baml-img-placeholder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#c3c3cb;animation:baml-glyph-pulse 1.5s ease-in-out infinite}.baml-card-img img{opacity:1;transition:opacity .25s ease}.baml-card-img.is-loading img{opacity:0}@keyframes baml-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}@keyframes baml-glyph-pulse{0%,100%{opacity:.35}50%{opacity:.8}}@media(prefers-reduced-motion:reduce){.baml-loading-house,.baml-loading-dot,.baml-card-img.is-loading,.baml-img-placeholder{animation:none}.baml-loading-house{stroke-dashoffset:0;opacity:1}}.baml-detail-main{padding:50px clamp(18px,6vw,76px)}.baml-detail-top{display:flex;justify-content:space-between;align-items:center}.baml-save-button{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#111}.baml-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0}.baml-gallery-main{grid-row:span 2}.baml-gallery img{width:100%;height:238px;object-fit:cover}.baml-gallery-main img{height:500px}.baml-gallery-main,.baml-gallery>div{cursor:pointer;overflow:hidden}.baml-gallery-main img,.baml-gallery>div img{transition:transform .2s}.baml-gallery-main:hover img,.baml-gallery>div:hover img{transform:scale(1.03)}.baml-detail-content{display:grid;grid-template-columns:1fr 380px;gap:30px}.baml-cost-card,.baml-cost-table{border:1px solid #ddd;border-radius:20px;padding:20px}.baml-cost-card{box-shadow:0 8px 22px rgba(0,0,0,.08)}.baml-cost-table .tabs{display:grid;grid-template-columns:1fr 1fr;margin:-20px -20px 25px}.baml-cost-table .tabs button{padding:18px;text-align:center;background:#f1f2f5;border:0;border-bottom:2px solid #ccc;font:inherit;font-weight:800;color:#666;cursor:pointer;transition:background .15s,color .15s}.baml-cost-table .tabs button:hover:not(.active){background:#e9eaee;color:#333}.baml-cost-table .tabs button.active{background:#fff;border-bottom-color:#b20adc;color:#111}.baml-mortgage-sub{color:#888;font-size:13px;margin:-6px 0 20px}.baml-mortgage-row{margin-bottom:18px}.baml-mortgage-row label{display:block;font-size:14px;font-weight:700;color:#333;margin-bottom:8px}.baml-slider{width:100%;accent-color:#b20adc;cursor:pointer}.baml-slider-labels{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px}.baml-mortgage-disc{font-size:12px;color:#aaa;margin:16px 0 0;line-height:1.5}.baml-lightbox-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px}.baml-lightbox-close{position:fixed;top:20px;right:20px;background:rgba(255,255,255,.15);color:#fff}.baml-lightbox-close:hover{background:rgba(255,255,255,.3)}.baml-lightbox-stage{position:relative;max-width:min(1100px,92vw);max-height:88vh;display:flex;align-items:center;justify-content:center}.baml-lightbox-stage img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:8px;display:block}.baml-lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}.baml-lightbox-arrow:hover{background:rgba(255,255,255,.3)}.baml-lightbox-prev{left:-8px}.baml-lightbox-next{right:-8px}.baml-lightbox-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(255,255,255,.15);padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700}@media(max-width:640px){.baml-lightbox-arrow{width:40px;height:40px}.baml-lightbox-prev{left:4px}.baml-lightbox-next{right:4px}.baml-lightbox-stage img{max-height:78vh}}.baml-cost-row{display:flex;justify-content:space-between;margin:24px 0;font-size:18px}.purple{color:#b20adc}.baml-sidebar-actions button,.baml-sidebar-actions a{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;text-decoration:none;margin:10px 0;font-weight:800}.baml-sidebar-actions button{width:100%;border:0;background:#000;color:#fff}.baml-sidebar-actions a{border:1px solid #ddd;color:#111}.baml-cost-legend{display:flex;gap:12px;flex-wrap:wrap}.baml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#111;margin-right:4px}.purple-dot{background:#b20adc}.baml-info-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:16px;font-size:13px;margin-top:30px;display:flex;align-items:flex-start;gap:9px}
+      .baml-page{min-height:100vh;background:#f3f4f6;color:#111;font-family:Inter,Arial,sans-serif;overflow-x:hidden}.baml-page,.baml-page *{box-sizing:border-box}.baml-header{height:90px;background:#fff;display:flex;align-items:center;padding:0 clamp(18px,5vw,80px);gap:38px;border-bottom:1px solid #e8e8e8;position:sticky;top:0;z-index:20}.baml-logo{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#111;line-height:1;flex:0 0 auto}.baml-logo img{width:136px;height:auto;display:block}.baml-logo span{font-size:16px;margin-top:0;font-weight:400}.baml-nav{display:flex;align-items:center;justify-content:center;gap:45px;flex:1;min-width:0}.baml-nav a{font-size:18px;font-weight:700;color:#222;text-decoration:none;padding:17px 0 11px;border-bottom:4px solid transparent;display:inline-flex;align-items:center;gap:10px;white-space:nowrap}.baml-nav-icon{flex:0 0 auto}.baml-nav-icon.home{color:#111;fill:#e39a53}.baml-nav-icon.bulb{color:#d59b02;fill:#ffe37d}.baml-nav-icon.money{color:#111;fill:#d79a30}.baml-nav a.active{border-color:#111}.baml-consult{border:0;background:transparent;font-weight:800;font-size:16px}.baml-actions{display:flex;align-items:center;gap:14px}.baml-pill{height:48px;min-width:70px;border:0;border-radius:12px;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.05);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:800}.baml-pill span{background:#b20adc;color:#fff;border-radius:999px;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:13px}.baml-menu{border:0;background:transparent;display:none}.baml-hero{padding:72px 24px 64px;text-align:center}.baml-hero h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:42px;line-height:1.1;margin:0 0 22px;font-weight:900;text-transform:uppercase}.baml-hero-cursor{display:inline-block;width:3px;margin-left:2px;background:currentColor;animation:baml-cursor-blink 0.85s step-end infinite;vertical-align:-0.08em;height:0.85em}@keyframes baml-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.baml-hero p{max-width:540px;margin:0 auto 42px;color:#6b6b6b;font-size:17px;line-height:1.45}.baml-search-wrap{position:relative;width:min(690px,calc(100% - 48px));margin:0 auto}.baml-search{width:100%;height:52px;display:grid;grid-template-columns:58px minmax(0,1fr) 52px;border-radius:28px;background:#fff;box-shadow:0 7px 22px rgba(0,0,0,.1);overflow:visible}.baml-search button,.baml-search input{border:0;background:#fff}.baml-search button{display:flex;align-items:center;justify-content:center;cursor:pointer;color:#111}.baml-search>button:first-child{border-radius:28px 0 0 28px;border-right:2px solid #f0f0f0}.baml-search>button:first-child.active{color:#b20adc}.baml-search input{font-size:12px;padding:0 14px;min-width:0}.baml-search .search{background:#b20adc;color:#fff;border-radius:50%;width:52px;height:52px;align-self:center;justify-self:center;box-shadow:0 4px 12px rgba(178,10,220,.25)}.baml-filter-panel{position:absolute;top:calc(100% + 10px);left:0;width:min(360px,100%);background:#fff;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.16);padding:20px;text-align:left;z-index:30;display:flex;flex-direction:column;gap:16px}.baml-filter-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:800;color:#444}.baml-filter-field select,.baml-filter-field input{height:44px;border:1px solid #e4e4e4;border-radius:10px;padding:0 12px;font-size:14px;font-weight:600;color:#111;font-family:inherit;background:#fff}.baml-filter-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.baml-filter-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:4px;border-top:1px solid #f0f0f0}.baml-filter-clear{border:0;background:transparent;font-weight:800;color:#666;cursor:pointer;padding:8px 0}.baml-filter-clear:disabled{color:#ccc;cursor:default}.baml-filter-apply{border:0;background:#111;color:#fff;font-weight:800;padding:10px 22px;border-radius:10px;cursor:pointer}.baml-market{background:#fff;border-radius:26px 26px 0 0;padding:70px clamp(18px,5vw,80px) 90px}.baml-row-section{margin-bottom:78px}.baml-row-head{display:flex;align-items:center;gap:12px;margin-bottom:38px}.baml-row-head h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:28px;font-weight:900;margin:0}.baml-row-head>button,.baml-row-arrows button{border:0;border-radius:50%;background:#f3f4f6;width:35px;height:35px;font-weight:900;font-size:24px;display:inline-flex;align-items:center;justify-content:center}.baml-row-head>button img{width:32px;height:32px;display:block}.baml-row-arrows{margin-left:auto;display:flex;gap:16px}.baml-row-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px}.baml-card{position:relative;min-width:0}.baml-card-img{display:block;aspect-ratio:1.23;border-radius:18px;overflow:hidden;background:#eee}.baml-card-img img{width:100%;height:100%;object-fit:cover;display:block}.baml-heart{position:absolute;top:23px;left:22px;border:0;background:transparent;color:#777;text-shadow:0 1px 8px rgba(255,255,255,.9);line-height:1;padding:0}.baml-heart.active{color:#b20adc}.baml-card-title{display:block;margin:16px 0 7px;color:#111;text-decoration:none;font-size:16px;font-weight:900}.baml-meta{font-size:14px;color:#555;margin:0 0 8px;white-space:nowrap;display:flex;align-items:center;gap:3px;min-width:0}.baml-meta svg{flex:0 0 auto;color:#6b6b6b}.baml-price{font-size:15px;color:#666;margin:0}.baml-cta{width:min(1200px,calc(100% - 48px));margin:25px auto 80px;background:#050505;color:#fff;border-radius:18px;padding:48px 56px;display:flex;align-items:center;justify-content:space-between;gap:30px}.baml-cta h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:31px;line-height:1.05;margin:0 0 18px;font-weight:900}.baml-cta p{margin:0;color:#fff;font-size:15px;max-width:560px;line-height:1.45}.baml-call{background:#fff;color:#111;border-radius:10px;text-decoration:none;font-weight:900;padding:13px 25px;white-space:nowrap;display:inline-flex;align-items:center;gap:8px}.baml-call-mark{display:block;flex:0 0 auto}.baml-footer{padding:0 clamp(24px,6vw,90px) 40px;display:flex;align-items:end;justify-content:space-between}.baml-footer p{font-size:17px}.baml-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}.baml-auth{width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border-radius:22px;padding:24px;position:relative;scrollbar-width:none}.baml-auth::-webkit-scrollbar,.baml-all-homes::-webkit-scrollbar{display:none}.baml-close{position:absolute;right:18px;top:18px;border:0;background:#f1f2f4;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}.baml-auth h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;margin:0 0 32px;padding-right:44px;font-size:25px;font-weight:900;letter-spacing:-.04em}.baml-auth-copy{font-size:19px;line-height:1.35;color:#666;margin:-15px 0 34px}.baml-auth-copy.strong{font-weight:700;color:#111;font-size:16px}.baml-auth label{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:800;margin-bottom:22px}.baml-auth input{height:50px;border:0;border-radius:12px;background:#f1f2f5;padding:0 16px;font-size:16px}.baml-password{display:flex;background:#f1f2f5;border-radius:12px;overflow:hidden}.baml-password input{flex:1}.baml-password svg{margin:auto 15px}.baml-primary,.baml-secondary{width:100%;height:50px;border-radius:8px;font-size:15px}.baml-primary{border:0;background:#000;color:#fff;font-weight:700;margin-top:18px}.baml-secondary{border:1px solid #e9e9e9;background:#fff;margin-top:12px}.baml-link,.baml-back{border:0;background:transparent;font-weight:800;color:#081735;margin:4px 0 25px;text-align:left}.baml-back{text-align:center;width:100%;font-size:15px;color:#111;display:inline-flex;align-items:center;justify-content:center;gap:6px}.baml-error{color:#b00020;font-weight:700}.baml-role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:34px}.baml-role-grid button{height:137px;border:0;border-radius:12px;background:#f1f2f4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}.baml-role-grid button.active{border:1.5px solid #b20adc;background:#fff}.baml-role-grid strong{font-size:15px}.baml-role-grid small{font-size:14px;color:#666}.baml-otp{display:flex;gap:14px;margin:0 0 28px}.baml-otp input{width:51px;height:49px;text-align:center;font-size:34px;font-weight:900;border:1.5px solid #00c986}.baml-resend{text-align:center;color:#555}.baml-resend button{border:0;background:transparent;color:#06f;font-size:16px}.baml-all-homes{position:relative;background:#fff;border-radius:32px 32px 0 0;align-self:end;width:100%;max-height:calc(100dvh - 90px);overflow:auto;padding:44px clamp(18px,5vw,84px)}.baml-all-homes h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px;margin:0 0 92px;font-weight:900}.baml-all-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:86px 33px}.baml-pagination{display:flex;justify-content:center;gap:20px;margin-top:78px}.baml-pagination button{width:40px;height:40px;border:1px solid #ddd;background:#fff;border-radius:10px;font-weight:800}.baml-pagination .active{background:#b20adc;color:#fff}.baml-basket-main{padding:70px clamp(18px,6vw,86px)}.baml-basket-main h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:32px}.baml-basket-layout{display:grid;grid-template-columns:1fr 430px;gap:35px}.baml-basket-item{height:123px;border:1px solid #ddd;border-radius:18px;display:flex;align-items:center;margin-bottom:36px;overflow:hidden}.baml-basket-item img{width:126px;height:100%;object-fit:cover}.baml-basket-info{padding:0 25px;flex:1}.baml-basket-info h3{margin:0 0 8px}.baml-trash{border:0;background:transparent;margin-right:25px}.baml-summary{border:1px solid #ddd;border-radius:20px;padding:22px;box-shadow:0 8px 22px rgba(0,0,0,.06)}.baml-summary-row{display:flex;justify-content:space-between;margin:26px 0;font-size:17px}.baml-total{border-top:1px solid #ddd;padding-top:22px;font-size:22px}.baml-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:18px 22px;font-size:14px;line-height:1.45;display:flex;align-items:flex-start;gap:10px}.baml-back-link{color:#b20adc;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:6px}.baml-empty{grid-column:1/-1;padding:60px 0;color:#666}.baml-loading-state{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:56px 0}.baml-loading-house{stroke-dasharray:340;stroke-dashoffset:340;animation:baml-loading-draw 2.6s ease-in-out infinite}.baml-loading-dot{animation:baml-loading-float 1.8s ease-in-out infinite;transform-origin:center}.baml-loading-dot.d2{animation-delay:.3s}.baml-loading-dot.d3{animation-delay:.6s}@keyframes baml-loading-draw{0%{stroke-dashoffset:340;opacity:.35}55%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:-340;opacity:.35}}@keyframes baml-loading-float{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}}.baml-card-img{position:relative;display:flex;align-items:center;justify-content:center}.baml-card-img.is-loading{background:linear-gradient(90deg,#ececec 25%,#f6f6f6 37%,#ececec 63%);background-size:400% 100%;animation:baml-shimmer 1.5s ease infinite}.baml-img-placeholder{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#c3c3cb;animation:baml-glyph-pulse 1.5s ease-in-out infinite}.baml-card-img img{opacity:1;transition:opacity .25s ease}.baml-card-img.is-loading img{opacity:0}@keyframes baml-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}@keyframes baml-glyph-pulse{0%,100%{opacity:.35}50%{opacity:.8}}@media(prefers-reduced-motion:reduce){.baml-loading-house,.baml-loading-dot,.baml-card-img.is-loading,.baml-img-placeholder{animation:none}.baml-loading-house{stroke-dashoffset:0;opacity:1}}.baml-detail-main{padding:50px clamp(18px,6vw,76px)}.baml-detail-top{display:flex;justify-content:space-between;align-items:center}.baml-save-button{border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;font-weight:800;color:#111}.baml-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:28px 0}.baml-gallery-main{grid-row:span 2}.baml-gallery img{width:100%;height:238px;object-fit:cover}.baml-gallery-main img{height:500px}.baml-gallery-main,.baml-gallery>div{cursor:pointer;overflow:hidden}.baml-gallery-main img,.baml-gallery>div img{transition:transform .2s}.baml-gallery-main:hover img,.baml-gallery>div:hover img{transform:scale(1.03)}.baml-detail-content{display:grid;grid-template-columns:1fr 380px;gap:30px}.baml-cost-card,.baml-cost-table{border:1px solid #ddd;border-radius:20px;padding:20px}.baml-cost-card{box-shadow:0 8px 22px rgba(0,0,0,.08)}.baml-cost-table .tabs{display:grid;grid-template-columns:1fr 1fr;margin:-20px -20px 25px}.baml-cost-table .tabs button{padding:18px;text-align:center;background:#f1f2f5;border:0;border-bottom:2px solid #ccc;font:inherit;font-weight:800;color:#666;cursor:pointer;transition:background .15s,color .15s}.baml-cost-table .tabs button:hover:not(.active){background:#e9eaee;color:#333}.baml-cost-table .tabs button.active{background:#fff;border-bottom-color:#b20adc;color:#111}.baml-mortgage-sub{color:#888;font-size:13px;margin:-6px 0 20px}.baml-mortgage-row{margin-bottom:18px}.baml-mortgage-row label{display:block;font-size:14px;font-weight:700;color:#333;margin-bottom:8px}.baml-slider{width:100%;accent-color:#b20adc;cursor:pointer}.baml-slider-labels{display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px}.baml-mortgage-disc{font-size:12px;color:#aaa;margin:16px 0 0;line-height:1.5}.baml-lightbox-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px}.baml-lightbox-close{position:fixed;top:20px;right:20px;background:rgba(255,255,255,.15);color:#fff}.baml-lightbox-close:hover{background:rgba(255,255,255,.3)}.baml-lightbox-stage{position:relative;max-width:min(1100px,92vw);max-height:88vh;display:flex;align-items:center;justify-content:center}.baml-lightbox-stage img{max-width:100%;max-height:88vh;object-fit:contain;border-radius:8px;display:block}.baml-lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:0;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}.baml-lightbox-arrow:hover{background:rgba(255,255,255,.3)}.baml-lightbox-prev{left:-8px}.baml-lightbox-next{right:-8px}.baml-lightbox-counter{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);color:#fff;background:rgba(255,255,255,.15);padding:6px 16px;border-radius:999px;font-size:13px;font-weight:700}@media(max-width:640px){.baml-lightbox-arrow{width:40px;height:40px}.baml-lightbox-prev{left:4px}.baml-lightbox-next{right:4px}.baml-lightbox-stage img{max-height:78vh}}.baml-cost-row{display:flex;justify-content:space-between;margin:24px 0;font-size:18px}.purple{color:#b20adc}.baml-sidebar-actions button,.baml-sidebar-actions a{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;text-decoration:none;margin:10px 0;font-weight:800}.baml-sidebar-actions button{width:100%;border:0;background:#000;color:#fff}.baml-sidebar-actions a{border:1px solid #ddd;color:#111}.baml-cost-legend{display:flex;gap:12px;flex-wrap:wrap}.baml-dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#111;margin-right:4px}.purple-dot{background:#b20adc}.baml-info-note{background:#f0f1f5;color:#4b006c;border-radius:10px;padding:16px;font-size:13px;margin-top:30px;display:flex;align-items:flex-start;gap:9px}
       .baml-detail-main h1,.baml-detail-copy h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-weight:900;letter-spacing:-.04em}.baml-detail-main h1{font-size:32px;margin:26px 0 0}.baml-detail-copy h2{font-size:24px;margin:0 0 14px}.baml-save-button{border:0;background:transparent;font-size:16px;font-weight:800}.baml-detail-meta{font-size:15px;color:#666;border-bottom:1px solid #e4e4e4;padding-bottom:20px}.baml-description{font-size:21px;line-height:1.15;margin:20px 0 26px}.baml-cost-card small{color:#777;font-weight:900}.baml-cost-card h2{font-size:34px;margin:8px 0 10px}.baml-progress{height:5px;background:#111;border-radius:999px;position:relative;margin:8px 0 6px}.baml-progress span{position:absolute;right:0;top:0;height:5px;width:22%;background:#b20adc;border-radius:999px}.baml-total strong{font-size:34px}
       .baml-row-arrows button{display:inline-flex;align-items:center;justify-content:center}
+      .baml-all-head{margin:0 0 56px}.baml-homes-overlay .baml-all-homes .baml-all-head h2{margin:0;padding-right:64px}.baml-all-tools{position:relative;margin-top:18px}.baml-all-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.baml-all-filter-btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border:1px solid #e4e4e4;border-radius:999px;background:#fff;font:inherit;font-size:14px;font-weight:800;color:#111;cursor:pointer}.baml-all-filter-btn.active{border-color:#b20adc;color:#b20adc}.baml-all-clear{border:0;background:transparent;font:inherit;font-size:14px;font-weight:800;color:#666;cursor:pointer;padding:8px 4px}.baml-all-count{margin-left:auto;font-size:14px;font-weight:600;color:#666}.baml-all-tools .baml-filter-panel{top:calc(100% + 10px);left:0;width:min(380px,100%)}
+      .baml-filter-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.baml-filter-field select,.baml-filter-field input{width:100%;min-width:0;box-sizing:border-box}
+      @media(max-width:640px){.baml-all-head{margin-bottom:28px}.baml-homes-overlay .baml-all-homes .baml-all-head h2{padding-right:48px}.baml-all-tools .baml-filter-panel{position:static;width:100%;margin-top:14px;box-shadow:none;border:1px solid #ececec}}
+      .baml-hero-typed{color:#b20adc}
       .baml-homes-overlay{align-items:flex-start;background:rgba(0,0,0,.48);padding:0;padding-top:90px;overflow:auto}.baml-homes-overlay .baml-all-homes{align-self:flex-start;width:100%;min-height:calc(100dvh - 90px);max-height:none;border-radius:34px 34px 0 0;padding:42px clamp(54px,5.6vw,88px) 80px;background:#fff;overflow:visible}.baml-homes-overlay .baml-close{right:clamp(42px,5vw,76px);top:40px}.baml-homes-overlay .baml-all-homes h2{font-size:32px;line-height:1.1;margin:0 0 112px}.baml-homes-overlay .baml-all-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:92px 32px}.baml-homes-overlay .baml-card-img{border-radius:18px}.baml-homes-overlay .baml-card-title{font-size:16px;margin-top:16px}.baml-homes-overlay .baml-pagination{justify-content:center;gap:20px;margin-top:90px}.baml-homes-overlay .baml-pagination button{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;font-size:15px}
       @media(max-width:1200px){.baml-header{gap:24px}.baml-nav{gap:28px}.baml-row-grid{grid-template-columns:repeat(4,1fr);gap:28px}.baml-all-grid{grid-template-columns:repeat(4,1fr);gap:58px 28px}.baml-detail-content{grid-template-columns:minmax(0,1fr) 340px}.baml-gallery-main img{height:420px}.baml-gallery img{height:205px}.baml-basket-layout{grid-template-columns:minmax(0,1fr) 380px}}
       @media(max-width:1024px){.baml-row-grid{grid-template-columns:repeat(3,1fr)}.baml-all-grid{grid-template-columns:repeat(3,1fr)}.baml-detail-content,.baml-basket-layout{grid-template-columns:1fr}.baml-cost-card,.baml-summary{max-width:520px}.baml-nav a{font-size:16px}.baml-consult{font-size:15px}.baml-hero{padding-top:54px}.baml-market{padding-inline:32px}}
@@ -1405,6 +1454,7 @@ function MarketplaceStyles() {
       .bab-sum-total b{font-size:35px;font-weight:700;line-height:1.15;letter-spacing:-0.02em;color:#111}
       .bab-note{display:flex;gap:14px;margin-top:6px;padding:12px 19px 12px 18px;border-radius:12px;background:#F1F2F7;color:#4B006C;font-size:12px;font-weight:500;line-height:18px;letter-spacing:-0.02em}
       .bab-note p{margin:0}
+      .bab-note p+p{margin-top:12px}
       .bab-note ul{margin:0;padding:0;list-style:none}
       .bab-note li{position:relative;margin-top:18px;padding-left:18px}
       .bab-note li::before{content:'•';position:absolute;left:6px;top:0}
@@ -1413,6 +1463,9 @@ function MarketplaceStyles() {
       .bab-checkout:disabled{opacity:.5;cursor:not-allowed}
       .bab-consult{padding-top:34px}
       .bab-crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:0 0 20px;font-size:16px;line-height:1.5;color:#666}
+      .bab-pay-status{margin:0 0 20px;padding:14px 16px;border-radius:12px;background:#f5ecfa;color:#4b006c;font-size:15px;font-weight:600}
+      .bab-pay-status-error{background:#fdecec;color:#8a1c1c}
+      .bab-pay-status a{color:inherit;text-decoration:underline}
       .bab-crumbs .done{color:#A409D2;text-decoration:none}
       .bab-intro{max-width:840px;margin:18px 0 0;font-size:18px;line-height:1.5;color:#666}
       .bab-intro b{font-weight:600;color:#111}
@@ -1538,6 +1591,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   const [allOpen, setAllOpen] = useState<{ title: string; country: CountryKey } | null>(null);
   const [filters, setFilters] = useState<ListingFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const heroFilterRef = useRef<HTMLButtonElement | null>(null);
   const navigate = useNavigate();
 
   const visibleSections = filters.country
@@ -1619,7 +1673,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
   return (
     <div className="baml-page">
       <MarketplaceStyles />
-      <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))} onBasket={() => navigate('/buyabroad/uk/basket')} />
+      <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))} onBasket={() => navigate('/buyabroad/basket')} />
       <section className="baml-hero">
         <h1>
           Buy Property in{' '}
@@ -1635,6 +1689,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
         <div className="baml-search-wrap">
           <div className="baml-search">
             <button
+              ref={heroFilterRef}
               aria-label="Filter"
               aria-expanded={filterOpen}
               className={hasActiveFilters(filters) ? 'active' : ''}
@@ -1646,7 +1701,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
             <button className="search" aria-label="Search" onClick={() => setQueryTerm(searchTerm.trim())}><Search size={24} /></button>
           </div>
           {filterOpen && (
-            <FilterPanel filters={filters} onChange={setFilters} onClose={() => setFilterOpen(false)} />
+            <FilterPanel filters={filters} onChange={setFilters} onClose={() => setFilterOpen(false)} toggleRef={heroFilterRef} />
           )}
         </div>
       </section>
@@ -1729,7 +1784,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     return (
       <div className="baml-page">
         <MarketplaceStyles />
-        <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
+        <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/basket')} />
         <main className="baml-detail-main"><p className="baml-empty">Loading property details...</p></main>
       </div>
     );
@@ -1739,9 +1794,9 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     return (
       <div className="baml-page">
         <MarketplaceStyles />
-        <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
+        <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/basket')} />
         <main className="baml-detail-main">
-          <a href="/buyabroad/uk/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
+          <a href="/buyabroad/listings" className="baml-back-link"><ArrowLeft size={16} /> Go Back</a>
           <h1>Property not found</h1>
           <p className="baml-empty">This listing is no longer available.</p>
         </main>
@@ -1765,7 +1820,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     const next = basket.includes(active.rightmove_id) ? basket : [...basket, active.rightmove_id];
     setBasket(next);
     writeIds(MARKETPLACE_BASKET, next);
-    navigate('/buyabroad/uk/basket');
+    navigate('/buyabroad/basket');
   };
 
   const location = cleanText([active.city, countryLabel(active.country)].filter(Boolean).join(', '));
@@ -1790,7 +1845,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
       </div>
       <button type="button" className="bad-basket" onClick={addToBasket}>Add to Basket <ShoppingBasket size={17} /></button>
       <div className="bad-card-more">
-        <a className="bad-how" href="/buyabroad/uk/consultation">How it Works <ChevronRight size={16} /></a>
+        <a className="bad-how" href="/buyabroad/consultation">How it Works <ChevronRight size={16} /></a>
         <a className="bad-source" href={active.url || '#'} target="_blank" rel="noreferrer">{viewSourceText} <Link2 size={15} /></a>
         <p className="bad-note"><i className="bad-info">i</i> This property is covered by your one-time {CONSULTATION_FEE} consultation fee — add as many as you like at no extra cost.</p>
       </div>
@@ -1801,9 +1856,9 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
     <div className="baml-page bad-page">
       <MarketplaceStyles />
       <DetailStyles />
-      <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/uk/basket')} />
+      <Header active="homes" favCount={favs.length} basketCount={basket.length} onAuth={() => setAuthView('savePrompt')} onFavourites={openFavourites} onBasket={() => navigate('/buyabroad/basket')} />
       <main className="bad-main">
-        <a href="/buyabroad/uk/listings" className="bad-back"><Undo2 size={18} /> Go Back</a>
+        <a href="/buyabroad/listings" className="bad-back"><Undo2 size={18} /> Go Back</a>
         <div className="bad-top">
           <h1>{cleanText(active.title) || cleanText(active.address) || 'Property for sale'}</h1>
           <button className="bad-save" onClick={toggleFav}><Heart size={18} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Saved' : 'Save'}</button>
@@ -2085,16 +2140,18 @@ export const BuyAbroadUkBasket: React.FC = () => {
     setCheckoutError('');
     try {
       const name = splitName(details.fullName || `${auth.user.first_name || ''} ${auth.user.last_name || ''}`);
-      const result = await api.bookSession(auth.token, {
+      // Flutterwave's hosted checkout; it sends the buyer back to
+      // /buyabroad/consultation, which confirms the payment before showing
+      // the "your advisor is ready" popup.
+      const result = await api.buyAbroadCheckout(auth.token, {
         first_name: name.first_name,
         last_name: name.last_name,
         email: details.email || auth.user.email,
-        phone_country_code: auth.user.phone_country_code || '+234',
-        phone_number: details.phone || auth.user.phone_number || '0000000000',
-        preferred_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-        preferred_time: '10:00',
+        phone_country_code: auth.user.phone_country_code || undefined,
+        phone_number: details.phone || auth.user.phone_number || undefined,
+        payment_method: paymentMethod,
       });
-      redirectToCheckout(result.checkout_id, { kind: 'buy_abroad_consultation', recordId: result.booking_id, reference: result.checkout_id });
+      window.location.href = result.checkout_url;
     } catch (err: any) {
       setCheckoutError(err?.message || 'We could not create your checkout. Please try again.');
       setCheckingOut(false);
@@ -2110,10 +2167,10 @@ export const BuyAbroadUkBasket: React.FC = () => {
         basketCount={selected.length}
         onAuth={() => setAuthView('savePrompt')}
         onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
-        onBasket={() => navigate('/buyabroad/uk/basket')}
+        onBasket={() => navigate('/buyabroad/basket')}
       />
       <main className="bab-main">
-        <a href="/buyabroad/uk/listings" className="bab-goback"><Undo2 size={20} /> Go Back</a>
+        <a href="/buyabroad/listings" className="bab-goback"><Undo2 size={20} /> Go Back</a>
         <h1 className="bab-title">Your Basket</h1>
         <div className="bab-basket-layout">
           <div className="bab-items">
@@ -2128,20 +2185,21 @@ export const BuyAbroadUkBasket: React.FC = () => {
                 <button type="button" className="bab-trash" onClick={() => remove(listing.rightmove_id)} aria-label={`Remove ${cleanText(listing.title) || 'property'} from basket`}><Trash2 size={24} /></button>
               </article>
             )) : <p className="bab-empty">Your basket is empty.</p>}
-            <a href="/buyabroad/uk/listings" className="bab-link"><ArrowLeft size={16} /> Continue Browsing</a>
+            <a href="/buyabroad/listings" className="bab-link"><ArrowLeft size={16} /> Continue Browsing</a>
           </div>
           <aside className="bab-summary" aria-label="Order summary">
             <h2>Order Summary</h2>
             <div className="bab-sum-row"><span>Properties selected</span><b className="bab-count">{selected.length}</b></div>
-            <div className="bab-sum-row"><span>Consultation fee ( Refundable)</span><b>{CONSULTATION_FEE}</b></div>
+            <div className="bab-sum-row"><span>Consultation fee (Refundable)</span><b>{CONSULTATION_FEE}</b></div>
             <div className="bab-sum-total"><span>Total due today</span><b>{CONSULTATION_FEE}</b></div>
             <div className="bab-note">
               <span className="bab-note-icon" aria-hidden="true">i</span>
               <div>
-                <p>The consultation itself is free. Due to the high number of enquiries we receive, we ask for a {CONSULTATION_FEE} deposit to confirm you&apos;re serious about buying, this lets our advisor focus their time on genuine buyers rather than casual enquiries.</p>
+                <p>Your consultation is free and gives you the opportunity to speak with a Havlo advisor about the properties you&apos;ve saved or expressed interest in. We&apos;ll walk you through the property details, answer your questions and discuss the next steps towards buying abroad.</p>
+                <p>Due to high demand, we require a {CONSULTATION_FEE} refundable deposit to secure your consultation and prioritise genuine buyer enquiries.</p>
                 <ul>
-                  <li>If you don&apos;t move forward: Your deposit is refunded after the consultation, minus any payment processing fees charged by our provider.</li>
-                  <li>If you decide to work with us: The full {CONSULTATION_FEE} is credited toward your advisory fee — you won&apos;t pay it twice.</li>
+                  <li><b>If you don&apos;t proceed:</b> Your deposit is refunded after the consultation, minus any payment processing fees charged by our provider.</li>
+                  <li><b>If you proceed with Havlo:</b> Your full {CONSULTATION_FEE} is credited towards your advisory fee, so you won&apos;t pay twice.</li>
                 </ul>
               </div>
             </div>
@@ -2191,14 +2249,46 @@ export const BuyAbroadUkConsultation: React.FC = () => {
   });
   const navigate = useNavigate();
   const [showAdvisor, setShowAdvisor] = useState(false);
+  // Back from Flutterwave (?tx_ref=...&status=...): confirming the payment.
+  const [payment, setPayment] = useState<'idle' | 'checking' | 'failed' | 'error'>('idle');
   const [authView, setAuthView] = useState<AuthView | null>(null);
   const { requireAuth, onAuthenticated, clearPending } = useAuthGate(setAuthView);
   const basketCount = readIds(MARKETPLACE_BASKET).length;
   const { favs } = useFavourites();
 
+  // The popup only follows a payment Flutterwave confirms to our backend,
+  // never the redirect's own ?status=.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success') setShowAdvisor(true);
+    const txRef = params.get('tx_ref');
+    if (!txRef) return;
+    let cancelled = false;
+    setPayment('checking');
+    (async () => {
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
+        try {
+          const result = await api.buyAbroadVerify(txRef);
+          if (cancelled) return;
+          if (result.paid) {
+            setPayment('idle');
+            setShowAdvisor(true);
+            return;
+          }
+          if (['failed', 'cancelled'].includes(result.status) || params.get('status') === 'cancelled') {
+            setPayment('failed');
+            return;
+          }
+        } catch {
+          if (attempt === 3 && !cancelled) setPayment('error');
+        }
+        // A just-finished payment can take a few seconds to show as successful.
+        await new Promise((resolve) => window.setTimeout(resolve, 2500));
+      }
+      if (!cancelled) setPayment((current) => (current === 'checking' ? 'failed' : current));
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -2210,11 +2300,11 @@ export const BuyAbroadUkConsultation: React.FC = () => {
         basketCount={basketCount}
         onAuth={() => setAuthView('savePrompt')}
         onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
-        onBasket={() => navigate('/buyabroad/uk/basket')}
+        onBasket={() => navigate('/buyabroad/basket')}
       />
       <main className="bab-main bab-consult">
         <nav className="bab-crumbs" aria-label="Checkout progress">
-          <a href="/buyabroad/uk/basket" className="done">Basket</a>
+          <a href="/buyabroad/basket" className="done">Basket</a>
           <span aria-hidden="true">·</span>
           <span className="done" aria-current="step">How your consultation works</span>
           <span aria-hidden="true">·</span>
@@ -2222,6 +2312,17 @@ export const BuyAbroadUkConsultation: React.FC = () => {
           <span aria-hidden="true">·</span>
           <span>Consultation booked</span>
         </nav>
+        {payment === 'checking' && <p className="bab-pay-status" role="status">Confirming your payment&hellip;</p>}
+        {payment === 'failed' && (
+          <p className="bab-pay-status bab-pay-status-error" role="alert">
+            Your payment wasn&apos;t completed, so you haven&apos;t been charged. <a href="/buyabroad/basket">Return to your basket</a> to try again.
+          </p>
+        )}
+        {payment === 'error' && (
+          <p className="bab-pay-status bab-pay-status-error" role="alert">
+            We couldn&apos;t confirm your payment just now. Please refresh this page in a moment, or contact us if you&apos;ve been charged.
+          </p>
+        )}
         <h1 className="bab-title">How Your Consultation Works</h1>
         <p className="bab-intro">
           {basketCount > 0 && <>Your basket has <b>{basketCount} {basketCount === 1 ? 'property' : 'properties'}</b> shortlisted. </>}
@@ -2252,7 +2353,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
           </div>
           <div className="bab-question-actions">
             <a href="/faq" className="bab-btn-outline">Read FAQs</a>
-            <a href="/buyabroad/uk/basket" className="bab-btn-solid">Continue to Payment <ChevronRight size={18} /></a>
+            <a href="/buyabroad/basket" className="bab-btn-solid">Continue to Payment <ChevronRight size={18} /></a>
           </div>
         </section>
       </main>
@@ -2343,10 +2444,10 @@ export const BuyAbroadUkFavourites: React.FC = () => {
         basketCount={basket.length}
         onAuth={() => setAuthView('savePrompt')}
         onFavourites={() => requireAuth(() => navigate(FAVOURITES_PATH))}
-        onBasket={() => navigate('/buyabroad/uk/basket')}
+        onBasket={() => navigate('/buyabroad/basket')}
       />
       <main className="bab-main">
-        <a href="/buyabroad/uk/listings" className="bab-goback"><Undo2 size={20} /> Go Back</a>
+        <a href="/buyabroad/listings" className="bab-goback"><Undo2 size={20} /> Go Back</a>
         <h1 className="bab-title">Your Favourites</h1>
         {!signedIn ? (
           <section className="bab-fav-empty">
@@ -2366,7 +2467,7 @@ export const BuyAbroadUkFavourites: React.FC = () => {
             <h2>No saved homes yet</h2>
             <p>Tap the heart on any home to save it here.</p>
             <div className="bab-fav-actions">
-              <a href="/buyabroad/uk/listings" className="bab-btn-solid">Browse homes <ChevronRight size={18} /></a>
+              <a href="/buyabroad/listings" className="bab-btn-solid">Browse homes <ChevronRight size={18} /></a>
             </div>
           </section>
         ) : (

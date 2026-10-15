@@ -266,6 +266,10 @@ class SessionBooking(Base):
     preferred_time: Mapped[str] = mapped_column(String(50), nullable=False)
     sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255))
     sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text)
+    # Buy Abroad deposits are paid through Flutterwave ("flutterwave", with
+    # its tx_ref); the advisory session popup still uses SumUp (NULL here).
+    payment_provider: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    provider_reference: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     payment_status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus, name="payment_status"), default=PaymentStatus.pending
     )
@@ -950,7 +954,7 @@ class UKContactFormSubmission(Base):
     source values:
       'buyabroad-uk'          → /buyabroad/uk      → "Eligibility Check" tab
       'buyabroad-uk-agents'   → /buyabroad/uk/agents → "Agent / Partner Application" tab
-      'buyabroad-uk-listings' → /buyabroad/uk/listings → "Free Consultation" tab
+      'buyabroad-uk-listings' → /buyabroad/listings → "Free Consultation" tab
     """
     __tablename__ = "uk_contact_form_submissions"
 

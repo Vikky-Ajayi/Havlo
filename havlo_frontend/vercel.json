@@ -22,6 +22,10 @@
       "destination": "/_pages/about-us.html"
     },
     {
+      "source": "/press",
+      "destination": "/_pages/press.html"
+    },
+    {
       "source": "/contact-us",
       "destination": "/_pages/contact-us.html"
     },
@@ -118,12 +122,44 @@
       "destination": "/_pages/buyabroad/southafrica.html"
     },
     {
-      "source": "/buyabroad/uk/listings",
-      "destination": "/_pages/buyabroad/uk/listings.html"
+      "source": "/buyabroad/listings",
+      "destination": "/_pages/buyabroad/listings.html"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/buyabroad/uk/listings",
+      "destination": "/buyabroad/listings",
+      "permanent": true
+    },
+    {
+      "source": "/buyabroad/uk/listings/:id",
+      "destination": "/buyabroad/listings/:id",
+      "permanent": true
+    },
+    {
+      "source": "/buyabroad/uk/basket",
+      "destination": "/buyabroad/basket",
+      "permanent": true
+    },
+    {
+      "source": "/buyabroad/uk/consultation",
+      "destination": "/buyabroad/consultation",
+      "permanent": true
+    },
+    {
+      "source": "/buyabroad/uk/favourites",
+      "destination": "/buyabroad/favourites",
+      "permanent": true
+    },
+    {
+      "source": "/buyabroad/uk/favorites",
+      "destination": "/buyabroad/favourites",
+      "permanent": true
     }
   ]
 }

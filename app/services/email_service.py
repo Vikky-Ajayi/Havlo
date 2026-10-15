@@ -47,8 +47,15 @@ def _send_sync(
     html_body: str,
     plain_body: str,
     attachments: Optional[list[dict]] = None,
+    unsubscribe_url: Optional[str] = None,
 ) -> bool:
     """Synchronous send with bounded retries. Always returns a bool, never raises.
+
+    unsubscribe_url (marketing emails): sent as the List-Unsubscribe and
+    List-Unsubscribe-Post headers, so Gmail, Yahoo and others show their own
+    "Unsubscribe" button and can opt the reader out in one click (a POST to
+    that URL). Bulk senders without these headers are far more likely to be
+    filtered to spam.
 
     Retries on transient errors (HTTP 429 rate-limit, HTTP 5xx, network/timeout).
     Permanent 4xx failures (other than 429) are not retried.
@@ -85,6 +92,11 @@ def _send_sync(
         params["reply_to"] = s.EMAIL_REPLY_TO
     if attachments:
         params["attachments"] = attachments
+    if unsubscribe_url:
+        params["headers"] = {
+            "List-Unsubscribe": f"<{unsubscribe_url}>",
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        }
 
     last_error: Optional[str] = None
     for attempt in range(1, _RETRY_ATTEMPTS + 1):
@@ -2455,6 +2467,7 @@ def send_stale_prospect_abandonment_email_sync(
         subject=config["subject"],
         html_body=html_body,
         plain_body=plain_body,
+        unsubscribe_url=unsubscribe_url,
     )
 
 
@@ -2569,7 +2582,10 @@ def send_ads_flow_email_sync(
     if note:
         lines += [f"{note} {note_link_url}".strip(), ""]
     lines += [f"Unsubscribe: {unsubscribe_url}", "", "Copyright ©Havlo. All rights reserved."]
-    return _send_sync(to_email=to_email, subject=subject, html_body=html_body, plain_body="\n".join(lines))
+    return _send_sync(
+        to_email=to_email, subject=subject, html_body=html_body, plain_body="\n".join(lines),
+        unsubscribe_url=unsubscribe_url,
+    )
 
 
 # ── StaleListings post-purchase nurture / upsell email drip ("phase two") ──
@@ -2871,6 +2887,7 @@ def send_stale_prospect_post_purchase_email_sync(
         subject=config["subject"],
         html_body=html_body,
         plain_body=plain_body,
+        unsubscribe_url=unsubscribe_url,
     )
 
 
@@ -3091,7 +3108,10 @@ def send_stale_agent_followup_email_sync(
         f"Unsubscribe from these reminders: {unsubscribe_url}\n\n"
         "Copyright ©Havlo. All rights reserved."
     )
-    return _send_sync(to_email=to_email, subject=config["subject"], html_body=html_body, plain_body=plain_body)
+    return _send_sync(
+        to_email=to_email, subject=config["subject"], html_body=html_body, plain_body=plain_body,
+        unsubscribe_url=unsubscribe_url,
+    )
 
 
 def send_property_code_capacity_alert_sync(*, to_email: str, used: int, total: int, per_day: float) -> bool:

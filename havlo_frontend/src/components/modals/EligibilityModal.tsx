@@ -99,7 +99,7 @@ export const EligibilityModal: React.FC<EligibilityModalProps> = ({ isOpen, onCl
           `Approximate budget: ${budget}`,
           `Timeline: ${timeline}`,
           `WhatsApp: ${whatsapp}`,
-          `Source: /buyabroad/uk/listings`,
+          `Source: /buyabroad/listings`,
         ].join('\n'),
       });
     } catch (err) {

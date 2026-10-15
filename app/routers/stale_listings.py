@@ -906,7 +906,10 @@ async def get_ads_url_reminder(
     )
 
 
-@public_router.get("/ads/reminder-unsubscribe", response_class=HTMLResponse)
+# The unsubscribe links below also take POST: that's the mail provider's
+# one-click unsubscribe (the List-Unsubscribe-Post header, email_service.
+# _send_sync), sent to the same URL with the same query string.
+@public_router.api_route("/ads/reminder-unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)
 async def unsubscribe_ads_url_reminder(lead_id: str, token: str, db: AsyncSession = Depends(get_db)) -> HTMLResponse:
     _page = _stale_listing_confirmation_page
     try:
@@ -2873,7 +2876,7 @@ def _stale_listing_confirmation_page(message: str) -> HTMLResponse:
 </body></html>""")
 
 
-@public_router.get("/prospects/unsubscribe", response_class=HTMLResponse)
+@public_router.api_route("/prospects/unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)
 async def unsubscribe_stale_prospect(
     prospect_id: str,
     token: str,
@@ -3034,7 +3037,7 @@ async def prospect_monitor_link(payload: ProspectMonitorLinkRequest, db: AsyncSe
     return {"url": f"/m/{token}"}
 
 
-@public_router.get("/agents/unsubscribe", response_class=HTMLResponse)
+@public_router.api_route("/agents/unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)
 async def unsubscribe_agency_emails(
     account_id: str,
     token: str,

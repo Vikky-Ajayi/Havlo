@@ -124,7 +124,7 @@ function PropertyCard({
   const countryKey = localCurrency.backPath === '/buyabroad/uk'
     ? ''
     : `?country=${localCurrency.backPath.split('/').pop() ?? ''}`;
-  const detailUrl = `/buyabroad/uk/listings/${listing.rightmove_id}${countryKey}`;
+  const detailUrl = `/buyabroad/listings/${listing.rightmove_id}${countryKey}`;
 
   return (
     <article className="bal-card">
@@ -206,7 +206,7 @@ export const BuyAbroadUkListings: React.FC = () => {
   usePageMeta({
     title: 'UK Property Listings | Havlo Buy Abroad',
     description: 'Browse live UK property listings for Nigerian buyers. See GBP and NGN prices side-by-side. Enquire directly via WhatsApp.',
-    canonical: 'https://www.heyhavlo.com/buyabroad/uk/listings',
+    canonical: 'https://www.heyhavlo.com/buyabroad/listings',
   });
 
   const [city, setCity] = useState('');

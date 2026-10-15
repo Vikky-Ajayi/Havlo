@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import { ModalProvider } from './context/ModalContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useModal } from './hooks/useModal';
@@ -9,6 +9,7 @@ const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Hom
 const NotFound = React.lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 const GeoHome = React.lazy(() => import('./pages/GeoHome').then(m => ({ default: m.GeoHome })));
 const AboutUs = React.lazy(() => import('./pages/AboutUs').then(m => ({ default: m.AboutUs })));
+const Press = React.lazy(() => import('./pages/Press').then(m => ({ default: m.Press })));
 const BuyAbroad = React.lazy(() => import('./pages/BuyAbroad').then(m => ({ default: m.BuyAbroad })));
 const BuyAbroadUk = React.lazy(() => import('./pages/BuyAbroadUk').then(m => ({ default: m.BuyAbroadUk })));
 const BuyAbroadUkAgents = React.lazy(() => import('./pages/BuyAbroadUkAgents').then(m => ({ default: m.BuyAbroadUkAgents })));
@@ -256,6 +257,13 @@ const KeepQueryRedirect = ({ to }: { to: string }) => {
   return <Navigate to={{ pathname: to, search, hash }} replace />;
 };
 
+// A Buy Abroad property's former address, /buyabroad/uk/listings/<id>.
+const OldListingRedirect = () => {
+  const { id } = useParams();
+  const { search, hash } = useLocation();
+  return <Navigate to={{ pathname: `/buyabroad/listings/${id ?? ''}`, search, hash }} replace />;
+};
+
 const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/stale-listings',
   '/stale-listings/seller',
@@ -281,11 +289,11 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/stale-listings/prospect/report',
   '/buyabroad/uk',
   '/buyabroad/uk/agents',
-  '/buyabroad/uk/listings',
-  '/buyabroad/uk/basket',
-  '/buyabroad/uk/consultation',
-  '/buyabroad/uk/favourites',
-  '/buyabroad/uk/favorites',
+  '/buyabroad/listings',
+  '/buyabroad/basket',
+  '/buyabroad/consultation',
+  '/buyabroad/favourites',
+  '/buyabroad/favorites',
   '/buyabroad/uk/apply',
   '/buyabroad/ghana',
   '/buyabroad/southafrica',
@@ -294,7 +302,7 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/custom-offers',
 ]);
 const hasEmbeddedCountryBadge = (pathname: string) =>
-  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/uk/listings/') || pathname.startsWith('/m/');
+  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/listings/') || pathname.startsWith('/m/');
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname: rawPathname } = useLocation();
@@ -364,16 +372,24 @@ export default function App() {
               <Route path="/" element={<GeoHome />} />
               <Route path="/home" element={<Home />} />
               <Route path="/about-us" element={<AboutUs />} />
+              <Route path="/press" element={<Press />} />
               <Route path="/about" element={<Navigate to="/about-us" replace />} />
               <Route path="/buy-property-abroad" element={<BuyAbroad />} />
               <Route path="/buyabroad/uk" element={<BuyAbroadUk />} />
               <Route path="/buyabroad/uk/agents" element={<BuyAbroadUkAgents />} />
-              <Route path="/buyabroad/uk/listings" element={<BuyAbroadUkListingsRedesign />} />
-              <Route path="/buyabroad/uk/basket" element={<BuyAbroadUkBasket />} />
-              <Route path="/buyabroad/uk/consultation" element={<BuyAbroadUkConsultation />} />
-              <Route path="/buyabroad/uk/favourites" element={<BuyAbroadUkFavourites />} />
-              <Route path="/buyabroad/uk/favorites" element={<Navigate to="/buyabroad/uk/favourites" replace />} />
-              <Route path="/buyabroad/uk/listings/:id" element={<BuyAbroadUkListingDetailRedesign />} />
+              <Route path="/buyabroad/listings" element={<BuyAbroadUkListingsRedesign />} />
+              <Route path="/buyabroad/basket" element={<BuyAbroadUkBasket />} />
+              <Route path="/buyabroad/consultation" element={<BuyAbroadUkConsultation />} />
+              <Route path="/buyabroad/favourites" element={<BuyAbroadUkFavourites />} />
+              <Route path="/buyabroad/favorites" element={<Navigate to="/buyabroad/favourites" replace />} />
+              <Route path="/buyabroad/listings/:id" element={<BuyAbroadUkListingDetailRedesign />} />
+              {/* The marketplace's former /buyabroad/uk/... addresses (links, emails and ads already out). */}
+              <Route path="/buyabroad/uk/listings" element={<KeepQueryRedirect to="/buyabroad/listings" />} />
+              <Route path="/buyabroad/uk/listings/:id" element={<OldListingRedirect />} />
+              <Route path="/buyabroad/uk/basket" element={<KeepQueryRedirect to="/buyabroad/basket" />} />
+              <Route path="/buyabroad/uk/consultation" element={<KeepQueryRedirect to="/buyabroad/consultation" />} />
+              <Route path="/buyabroad/uk/favourites" element={<KeepQueryRedirect to="/buyabroad/favourites" />} />
+              <Route path="/buyabroad/uk/favorites" element={<KeepQueryRedirect to="/buyabroad/favourites" />} />
               <Route path="/buyabroad/uk/apply" element={<BuyAbroadUkApply />} />
               <Route path="/buyabroad/ghana" element={<BuyAbroadGhana />} />
               <Route path="/buyabroad/southafrica" element={<BuyAbroadSouthAfrica />} />

@@ -8,7 +8,7 @@ function resolvePostPaymentRoute(kind: CheckoutKind): string {
   if (kind === 'session') return '/dashboard';
   if (kind === 'sell_faster') return '/dashboard/sell-faster';
   if (kind === 'buyer_network') return '/dashboard/buyer-network';
-  if (kind === 'buy_abroad_consultation') return '/buyabroad/uk/consultation';
+  if (kind === 'buy_abroad_consultation') return '/buyabroad/consultation';
   return '/dashboard/sale-audit';
 }
 

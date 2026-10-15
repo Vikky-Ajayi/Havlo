@@ -31,27 +31,13 @@ const serviceCards: ServiceCard[] = [
     href: '/stale-listings',
     background: '#EBF4FF',
   },
-  {
-    title: 'International Buyer Network',
-    description:
-      'Sell properties faster by going beyond property portals and connecting listings with a curated network of qualified, ready-to-buy international buyers.',
-    href: '/buyer-network',
-    background: '#FDECEE',
-  },
-  {
-    title: 'Listing Recovery',
-    description:
-      "Find out why a property isn't selling before you lose the instruction. Our panel of experienced local agents reviews the pricing, presentation, marketing, and positioning of the property to identify what's holding it back. By combining multiple expert perspectives, we uncover opportunities a single review can miss. You'll receive clear, practical recommendations that are easy to implement alongside your existing strategy to increase buyer interest, relaunch the property with confidence, and secure a sale.",
-    href: '/stale-listings',
-    background: '#FFEBF9',
-  },
 ];
 
 export const AboutUs: React.FC = () => {
   usePageMeta({
-    title: 'About Us | Trusted Global Property Experts | Havlo',
+    title: 'About Us | Property Listing Intelligence & Advisory | Havlo',
     description:
-      "Havlo is a property exposure and advisory platform helping buyers discover and access real estate opportunities abroad with confidence. Learn about Havlo's mission, values, and expertise in international real estate.",
+      "Havlo is a property listing intelligence and advisory platform. We help sellers and estate agents understand why a property isn't selling, and exactly what to do about it.",
     canonical: 'https://www.heyhavlo.com/about-us',
   });
 
@@ -65,24 +51,28 @@ export const AboutUs: React.FC = () => {
           </h1>
 
           <p className="mt-6 font-body text-lg font-semibold leading-[1.4] text-black sm:text-xl lg:text-[22px]">
-            Beyond borders. Beyond portals.
+            Beyond the portals.
           </p>
 
           <div className="mt-7 flex flex-col gap-5 font-body text-[15px] font-medium leading-[1.7] text-black/85 sm:text-base lg:text-[17px]">
             <p>
-              Havlo is a <span className="font-bold">property exposure</span> and advisory platform helping buyers discover and{' '}
-              <span className="font-bold">access real estate opportunities abroad</span> with confidence. We connect{' '}
-              <span className="font-bold">international property listings</span> with a global audience of{' '}
-              <span className="font-bold">motivated buyers</span>, making it easier to explore, compare, and act on opportunities beyond your local market. Whether you're looking for a second home, an{' '}
-              <span className="font-bold">investment property</span>, or a move overseas, Havlo brings clarity to a process that can often feel complex and fragmented.
+              Havlo is a <span className="font-bold">property listing intelligence</span> and advisory platform. We help sellers and estate agents understand{' '}
+              <span className="font-bold">why a property isn't selling</span>, and exactly what to do about it.
             </p>
             <p>
-              Our platform is built to <span className="font-bold">give buyers better access to international property markets</span>, while helping sellers and agents reach{' '}
-              <span className="font-bold">qualified overseas demand</span>. Alongside exposure, we provide advisory support to help users understand markets, navigate cross-border purchasing, and make more informed decisions.
+              A listing rarely stalls for one obvious reason. It's usually a mix of pricing, photos, description, timing and how the property stacks up against local competition. Our{' '}
+              <span className="font-bold">stale listing assessment</span> looks at all of it. Using our own in-house metrics and a{' '}
+              <span className="font-bold">human review of every listing</span>, we pinpoint what's holding a property back and give clear, practical recommendations to get it moving. Not just a score, but a plan you can act on.
             </p>
             <p>
-              At Havlo, we believe buying property abroad should be{' '}
-              <span className="font-bold">simple, transparent, and accessible,</span> not limited by geography.
+              We work with <span className="font-bold">homeowners</span> whose properties have sat on the market too long, and with{' '}
+              <span className="font-bold">independent agents</span>, including those within some of the UK's largest estate chains, who want a sharper edge on their slower stock.
+            </p>
+            <p>
+              Alongside this, <span className="font-bold">Havlo Buy Abroad</span> helps international buyers find and purchase property in the UK, giving them guidance and support through a process that can feel complex from overseas.
+            </p>
+            <p>
+              At Havlo, we believe every property deserves to be seen by the right buyer, and every buyer deserves a clear path to the right property.
             </p>
             <p>
               Havlo Ltd, registered in England and Wales (Company No. 15369975). Office:{' '}

@@ -246,6 +246,35 @@ class SendMessageResponse(BaseModel):
 
 # ── Session Booking ────────────────────────────────────────────────────────────
 
+class BuyAbroadCheckoutRequest(BaseModel):
+    """The Buy Abroad basket's consultation deposit, paid through Flutterwave."""
+    first_name: str = Field(..., min_length=1, max_length=100)
+    last_name: str = Field("", max_length=100)
+    email: EmailStr
+    phone_country_code: str = Field("+44", max_length=10)
+    phone_number: str = Field("", max_length=30)
+    # The method picked in the basket's "How would you like to pay?" step.
+    payment_method: Optional[Literal["card", "bank", "crypto"]] = None
+
+
+class BuyAbroadCheckoutResponse(BaseModel):
+    booking_id: str
+    checkout_url: str
+    tx_ref: str
+    amount: float
+    currency: str
+
+
+class BuyAbroadVerifyRequest(BaseModel):
+    tx_ref: str = Field(..., min_length=6, max_length=100)
+
+
+class BuyAbroadVerifyResponse(BaseModel):
+    paid: bool
+    status: str
+    calendly_url: Optional[str] = None
+
+
 class BookSessionRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)

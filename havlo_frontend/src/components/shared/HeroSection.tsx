@@ -24,6 +24,8 @@ interface HeroSectionProps {
   onSecondaryButtonClick?: () => void;
   customActions?: React.ReactNode;
   titleStyle?: React.CSSProperties;
+  // Replaces the title's default type classes at every breakpoint.
+  titleClassName?: string;
   subtitleStyle?: React.CSSProperties;
   overlineStyle?: React.CSSProperties;
   imageStyle?: React.CSSProperties;
@@ -41,6 +43,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onSecondaryButtonClick,
   customActions,
   titleStyle,
+  titleClassName,
   subtitleStyle,
   overlineStyle,
   imageStyle,
@@ -90,7 +93,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </span>
           )}
           <h1 
-            className="font-display font-black text-[#111] max-w-[900px] tracking-[-0.04em] text-[40px] sm:text-[56px] lg:text-[80px] leading-[1.05] lg:leading-[1.0]"
+            className={titleClassName ?? "font-display font-black text-[#111] max-w-[900px] tracking-[-0.04em] text-[40px] sm:text-[56px] lg:text-[80px] leading-[1.05] lg:leading-[1.0]"}
             style={safeTitleStyle}
           >
             {title}

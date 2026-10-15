@@ -53,6 +53,10 @@ export const BuyAbroad: React.FC = () => {
     navigate('/get-started');
   };
 
+  const handleBrowseProperties = () => {
+    navigate('/buyabroad/listings');
+  };
+
   const tabs = [
     'High-Value Investors',
     'Rental & Capital Buyers',
@@ -132,9 +136,17 @@ export const BuyAbroad: React.FC = () => {
         title="A Smoother Way to Buy Property Overseas"
         subtitle="Your property search, survey, legal work and purchase - all done in one peaceful place."
         imageSrc="/Mask group2.png"
-        onButtonClick={handleGetStarted}
-        titleStyle={{ fontSize: '88px', lineHeight: '1.0' }}
+        onButtonClick={handleBrowseProperties}
+        buttonText="Browse properties"
+        titleClassName="ba-hero-title"
       />
+      {/* The hero title in the /stale-listings home page's type (StaleListingsHome.tsx .slh-hero h1). */}
+      <style>{`
+        .ba-hero-title{max-width:900px;margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:56px;line-height:110%;letter-spacing:-0.03em;color:#1F1F1E}
+        @media(max-width:1379px){.ba-hero-title{font-size:48px}}
+        @media(max-width:1024px){.ba-hero-title{font-size:40px}}
+        @media(max-width:899px){.ba-hero-title{font-size:36px;line-height:120%}}
+      `}</style>
 
       {/* 2. Marquee Strip */}
       <MarqueeStrip />

@@ -55,7 +55,7 @@ const sections = [
   ['Buy UK Property from Kenya', '/buyabroad/kenya'],
   ['Buy UK Property from Egypt', '/buyabroad/egypt'],
   ['Buy UK Property from South Africa', '/buyabroad/southafrica'],
-  ['Browse UK Properties', '/buyabroad/uk/listings'],
+  ['Browse UK Properties', '/buyabroad/listings'],
   ['About Havlo', '/about-us'],
   ['Contact', '/contact-us'],
 ];

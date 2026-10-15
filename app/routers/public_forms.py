@@ -131,7 +131,7 @@ def _bg_log_contact(payload: dict) -> None:
         elif source == "buyabroad-uk-listings":
             sheet_tab = "Free Consultation"
             summary = "New free consultation request submitted from a UK property listing."
-            source_label = "buyabroad/uk/listings — Free Consultation"
+            source_label = "buyabroad/listings — Free Consultation"
             prop_url = msg_data.get("Havlo Property Page", "")
             fields = {
                 "Name": name,
