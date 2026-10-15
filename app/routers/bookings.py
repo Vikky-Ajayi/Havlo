@@ -31,12 +31,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bookings", tags=["Session Bookings"])
 
 
-# The consultation deposit (Buy Abroad and the advisory session popup).
+# The advisory session popup's fee (after onboarding; paid through SumUp).
 # GBP because SumUp only accepts the merchant account's own currency; a
-# checkout in any other currency is refused. Shown as £99.99 in
-# havlo_frontend/src/pages/BuyAbroadUkMarketplace.tsx (CONSULTATION_FEE).
+# checkout in any other currency is refused.
 SESSION_FEE_AMOUNT = 99.99
 SESSION_FEE_CURRENCY = "GBP"
+
+# The Buy Abroad consultation deposit (the basket, paid through
+# Flutterwave): US$99.99. Shown as $99.99 in
+# havlo_frontend/src/pages/BuyAbroadUkMarketplace.tsx (CONSULTATION_FEE).
+BUY_ABROAD_FEE_AMOUNT = 99.99
+BUY_ABROAD_FEE_CURRENCY = "USD"
 
 
 @router.post("/session", response_model=BookSessionResponse, status_code=status.HTTP_201_CREATED)
@@ -292,7 +297,7 @@ async def _confirm_buy_abroad_payment(db: AsyncSession, tx_ref: str) -> tuple[Se
     transaction = await flutterwave_service.verify_by_reference(tx_ref)
     flw_status = str((transaction or {}).get("status") or "pending").lower()
     paid = flutterwave_service.payment_confirmed(
-        transaction, tx_ref=tx_ref, amount=SESSION_FEE_AMOUNT, currency=SESSION_FEE_CURRENCY
+        transaction, tx_ref=tx_ref, amount=BUY_ABROAD_FEE_AMOUNT, currency=BUY_ABROAD_FEE_CURRENCY
     )
     if paid:
         booking.payment_status = PaymentStatus.completed
@@ -327,8 +332,8 @@ async def create_buy_abroad_checkout(
     try:
         checkout_url = await flutterwave_service.create_payment(
             tx_ref=tx_ref,
-            amount=SESSION_FEE_AMOUNT,
-            currency=SESSION_FEE_CURRENCY,
+            amount=BUY_ABROAD_FEE_AMOUNT,
+            currency=BUY_ABROAD_FEE_CURRENCY,
             redirect_url=f"{frontend}/buyabroad/consultation",
             customer={"email": str(payload.email), "name": full_name, **({"phonenumber": phone} if phone else {})},
             title="Havlo Buy Abroad",
@@ -361,8 +366,8 @@ async def create_buy_abroad_checkout(
     db.add(Payment(
         user_id=current_user.id,
         checkout_id=tx_ref,
-        amount=SESSION_FEE_AMOUNT,
-        currency=SESSION_FEE_CURRENCY,
+        amount=BUY_ABROAD_FEE_AMOUNT,
+        currency=BUY_ABROAD_FEE_CURRENCY,
         status=PaymentStatus.pending,
         reference_type="buy_abroad_consultation",
         reference_id=str(booking.id),
@@ -386,8 +391,8 @@ async def create_buy_abroad_checkout(
         booking_id=str(booking.id),
         checkout_url=checkout_url,
         tx_ref=tx_ref,
-        amount=SESSION_FEE_AMOUNT,
-        currency=SESSION_FEE_CURRENCY,
+        amount=BUY_ABROAD_FEE_AMOUNT,
+        currency=BUY_ABROAD_FEE_CURRENCY,
     )
 
 

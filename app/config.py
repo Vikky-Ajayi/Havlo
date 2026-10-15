@@ -122,10 +122,10 @@ class Settings(BaseSettings):
     ADMIN_SECRET: str = ""
 
     # ── Session fee ──────────────────────────────────────────────────────
-    # The advisory session / Buy Abroad consultation deposit lives in
-    # app/routers/bookings.py (SESSION_FEE_AMOUNT / SESSION_FEE_CURRENCY):
-    # SumUp only takes the merchant account's currency (GBP), so it's no
-    # longer read from the environment.
+    # Both live in app/routers/bookings.py, not the environment: the
+    # advisory session fee (SESSION_FEE_*, GBP, SumUp only takes the
+    # merchant account's currency) and the Buy Abroad consultation deposit
+    # (BUY_ABROAD_FEE_*, US$99.99 through Flutterwave).
 
     # ── Frontend ─────────────────────────────────────────────────────────
     FRONTEND_URL: str = "http://localhost:5173"

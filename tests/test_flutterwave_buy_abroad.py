@@ -84,5 +84,20 @@ class FlutterwaveRequestTests(unittest.TestCase):
                 asyncio.run(fw.verify_by_reference(TX))
 
 
+class BuyAbroadFeeTests(unittest.TestCase):
+    def test_deposit_is_99_99_us_dollars(self):
+        from app.routers import bookings
+        self.assertEqual(bookings.BUY_ABROAD_FEE_AMOUNT, 99.99)
+        self.assertEqual(bookings.BUY_ABROAD_FEE_CURRENCY, "USD")
+        self.assertTrue(fw.payment_confirmed(
+            txn(currency="USD"), tx_ref=TX, amount=bookings.BUY_ABROAD_FEE_AMOUNT,
+            currency=bookings.BUY_ABROAD_FEE_CURRENCY,
+        ))
+        self.assertFalse(fw.payment_confirmed(
+            txn(currency="GBP"), tx_ref=TX, amount=bookings.BUY_ABROAD_FEE_AMOUNT,
+            currency=bookings.BUY_ABROAD_FEE_CURRENCY,
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()

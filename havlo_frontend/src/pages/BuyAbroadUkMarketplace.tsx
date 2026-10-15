@@ -19,8 +19,9 @@ const AUTH_TOKEN_KEY = 'havlo_token';
 const MARKETPLACE_BASKET = 'havlo_buyabroad_basket';
 const LISTING_CACHE_PREFIX = 'havlo_buyabroad_listing_';
 const FAVOURITES_PATH = '/buyabroad/favourites';
-// The consultation deposit, in pounds (charged by app/routers/bookings.py).
-const CONSULTATION_FEE = '£99.99';
+// The consultation deposit, in US dollars (charged through Flutterwave by
+// app/routers/bookings.py, BUY_ABROAD_FEE_*).
+const CONSULTATION_FEE = '$99.99';
 const LISTINGS_API_BASE = API_BASE.replace(/\/$/, '');
 
 function listingsApiUrl(path: string) {

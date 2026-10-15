@@ -71,6 +71,8 @@ async def diagnose_sumup(
             ),
             "SESSION_FEE_AMOUNT": bookings.SESSION_FEE_AMOUNT,
             "SESSION_FEE_CURRENCY": bookings.SESSION_FEE_CURRENCY,
+            "BUY_ABROAD_FEE_AMOUNT": bookings.BUY_ABROAD_FEE_AMOUNT,
+            "BUY_ABROAD_FEE_CURRENCY": bookings.BUY_ABROAD_FEE_CURRENCY,
             "FRONTEND_URL": frontend or "MISSING",
             "FRONTEND_URL_https": frontend.startswith("https://") if frontend else False,
         },
