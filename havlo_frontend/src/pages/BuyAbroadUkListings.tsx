@@ -753,7 +753,7 @@ export const BuyAbroadUkListings: React.FC = () => {
 
       {/* Header */}
       <header className="bal-header">
-        <a href={localCurrency.backPath} className="bal-logo" aria-label="Buy Abroad">
+        <a href="/buyabroad/listings" className="bal-logo" aria-label="Havlo Buy Abroad: browse properties">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>

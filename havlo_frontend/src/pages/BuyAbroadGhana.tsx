@@ -321,7 +321,7 @@ export const BuyAbroadGhana: React.FC = () => {
   return (
     <div className="buk-page">
       <header className="buk-header">
-        <a href="/" className="buk-logo" aria-label="Havlo home">
+        <a href="/buyabroad/listings" className="buk-logo" aria-label="Havlo Buy Abroad: browse properties">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>

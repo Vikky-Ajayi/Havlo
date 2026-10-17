@@ -362,7 +362,7 @@ function Header({
   return (
     <>
       <header className="baml-header">
-        <a className="baml-logo" href="/buyabroad/uk" aria-label="Havlo Buy Abroad">
+        <a className="baml-logo" href="/buyabroad/listings" aria-label="Havlo Buy Abroad: browse properties">
           <img src="/Havlo Black Transparent.png" alt="Havlo" />
           <span>Buy Abroad</span>
         </a>
