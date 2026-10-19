@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import math
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
@@ -23,7 +24,7 @@ from app.schemas.schemas import (
     BookSessionResponse,
     PaymentStatusResponse,
 )
-from app.services import flutterwave_service, google_sheets, sumup_service
+from app.services import currency_rates, flutterwave_service, google_sheets, sumup_service
 from app.services.flutterwave_service import FlutterwaveError
 from app.services.sumup_service import SumUpError
 
@@ -42,6 +43,24 @@ SESSION_FEE_CURRENCY = "GBP"
 # havlo_frontend/src/pages/BuyAbroadUkMarketplace.tsx (CONSULTATION_FEE).
 BUY_ABROAD_FEE_AMOUNT = 99.99
 BUY_ABROAD_FEE_CURRENCY = "USD"
+# Flutterwave's "Pay with Bank Transfer" only takes Naira, so a buyer who
+# picks Bank Transfer pays the deposit converted to NGN at the day's rate
+# (rounded up to the naira). Card payments stay in USD.
+BANK_TRANSFER_CURRENCY = "NGN"
+
+
+async def buy_abroad_charge(payment_method: str | None) -> tuple[float, str, str | None]:
+    """(amount, currency, Flutterwave payment_options) for the deposit by
+    this payment method. Raises 503 when Naira can't be priced right now."""
+    if payment_method == "bank":
+        rate = await currency_rates.usd_rate(BANK_TRANSFER_CURRENCY)
+        if not rate:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Bank transfer is unavailable for a moment. Please try again shortly, or pay by card.",
+            )
+        return float(math.ceil(BUY_ABROAD_FEE_AMOUNT * rate)), BANK_TRANSFER_CURRENCY, "banktransfer"
+    return BUY_ABROAD_FEE_AMOUNT, BUY_ABROAD_FEE_CURRENCY, "card"
 
 
 @router.post("/session", response_model=BookSessionResponse, status_code=status.HTTP_201_CREATED)
@@ -294,14 +313,19 @@ async def _confirm_buy_abroad_payment(db: AsyncSession, tx_ref: str) -> tuple[Se
         return None, False, "not_found"
     if booking.payment_status == PaymentStatus.completed:
         return booking, True, "successful"
+    payment = (await db.execute(select(Payment).where(Payment.checkout_id == tx_ref))).scalar_one_or_none()
     transaction = await flutterwave_service.verify_by_reference(tx_ref)
     flw_status = str((transaction or {}).get("status") or "pending").lower()
+    # Checked against what this booking was charged: US$ by card, or the
+    # Naira amount quoted for a bank transfer.
     paid = flutterwave_service.payment_confirmed(
-        transaction, tx_ref=tx_ref, amount=BUY_ABROAD_FEE_AMOUNT, currency=BUY_ABROAD_FEE_CURRENCY
+        transaction,
+        tx_ref=tx_ref,
+        amount=payment.amount if payment else BUY_ABROAD_FEE_AMOUNT,
+        currency=payment.currency if payment else BUY_ABROAD_FEE_CURRENCY,
     )
     if paid:
         booking.payment_status = PaymentStatus.completed
-        payment = (await db.execute(select(Payment).where(Payment.checkout_id == tx_ref))).scalar_one_or_none()
         if payment:
             payment.status = PaymentStatus.completed
         await db.commit()
@@ -329,16 +353,17 @@ async def create_buy_abroad_checkout(
     frontend = (settings.FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
     phone = f"{payload.phone_country_code}{payload.phone_number}".strip() if payload.phone_number else ""
     full_name = f"{payload.first_name} {payload.last_name}".strip()
+    amount, currency, payment_options = await buy_abroad_charge(payload.payment_method)
     try:
         checkout_url = await flutterwave_service.create_payment(
             tx_ref=tx_ref,
-            amount=BUY_ABROAD_FEE_AMOUNT,
-            currency=BUY_ABROAD_FEE_CURRENCY,
+            amount=amount,
+            currency=currency,
             redirect_url=f"{frontend}/buyabroad/consultation",
             customer={"email": str(payload.email), "name": full_name, **({"phonenumber": phone} if phone else {})},
             title="Havlo Buy Abroad",
             description="Consultation deposit (refundable)",
-            payment_options="card" if payload.payment_method == "card" else None,
+            payment_options=payment_options,
         )
     except FlutterwaveError as exc:
         logger.error("Flutterwave checkout failed: %s body=%s", exc, exc.body)
@@ -366,8 +391,8 @@ async def create_buy_abroad_checkout(
     db.add(Payment(
         user_id=current_user.id,
         checkout_id=tx_ref,
-        amount=BUY_ABROAD_FEE_AMOUNT,
-        currency=BUY_ABROAD_FEE_CURRENCY,
+        amount=amount,
+        currency=currency,
         status=PaymentStatus.pending,
         reference_type="buy_abroad_consultation",
         reference_id=str(booking.id),
@@ -391,8 +416,8 @@ async def create_buy_abroad_checkout(
         booking_id=str(booking.id),
         checkout_url=checkout_url,
         tx_ref=tx_ref,
-        amount=BUY_ABROAD_FEE_AMOUNT,
-        currency=BUY_ABROAD_FEE_CURRENCY,
+        amount=amount,
+        currency=currency,
     )
 
 

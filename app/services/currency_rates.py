@@ -48,3 +48,28 @@ async def to_gbp(amount_native: int, currency: str) -> int:
     if not cross:
         return max(0, int(amount_native))
     return max(0, int(round(amount_native / cross)))
+
+
+# US dollars into another currency (e.g. the Buy Abroad deposit paid by
+# Naira bank transfer). Live rates only: no fallback figure, because a
+# stale rate would charge the wrong price. Cached for an hour.
+_usd_cache: dict[str, Any] = {"rates": {}, "fetched_at": 0.0}
+
+
+async def usd_rate(currency: str) -> float | None:
+    """How many units of `currency` equal 1 USD, or None if no live rate."""
+    currency = (currency or "").upper()
+    if currency == "USD":
+        return 1.0
+    if time.time() - float(_usd_cache["fetched_at"]) >= 3600 or currency not in _usd_cache["rates"]:
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                resp = await client.get("https://open.er-api.com/v6/latest/USD")
+                data = resp.json()
+            rates = {k: float(v) for k, v in (data.get("rates") or {}).items() if isinstance(v, (int, float))}
+            if data.get("result") == "success" and rates:
+                _usd_cache.update({"rates": rates, "fetched_at": time.time()})
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("USD FX rate fetch failed (%s).", exc)
+    rate = _usd_cache["rates"].get(currency)
+    return float(rate) if rate and rate > 0 else None

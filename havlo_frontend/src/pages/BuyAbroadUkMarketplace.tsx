@@ -1278,7 +1278,8 @@ function PaymentMethodModal({
         <p className="baml-auth-copy">Select a payment method to continue.</p>
         <div className="baml-payment-options">
           {methods.map((item) => (
-            <button key={item.id} type="button" className={`baml-pay-option ${method === item.id ? 'active' : ''}`} onClick={() => setMethod(item.id)}>
+            // Crypto isn't taken by Flutterwave: shown, but not selectable.
+            <button key={item.id} type="button" className={`baml-pay-option ${method === item.id ? 'active' : ''}`} onClick={() => { if (item.id !== 'crypto') setMethod(item.id); }}>
               <span>{item.icon}</span>
               <strong>{item.title}<small>{item.copy}</small></strong>
             </button>
@@ -1295,6 +1296,7 @@ type CheckoutDetails = { fullName: string; email: string; address: string; city:
 function CheckoutDetailsModal({
   details,
   setDetails,
+  method,
   checkingOut,
   error,
   onClose,
@@ -1303,6 +1305,7 @@ function CheckoutDetailsModal({
 }: {
   details: CheckoutDetails;
   setDetails: React.Dispatch<React.SetStateAction<CheckoutDetails>>;
+  method: PaymentMethod;
   checkingOut: boolean;
   error: string;
   onClose: () => void;
@@ -1322,8 +1325,15 @@ function CheckoutDetailsModal({
           <label>City<input value={details.city} onChange={(e) => setDetails((d) => ({ ...d, city: e.target.value }))} placeholder="Lagos" /></label>
           <label>Post Code<input value={details.postCode} onChange={(e) => setDetails((d) => ({ ...d, postCode: e.target.value }))} placeholder="SY19" /></label>
         </div>
+        {method === 'bank' && (
+          <p className="baml-bank-note">
+            Bank transfers are paid in Naira: you&apos;ll see the {CONSULTATION_FEE} deposit converted at today&apos;s exchange rate, with the account details to transfer to.
+          </p>
+        )}
         {error && <p className="baml-error">{error}</p>}
-        <button className="baml-primary" disabled={checkingOut}>{checkingOut ? 'Creating checkout...' : `Confirm & Pay ${CONSULTATION_FEE}`}</button>
+        <button className="baml-primary" disabled={checkingOut}>
+          {checkingOut ? 'Creating checkout...' : method === 'bank' ? 'Continue to Bank Transfer' : `Confirm & Pay ${CONSULTATION_FEE}`}
+        </button>
         <button type="button" className="baml-back" onClick={onBack}><ArrowLeft size={16} /> Back</button>
       </form>
     </div>
@@ -1374,7 +1384,7 @@ function MarketplaceStyles() {
       @media(max-width:380px){.baml-logo img{width:96px}.baml-pill{min-width:50px;height:44px}.baml-nav a{font-size:16px}.baml-hero h1{font-size:25px}.baml-row-grid{gap:14px}.baml-card{width:150px;flex-basis:150px}.baml-all-grid{gap:26px 12px}.baml-otp input{width:40px;font-size:28px}.baml-gallery img,.baml-gallery-main img{height:360px}.baml-cta h2{font-size:23px}}
     `}</style>
     <style>{`
-      .baml-pay-modal{width:min(400px,calc(100vw - 18px));padding:24px 16px 16px}.baml-pay-modal h2,.baml-details-modal h2{margin-bottom:28px}.baml-pay-modal .baml-auth-copy{margin:0 0 46px}.baml-payment-options{display:grid;gap:14px}.baml-pay-option{height:80px;border:0;border-radius:12px;background:#f1f2f4;display:flex;align-items:center;gap:18px;padding:0 20px;text-align:left}.baml-pay-option.active{background:#fff;border:1.5px solid #b20adc}.baml-pay-option>span{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:#b20adc}.baml-pay-option strong{font-size:16px;display:flex;flex-direction:column;gap:5px}.baml-pay-option small{font-size:14px;color:#666;font-weight:500}.baml-details-modal{width:min(400px,calc(100vw - 18px));padding:24px 16px;overflow-x:hidden}.baml-details-modal .baml-auth-copy{margin:0 0 18px;padding-right:44px}.baml-details-modal label{min-width:0}.baml-details-modal input{width:100%;min-width:0}.baml-details-modal .baml-error{overflow-wrap:anywhere}.baml-details-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.baml-advisor-shell{position:relative;border-radius:36px;padding:12px;background:linear-gradient(135deg,#e8e8ff,#fff1ca);width:min(426px,calc(100vw - 18px))}.baml-advisor-card{background:#fff;border-radius:28px;padding:38px 28px 32px;text-align:center}.baml-payment-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;background:#fff0ff;color:#6f008d;font-weight:700}.baml-avatar-stack{display:flex;justify-content:center;margin:36px 0 14px}.baml-avatar-stack img,.baml-avatar-stack span{width:62px;height:62px;border-radius:50%;border:3px solid #fff;margin-left:-12px;object-fit:cover}.baml-avatar-stack img:first-child{margin-left:0}.baml-avatar-stack span{display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:800}.baml-trust{font-size:12px;color:#666}.baml-advisor-card h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:33px;line-height:1.12;margin:26px 0 12px;font-weight:900}.baml-advisor-card p{color:#666;line-height:1.45}.baml-book-consult{display:inline-flex;width:auto;align-items:center;justify-content:center;gap:16px;text-decoration:none;padding:0 22px;margin-top:28px}.baml-consult-page{padding:38px clamp(18px,6vw,80px) 40px;background:#fff;min-height:calc(100vh - 90px)}.baml-crumbs{display:flex;gap:14px;margin:5px 0 26px;color:#666}.baml-crumbs strong{color:#b20adc}.baml-consult-page h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:34px;margin:0 0 24px;font-weight:900}.baml-consult-intro{font-size:19px;line-height:1.45;color:#666;max-width:760px}.baml-video-card{border:1px solid #ddd;border-radius:26px;overflow:hidden;margin:44px 0 50px;box-shadow:0 12px 35px rgba(0,0,0,.06)}.baml-video-stage{height:min(520px,45vw);min-height:320px;background:#000;display:flex;align-items:center;justify-content:center;position:relative}.baml-video-pill{position:absolute;left:38px;top:28px;border:1px solid #333;border-radius:999px;color:#fff;padding:8px 15px}.baml-play{width:56px;height:56px;border-radius:50%;border:0;background:#fff;display:flex;align-items:center;justify-content:center}.baml-video-covers{padding:28px 35px 36px}.baml-video-covers h3{color:#666;margin:0 0 28px}.baml-video-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 80px}.baml-video-grid p{display:flex;align-items:center;gap:14px;color:#666;font-size:18px;margin:0}.baml-video-grid svg{color:#b20adc}.baml-question-card{border:1px solid #ddd;border-radius:22px;padding:30px 32px;margin:0 0 90px;display:flex;align-items:center;justify-content:space-between;gap:24px;box-shadow:0 10px 28px rgba(0,0,0,.05)}.baml-question-card h2{font-size:30px;margin:0 0 8px}.baml-question-card p{margin:0;color:#666;font-size:18px}.baml-question-actions{display:flex;gap:12px}.baml-question-actions a{height:48px;padding:0 26px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:900}.baml-question-actions .outline{border:1px solid #ddd;color:#111;background:#fff}.baml-question-actions .solid{background:#000;color:#fff}
+      .baml-pay-modal{width:min(400px,calc(100vw - 18px));padding:24px 16px 16px}.baml-pay-modal h2,.baml-details-modal h2{margin-bottom:28px}.baml-pay-modal .baml-auth-copy{margin:0 0 46px}.baml-payment-options{display:grid;gap:14px}.baml-pay-option{height:80px;border:0;border-radius:12px;background:#f1f2f4;display:flex;align-items:center;gap:18px;padding:0 20px;text-align:left}.baml-pay-option.active{background:#fff;border:1.5px solid #b20adc}.baml-pay-option>span{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;color:#b20adc}.baml-pay-option strong{font-size:16px;display:flex;flex-direction:column;gap:5px}.baml-pay-option small{font-size:14px;color:#666;font-weight:500}.baml-details-modal{width:min(400px,calc(100vw - 18px));padding:24px 16px;overflow-x:hidden}.baml-details-modal .baml-auth-copy{margin:0 0 18px;padding-right:44px}.baml-details-modal label{min-width:0}.baml-details-modal input{width:100%;min-width:0}.baml-details-modal .baml-error{overflow-wrap:anywhere}.baml-bank-note{margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#f5ecfa;color:#4b006c;font-size:13px;line-height:1.45}.baml-details-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.baml-advisor-shell{position:relative;border-radius:36px;padding:12px;background:linear-gradient(135deg,#e8e8ff,#fff1ca);width:min(426px,calc(100vw - 18px))}.baml-advisor-card{background:#fff;border-radius:28px;padding:38px 28px 32px;text-align:center}.baml-payment-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;background:#fff0ff;color:#6f008d;font-weight:700}.baml-avatar-stack{display:flex;justify-content:center;margin:36px 0 14px}.baml-avatar-stack img,.baml-avatar-stack span{width:62px;height:62px;border-radius:50%;border:3px solid #fff;margin-left:-12px;object-fit:cover}.baml-avatar-stack img:first-child{margin-left:0}.baml-avatar-stack span{display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-weight:800}.baml-trust{font-size:12px;color:#666}.baml-advisor-card h2{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:33px;line-height:1.12;margin:26px 0 12px;font-weight:900}.baml-advisor-card p{color:#666;line-height:1.45}.baml-book-consult{display:inline-flex;width:auto;align-items:center;justify-content:center;gap:16px;text-decoration:none;padding:0 22px;margin-top:28px}.baml-consult-page{padding:38px clamp(18px,6vw,80px) 40px;background:#fff;min-height:calc(100vh - 90px)}.baml-crumbs{display:flex;gap:14px;margin:5px 0 26px;color:#666}.baml-crumbs strong{color:#b20adc}.baml-consult-page h1{font-family:"Plus Jakarta Sans",Inter,sans-serif;font-size:34px;margin:0 0 24px;font-weight:900}.baml-consult-intro{font-size:19px;line-height:1.45;color:#666;max-width:760px}.baml-video-card{border:1px solid #ddd;border-radius:26px;overflow:hidden;margin:44px 0 50px;box-shadow:0 12px 35px rgba(0,0,0,.06)}.baml-video-stage{height:min(520px,45vw);min-height:320px;background:#000;display:flex;align-items:center;justify-content:center;position:relative}.baml-video-pill{position:absolute;left:38px;top:28px;border:1px solid #333;border-radius:999px;color:#fff;padding:8px 15px}.baml-play{width:56px;height:56px;border-radius:50%;border:0;background:#fff;display:flex;align-items:center;justify-content:center}.baml-video-covers{padding:28px 35px 36px}.baml-video-covers h3{color:#666;margin:0 0 28px}.baml-video-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 80px}.baml-video-grid p{display:flex;align-items:center;gap:14px;color:#666;font-size:18px;margin:0}.baml-video-grid svg{color:#b20adc}.baml-question-card{border:1px solid #ddd;border-radius:22px;padding:30px 32px;margin:0 0 90px;display:flex;align-items:center;justify-content:space-between;gap:24px;box-shadow:0 10px 28px rgba(0,0,0,.05)}.baml-question-card h2{font-size:30px;margin:0 0 8px}.baml-question-card p{margin:0;color:#666;font-size:18px}.baml-question-actions{display:flex;gap:12px}.baml-question-actions a{height:48px;padding:0 26px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-weight:900}.baml-question-actions .outline{border:1px solid #ddd;color:#111;background:#fff}.baml-question-actions .solid{background:#000;color:#fff}
       @media(max-width:900px){.baml-consult-page{padding:28px 16px}.baml-crumbs{display:none}.baml-consult-page h1{font-size:25px}.baml-consult-intro{font-size:18px}.baml-video-stage{height:206px;min-height:206px;border-radius:18px 18px 0 0}.baml-video-card{border-radius:18px;margin:28px 0 18px}.baml-video-pill{left:18px;top:14px}.baml-video-covers{padding:16px 18px}.baml-video-grid{grid-template-columns:1fr;gap:17px}.baml-video-grid p{font-size:16px}.baml-question-card{display:block;padding:28px 14px;margin-bottom:50px}.baml-question-card h2{font-size:21px}.baml-question-card p{font-size:16px;margin-bottom:20px}.baml-question-actions{flex-direction:column-reverse}.baml-question-actions a{width:100%}.baml-advisor-shell{position:fixed;left:0;right:0;bottom:0;width:100%;border-radius:36px 36px 0 0;padding:10px 10px 0}.baml-advisor-card{border-radius:30px 30px 0 0;padding:30px 14px 36px}.baml-advisor-card h2{font-size:29px}.baml-pay-modal,.baml-details-modal{width:calc(100vw - 18px);border-radius:20px}.baml-pay-modal .baml-auth-copy{margin-bottom:46px}.baml-pay-option{height:80px}.baml-details-grid{gap:16px}.baml-details-modal label{margin-bottom:18px}}
     `}</style>
     <style>{`
@@ -1471,10 +1481,14 @@ function MarketplaceStyles() {
       .bab-intro{max-width:840px;margin:18px 0 0;font-size:18px;line-height:1.5;color:#666}
       .bab-intro b{font-weight:600;color:#111}
       .bab-video{margin-top:38px;border:1px solid #E6E6E6;border-radius:34px;overflow:hidden;background:#fff;box-shadow:0 12px 35px rgba(0,0,0,.05)}
-      .bab-video-stage{position:relative;display:flex;align-items:center;justify-content:center;height:540px;background:#000}
-      .bab-video-pill{position:absolute;left:37px;top:26px;padding:5px 14px;border:1px solid #3A3A3A;border-radius:999px;background:#111;color:#fff;font-size:14px;line-height:1.4}
-      .bab-play{display:grid;place-items:center;width:56px;height:56px;border:0;border-radius:50%;background:#fff;color:#000;cursor:pointer}
-      .bab-play svg{margin-left:3px}
+      .bab-video-stage{position:relative;display:flex;align-items:center;justify-content:center;height:600px;background:#000;overflow:hidden;isolation:isolate}
+      .bab-video-backdrop{position:absolute;inset:-40px;width:calc(100% + 80px);height:calc(100% + 80px);object-fit:cover;filter:blur(32px) brightness(.45) saturate(1.1);transform:scale(1.05);z-index:-1}
+      .bab-video-player{position:relative;display:block;height:100%;width:auto;max-width:100%;aspect-ratio:9/16;object-fit:contain;background:#000;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+      .bab-video-pill{position:absolute;left:37px;top:26px;z-index:2;padding:5px 14px;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(17,17,17,.75);backdrop-filter:blur(6px);color:#fff;font-size:14px;line-height:1.4}
+      .bab-play{position:absolute;left:50%;top:50%;z-index:2;transform:translate(-50%,-50%);display:grid;place-items:center;width:72px;height:72px;border:0;border-radius:50%;background:#fff;color:#000;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .15s ease}
+      .bab-play:hover{transform:translate(-50%,-50%) scale(1.06)}
+      .bab-play:focus-visible{outline:3px solid #b20adc;outline-offset:3px}
+      .bab-play svg{margin-left:4px}
       .bab-covers{padding:31px 33px 24px}
       .bab-covers h2{margin:0;font-size:18px;font-weight:500;line-height:1.5;text-transform:uppercase;color:#666}
       .bab-covers ul{display:grid;grid-template-columns:404px minmax(0,1fr);grid-template-rows:repeat(2,auto);grid-auto-flow:column;row-gap:27px;margin:36px 0 0;padding:0;list-style:none}
@@ -1511,7 +1525,7 @@ function MarketplaceStyles() {
         .baml-br{display:none}
         .bab-basket-layout{grid-template-columns:1fr}
         .bab-summary{max-width:560px}
-        .bab-video-stage{height:min(540px,48vw)}
+        .bab-video-stage{height:min(600px,62vw)}
         .bab-covers ul{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px}
         .bab-questions{max-width:none}
       }
@@ -1554,9 +1568,10 @@ function MarketplaceStyles() {
         .bab-consult .bab-title{font-size:22px}
         .bab-intro{margin-top:16px;font-size:15px}
         .bab-video{margin-top:24px;border-radius:18px}
-        .bab-video-stage{height:206px}
-        .bab-video-pill{left:16px;top:14px;font-size:13px}
-        .bab-play{width:52px;height:52px}
+        /* Phones: the card takes the portrait video's shape, never taller than the screen. */
+        .bab-video-stage{height:min(calc((100vw - 32px) * 16 / 9), 78vh, 760px)}
+        .bab-video-pill{left:14px;top:14px;font-size:13px}
+        .bab-play{width:64px;height:64px}
         .bab-covers{padding:16px 18px 18px}
         .bab-covers h2{font-size:15px}
         .bab-covers ul{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row;row-gap:14px;margin-top:16px}
@@ -2224,6 +2239,7 @@ export const BuyAbroadUkBasket: React.FC = () => {
         <CheckoutDetailsModal
           details={details}
           setDetails={setDetails}
+          method={paymentMethod}
           checkingOut={checkingOut}
           error={checkoutError}
           onClose={() => setCheckoutStep(null)}
@@ -2242,6 +2258,53 @@ const TickBadge = () => (
     <path d="M8.5 14.4l3.6 3.6 7.4-7.6" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+// The 1-minute consultation explainer. The video is portrait (9:16): on wide
+// screens it sits centred in the card over a blurred copy of its poster; on
+// phones the card takes the video's own shape, capped to the screen height.
+// Only the poster and metadata load until someone presses play.
+const CONSULTATION_VIDEO_SRC = '/videos/buy-abroad-consultation.mp4';
+const CONSULTATION_VIDEO_POSTER = '/videos/buy-abroad-consultation-poster.jpg';
+
+function ConsultationVideo() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [started, setStarted] = useState(false);
+
+  const play = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    setStarted(true);
+    void video.play().catch(() => {
+      // Autoplay rules can refuse; the controls are showing, so the viewer can press play.
+    });
+  };
+
+  return (
+    <div className="bab-video-stage">
+      <img className="bab-video-backdrop" src={CONSULTATION_VIDEO_POSTER} alt="" aria-hidden="true" />
+      <video
+        ref={videoRef}
+        className="bab-video-player"
+        src={CONSULTATION_VIDEO_SRC}
+        poster={CONSULTATION_VIDEO_POSTER}
+        preload="metadata"
+        playsInline
+        controls={started}
+        controlsList="nodownload"
+        onPlay={() => setStarted(true)}
+        aria-label="How your Havlo Buy Abroad consultation works (1 minute)"
+      />
+      {!started && (
+        <>
+          <span className="bab-video-pill">1 min explainer</span>
+          <button className="bab-play" type="button" onClick={play} aria-label="Play the consultation explainer video">
+            <Play size={22} fill="currentColor" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export const BuyAbroadUkConsultation: React.FC = () => {
   usePageMeta({
@@ -2327,16 +2390,10 @@ export const BuyAbroadUkConsultation: React.FC = () => {
         <h1 className="bab-title">How Your Consultation Works</h1>
         <p className="bab-intro">
           {basketCount > 0 && <>Your basket has <b>{basketCount} {basketCount === 1 ? 'property' : 'properties'}</b> shortlisted. </>}
-          Before you pay the <b>{CONSULTATION_FEE} consultation deposit,</b> watch this 2-minute explainer covering what happens next.
+          Before you pay the <b>{CONSULTATION_FEE} consultation deposit,</b> watch this 1-minute explainer covering what happens next.
         </p>
         <section className="bab-video" aria-label="Consultation explainer video">
-          {/* Placeholder until the explainer video is supplied. */}
-          <div className="bab-video-stage">
-            <span className="bab-video-pill">2 min explainer</span>
-            <button className="bab-play" type="button" aria-label="Play consultation explainer">
-              <Play size={20} fill="currentColor" />
-            </button>
-          </div>
+          <ConsultationVideo />
           <div className="bab-covers">
             <h2>What this video covers</h2>
             <ul>

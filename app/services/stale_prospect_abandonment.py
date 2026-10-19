@@ -124,7 +124,7 @@ async def run_abandonment_email_cycle() -> dict:
         for prospect_id, stage in sent_result.all():
             sent_map.setdefault(prospect_id, set()).add(stage)
 
-    due: list[tuple[StaleListingProspect, int]] = []
+    due: list[tuple[StaleListingProspect, int, int]] = []
     for prospect in candidates:
         if len(due) >= _MAX_SENDS_PER_CYCLE:
             break
@@ -139,7 +139,7 @@ async def run_abandonment_email_cycle() -> dict:
                 due.append((prospect, stage))
             break  # stop at the first not-yet-sent stage either way
 
-    for prospect, stage in due:
+    for prospect, stage, message in due:
         try:
             delivered = await asyncio.to_thread(
                 email_service.send_stale_prospect_abandonment_email_sync,
@@ -199,7 +199,7 @@ async def start_abandonment_email_loop() -> None:
     )
 
 
-# Day 0 -> Day 91 SMS ladder, every 3 days (31 stages) — separate from the
+# Day 0 -> Day 60 SMS ladder, every 2 days (31 stages) — separate from the
 # 12-stage email ladder above: own table (StaleProspectAbandonmentSms), own
 # opt-out (sms_unsubscribed_at rather than unsubscribed_at), own channel.
 # Links via ?code={property_code} rather than a token — the same param the
@@ -210,9 +210,10 @@ async def start_abandonment_email_loop() -> None:
 # carries no less exposure than a reissued token would (both are already
 # shown/printed to the prospect).
 #
-# Stage numbers ARE the day number (1, 4, 7, ... 91) — see
-# twilio_service.SMS_ABANDONMENT_STAGE_DAYS, the single source of truth for
-# both the cadence and the copy.
+# Stage numbers ARE the day number (0, 2, 4, ... 60; prospects who started
+# before Oct 2026 finish the old 0/1, 4, 7, ... 91 series) — see
+# twilio_service.sms_abandonment_schedule, the single source of truth for
+# the cadence, and SMS_ABANDONMENT_MESSAGES for the copy.
 _SMS_POLL_LIMIT = 500
 _MAX_SMS_SENDS_PER_CYCLE = 100
 
@@ -280,7 +281,7 @@ async def run_abandonment_sms_cycle() -> dict:
         for prospect_id, stage in sent_result.all():
             sent_map.setdefault(prospect_id, set()).add(stage)
 
-    due: list[tuple[StaleListingProspect, int]] = []
+    due: list[tuple[StaleListingProspect, int, int]] = []
     for prospect in candidates:
         if len(due) >= _MAX_SMS_SENDS_PER_CYCLE:
             break
@@ -293,18 +294,18 @@ async def run_abandonment_sms_cycle() -> dict:
         # Only the earliest due-but-unsent stage — self-healing catch-up
         # instead of a burst if the loop was down (or outside send hours)
         # for a while, same pattern as the email ladder.
-        for day in twilio_service.SMS_ABANDONMENT_STAGE_DAYS:
+        for message, day in enumerate(twilio_service.sms_abandonment_schedule(already_sent)):
             if day in already_sent:
                 continue
             if elapsed >= timedelta(days=day):
-                due.append((prospect, day))
+                due.append((prospect, day, message))
             break
 
     base_url = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
     if "localhost" in base_url or "127.0.0.1" in base_url:
         base_url = "https://www.heyhavlo.com"
 
-    for prospect, stage in due:
+    for prospect, stage, message in due:
         e164 = twilio_service.normalize_to_e164(prospect.contact_phone or "")
         # step=assessment overrides the wizard's normal resume-where-you-
         # left-off default, which would otherwise send anyone with contact
@@ -328,7 +329,7 @@ async def run_abandonment_sms_cycle() -> dict:
                 delivered = await asyncio.to_thread(
                     twilio_service.send_stale_prospect_abandonment_sms,
                     e164,
-                    stage,
+                    message,
                     preview_url,
                     unsubscribe_url,
                 )

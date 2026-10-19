@@ -99,5 +99,40 @@ class BuyAbroadFeeTests(unittest.TestCase):
         ))
 
 
+
+class BuyAbroadChargeTests(unittest.TestCase):
+    """Card pays US$99.99; Bank Transfer pays the Naira equivalent, since
+    Flutterwave's bank transfer only takes NGN."""
+
+    def charge(self, method, rate):
+        from app.routers import bookings
+
+        async def fake_rate(currency):
+            return rate
+
+        with mock.patch.object(bookings.currency_rates, "usd_rate", fake_rate):
+            return asyncio.run(bookings.buy_abroad_charge(method))
+
+    def test_card_is_us_dollars_card_only(self):
+        self.assertEqual(self.charge("card", 1600.0), (99.99, "USD", "card"))
+
+    def test_bank_transfer_is_naira_rounded_up(self):
+        amount, currency, options = self.charge("bank", 1532.47)
+        self.assertEqual(currency, "NGN")
+        self.assertEqual(options, "banktransfer")
+        self.assertEqual(amount, 153232.0)  # 99.99 x 1532.47 = 153231.67, rounded up
+
+    def test_bank_transfer_without_a_live_rate_is_refused(self):
+        from fastapi import HTTPException
+
+        with self.assertRaises(HTTPException) as ctx:
+            self.charge("bank", None)
+        self.assertEqual(ctx.exception.status_code, 503)
+
+    def test_naira_payment_confirms_against_the_quoted_amount(self):
+        self.assertTrue(fw.payment_confirmed(txn(amount=153232, currency="NGN"), tx_ref=TX, amount=153232.0, currency="NGN"))
+        self.assertFalse(fw.payment_confirmed(txn(amount=99.99, currency="NGN"), tx_ref=TX, amount=153232.0, currency="NGN"))
+
+
 if __name__ == "__main__":
     unittest.main()
