@@ -1657,7 +1657,7 @@ export function StaleListingsLanding() {
                 color:'#A409D2',
               } as CSSProperties}
             >
-              £99
+              £49
             </span>
           </div>
 

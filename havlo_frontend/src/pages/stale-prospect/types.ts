@@ -193,17 +193,13 @@ export function stepperIndexFor(step: WizardStep): number {
 }
 
 // Mirrors prospect_unlock_price in app/services/stale_prospect_service.py
-// (what the checkout route charges): 0.025% of the asking price to the
-// nearest pound, never under £99 or over £498, for owners and estate
-// agencies alike; £99 when the asking price isn't known.
-export const MIN_UNLOCK_PRICE = 99;
-export const MAX_UNLOCK_PRICE = 498;
-const UNLOCK_PRICE_RATE = 0.00025;
+// (what the checkout route charges): a flat £49 for every property, owners
+// and estate agencies alike. The arguments are kept so the price can follow
+// the listing again without touching the callers.
+export const UNLOCK_PRICE = 49;
 
-export function unlockPrice(askingPrice?: number | null, audience?: 'owner' | 'agent'): number {
-  const price = Number(askingPrice);
-  if (!Number.isFinite(price) || price <= 0) return MIN_UNLOCK_PRICE;
-  return Math.min(MAX_UNLOCK_PRICE, Math.max(MIN_UNLOCK_PRICE, Math.round(price * UNLOCK_PRICE_RATE)));
+export function unlockPrice(_askingPrice?: number | null, _audience?: 'owner' | 'agent'): number {
+  return UNLOCK_PRICE;
 }
 
 /** The prospect's report price: the backend's figure when it sent one. */

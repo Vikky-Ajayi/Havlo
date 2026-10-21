@@ -1,7 +1,7 @@
 """Regression tests for the property-targeting rules (minimum £500,000
 asking price, detached/semi-detached/terrace houses only — no
 flats/apartments/etc.) and the full-report checkout prices: a flat
-£49.99 for owners and estate agencies alike.
+£49 for owners and estate agencies alike.
 """
 from __future__ import annotations
 
@@ -46,13 +46,9 @@ class PropertyTypeTargetingTest(unittest.TestCase):
 
 
 class CheckoutPriceTest(unittest.TestCase):
-    def test_price_follows_the_asking_price(self) -> None:
-        # 0.025% of the asking price to the pound, between £99 and £498.
-        cases = {
-            None: 99.0, 0: 99.0, 250000: 99.0, 396000: 99.0, 500000: 125.0, 750000: 188.0,
-            1000000: 250.0, 1992000: 498.0, 5000000: 498.0,
-        }
-        for price, expected in cases.items():
+    def test_price_is_a_flat_49(self) -> None:
+        for price in [None, 0, 250000, 396000, 500000, 750000, 1000000, 1992000, 5000000]:
+            expected = 49.0
             with self.subTest(price=price):
                 self.assertEqual(_stale_prospect_checkout_amount(price), expected)
                 self.assertEqual(_stale_prospect_checkout_amount(price, "owner"), expected)
@@ -73,9 +69,9 @@ class CheckoutPriceTest(unittest.TestCase):
                 )
 
     def test_seller_assessment_price(self) -> None:
-        # The /stale-listings/plan checkout has no asking price: "From £99".
-        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 99.0)
-        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 99.0)
+        # The /stale-listings/plan checkout charges the same flat £49.
+        self.assertEqual(SL_PACKAGES["property_sale_assessment"]["amount"], 49.0)
+        self.assertEqual(SL_PACKAGES["listing_recovery_assessment"]["amount"], 49.0)
         # Retired plans keep their price so historical orders still resolve.
         self.assertEqual(SL_PACKAGES["professional_review"]["amount"], 299.99)
 

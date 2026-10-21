@@ -2152,7 +2152,7 @@ def _stale_abandonment_shell_html(
 
 
 def _stale_abandonment_format_price(amount: float) -> str:
-    # Prices are whole pounds now (prospect_unlock_price): "£99", not "£99.00".
+    # Prices are whole pounds now (prospect_unlock_price): "£49", not "£49.00".
     if float(amount).is_integer():
         return f"£{amount:,.0f}"
     return f"£{amount:,.2f}"
@@ -3025,7 +3025,7 @@ def _stale_agent_followup_content(stage: int, *, brand: str, count: int, price_t
             "cta_label": "View your portfolio",
             "content_html": p(
                 f"Every stale listing we found for {brand_html} is waiting in your portfolio. Unlock the full report "
-                f"for any property from <strong style=\"color:#111111;\">{_html_lib.escape(price_text)}</strong> and "
+                f"for any property for <strong style=\"color:#111111;\">{_html_lib.escape(price_text)}</strong> and "
                 "share it with the vendor."
             ),
         }
@@ -3068,10 +3068,9 @@ def send_stale_agent_followup_email_sync(
     """One stage of the agency follow-up sequence. Only the send loop in
     app/services/agent_followups.py should call this: it records each
     (agency, stage) so nothing is sent twice."""
-    from app.services.stale_prospect_service import MIN_UNLOCK_PRICE
+    from app.services.stale_prospect_service import UNLOCK_PRICE
 
-    # "from £99": the price of each report follows that listing's asking price.
-    price_text = _stale_abandonment_format_price(MIN_UNLOCK_PRICE)
+    price_text = _stale_abandonment_format_price(UNLOCK_PRICE)
     config = _stale_agent_followup_content(
         stage, brand=brand, count=listing_count, price_text=price_text, agent_code=agent_code
     )

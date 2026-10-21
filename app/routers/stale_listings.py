@@ -149,21 +149,20 @@ SL_PACKAGES: dict[str, dict] = {
     # name/amount correctly — do not remove them. free_trial_assessment is
     # likewise kept only for historical orders: agents now pay
     # listing_recovery_assessment for every assessment, and /submit refuses
-    # new free-trial orders. The two live packages charge the "From £99"
-    # starting price: this flow takes an address or link, never an asking
-    # price, so prospect_unlock_price's 0.025% can't be worked out here.
-    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 99.00,   "currency": "GBP"},
+    # new free-trial orders. The two live packages charge the same flat £49
+    # as prospect_unlock_price.
+    "property_sale_assessment":      {"name": "Havlo Property Sale Assessment", "amount": 49.00,   "currency": "GBP"},
     "quick_insight":                 {"name": "Quick Insight",                 "amount": 79.99,   "currency": "GBP"},
     "professional_review":           {"name": "Professional Review",           "amount": 299.99,  "currency": "GBP"},
     "premium_strategy":              {"name": "Premium Strategy",              "amount": 1499.99, "currency": "GBP"},
-    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 99.00,   "currency": "GBP"},
+    "listing_recovery_assessment":   {"name": "Listing Recovery Assessment",   "amount": 49.00,   "currency": "GBP"},
     "free_trial_assessment":         {"name": "Free Trial Assessment",         "amount": 0.00,    "currency": "GBP"},
 }
 
 
 def _stale_prospect_checkout_amount(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report checkout price for a prospect: 0.025% of the asking
-    price, GBP 99 to GBP 498. See prospect_unlock_price, which this
+    """Full-report checkout price for a prospect: a flat GBP 49. See
+    prospect_unlock_price, which this
     delegates to.
     """
     return prospect_unlock_price(asking_price, audience)

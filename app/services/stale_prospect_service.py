@@ -185,32 +185,21 @@ def verify_sms_unsubscribe_short_token(property_code: str, token: str) -> bool:
     return hmac.compare_digest(expected, (token or "").strip())
 
 
-UNLOCK_PRICE_RATE = 0.00025  # 0.025% of the asking price
-MIN_UNLOCK_PRICE = 99.0
-MAX_UNLOCK_PRICE = 498.0
+UNLOCK_PRICE = 49.0  # GBP, the same for every property (Oct 2026)
 
 
-def prospect_unlock_price(asking_price: float | None, audience: str | None = None) -> float:
-    """Full-report price: 0.025% of the asking price to the nearest pound,
-    never less than GBP 99 or more than GBP 498 (so GBP 99 up to a
-    GBP 396,000 asking price, GBP 498 from GBP 1,992,000). The same for
-    owners and estate agencies; audience is kept so the two can differ
-    again. GBP 99 when the asking price isn't known.
+def prospect_unlock_price(asking_price: float | None = None, audience: str | None = None) -> float:
+    """Full-report price: a flat GBP 49 for every property, owners and
+    estate agencies alike. Until Oct 2026 it was 0.025% of the asking price
+    (GBP 99 to GBP 498); the arguments are kept so the price can follow the
+    listing or the audience again without touching the callers.
 
     The checkout route (_stale_prospect_checkout_amount) and the email
     drips call this; the frontend's unlockPrice() in
     havlo_frontend/src/pages/stale-prospect/types.ts mirrors it because the
     page needs the figure before checkout resolves. Keep the two in sync.
     """
-    try:
-        price = float(asking_price or 0)
-    except (TypeError, ValueError):
-        price = 0.0
-    if not math.isfinite(price) or price <= 0:
-        return MIN_UNLOCK_PRICE
-    # Half up, as the frontend's Math.round does (round() is half-even).
-    pounds = math.floor(price * UNLOCK_PRICE_RATE + 0.5)
-    return float(min(MAX_UNLOCK_PRICE, max(MIN_UNLOCK_PRICE, pounds)))
+    return UNLOCK_PRICE
 
 
 def normalize_property_code(code: str) -> str:

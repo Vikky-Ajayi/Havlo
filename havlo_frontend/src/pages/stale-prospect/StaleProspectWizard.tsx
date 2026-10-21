@@ -603,6 +603,27 @@ const SoldComparablesCard = ({ access }: { access: { token?: string; code?: stri
   return <SoldPricesList sales={state.sales} attribution={state.attribution} loading={state.loading} />;
 };
 
+const LockIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+);
+
+// Pinned to the bottom of the screen for the whole assessment step, so the
+// way to pay is always one tap away however far down they've read.
+const StickyPayBar = ({ price, locked, address, onUnlock }: { price: string; locked: number; address: string; onUnlock: () => void }) => (
+  <div className="slw-paybar">
+    <div className="slw-paybar-inner">
+      <div className="slw-paybar-copy">
+        <LockIcon />
+        <span><b>{locked} findings locked</b><span className="slw-paybar-address"> &middot; {address}</span></span>
+      </div>
+      <button type="button" className="slw-btn-pay" onClick={onUnlock}>
+        <span className="slw-paybar-long">View Full Assessment &ndash; {price}</span>
+        <span className="slw-paybar-short">Unlock full report &ndash; {price}</span>
+      </button>
+    </div>
+  </div>
+);
+
 const AssessmentStep = ({
   prospect,
   access,
@@ -617,6 +638,7 @@ const AssessmentStep = ({
   const preview = prospect.preview || {};
   const revealed = preview.key_issues || [];
   const totalFactors = totalFactorsFor(prospect);
+  const price = formatGbp(prospectPrice(prospect));
 
   return (
     <section className="slw-assessment">
@@ -640,6 +662,7 @@ const AssessmentStep = ({
           <SaleabilityGauge score={preview.overall_score ?? 50} />
           <b>Property Saleability Score</b>
           <p>Our assessment identified several factors that may be affecting your property&rsquo;s ability to attract and convert buyers.</p>
+          <button type="button" className="slw-btn-pay slw-gauge-pay" onClick={onUnlock}>See all {totalFactors} factors &ndash; {price}</button>
         </div>
       </div>
 
@@ -659,18 +682,21 @@ const AssessmentStep = ({
             </div>
           ))}
         </div>
-        <button type="button" className="slw-btn-black slw-view-full-mobile-btn" onClick={onUnlock}>View Full Assessment</button>
         <div>
-          <h3>{LOCKED_FINDINGS.length} findings locked</h3>
+          <div className="slw-locked-head">
+            <h3>{LOCKED_FINDINGS.length} findings locked</h3>
+            <button type="button" className="slw-locked-unlock" onClick={onUnlock}>Unlock all &ndash; {price} &rarr;</button>
+          </div>
           <div className="slw-locked-grid">
             {LOCKED_FINDINGS.map((finding) => (
-              <div className="slw-locked-card" key={finding.title}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+              <button type="button" className="slw-locked-card slw-locked-card-btn" key={finding.title} onClick={onUnlock}>
+                <LockIcon />
                 <div className="slw-locked-text">
                   <span className="slw-locked-title">{finding.title}</span>
                   <span className="slw-locked-desc">{finding.description}</span>
                 </div>
-              </div>
+                <span className="slw-locked-cta">Unlock &rarr;</span>
+              </button>
             ))}
           </div>
           <div className="slw-rating">
@@ -721,8 +747,8 @@ const AssessmentStep = ({
           <h2>Unlock the complete assessment for your property</h2>
           <p>You&rsquo;ve seen <b className="slw-hl">{revealed.length}</b> of the <b className="slw-hl">{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
-            <button type="button" className="slw-btn-white" onClick={onUnlock}>
-              View Full Assessment &ndash; {formatGbp(prospectPrice(prospect))}
+            <button type="button" className="slw-btn-pay slw-btn-pay-lg" onClick={onUnlock}>
+              View Full Assessment &ndash; {price}
             </button>
           </div>
           <PreparedFor address={prospect.property_address} />
@@ -750,6 +776,8 @@ const AssessmentStep = ({
           </div>
         </div>
       </div>
+
+      <StickyPayBar price={price} locked={LOCKED_FINDINGS.length} address={prospect.property_address} onUnlock={onUnlock} />
     </section>
   );
 };
@@ -2034,7 +2062,6 @@ export const WizardStyles = () => (
     .slw-assess-subheading{color:#4b5563;margin:0 0 28px;font-weight:700}
     .slw-assess-findings-grid{display:grid;grid-template-columns:1fr 1.45fr;gap:32px;margin-bottom:60px}
     .slw-assess-findings-grid h3{font-size:17px;margin:0 0 28px;font-weight:800}
-    .slw-view-full-mobile-btn{display:none}
     .slw-finding-card{display:flex;gap:16px;border:2px solid #edf0f4;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 0 rgba(15,23,42,.02)}
     .slw-finding-icon{font-size:20px;flex:none}
     .slw-finding-card b{display:block;margin-bottom:7px;font-size:17px;color:#202124}
@@ -2052,6 +2079,45 @@ export const WizardStyles = () => (
     .slw-agent-note h3{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:28px;font-weight:900;line-height:1.1;letter-spacing:-0.01em;margin:0 0 10px;color:#14121a}
     .slw-agent-note p{margin:0;color:#475467;font-size:17px;line-height:1.55;max-width:780px}
     .slw-unlock-cta{background:#f5f6f8;border-radius:18px;padding:32px;display:grid;grid-template-columns:1fr 1.08fr;gap:32px;align-items:center}
+
+    /* Pay buttons on the assessment: under the score, beside the locked
+       findings, on each locked card, the main pay box, and a bar pinned to
+       the bottom of the screen the whole time. */
+    .slw-btn-pay{background:#A409D2;color:#fff;border:none;border-radius:10px;padding:15px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;box-shadow:0 6px 18px rgba(164,9,210,.28);transition:background .15s,transform .15s}
+    .slw-btn-pay:hover{background:#8C07B4}
+    .slw-btn-pay:active{transform:scale(.98)}
+    .slw-btn-pay-lg{padding:19px 24px;font-size:17px}
+    .slw-assessment .slw-price-box{background:none;border:none;padding:0;margin:4px 0 2px}
+    .slw-gauge-pay{margin-top:18px;padding:13px 16px;font-size:14px}
+    .slw-locked-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+    .slw-locked-unlock{background:none;border:none;padding:0;color:#A409D2;font:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .slw-locked-unlock:hover{text-decoration:underline}
+    .slw-locked-card-btn{font:inherit;text-align:left;border:1px solid transparent;cursor:pointer;position:relative;transition:border-color .15s,background .15s}
+    .slw-locked-card-btn:hover{border-color:#d9b8ec;background:#faf5fd}
+    .slw-locked-cta{position:absolute;right:12px;top:14px;font-size:12px;font-weight:700;color:#A409D2;opacity:0;transition:opacity .15s}
+    .slw-locked-card-btn:hover .slw-locked-cta,.slw-locked-card-btn:focus-visible .slw-locked-cta{opacity:1}
+    .slw-page:has(.slw-paybar){padding-bottom:96px}
+    .slw-paybar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 108px 16px 24px;pointer-events:none;animation:slw-paybar-in .35s ease both}
+    @keyframes slw-paybar-in{from{transform:translateY(120%)}to{transform:none}}
+    .slw-paybar-inner{max-width:1060px;margin:0 auto;background:#fff;border:1px solid #ece4f3;border-radius:16px;box-shadow:0 12px 40px rgba(31,32,36,.16);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 12px 12px 22px;pointer-events:auto}
+    .slw-paybar-copy{display:flex;align-items:center;gap:10px;color:#1f2024;font-size:15px;min-width:0}
+    .slw-paybar-copy svg{color:#A409D2;flex:none}
+    .slw-paybar-copy>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .slw-paybar-address{color:#737b86}
+    .slw-paybar .slw-btn-pay{width:auto;white-space:nowrap;padding:13px 24px;box-shadow:none}
+    .slw-paybar-short{display:none}
+    @media (max-width:900px){
+      .slw-assessment .slw-price-box{padding:0 10px}
+      .slw-gauge-pay{width:100%;font-size:15px;padding:15px 16px}
+      .slw-locked-cta{opacity:1;top:auto;bottom:12px;right:12px}
+      .slw-page:has(.slw-paybar){padding-bottom:84px}
+      .slw-paybar{padding:0 92px 12px 12px}
+      .slw-paybar-inner{padding:8px;border-radius:14px}
+      .slw-paybar-copy{display:none}
+      .slw-paybar .slw-btn-pay{width:100%;padding:14px 12px;font-size:15px}
+      .slw-paybar-long{display:none}
+      .slw-paybar-short{display:inline}
+    }
     .slw-unlock-cta-copy h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1.05;margin:0 0 20px;color:#202124}
     .slw-unlock-cta-copy p{color:#475467;line-height:1.55;margin:0 0 34px;font-size:16px}
     .slw-unlock-cta-copy p b{color:#202124}
@@ -2364,7 +2430,6 @@ export const WizardStyles = () => (
       .slw-assess-facts b{font-size:24px}
       .slw-assess-facts b.slw-fact-date{font-size:20px}
       .slw-assess-findings-grid{grid-template-columns:1fr;gap:28px}
-      .slw-view-full-mobile-btn{display:block}
       .slw-locked-grid{grid-template-columns:repeat(2,1fr)}
       .slw-locked-card{min-height:110px;gap:22px}
       .slw-agent-note{flex-direction:column;align-items:flex-start;gap:14px;padding:22px 20px;margin-bottom:28px}

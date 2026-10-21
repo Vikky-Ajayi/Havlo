@@ -80,19 +80,19 @@ const TealHouseIllustration = () => (
 
 /* ─── PLAN DATA ───
    Single flagship product as of the pricing-section redesign — see
-   SL_PACKAGES in app/routers/stale_listings.py, which charges £99 here:
-   this page has no asking price for the 0.025% pricing. quick_insight,
+   SL_PACKAGES in app/routers/stale_listings.py, which charges the same
+   flat £49 as every other full report. quick_insight,
    professional_review and premium_strategy are no longer offered here
    (kept server-side only so historical orders still resolve correctly). */
 const PLANS = [
   {
     id: 'property_sale_assessment' as const,
     name: 'Havlo Property Sale Assessment',
-    price: '£99',
-    amount: 99,
+    price: '£49',
+    amount: 49,
     tagline: 'For serious sellers wanting expert guidance to improve saleability.',
     turnaround: 'Turnaround: 24 hours',
-    priceLabel: 'From £99 per report',
+    priceLabel: '£49 per report',
     preNote: null as string | null,
     features: [
       'Market analysis',
@@ -124,11 +124,11 @@ const PLANS = [
 const AGENT_PLAN = {
   id: 'listing_recovery_assessment' as const,
   name: 'Listing Recovery Assessment',
-  price: '£99',
-  amount: 99,
+  price: '£49',
+  amount: 49,
   tagline: 'For individual stale listings.',
   turnaround: 'Delivered within 5 working days',
-  priceLabel: 'From £99 per report',
+  priceLabel: '£49 per report',
   preNote: null as string | null,
   features: [
     'Full Listing Recovery Report',

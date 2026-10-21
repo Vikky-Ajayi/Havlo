@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { REVIEW_COPIES, ReviewStars, staleListingsReviews } from '../../components/shared/StaleListingsReviews';
 import { getAdsSummary, type AdsSummary } from './api';
-import { formatGbp, formatReducedDate, prospectPrice, type ProspectPreview } from './types';
+import { formatGbp, formatReducedDate, prospectPrice, UNLOCK_PRICE, type ProspectPreview } from './types';
 
 // The analyst-review funnel (/review/seller, /review/agent): an analyst-reviewed report
 // instead of an instant one. After the listing link: Initial scan → Your
@@ -202,7 +202,7 @@ export const ReviewScanStep = ({
             <button type="button" className="rv-link" onClick={onChangeLink}>
               {isAgent ? 'Not the right listing? Change the link' : 'Not your property? Change the link'}
             </button>
-            <span>Free preview now. Full analyst-reviewed report from {formatGbp(99)}.</span>
+            <span>Free preview now. Full analyst-reviewed report for {formatGbp(UNLOCK_PRICE)}.</span>
           </div>
         </div>
       </div>

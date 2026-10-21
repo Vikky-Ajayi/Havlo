@@ -1,4 +1,4 @@
-"""Report pricing (0.025% of the asking price, £99 to £498), the Google-ads
+"""Report pricing (a flat £49), the Google-ads
 analyst-review funnel's 48-hour hold, and the Follow Up console's funnel stages."""
 from __future__ import annotations
 
@@ -25,30 +25,16 @@ def prospect(**fields):
 
 
 class PricingTests(unittest.TestCase):
-    def test_minimum_below_396k(self):
-        self.assertEqual(prospect_unlock_price(250_000), 99.0)  # 0.025% would be £62.50
-        self.assertEqual(prospect_unlock_price(396_000), 99.0)
-
-    def test_in_between_rounds_to_the_pound(self):
-        self.assertEqual(prospect_unlock_price(600_000), 150.0)
-        self.assertEqual(prospect_unlock_price(1_200_000), 300.0)
-        self.assertEqual(prospect_unlock_price(437_500), 109.0)  # 109.375
-        self.assertEqual(prospect_unlock_price(438_000), 110.0)  # 109.5 rounds up, as Math.round does
-
-    def test_maximum_from_1_992_000(self):
-        self.assertEqual(prospect_unlock_price(1_992_000), 498.0)
-        self.assertEqual(prospect_unlock_price(1_995_000), 498.0)
-        self.assertEqual(prospect_unlock_price(25_000_000), 498.0)
-
-    def test_unknown_price_is_the_minimum(self):
-        for value in (None, 0, -5, float("nan"), "not a price"):
-            self.assertEqual(prospect_unlock_price(value), 99.0, value)
+    def test_flat_49_whatever_the_asking_price(self):
+        for value in (None, 0, -5, float("nan"), "not a price", 195_000, 396_000, 600_000, 1_992_000, 25_000_000):
+            self.assertEqual(prospect_unlock_price(value), 49.0, value)
 
     def test_same_for_agents(self):
-        self.assertEqual(prospect_unlock_price(800_000, "agent"), prospect_unlock_price(800_000, "owner"))
+        self.assertEqual(prospect_unlock_price(800_000, "agent"), 49.0)
+        self.assertEqual(prospect_unlock_price(800_000, "owner"), 49.0)
 
     def test_email_price_format(self):
-        self.assertEqual(email_service._stale_abandonment_format_price(99.0), "£99")
+        self.assertEqual(email_service._stale_abandonment_format_price(49.0), "£49")
         self.assertEqual(email_service._stale_abandonment_format_price(498.0), "£498")
         self.assertEqual(email_service._stale_abandonment_format_price(49.99), "£49.99")
 
@@ -120,7 +106,7 @@ class AnalystReviewTests(unittest.TestCase):
         data = serialize_preview(p)
         self.assertTrue(data["is_unlocked"])
         self.assertTrue(data["report_on_hold"])
-        self.assertEqual(data["unlock_price"], 498.0)
+        self.assertEqual(data["unlock_price"], 49.0)
         self.assertEqual(data["analyst_review_due_at"], (T0 + timedelta(hours=48)).isoformat())
 
 
