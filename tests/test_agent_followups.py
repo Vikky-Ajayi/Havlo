@@ -11,7 +11,6 @@ from app.services import agent_followups as af
 from app.services import email_service, twilio_service
 from app.services.stale_prospect_service import (
     unsubscribe_token,
-    verify_sms_unsubscribe_short_token,
     verify_unsubscribe_token,
 )
 
@@ -49,13 +48,9 @@ class UnsubscribeLinkTests(unittest.TestCase):
         account_id = uuid4()
         self.assertNotEqual(unsubscribe_token(af.email_unsubscribe_key(account_id)), unsubscribe_token(str(account_id)))
 
-    def test_sms_link_is_short_and_verifies(self):
-        url = af.build_sms_unsubscribe_url("12345")
-        self.assertRegex(url, r"/ua/12345\?t=[0-9a-f]{12}$")
-        token = url.split("t=")[1]
-        self.assertTrue(verify_sms_unsubscribe_short_token(af.sms_unsubscribe_key("12345"), token))
-        # Not usable as an owner's /u/ link for the same digits.
-        self.assertFalse(verify_sms_unsubscribe_short_token("12345", token))
+    def test_sms_links_are_short(self):
+        self.assertEqual(af.build_sms_portfolio_url("12345"), "heyhavlo.com/a/12345")
+        self.assertEqual(af.build_sms_unsubscribe_url("12345"), "heyhavlo.com/u/12345")
 
 
 class SmsFlagTests(unittest.TestCase):
@@ -99,11 +94,12 @@ class ContentTests(unittest.TestCase):
             with mock.patch.object(twilio_service, "_send_sms", return_value=True) as send:
                 twilio_service.send_stale_agent_followup_sms(
                     "+447700900000", stage, brand="Langford Russell", count=12,
-                    link="https://www.heyhavlo.com/check/agent?token=" + "x" * 43,
+                    link=af.build_sms_portfolio_url("12345"),
                     unsubscribe_url=af.build_sms_unsubscribe_url("12345"),
                 )
             body = send.call_args.args[1]
-            self.assertIn("Unsubscribe: ", body)
+            self.assertTrue(body.endswith("Opt out: heyhavlo.com/u/12345"))
+            self.assertIn("heyhavlo.com/a/12345", body)
             self.assertLessEqual(len(body), 306)
 
 

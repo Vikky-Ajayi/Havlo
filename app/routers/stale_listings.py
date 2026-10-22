@@ -2940,7 +2940,8 @@ async def unsubscribe_stale_prospect_sms_short(
     t: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
-    """heyhavlo.com/u/<code>, the opt-out link in every abandonment text.
+    """heyhavlo.com/u/<code>, the opt-out link in every abandonment text
+    (a 5-digit code is an estate agency's, from the agency follow-ups).
     Same outcome as unsubscribe_stale_prospect_sms above (sets
     sms_unsubscribed_at, not the email drip's opt-out). Keyed by the 4-digit
     property code alone, so it fits in a text: all it can do is stop
@@ -2948,6 +2949,10 @@ async def unsubscribe_stale_prospect_sms_short(
     must still be right."""
 
     _page = _stale_listing_confirmation_page
+
+    digits = "".join(ch for ch in property_code if ch.isdigit())
+    if len(digits) == 5:  # an estate agency's code (agency follow-up texts)
+        return await _unsubscribe_agency_sms(digits, t, db)
 
     code = normalize_property_code(property_code)
     if len(code) != 4 or (t is not None and not verify_sms_unsubscribe_short_token(code, t)):
@@ -2966,11 +2971,23 @@ async def unsubscribe_stale_prospect_sms_short(
 async def open_assessment_short(property_code: str, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     """heyhavlo.com/a/<code>, the assessment link in every abandonment text:
     sends the prospect to their own assessment in the funnel they came from.
+    A 5-digit code is an estate agency's (agency follow-up texts) and opens
+    its portfolio.
     step=assessment shows the free findings again rather than resuming at
     Payment, which is where the wizard would otherwise reopen."""
     base = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
     if "localhost" in base or "127.0.0.1" in base:
         base = "https://www.heyhavlo.com"
+    digits = "".join(ch for ch in property_code if ch.isdigit())
+    if len(digits) == 5:
+        # An estate agency's code, from the agency follow-up texts: open its
+        # portfolio, as typing the code on /check/agent does.
+        account = await agent_campaign.find_account(db, code=digits)
+        if account is None:
+            return RedirectResponse(f"{base}/check/agent", status_code=302)
+        token = agent_campaign.issue_account_token(account)
+        await db.commit()
+        return RedirectResponse(f"{base}/check/agent?token={token}", status_code=302)
     code = normalize_property_code(property_code)
     prospect = None
     if len(code) == 4:
@@ -3080,16 +3097,21 @@ async def unsubscribe_agency_emails(
 @short_router.get("/ua/{agent_code}", response_class=HTMLResponse)
 async def unsubscribe_agency_sms_short(
     agent_code: str,
-    t: str,
+    t: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
-    """Texted opt-out link for the agency follow-ups -- the agency's
-    5-digit code plus a short token, like /u/<property code> for owners."""
+    """The agency follow-ups' older opt-out link (newer texts use
+    /u/<agency code>)."""
+    return await _unsubscribe_agency_sms("".join(ch for ch in agent_code if ch.isdigit()), t, db)
+
+
+async def _unsubscribe_agency_sms(code: str, t: str | None, db: AsyncSession) -> HTMLResponse:
+    """Stop an agency's follow-up texts by its 5-digit code. Older links
+    carried ?t=<token>; a token that's there must still be right."""
     from app.services.agent_followups import sms_unsubscribe_key
 
     _page = _stale_listing_confirmation_page
-    code = "".join(ch for ch in agent_code if ch.isdigit())
-    if len(code) != 5 or not verify_sms_unsubscribe_short_token(sms_unsubscribe_key(code), t):
+    if len(code) != 5 or (t is not None and not verify_sms_unsubscribe_short_token(sms_unsubscribe_key(code), t)):
         return _page("This unsubscribe link is invalid or has expired.")
     account = (await db.execute(
         select(StaleAgentAccount).where(StaleAgentAccount.agent_code == code)

@@ -283,7 +283,7 @@ def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, coun
     if not template:
         logger.error("Unknown agent follow-up SMS stage: %r", stage)
         return False
-    body = template.format(brand=brand, count=count, link=link) + f"\n\nUnsubscribe: {unsubscribe_url}"
+    body = template.format(brand=brand, count=count, link=link) + f"\n\nOpt out: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
 
 

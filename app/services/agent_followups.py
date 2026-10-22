@@ -31,7 +31,7 @@ from app.db.database import AsyncSessionLocal
 from app.models.models import StaleAgentAccount, StaleAgentFollowup, StaleListingProspect
 from app.services import agent_campaign, email_service, twilio_service
 from app.services.stale_prospect_abandonment import _within_sms_send_window
-from app.services.stale_prospect_service import sms_unsubscribe_short_token, unsubscribe_token
+from app.services.stale_prospect_service import unsubscribe_token
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +67,13 @@ def sms_enabled() -> bool:
     return own if own is not None else bool(_flag("ENABLE_STALE_PROSPECT_ABANDONMENT_SMS"))
 
 
+def _sms_link_host() -> str:
+    """Bare host for texted links ("heyhavlo.com"): phones link it without
+    the https://www., which only costs characters."""
+    host = _public_base().split("://", 1)[-1]
+    return host[4:] if host.startswith("www.") else host
+
+
 def _public_base() -> str:
     base = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
     return "https://www.heyhavlo.com" if "localhost" in base or "127.0.0.1" in base else base
@@ -85,8 +92,17 @@ def build_email_unsubscribe_url(account_id: UUID) -> str:
     return f"{_public_base()}/api/v1/stale-listings/agents/unsubscribe?account_id={account_id}&token={token}"
 
 
+def build_sms_portfolio_url(agent_code: str) -> str:
+    """heyhavlo.com/a/<5-digit agency code>: opens the agency's portfolio
+    (stale_listings.open_assessment_short). The code alone already opens it
+    on /check/agent, so the short link gives nothing new away."""
+    return f"{_sms_link_host()}/a/{agent_code}"
+
+
 def build_sms_unsubscribe_url(agent_code: str) -> str:
-    return f"{_public_base()}/ua/{agent_code}?t={sms_unsubscribe_short_token(sms_unsubscribe_key(agent_code))}"
+    """heyhavlo.com/u/<5-digit agency code>: stops the agency's texts. Owner
+    property codes are 4 digits, so the same short path serves both."""
+    return f"{_sms_link_host()}/u/{agent_code}"
 
 
 def _next_due(stages: tuple[tuple[int, timedelta], ...], elapsed: timedelta, sent: set[int]) -> int | None:
@@ -159,15 +175,17 @@ async def run_agent_followup_cycle() -> dict:
 
     delivered_count = 0
     for account, channel, stage in due[:_MAX_SENDS_PER_CYCLE]:
-        # A fresh portfolio link for each message (earlier ones keep working).
+        # Emails carry a fresh portfolio link each time (earlier ones keep
+        # working); texts carry the short heyhavlo.com/a/<agency code>.
         async with AsyncSessionLocal() as db:
             fresh = await db.get(StaleAgentAccount, account.id)
             if fresh is None:
                 continue
             listing_count = len(await agent_campaign.portfolio(db, fresh))
-            token = agent_campaign.issue_account_token(fresh)
-            await db.commit()
-        link = f"{_public_base()}/check/agent?token={token}"
+            if channel == "email":
+                token = agent_campaign.issue_account_token(fresh)
+                await db.commit()
+        link = f"{_public_base()}/check/agent?token={token}" if channel == "email" else build_sms_portfolio_url(account.agent_code)
         brand = account.brand or agent_campaign.display_company_name(account.company_name)
         first_name = (account.contact_name or "").split(" ")[0] or "there"
         try:
