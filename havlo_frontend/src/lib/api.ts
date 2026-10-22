@@ -127,6 +127,8 @@ export interface StaleProspectAbandonedItem {
   abandonment_sms_sent: number;
   unsubscribed_at?: string | null;
   sms_unsubscribed_at?: string | null;
+  sms_stopped_at?: string | null;
+  sms_stopped_reason?: string | null;
   treated_at?: string | null;
   /** 'agent' for an agency's copy opened from /check/agent, with the agency's name and code. */
   audience?: 'owner' | 'agent';

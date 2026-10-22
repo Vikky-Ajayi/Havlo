@@ -39,7 +39,7 @@ from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectAbandonmentEmail, StaleProspectAbandonmentSms
 from app.services import analyst_review, email_service, twilio_service
 from app.services.scraper_base import run_scraper_loop
-from app.services.stale_prospect_service import sms_unsubscribe_short_token, unsubscribe_token
+from app.services.stale_prospect_service import unsubscribe_token
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -231,19 +231,27 @@ def _within_sms_send_window(now_utc: datetime) -> bool:
     return _SMS_SEND_WINDOW_START_HOUR <= local_hour < _SMS_SEND_WINDOW_END_HOUR
 
 
-def build_sms_unsubscribe_url(property_code: str) -> str:
-    """Distinct from build_unsubscribe_url (email) — points at its own
-    endpoint and sets sms_unsubscribed_at, not unsubscribed_at. Uses the
-    short /u/<code>?t=<12-char token> route (unsubscribe_stale_prospect_
-    sms_short in stale_listings.py), not the long-form UUID+32-char-token
-    one the email drip's link uses — that one alone was ~90+ characters,
-    which does not fit alongside an actual message inside an SMS's
-    character budget without pushing every send into extra segments."""
-    base = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
+def _sms_link_host() -> str:
+    """The site's bare host for texted links ("heyhavlo.com"): phones turn
+    it into a link without the https://www., which only costs characters."""
+    base = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").strip().rstrip("/")
     if "localhost" in base or "127.0.0.1" in base:
         base = "https://www.heyhavlo.com"
-    token = sms_unsubscribe_short_token(property_code)
-    return f"{base}/u/{property_code}?t={token}"
+    host = base.split("://", 1)[-1]
+    return host[4:] if host.startswith("www.") else host
+
+
+def build_sms_assessment_url(property_code: str) -> str:
+    """heyhavlo.com/a/<code>: redirects to the prospect's own assessment in
+    the funnel they came from (stale_listings.open_assessment_short)."""
+    return f"{_sms_link_host()}/a/{property_code}"
+
+
+def build_sms_unsubscribe_url(property_code: str) -> str:
+    """heyhavlo.com/u/<code>: stops the texts (sets sms_unsubscribed_at,
+    not the email drip's unsubscribed_at). The property code alone is
+    enough: all it can do is stop marketing texts to that number."""
+    return f"{_sms_link_host()}/u/{property_code}"
 
 
 async def run_abandonment_sms_cycle() -> dict:
@@ -260,6 +268,7 @@ async def run_abandonment_sms_cycle() -> dict:
                 StaleListingProspect.contact_details_submitted_at.is_not(None),
                 StaleListingProspect.payment_status != "completed",
                 StaleListingProspect.sms_unsubscribed_at.is_(None),
+                StaleListingProspect.sms_stopped_at.is_(None),
                 StaleListingProspect.marketing_opt_in.is_not(False),
                 StaleListingProspect.audience == "owner",  # owner wording; agents not yet
                 StaleListingProspect.contact_phone.is_not(None),
@@ -301,68 +310,61 @@ async def run_abandonment_sms_cycle() -> dict:
                 due.append((prospect, day, message))
             break
 
-    base_url = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
-    if "localhost" in base_url or "127.0.0.1" in base_url:
-        base_url = "https://www.heyhavlo.com"
-
+    stopped = 0
     for prospect, stage, message in due:
         e164 = twilio_service.normalize_to_e164(prospect.contact_phone or "")
-        # step=assessment overrides the wizard's normal resume-where-you-
-        # left-off default, which would otherwise send anyone with contact
-        # details on file and pending payment straight back to the Payment
-        # step (see StaleProspectWizard.tsx's boot effect) — right for
-        # someone revisiting their own link mid-checkout, wrong for a
-        # re-engagement nudge, which should show the value again (the free
-        # assessment snippet) before asking them to pay a second time.
-        preview_url = f"{base_url}{analyst_review.funnel_path(prospect)}?code={prospect.property_code}&step=assessment"
+        preview_url = build_sms_assessment_url(prospect.property_code)
         unsubscribe_url = build_sms_unsubscribe_url(prospect.property_code)
 
-        if not e164:
-            # An unusable number will never become usable on its own —
-            # still record this stage as "handled" (below) so this
-            # prospect isn't re-checked at every stage forever, exactly
-            # like recording a real send, just without one going out.
-            delivered = False
-            skip_reason = f"unusable phone number: {prospect.contact_phone!r}"
-        else:
-            try:
-                delivered = await asyncio.to_thread(
-                    twilio_service.send_stale_prospect_abandonment_sms,
-                    e164,
-                    message,
-                    preview_url,
-                    unsubscribe_url,
-                )
-            except Exception:
-                logger.exception("Abandonment SMS send raised for prospect=%s stage=%s", prospect.id, stage)
-                continue
-            skip_reason = "Twilio unconfigured or rejected the message" if not delivered else ""
+        # Numbers that can't take a text are charged for anyway, so stop
+        # them before sending: anything invalid, a landline or made up, and
+        # numbers whose earlier texts Twilio reports failed for good.
+        problem = twilio_service.sms_number_problem(e164) if e164 else "not a valid phone number"
+        if problem is None and message > 0:
+            problem = await asyncio.to_thread(twilio_service.last_sms_failure, e164)
+        if problem:
+            async with AsyncSessionLocal() as db:
+                fresh = await db.get(StaleListingProspect, prospect.id)
+                if fresh and fresh.sms_stopped_at is None:
+                    fresh.sms_stopped_at = now
+                    fresh.sms_stopped_reason = problem[:120]
+                    await db.commit()
+            logger.info("Abandonment SMS stopped for prospect=%s (%r): %s", prospect.id, prospect.contact_phone, problem)
+            stopped += 1
+            continue
 
-        if not delivered and e164:
-            # Genuine Twilio failure — leave this stage unrecorded so it
-            # retries next cycle, same as the email cycle above.
+        try:
+            delivered = await asyncio.to_thread(
+                twilio_service.send_stale_prospect_abandonment_sms,
+                e164,
+                message,
+                preview_url,
+                unsubscribe_url,
+            )
+        except Exception:
+            logger.exception("Abandonment SMS send raised for prospect=%s stage=%s", prospect.id, stage)
+            continue
+
+        if not delivered:
+            # Twilio unconfigured or refused the request - leave this stage
+            # unrecorded so it retries next cycle, same as the email cycle.
             async with AsyncSessionLocal() as db:
                 fresh = await db.get(StaleListingProspect, prospect.id)
                 if fresh:
-                    fresh.last_error = f"Abandonment SMS (day {stage}) not delivered — {skip_reason}"
+                    fresh.last_error = f"Abandonment SMS (day {stage}) not delivered — Twilio unconfigured or rejected the message"
                     await db.commit()
             continue
 
         async with AsyncSessionLocal() as db:
             db.add(StaleProspectAbandonmentSms(prospect_id=prospect.id, stage=stage))
-            if not delivered:
-                fresh = await db.get(StaleListingProspect, prospect.id)
-                if fresh:
-                    fresh.last_error = f"Abandonment SMS (day {stage}) skipped — {skip_reason}"
             try:
                 await db.commit()
-                if delivered:
-                    sent += 1
+                sent += 1
             except IntegrityError:
                 # Another cycle already recorded this (prospect, stage).
                 await db.rollback()
 
-    return {"candidates": len(candidates), "due": len(due), "sent": sent}
+    return {"candidates": len(candidates), "due": len(due), "sent": sent, "stopped": stopped}
 
 
 async def start_abandonment_sms_loop() -> None:

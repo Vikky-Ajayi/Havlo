@@ -3,6 +3,8 @@ import logging
 import re
 from functools import lru_cache
 
+import phonenumbers
+from phonenumbers import PhoneNumberType
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
@@ -47,6 +49,74 @@ def normalize_to_e164(raw_phone: str) -> str:
         rest = m.group(1) + m.group(2)
     candidate = f"+{rest}"
     return candidate if is_valid_e164(candidate) else ""
+
+
+# Number types that can receive a text. Everything else (landlines,
+# freephone, premium rate, personal "070" numbers, pagers...) can't, but
+# Twilio still charges for the attempt.
+_TEXTABLE_TYPES = {PhoneNumberType.MOBILE, PhoneNumberType.FIXED_LINE_OR_MOBILE}
+_FAKE_RUNS = ("123456789", "987654321")
+
+
+def sms_number_problem(e164: str) -> str | None:
+    """Why this number shouldn't be texted at all, or None if it's fine.
+    Catches numbers that don't exist (wrong length, unallocated ranges such
+    as Ofcom's 07700 900xxx drama numbers), landlines and other numbers that
+    can't take a text, and the made-up numbers people type to get past a
+    form (07123456789, 07777777777)."""
+    if not is_valid_e164(e164):
+        return "not a valid phone number"
+    try:
+        parsed = phonenumbers.parse(e164)
+    except phonenumbers.NumberParseException:
+        return "not a valid phone number"
+    if not phonenumbers.is_valid_number(parsed):
+        return "not a valid phone number"
+    if phonenumbers.number_type(parsed) not in _TEXTABLE_TYPES:
+        return "can't receive texts (landline or similar)"
+    national = str(parsed.national_number)
+    if re.search(r"(\d)\1{6,}", national) or any(run in national for run in _FAKE_RUNS):
+        return "looks like a made-up number"
+    return None
+
+
+# Twilio error codes that mean texting this number again will fail again
+# (and be charged again): https://www.twilio.com/docs/api/errors
+_PERMANENT_SMS_ERRORS = {
+    21211: "not a valid phone number",
+    21610: "replied STOP",
+    21612: "can't be reached from our sender",
+    21614: "can't receive texts (landline or similar)",
+    30003: "phone unreachable",
+    30004: "blocked by the recipient",
+    30005: "number doesn't exist",
+    30006: "can't receive texts (landline or similar)",
+    30007: "blocked by the carrier as spam",
+}
+
+
+def last_sms_failure(e164: str) -> str | None:
+    """Why our recent texts to this number failed for good, or None. Reads
+    the number's last two messages from Twilio (reading history is free):
+    stop if the last one failed with a permanent error, or if the last two
+    both failed whatever the reason. None when Twilio isn't configured or
+    can't be reached, so a lookup problem never blocks a send."""
+    settings = get_settings()
+    if not (settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN):
+        return None
+    try:
+        messages = _get_client().messages.list(to=e164, limit=2)
+    except Exception as exc:
+        logger.warning("Couldn't read Twilio history for %s: %s", e164, exc)
+        return None
+    failed = [m for m in messages if m.status in ("failed", "undelivered")]
+    if messages and messages[0] in failed:
+        code = messages[0].error_code
+        if code in _PERMANENT_SMS_ERRORS:
+            return f"{_PERMANENT_SMS_ERRORS[code]} (Twilio {code})"
+    if len(messages) == 2 and len(failed) == 2:
+        return "last two texts failed"
+    return None
 
 
 @lru_cache
@@ -186,8 +256,8 @@ def sms_abandonment_schedule(already_sent: set[int]) -> tuple[int, ...]:
 
 def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url: str, unsubscribe_url: str) -> bool:
     """One text of the abandonment SMS series. `message` is its position in
-    SMS_ABANDONMENT_MESSAGES (0 = the first). Always appends an unsubscribe
-    link distinct from the email drip's — see
+    SMS_ABANDONMENT_MESSAGES (0 = the first). Always ends with an "Opt out"
+    link distinct from the email drip's unsubscribe — see
     StaleListingProspect.sms_unsubscribed_at.
 
     Same 'never let a failure propagate' contract as send_new_message_sms —
@@ -196,7 +266,7 @@ def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url
     if not 0 <= message < len(SMS_ABANDONMENT_MESSAGES):
         logger.error("Unknown SMS abandonment message: %r", message)
         return False
-    body = SMS_ABANDONMENT_MESSAGES[message].format(link=preview_url) + f"\n\nUnsubscribe: {unsubscribe_url}"
+    body = SMS_ABANDONMENT_MESSAGES[message].format(link=preview_url) + f"\n\nOpt out: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
 
 

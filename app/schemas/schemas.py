@@ -908,6 +908,9 @@ class StaleProspectAbandonedItem(BaseModel):
     abandonment_sms_sent: int = 0
     unsubscribed_at: Optional[str] = None
     sms_unsubscribed_at: Optional[str] = None
+    # We stopped texting this number ourselves (it can't receive texts).
+    sms_stopped_at: Optional[str] = None
+    sms_stopped_reason: Optional[str] = None
     treated_at: Optional[str] = None
     # "agent" when this is an agency's copy (from /check/agent), with the
     # agency's name and its agency code, so the follow-up list doesn't read

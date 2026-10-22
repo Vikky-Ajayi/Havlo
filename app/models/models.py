@@ -576,6 +576,12 @@ class StaleListingProspect(Base):
     # in stale_prospect_abandonment_sms (own table, same (prospect_id,
     # stage) idempotency pattern as stale_prospect_abandonment_emails).
     sms_unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when we stop texting a number ourselves because it can't receive
+    # texts (invalid, landline, made up, or Twilio reports permanent
+    # failures) - kept apart from sms_unsubscribed_at, which is the
+    # person's own choice. See stale_prospect_abandonment's SMS cycle.
+    sms_stopped_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sms_stopped_reason: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     # City this prospect's location filter belongs to (matches candidate.city
     # from discovery, or the ops console's manual-create form). Populated
     # going forward; existing rows are backfilled from listing_snapshot_json

@@ -1266,6 +1266,11 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           {item.abandonment_emails_sent} email{item.abandonment_emails_sent === 1 ? '' : 's'}
                           {item.abandonment_sms_sent > 0 && `, ${item.abandonment_sms_sent} SMS`}
+                          {item.sms_stopped_at && (
+                            <div style={{ color: '#B45309', fontSize: 12, fontWeight: 600, marginTop: 4 }} title={`Stopped ${new Date(item.sms_stopped_at).toLocaleString('en-GB')}`}>
+                              Texts stopped: {item.sms_stopped_reason || 'number can\'t receive texts'}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           {item.unsubscribed_at && item.sms_unsubscribed_at ? <span style={{ color: '#B91C1C', fontWeight: 700 }}>Unsubscribed (both)</span>

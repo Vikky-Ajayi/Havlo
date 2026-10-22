@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -120,7 +120,6 @@ from app.services.stale_prospect_service import (
     serialize_preview,
     serialize_report,
     send_prospect_letter_to_admin,
-    sms_unsubscribe_short_token,
     snapshot_from_scrape,
     verify_sms_unsubscribe_short_token,
     verify_unsubscribe_token,
@@ -1908,6 +1907,8 @@ async def list_abandoned_prospects(
             abandonment_sms_sent=sms_sent,
             unsubscribed_at=p.unsubscribed_at.isoformat() if p.unsubscribed_at else None,
             sms_unsubscribed_at=p.sms_unsubscribed_at.isoformat() if p.sms_unsubscribed_at else None,
+            sms_stopped_at=p.sms_stopped_at.isoformat() if p.sms_stopped_at else None,
+            sms_stopped_reason=p.sms_stopped_reason,
             treated_at=p.treated_at.isoformat() if p.treated_at else None,
             audience=p.audience or "owner",
             agent_company=(p.agent_brand or p.agent_company_name) if p.audience == "agent" else None,
@@ -2936,23 +2937,20 @@ async def unsubscribe_stale_prospect_sms(
 @short_router.get("/u/{property_code}", response_class=HTMLResponse)
 async def unsubscribe_stale_prospect_sms_short(
     property_code: str,
-    t: str,
+    t: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> HTMLResponse:
-    """Short-link version of unsubscribe_stale_prospect_sms above, for
-    texted links specifically — see short_router's own docstring/comment
-    for why this needs to be this much shorter. Keyed by property_code (4
-    digits, already public on every letter/text) + a short deterministic
-    token (sms_unsubscribe_short_token) rather than the prospect's UUID +
-    the full 32-char token; same outcome (sets sms_unsubscribed_at), same
-    confirmation page. The long-form endpoint stays in place unchanged —
-    this doesn't replace it, just gives the SMS ladder something that
-    fits in a message."""
+    """heyhavlo.com/u/<code>, the opt-out link in every abandonment text.
+    Same outcome as unsubscribe_stale_prospect_sms above (sets
+    sms_unsubscribed_at, not the email drip's opt-out). Keyed by the 4-digit
+    property code alone, so it fits in a text: all it can do is stop
+    marketing texts. Older texts carried ?t=<token>; a token that's there
+    must still be right."""
 
     _page = _stale_listing_confirmation_page
 
     code = normalize_property_code(property_code)
-    if len(code) != 4 or not verify_sms_unsubscribe_short_token(code, t):
+    if len(code) != 4 or (t is not None and not verify_sms_unsubscribe_short_token(code, t)):
         return _page("This unsubscribe link is invalid or has expired.")
 
     result = await db.execute(select(StaleListingProspect).where(StaleListingProspect.property_code == code))
@@ -2962,6 +2960,25 @@ async def unsubscribe_stale_prospect_sms_short(
         await db.commit()
 
     return _page("You've been unsubscribed from these text message reminders. You won't receive any more.")
+
+
+@short_router.get("/a/{property_code}")
+async def open_assessment_short(property_code: str, db: AsyncSession = Depends(get_db)) -> RedirectResponse:
+    """heyhavlo.com/a/<code>, the assessment link in every abandonment text:
+    sends the prospect to their own assessment in the funnel they came from.
+    step=assessment shows the free findings again rather than resuming at
+    Payment, which is where the wizard would otherwise reopen."""
+    base = (get_settings().FRONTEND_URL or "https://www.heyhavlo.com").rstrip("/")
+    if "localhost" in base or "127.0.0.1" in base:
+        base = "https://www.heyhavlo.com"
+    code = normalize_property_code(property_code)
+    prospect = None
+    if len(code) == 4:
+        result = await db.execute(select(StaleListingProspect).where(StaleListingProspect.property_code == code))
+        prospect = result.scalar_one_or_none()
+    if prospect is None:
+        return RedirectResponse(f"{base}/stale-listings", status_code=302)
+    return RedirectResponse(f"{base}{analyst_review.funnel_path(prospect)}?code={code}&step=assessment", status_code=302)
 
 
 # ── 90-day monitoring dashboard (app/services/listing_monitor.py) ─────────

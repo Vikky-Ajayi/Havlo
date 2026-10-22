@@ -67,7 +67,7 @@ class AbandonmentSmsTimingTests(unittest.TestCase):
             self.assertTrue(twilio_service.send_stale_prospect_abandonment_sms("+447700900000", 1, "https://x/l", "https://x/u"))
         self.assertTrue(sent["body"].startswith("What if the reason your property"))
         self.assertIn("https://x/l", sent["body"])
-        self.assertTrue(sent["body"].endswith("Unsubscribe: https://x/u"))
+        self.assertTrue(sent["body"].endswith("Opt out: https://x/u"))
         self.assertFalse(twilio_service.send_stale_prospect_abandonment_sms("+447700900000", 31, "l", "u"))
 
 
