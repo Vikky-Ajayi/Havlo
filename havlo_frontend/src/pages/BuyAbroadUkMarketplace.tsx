@@ -114,9 +114,12 @@ function hasActiveFilters(filters: ListingFilters): boolean {
 // which country(ies) it's fetching (either the fixed row/modal country, or
 // the whole visible-sections list already filtered by filters.country), so
 // setting it again here would just be a confusing second source of truth.
-function appendListingFilterParams(params: URLSearchParams, filters: ListingFilters) {
-  if (filters.minPrice) params.set('min_price', filters.minPrice);
-  if (filters.maxPrice) params.set('max_price', filters.maxPrice);
+//
+// Prices are typed in the country's own currency and searched in pounds.
+function appendListingFilterParams(params: URLSearchParams, filters: ListingFilters, country: string) {
+  const currency = currencyFor(country);
+  if (filters.minPrice) params.set('min_price', String(Math.floor(localToGbp(Number(filters.minPrice), currency))));
+  if (filters.maxPrice) params.set('max_price', String(Math.ceil(localToGbp(Number(filters.maxPrice), currency))));
   if (filters.minBeds) params.set('min_beds', filters.minBeds);
   if (filters.propertyType) params.set('property_type', filters.propertyType);
 }
@@ -168,10 +171,6 @@ function writeIds(key: string, ids: string[]) {
   }
 }
 
-function formatGbp(amount: number) {
-  return `£${Math.max(0, Math.round(amount || 0)).toLocaleString('en-GB')}`;
-}
-
 function cacheListings(listings: Listing[]) {
   try {
     listings.forEach((listing) => {
@@ -201,13 +200,68 @@ function formatMoney(amount: number, currency = 'GBP') {
   return `${symbols[code] || `${code} `}${value.toLocaleString('en-GB')}`;
 }
 
-function displayPrice(listing: Listing) {
-  const nativeAmount = listing.price_native || listing.price_gbp || 0;
+// Each country's prices show in its own currency.
+const COUNTRY_CURRENCY: Record<string, string> = { uk: 'GBP', america: 'USD', dubai: 'AED', canada: 'CAD' };
+
+function currencyFor(country?: string | null): string {
+  return COUNTRY_CURRENCY[(country || 'uk').toLowerCase()] || 'GBP';
+}
+
+// Units of each currency per £1. Starts on the same fallbacks as
+// app/services/currency_rates.py; useGbpRates() swaps in the live rates.
+let gbpRates: Record<string, number> = { GBP: 1, USD: 1.27, AED: 4.65, CAD: 1.72 };
+let gbpRatesRequest: Promise<void> | null = null;
+
+function useGbpRates() {
+  const [, setLoaded] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    if (!gbpRatesRequest) {
+      gbpRatesRequest = fetch(listingsApiUrl('/listings/currency-rates'))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((rates: Record<string, unknown> | null) => {
+          const live: Record<string, number> = {};
+          Object.entries(rates || {}).forEach(([code, rate]) => {
+            if (typeof rate === 'number' && rate > 0) live[code.toUpperCase()] = rate;
+          });
+          gbpRates = { ...gbpRates, ...live, GBP: 1 };
+        })
+        .catch(() => {});
+    }
+    gbpRatesRequest.then(() => { if (alive) setLoaded((n) => n + 1); });
+    return () => { alive = false; };
+  }, []);
+}
+
+function gbpToLocal(amountGbp: number, currency: string): number {
+  return (amountGbp || 0) * (gbpRates[currency] || 1);
+}
+
+function localToGbp(amount: number, currency: string): number {
+  return (amount || 0) / (gbpRates[currency] || 1);
+}
+
+// A converted asking price reads better rounded: AED 1,235,000, not 1,234,567.
+function roundConverted(amount: number): number {
+  const step = amount >= 100_000 ? 1_000 : 100;
+  return Math.round(amount / step) * step;
+}
+
+// The listing's price in its country's currency: the price it was listed at
+// when that's already the right currency, otherwise converted from pounds
+// (Dubai homes come from Rightmove priced in pounds).
+function localPrice(listing: Listing): { amount: number; currency: string } {
+  const currency = currencyFor(listing.country);
   const nativeCurrency = (listing.price_currency || 'GBP').toUpperCase();
-  if (nativeCurrency !== 'GBP' && nativeAmount > 0) {
-    return `${formatMoney(nativeAmount, nativeCurrency)} (${formatGbp(listing.price_gbp)})`;
-  }
-  return listing.price_display || formatGbp(listing.price_gbp || nativeAmount);
+  if (nativeCurrency === currency && listing.price_native) return { amount: listing.price_native, currency };
+  if (currency === 'GBP') return { amount: listing.price_gbp || listing.price_native || 0, currency };
+  return { amount: roundConverted(gbpToLocal(listing.price_gbp, currency)), currency };
+}
+
+function displayPrice(listing: Listing) {
+  const { amount, currency } = localPrice(listing);
+  if (currency === 'GBP' && listing.price_display) return listing.price_display;
+  return formatMoney(amount, currency);
 }
 
 function cleanText(value?: string | null) {
@@ -742,6 +796,8 @@ function FilterPanel({
   }, [onClose, toggleRef]);
 
   const set = (patch: Partial<ListingFilters>) => onChange({ ...filters, ...patch });
+  // With every country showing, a price is read in each country's currency.
+  const priceLabel = filters.country ? currencyFor(filters.country) : 'local currency';
 
   return (
     <div ref={rootRef} className="baml-filter-panel" role="dialog" aria-label="Filter listings">
@@ -758,11 +814,11 @@ function FilterPanel({
       )}
       <div className="baml-filter-split">
         <label className="baml-filter-field">
-          <span>Min price (£)</span>
+          <span>Min price ({priceLabel})</span>
           <input type="number" min={0} inputMode="numeric" value={filters.minPrice} onChange={(e) => set({ minPrice: e.target.value })} placeholder="No min" />
         </label>
         <label className="baml-filter-field">
-          <span>Max price (£)</span>
+          <span>Max price ({priceLabel})</span>
           <input type="number" min={0} inputMode="numeric" value={filters.maxPrice} onChange={(e) => set({ maxPrice: e.target.value })} placeholder="No max" />
         </label>
       </div>
@@ -835,7 +891,7 @@ function AllHomesModal({
     const params = new URLSearchParams({ country, page: String(page), per_page: '40' });
     const term = searchTerm.trim();
     if (term) params.set('search', term);
-    appendListingFilterParams(params, modalFilters);
+    appendListingFilterParams(params, modalFilters, country);
       fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
       .then((res) => res.ok ? res.json() : Promise.reject())
       .then((payload: ListingsResponse) => {
@@ -1594,6 +1650,7 @@ function MarketplaceStyles() {
 }
 
 export const BuyAbroadUkListingsRedesign: React.FC = () => {
+  useGbpRates();
   usePageMeta({ title: 'Browse United Kingdom Properties in Pounds & Naira | Havlo', description: 'Browse homes across the United Kingdom, the United States, Dubai and Canada with Havlo Buy Abroad.' });
   const typedCountry = useTypewriter(HERO_COUNTRIES);
   const [listingsByCountry, setListingsByCountry] = useState<Record<CountryKey, Listing[]>>(() => emptyCountryListings());
@@ -1643,7 +1700,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
         include_total: 'false',
       });
       if (term) params.set('search', term);
-      appendListingFilterParams(params, filters);
+      appendListingFilterParams(params, filters, section.key);
 
       fetch(listingsApiUrl(`/listings/?${params.toString()}`), { signal: controller.signal })
         .then((res) => res.ok ? res.json() : Promise.reject())
@@ -1743,6 +1800,7 @@ export const BuyAbroadUkListingsRedesign: React.FC = () => {
 };
 
 export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
+  useGbpRates();
   const { id } = useParams();
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
@@ -1823,8 +1881,12 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
   const active = listing;
   const images = active.images?.length ? active.images : fallbackImages;
   const saved = favs.includes(active.rightmove_id);
-  const propertyPrice = active.price_gbp || 0;
-  const costRows = costRowsFor(active);
+  // Everything on this page is in the property's own currency; the fee
+  // estimates are worked out in pounds and converted.
+  const currency = currencyFor(active.country);
+  const formatLocal = (amount: number) => formatMoney(amount, currency);
+  const propertyPrice = localPrice(active).amount;
+  const costRows = costRowsFor(active).map((row) => ({ ...row, amount: Math.round(gbpToLocal(row.amount, currency)) }));
   const fees = costRows.reduce((sum, row) => sum + row.amount, 0);
   const totalEstimated = propertyPrice + fees;
   const detailMeta = listingMetaParts(active);
@@ -1850,12 +1912,12 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
           </button>
         )}
       </div>
-      <h2>{formatGbp(totalEstimated)}</h2>
+      <h2>{formatLocal(totalEstimated)}</h2>
       <div className="bad-card-more">
         <div className="bad-bar"><span style={{ width: `${totalEstimated ? Math.max(4, Math.min(96, (propertyPrice / totalEstimated) * 100)) : 90}%` }} /></div>
         <p className="bad-legend">
-          <span><i className="bad-dot" /> Property <strong>{formatGbp(propertyPrice)}</strong></span>
-          <span><i className="bad-dot purple" /> Fees <strong>{formatGbp(fees)}</strong></span>
+          <span><i className="bad-dot" /> Property <strong>{formatLocal(propertyPrice)}</strong></span>
+          <span><i className="bad-dot purple" /> Fees <strong>{formatLocal(fees)}</strong></span>
         </p>
         <p className="bad-question">Interested in purchasing this property?</p>
       </div>
@@ -1920,17 +1982,17 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
                   <>
                     <h3>Other Associated Costs <i className="bad-info" title="Estimates for a typical purchase; your advisor confirms the exact figures.">i</i></h3>
                     {costRows.map((row) => (
-                      <div className="bad-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatGbp(row.amount)}</strong></div>
+                      <div className="bad-row" key={row.label}><span>{row.label}:</span><strong className={row.accent ? 'purple' : ''}>{formatLocal(row.amount)}</strong></div>
                     ))}
-                    <div className="bad-row"><span>Property price:</span><strong>{formatGbp(propertyPrice)}</strong></div>
-                    <div className="bad-row bad-total"><span>Total Estimated cost including other fees:</span><strong>{formatGbp(totalEstimated)}</strong></div>
+                    <div className="bad-row"><span>Property price:</span><strong>{formatLocal(propertyPrice)}</strong></div>
+                    <div className="bad-row bad-total"><span>Total Estimated cost including other fees:</span><strong>{formatLocal(totalEstimated)}</strong></div>
                   </>
                 ) : (
                   <>
                     <h3>Mortgage Calculator <i className="bad-info" title="Indicative only.">i</i></h3>
                     <p className="baml-mortgage-sub">Based on a 7% p.a. non-resident mortgage rate</p>
                     <div className="baml-mortgage-row">
-                      <label>Deposit: <strong>{deposit}%</strong> ({formatGbp(Math.round(propertyPrice * deposit / 100))})</label>
+                      <label>Deposit: <strong>{deposit}%</strong> ({formatLocal(Math.round(propertyPrice * deposit / 100))})</label>
                       <input type="range" min={10} max={50} step={5} value={deposit} onChange={(event) => setDeposit(Number(event.target.value))} className="baml-slider" />
                       <div className="baml-slider-labels"><span>10%</span><span>50%</span></div>
                     </div>
@@ -1943,9 +2005,9 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
                       const mortgage = calcMortgage(propertyPrice, deposit, term);
                       return (
                         <>
-                          <div className="bad-row"><span>Loan amount:</span><strong>{formatGbp(mortgage.loanGbp)}</strong></div>
-                          <div className="bad-row"><span>Total interest:</span><strong>{formatGbp(mortgage.interestGbp)}</strong></div>
-                          <div className="bad-row bad-total"><span>Monthly payment:</span><strong>{formatGbp(mortgage.monthlyGbp)}/mo</strong></div>
+                          <div className="bad-row"><span>Loan amount:</span><strong>{formatLocal(mortgage.loanGbp)}</strong></div>
+                          <div className="bad-row"><span>Total interest:</span><strong>{formatLocal(mortgage.interestGbp)}</strong></div>
+                          <div className="bad-row bad-total"><span>Monthly payment:</span><strong>{formatLocal(mortgage.monthlyGbp)}/mo</strong></div>
                         </>
                       );
                     })()}
@@ -2084,6 +2146,7 @@ function BasketMeta({ listing }: { listing: Listing }) {
 }
 
 export const BuyAbroadUkBasket: React.FC = () => {
+  useGbpRates();
   usePageMeta({ title: 'Your Basket | Havlo Buy Abroad', description: 'Review selected homes and proceed to checkout.' });
   const auth = useAuth();
   const navigate = useNavigate();
@@ -2425,6 +2488,7 @@ export const BuyAbroadUkConsultation: React.FC = () => {
 // Saved homes. Favourites are saved to the account (useFavourites), so the
 // page asks visitors to sign in first.
 export const BuyAbroadUkFavourites: React.FC = () => {
+  useGbpRates();
   usePageMeta({ title: 'Your Favourites | Havlo Buy Abroad', description: 'Homes you have saved on Havlo Buy Abroad.' });
   const auth = useAuth();
   const navigate = useNavigate();

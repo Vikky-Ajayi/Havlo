@@ -490,6 +490,16 @@ async def _list_listings_inner(
     }
 
 
+@router.get("/currency-rates")
+async def currency_rates_for_listings() -> dict[str, float]:
+    """How many US dollars, dirhams and Canadian dollars equal GBP 1, so the
+    Buy Abroad pages can show each country's prices in its own currency.
+    Live rates, cached for an hour, with fallbacks if the feed is down."""
+    from app.services.currency_rates import get_gbp_cross_rates
+
+    return await get_gbp_cross_rates()
+
+
 @router.get("/cities")
 async def list_cities(
     country: Optional[str] = Query(None, description="Filter by country: uk, america, dubai, canada"),
