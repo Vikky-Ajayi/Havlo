@@ -607,6 +607,31 @@ const LockIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
 );
 
+// The Tawk chat bubble sits where the pay bar is, so it's hidden for the
+// assessment step and shown again when the step closes. Tawk may still be
+// loading when the step opens, hence also hiding it from its onLoad.
+type TawkApi = { hideWidget?: () => void; showWidget?: () => void; onLoad?: (...args: unknown[]) => void };
+
+function useHideChatWidget() {
+  useEffect(() => {
+    const w = window as unknown as { Tawk_API?: TawkApi };
+    const api: TawkApi = (w.Tawk_API = w.Tawk_API || {});
+    let hidden = true;
+    const hide = () => { try { api.hideWidget?.(); } catch { /* not ready */ } };
+    const previousOnLoad = api.onLoad;
+    api.onLoad = (...args: unknown[]) => {
+      previousOnLoad?.(...args);
+      if (hidden) hide();
+    };
+    hide();
+    return () => {
+      hidden = false;
+      api.onLoad = previousOnLoad;
+      try { api.showWidget?.(); } catch { /* not ready */ }
+    };
+  }, []);
+}
+
 // Pinned to the bottom of the screen for the whole assessment step, so the
 // way to pay is always one tap away however far down they've read.
 const StickyPayBar = ({ price, locked, address, onUnlock }: { price: string; locked: number; address: string; onUnlock: () => void }) => (
@@ -639,6 +664,7 @@ const AssessmentStep = ({
   const revealed = preview.key_issues || [];
   const totalFactors = totalFactorsFor(prospect);
   const price = formatGbp(prospectPrice(prospect));
+  useHideChatWidget();
 
   return (
     <section className="slw-assessment">
@@ -2097,7 +2123,7 @@ export const WizardStyles = () => (
     .slw-locked-cta{position:absolute;right:12px;top:14px;font-size:12px;font-weight:700;color:#A409D2;opacity:0;transition:opacity .15s}
     .slw-locked-card-btn:hover .slw-locked-cta,.slw-locked-card-btn:focus-visible .slw-locked-cta{opacity:1}
     .slw-page:has(.slw-paybar){padding-bottom:96px}
-    .slw-paybar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 108px 16px 24px;pointer-events:none;animation:slw-paybar-in .35s ease both}
+    .slw-paybar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 24px 16px;pointer-events:none;animation:slw-paybar-in .35s ease both}
     @keyframes slw-paybar-in{from{transform:translateY(120%)}to{transform:none}}
     .slw-paybar-inner{max-width:1060px;margin:0 auto;background:#fff;border:1px solid #ece4f3;border-radius:16px;box-shadow:0 12px 40px rgba(31,32,36,.16);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 12px 12px 22px;pointer-events:auto}
     .slw-paybar-copy{display:flex;align-items:center;gap:10px;color:#1f2024;font-size:15px;min-width:0}
@@ -2111,7 +2137,7 @@ export const WizardStyles = () => (
       .slw-gauge-pay{width:100%;font-size:15px;padding:15px 16px}
       .slw-locked-cta{opacity:1;top:auto;bottom:12px;right:12px}
       .slw-page:has(.slw-paybar){padding-bottom:84px}
-      .slw-paybar{padding:0 92px 12px 12px}
+      .slw-paybar{padding:0 12px 12px}
       .slw-paybar-inner{padding:8px;border-radius:14px}
       .slw-paybar-copy{display:none}
       .slw-paybar .slw-btn-pay{width:100%;padding:14px 12px;font-size:15px}
