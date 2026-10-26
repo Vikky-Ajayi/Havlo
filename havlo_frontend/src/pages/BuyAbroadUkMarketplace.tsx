@@ -5,6 +5,7 @@ import { api, API_BASE } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useTypewriter } from '../hooks/useTypewriter';
+import { CALENDLY_BOOKING_URL } from '../lib/calendly';
 import { Footer } from '../components/shared/Footer';
 import { CountryBadge } from '../components/shared/CountryBadge';
 
@@ -433,7 +434,7 @@ function Header({
       <div className={`baml-drawer${menuOpen ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-label="Menu" aria-hidden={!menuOpen}>
         <button type="button" className="baml-close" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={22} /></button>
         <nav className="baml-drawer-nav" aria-label="Buy Abroad">{links}</nav>
-        <button type="button" className="baml-drawer-consult" onClick={() => { setMenuOpen(false); onAuth(); }}>Get Free Consultation</button>
+        <a className="baml-drawer-consult" href={CALENDLY_BOOKING_URL} target="_blank" rel="noreferrer" onClick={() => setMenuOpen(false)}>Book Consultation</a>
         <div className="baml-drawer-country"><span>Country</span><CountryBadge variant="inline" /></div>
       </div>
     </>
@@ -586,7 +587,7 @@ function FooterCta() {
           <h2>Can&apos;t find what you&apos;re <br className="baml-br" />looking for?</h2>
           <p>Our advisors source off-market and exclusive properties not listed on any portal. <br className="baml-br" />Tell us what you want and we&apos;ll find it.</p>
         </div>
-        <a href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call" target="_blank" rel="noreferrer" className="baml-call"><img src="/calendly-icon.svg" alt="" className="baml-call-mark" width={22} height={22} /> Book a Call</a>
+        <a href={CALENDLY_BOOKING_URL} target="_blank" rel="noreferrer" className="baml-call"><img src="/calendly-icon.svg" alt="" className="baml-call-mark" width={22} height={22} /> Book a Call</a>
       </section>
       <Footer />
     </>
@@ -1412,7 +1413,7 @@ function AdvisorReadyModal({ onClose }: { onClose: () => void }) {
           <p className="baml-trust">Trusted by buyers across 3 countries</p>
           <h2>Your advisor is ready<br />to guide you</h2>
           <p>Every property decision matters. Book a time that works best for you and take the first step towards making your next purchase.</p>
-          <a className="baml-primary baml-book-consult" href="https://calendly.com/havlo/consultation" target="_blank" rel="noreferrer">Book your Consultation <ChevronRight size={18} /></a>
+          <a className="baml-primary baml-book-consult" href={CALENDLY_BOOKING_URL} target="_blank" rel="noreferrer">Book your Consultation <ChevronRight size={18} /></a>
         </div>
       </div>
     </div>
@@ -1474,7 +1475,7 @@ function MarketplaceStyles() {
       .baml-drawer-nav{display:flex;flex-direction:column}
       .baml-drawer-nav a,.baml-drawer-nav .baml-nav-inert{padding:16px 0;border-bottom:1px solid #EFEFEF;font-size:18px;color:#3D3D3D;text-decoration:none}
       .baml-drawer-nav a.active{font-weight:600;color:#111}
-      .baml-drawer-consult{margin-top:24px;height:48px;border:0;border-radius:10px;background:#000;color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
+      .baml-drawer-consult{display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:24px;height:48px;border:0;border-radius:10px;background:#000;color:#fff;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer}
       .baml-drawer-country{display:flex;align-items:center;justify-content:space-between;margin-top:24px;font-size:15px;color:#666}
       .baml-page .baml-cta{width:min(1240px,calc(100% - 200px));min-height:226px;margin:25px auto 80px;padding:46px 56px;border-radius:28px;background:#0A0A0A;font-family:'Instrument Sans',Inter,sans-serif}
       .baml-page .baml-cta h2{margin:0 0 11px;font-family:'Instrument Sans',Inter,sans-serif;font-size:32px;font-weight:700;line-height:1.15;letter-spacing:-0.02em}
@@ -2025,7 +2026,7 @@ export const BuyAbroadUkListingDetailRedesign: React.FC = () => {
           <h2>Can&apos;t find what you&apos;re <br className="baml-br" />looking for?</h2>
           <p>Our advisors source off-market and exclusive properties not listed on any portal. <br className="baml-br" />Tell us what you want and we&apos;ll find it.</p>
         </div>
-        <a href="https://calendly.com/hello-heyhavlo/havlo-enquiry-call" target="_blank" rel="noreferrer" className="baml-call"><img src="/calendly-icon.svg" alt="" className="baml-call-mark" width={22} height={22} /> Book a Call</a>
+        <a href={CALENDLY_BOOKING_URL} target="_blank" rel="noreferrer" className="baml-call"><img src="/calendly-icon.svg" alt="" className="baml-call-mark" width={22} height={22} /> Book a Call</a>
       </section>
       {/* Phones: the cost card sits at the bottom of the screen until the
           page reaches it, collapsed to the total and Add to Basket. */}
