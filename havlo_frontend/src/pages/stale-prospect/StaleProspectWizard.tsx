@@ -1317,14 +1317,11 @@ function pushSellPurchaseEvent(data: ProspectPreview) {
 // /check. channel="review" (/review/seller, /review/agent) is the
 // analyst-review funnel (ReviewFunnel.tsx): Initial scan and Your details on
 // 'confirm', Preview & pay on 'payment', and on 'success' the wait for the
-// analyst until the report is released. `landing` replaces the ads landing
-// step with a page of its own (the seller page, SellLanding.tsx), given the
-// listing-link form to place.
+// analyst until the report is released.
 export const StaleProspectWizard = ({
   ads,
   channel = 'meta',
-  landing,
-}: { ads?: AdsAudience; channel?: AdsChannel; landing?: (form: ReactNode) => ReactNode } = {}) => {
+}: { ads?: AdsAudience; channel?: AdsChannel } = {}) => {
   const review = !!ads && channel === 'review';
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -1836,22 +1833,6 @@ export const StaleProspectWizard = ({
     );
   }
 
-  const listingForm = ads ? (
-    <AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />
-  ) : null;
-
-  if (step === 'landing' && ads && landing) {
-    return (
-      <div className="slw-page slw-ads">
-        <Header />
-        {landing(listingForm)}
-        <Footer />
-        <WizardStyles />
-        <AdsStyles />
-      </div>
-    );
-  }
-
   return (
     <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}${ads ? ' slw-ads' : ''}`}>
       <Header />
@@ -1875,7 +1856,7 @@ export const StaleProspectWizard = ({
               copy={ADS_COPY[ads].copy}
               discover={ADS_COPY[ads].discover}
               value={ADS_COPY[ads].value}
-              form={listingForm}
+              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
