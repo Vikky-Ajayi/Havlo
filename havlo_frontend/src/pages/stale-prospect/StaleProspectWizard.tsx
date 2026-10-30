@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
+import { pushGtmEventOnce } from '../../lib/gtm';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
 import {
@@ -1283,6 +1284,30 @@ function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience)
   }
 }
 
+// The seller page (/sell) reports to its Google Tag Manager container
+// instead of Meta: "generate_lead" when a property is found, "purchase" when
+// "Your full assessment is ready" shows after a card payment (?paid=card,
+// never a promo-code unlock). Each once per property.
+function pushSellLeadEvent(data: ProspectPreview) {
+  pushGtmEventOnce(`sell_lead_${data.property_code}`, 'generate_lead', {
+    value: prospectPrice(data),
+    currency: 'GBP',
+    property_code: data.property_code,
+  });
+}
+
+function pushSellPurchaseEvent(data: ProspectPreview) {
+  const value = prospectPrice(data);
+  pushGtmEventOnce(`sell_purchase_${data.property_code}`, 'purchase', {
+    ecommerce: {
+      transaction_id: `sl_prospect_purchase_${data.property_code}`,
+      value,
+      currency: 'GBP',
+      items: [{ item_id: 'property_sale_assessment', item_name: 'Havlo Property Sale Assessment', price: value, quantity: 1 }],
+    },
+  });
+}
+
 // ── Main wizard ─────────────────────────────────────────────────────────────
 
 // `ads` turns this into an ads landing page (Meta: /assess/seller,
@@ -1292,8 +1317,14 @@ function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience)
 // /check. channel="review" (/review/seller, /review/agent) is the
 // analyst-review funnel (ReviewFunnel.tsx): Initial scan and Your details on
 // 'confirm', Preview & pay on 'payment', and on 'success' the wait for the
-// analyst until the report is released.
-export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudience; channel?: AdsChannel } = {}) => {
+// analyst until the report is released. `landing` replaces the ads landing
+// step with a page of its own (the seller page, SellLanding.tsx), given the
+// listing-link form to place.
+export const StaleProspectWizard = ({
+  ads,
+  channel = 'meta',
+  landing,
+}: { ads?: AdsAudience; channel?: AdsChannel; landing?: (form: ReactNode) => ReactNode } = {}) => {
   const review = !!ads && channel === 'review';
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -1315,12 +1346,18 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
   // The analyst-review funnel starts owners and agents on its Initial scan.
   const [showDetailsForm, setShowDetailsForm] = useState(review ? false : ads !== 'owner');
   const leadPixelName = ads
-    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
+    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
   // No Meta Pixel 'Lead' event on the Meta ads pages (/assess/...): the ads
   // agency sets up those events itself. The base pixel (PageView, in
-  // index.html) still loads there as on every page.
-  const firesLeadPixel = !(ads && channel === 'meta');
+  // index.html) still loads there as on every page. Nor on the seller page
+  // (/sell), which has no Meta Pixel at all: it tells Tag Manager instead.
+  const sellPage = !!ads && channel === 'sell';
+  const firesLeadPixel = !(ads && (channel === 'meta' || sellPage));
+  const fireLeadEvents = (data: ProspectPreview) => {
+    if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
+    if (sellPage) pushSellLeadEvent(data);
+  };
 
   useEffect(() => {
     // slw-prospect-active also drives an overflow-x:hidden rule (see the
@@ -1343,6 +1380,12 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     if (params.get('paid') !== 'card') return;
     fireProspectPurchasePixel(prospect, ads);
   }, [step, prospect, params, ads, channel]);
+
+  // The same on the seller page, for Tag Manager.
+  useEffect(() => {
+    if (step !== 'success' || !prospect || !sellPage || params.get('paid') !== 'card') return;
+    pushSellPurchaseEvent(prospect);
+  }, [step, prospect, params, sellPage]);
 
   const query = useMemo(() => {
     const token = params.get('token') || undefined;
@@ -1394,7 +1437,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
         const data = await getProspectPreview(query);
         if (cancelled) return;
         setProspect(data);
-        if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
+        fireLeadEvents(data);
         setAccess({ token: query.token, code: data.property_code });
         if (query.forceStep) {
           // One-shot: consumed above by the payment_status branch below,
@@ -1560,7 +1603,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
       if (started.prefill?.email) setPrefill(started.prefill);
       const data = await getProspectPreview({ token: started.token });
       setProspect(data);
-      if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
+      fireLeadEvents(data);
       setAccess({ token: started.token, code: data.property_code });
       if (data.is_unlocked && data.report_on_hold) {
         setStep('success');
@@ -1793,6 +1836,22 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
     );
   }
 
+  const listingForm = ads ? (
+    <AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />
+  ) : null;
+
+  if (step === 'landing' && ads && landing) {
+    return (
+      <div className="slw-page slw-ads">
+        <Header />
+        {landing(listingForm)}
+        <Footer />
+        <WizardStyles />
+        <AdsStyles />
+      </div>
+    );
+  }
+
   return (
     <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}${ads ? ' slw-ads' : ''}`}>
       <Header />
@@ -1816,7 +1875,7 @@ export const StaleProspectWizard = ({ ads, channel = 'meta' }: { ads?: AdsAudien
               copy={ADS_COPY[ads].copy}
               discover={ADS_COPY[ads].discover}
               value={ADS_COPY[ads].value}
-              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
+              form={listingForm}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}

@@ -67,15 +67,19 @@ function parseReport(data: Record<string, unknown>): ReportEdit {
   };
 }
 
-// Leads from the ads and analyst-review landing pages, by lead_source
-// ('meta_seller', 'google_agent', 'review_seller', ...).
+// Leads from the ads, analyst-review and seller (/sell) landing pages, by
+// lead_source ('meta_seller', 'google_agent', 'review_seller', 'sell_seller', ...).
 function adLeadLabel(leadSource: string) {
   const who = leadSource.endsWith('_seller') ? 'vendor' : 'agent';
   if (leadSource.startsWith('review_')) return `Analyst review ${who}`;
+  if (leadSource.startsWith('sell_')) return `Seller page ${who}`;
   return `${leadSource.startsWith('google_') ? 'Google' : 'Meta'} ads ${who}`;
 }
 const adLeadColor = (leadSource: string) =>
-  leadSource.startsWith('review_') ? '#A409D2' : leadSource.startsWith('google_') ? '#34A853' : '#1877F2';
+  leadSource.startsWith('review_') ? '#A409D2'
+    : leadSource.startsWith('google_') ? '#34A853'
+    : leadSource.startsWith('sell_') ? '#E8710A'
+    : '#1877F2';
 
 function emptyManualForm() {
   return { rightmove_url: '', address: '' };
@@ -97,11 +101,11 @@ const STAGE_COLORS: Record<string, { background: string; color: string }> = {
   paid: { background: '#DCFCE7', color: '#15803D' },
 };
 type FunnelStage = '' | 'looked_up' | 'details_submitted' | 'reached_checkout' | 'paid';
-type FunnelSource = '' | 'letter' | 'meta' | 'google' | 'review';
+type FunnelSource = '' | 'letter' | 'meta' | 'google' | 'review' | 'sell';
 // Which funnel a Follow Up row came through (the backend's `source` filter).
 const SOURCE_LABELS: Record<string, string> = {
   '': 'All funnels', letter: 'Letters (/check)', meta: 'Meta ads (/assess)', google: 'Google ads (/g)',
-  review: 'Analyst review (/review)',
+  review: 'Analyst review (/review)', sell: 'Seller page (/sell)',
 };
 const fmtDateTime = (v?: string | null) =>
   v ? new Date(v).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -803,6 +807,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         .spc-badge.ad{background:#1877F2}
         .spc-badge.ad.google{background:#34A853}
         .spc-badge.ad.review{background:#A409D2}
+        .spc-badge.ad.sell{background:#E8710A}
         .spc-badge.treated{background:#059669}
         .spc-badge.looked-up{background:#A409D2}
         .spc-card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
@@ -1083,7 +1088,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                     <div className="spc-badges">
                       {item.is_manual && <span className="spc-badge manual">Manual</span>}
                       {item.lead_source && (
-                        <span className={`spc-badge ad${item.lead_source.startsWith('google_') ? ' google' : item.lead_source.startsWith('review_') ? ' review' : ''}`}>
+                        <span className={`spc-badge ad${item.lead_source.startsWith('google_') ? ' google' : item.lead_source.startsWith('review_') ? ' review' : item.lead_source.startsWith('sell_') ? ' sell' : ''}`}>
                           {adLeadLabel(item.lead_source)}
                         </span>
                       )}

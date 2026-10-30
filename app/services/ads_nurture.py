@@ -73,6 +73,8 @@ LANDING_PATHS = {
     ("google", "agent"): "/g/agent",
     ("review", "owner"): "/review/seller",
     ("review", "agent"): "/review/agent",
+    ("sell", "owner"): "/sell",
+    ("sell", "agent"): "/sell",  # no agent page of its own
 }
 
 

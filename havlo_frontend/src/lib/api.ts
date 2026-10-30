@@ -1219,7 +1219,7 @@ export const api = {
   staleProspectsConsoleListAbandoned: (params: {
     includeUnsubscribed?: boolean;
     stage?: string;
-    source?: 'letter' | 'meta' | 'google' | 'review';
+    source?: 'letter' | 'meta' | 'google' | 'review' | 'sell';
     audience?: 'owner' | 'agent';
     awaitingReview?: boolean;
     q?: string;

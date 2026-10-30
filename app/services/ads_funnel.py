@@ -7,7 +7,7 @@ preview are made exactly as discovery makes them, and the visitor carries
 on through the normal /check funnel by access token.
 
 Tags below are for Meta; Google leads get the same with "google_" in
-place of "meta_" (seller_source() etc.).
+place of "meta_", and the other channels likewise (seller_source() etc.).
 
 - A homeowner gets the listing's owner prospect (made here when discovery
   hasn't found the listing already), tagged lead_source "meta_seller". If
@@ -49,12 +49,13 @@ from app.services.listing_scraper import scrape_single_listing
 logger = logging.getLogger(__name__)
 
 # Which landing pages the visitor came from: Meta's (/assess/...), Google's
-# (/g/...), or the analyst-review funnel's (/review/..., app/services/
-# analyst_review.py), which holds a paid report 48 hours for an analyst. The
-# listing link in works the same for all three; the channel changes the
+# (/g/...), the analyst-review funnel's (/review/..., app/services/
+# analyst_review.py), which holds a paid report 48 hours for an analyst, or
+# the seller page at /sell (its own Google Tag Manager container). The
+# listing link in works the same for all of them; the channel changes the
 # lead_source tag, where links back point and (for "review") what happens
 # after payment.
-CHANNELS = ("meta", "google", "review")
+CHANNELS = ("meta", "google", "review", "sell")
 
 
 def seller_source(channel: str) -> str:
@@ -78,7 +79,7 @@ def channel_of(lead_source: str | None) -> str:
     return prefix if prefix in CHANNELS else "meta"
 
 
-CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review"}
+CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review", "sell": "Seller page"}
 
 
 LEAD_SELLER = seller_source("meta")

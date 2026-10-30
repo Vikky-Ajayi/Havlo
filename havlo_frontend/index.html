@@ -29,8 +29,25 @@
       gtag('config', 'AW-17989602376');
       gtag('config', 'G-YZC82R78VZ');
     </script>
-    <!-- Meta Pixel Code -->
+    <!-- Google Tag Manager for the seller page (/sell) only: GTM-537H8B3L.
+         That page has no Meta Pixel (below). Its lead and purchase events
+         are pushed to the dataLayer from src/lib/gtm.ts. -->
     <script>
+      window.havloSellPage = /^\/sell\/?$/.test(location.pathname);
+      if (window.havloSellPage) {
+        (function(){
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-537H8B3L';
+          document.head.appendChild(s);
+        })();
+        // The container starts from the gtag('js', ...) already on the
+        // dataLayer above; a second one would count the page view twice.
+      }
+    </script>
+    <!-- Meta Pixel Code (every page but /sell) -->
+    <script>
+      if (!window.havloSellPage)
       !function(f,b,e,v,n,t,s)
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -39,8 +56,10 @@
       t.src=v;s=b.getElementsByTagName(e)[0];
       s.parentNode.insertBefore(t,s)}(window, document,'script',
       'https://connect.facebook.net/en_US/fbevents.js');
-      fbq('init', '2204792573402043');
-      fbq('track', 'PageView');
+      if (window.fbq) {
+        fbq('init', '2204792573402043');
+        fbq('track', 'PageView');
+      }
     </script>
     <!-- End Meta Pixel Code -->
     <!--Start of Tawk.to Script-->

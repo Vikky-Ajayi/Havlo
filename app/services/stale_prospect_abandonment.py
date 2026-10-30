@@ -99,12 +99,12 @@ async def run_abandonment_email_cycle() -> dict:
                 StaleListingProspect.contact_email.is_not(None),
                 # Left "send me occasional tips" unticked (the analyst-review funnel).
                 StaleListingProspect.marketing_opt_in.is_not(False),
-                # Meta and Google ads homeowners get their own flow
+                # Meta and Google ads and /sell homeowners get their own flow
                 # (app/services/ads_nurture.py); the analyst-review funnel's
                 # homeowners (review_seller) get this one.
                 or_(
                     StaleListingProspect.lead_source.is_(None),
-                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller")),
+                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller", "sell_seller")),
                 ),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())

@@ -613,9 +613,9 @@ class AdsStartRequest(BaseModel):
     """Ads landing page: the pasted listing link (app/services/ads_funnel.py)."""
     listing_url: str = Field(..., min_length=10, max_length=1000)
     audience: Literal["owner", "agent"] = "owner"
-    # Which landing page: "meta" (/assess/...), "google" (/g/...) or
-    # "review" (/review/..., the analyst-review funnel).
-    channel: Literal["meta", "google", "review"] = "meta"
+    # Which landing page: "meta" (/assess/...), "google" (/g/...),
+    # "review" (/review/..., the analyst-review funnel) or "sell" (/sell).
+    channel: Literal["meta", "google", "review", "sell"] = "meta"
     # From a reminder email's link, when the visitor came back through one.
     reminder_token: Optional[str] = Field(None, max_length=100)
 
@@ -631,7 +631,7 @@ class AdsReminderRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     audience: Literal["owner", "agent"] = "owner"
-    channel: Literal["meta", "google", "review"] = "meta"
+    channel: Literal["meta", "google", "review", "sell"] = "meta"
 
 
 class AdsReminderLeadResponse(BaseModel):

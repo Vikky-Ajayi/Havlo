@@ -1742,8 +1742,8 @@ _FUNNEL_STATUS_FILTERS = {
 }
 
 # Which funnel a prospect came through, for the Follow Up filter: the letter
-# (/check, /check/agent), the Meta (/assess/...) or Google (/g/...) ads pages, or
-# the analyst-review pages (/review/...).
+# (/check, /check/agent), the Meta (/assess/...) or Google (/g/...) ads pages,
+# the analyst-review pages (/review/...) or the seller page (/sell).
 _FUNNEL_SOURCE_FILTERS = {
     "letter": lambda: or_(
         StaleListingProspect.lead_source.is_(None),
@@ -1751,11 +1751,13 @@ _FUNNEL_SOURCE_FILTERS = {
             StaleListingProspect.lead_source.not_like("meta\\_%"),
             StaleListingProspect.lead_source.not_like("google\\_%"),
             StaleListingProspect.lead_source.not_like("review\\_%"),
+            StaleListingProspect.lead_source.not_like("sell\\_%"),
         ),
     ),
     "meta": lambda: StaleListingProspect.lead_source.like("meta\\_%"),
     "google": lambda: StaleListingProspect.lead_source.like("google\\_%"),
     "review": lambda: StaleListingProspect.lead_source.like("review\\_%"),
+    "sell": lambda: StaleListingProspect.lead_source.like("sell\\_%"),
 }
 
 
@@ -1781,7 +1783,7 @@ async def list_abandoned_prospects(
         "Omit for every stage.",
     ),
     source: str | None = Query(
-        default=None, description="Funnel to filter to: letter | meta | google. Omit for every funnel."
+        default=None, description="Funnel to filter to: letter | meta | google | review | sell. Omit for every funnel."
     ),
     audience: str | None = Query(default=None, pattern="^(owner|agent)$", description="Homeowners or agencies only."),
     awaiting_review: bool = Query(

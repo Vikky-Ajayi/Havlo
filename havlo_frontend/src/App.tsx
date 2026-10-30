@@ -59,6 +59,7 @@ const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/Stal
 const MetaAdsFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.MetaAdsFunnel })));
 const GoogleAdsSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsSellerLanding })));
 const GoogleAdsAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsAgentLanding })));
+const SellLanding = React.lazy(() => import('./pages/stale-prospect/SellLanding').then(m => ({ default: m.SellLanding })));
 const ReviewSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.ReviewSellerLanding })));
 const ReviewAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.ReviewAgentLanding })));
 const AgentPortal = React.lazy(() => import('./pages/stale-prospect/AgentPortal').then(m => ({ default: m.AgentPortal })));
@@ -282,6 +283,7 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/g/agent',
   '/review/seller',
   '/review/agent',
+  '/sell',
   '/property-assessment/seller',
   '/property-assessment/agent',
   '/stale-listings/prospect',
@@ -326,9 +328,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   // branch below and gets the global marketing Navbar + Footer wrapped
   // around it, which is not what its own page header/layout expects.
   // The ads landing pages (Meta: /assess/..., Google: /g/..., formerly
-  // /property-assessment/...) and the analyst-review pages (/review/...)
+  // /property-assessment/...), the analyst-review pages (/review/...) and the
+  // seller page (/sell)
   // are the same wizard, so they get the same treatment.
-  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/g/') || pathname.startsWith('/review/') || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/g/') || pathname.startsWith('/review/') || pathname === '/sell' || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
@@ -456,6 +459,8 @@ export default function App() {
               {/* The analyst-review funnel: report held 48 hours for an analyst (ReviewFunnel.tsx). */}
               <Route path="/review/seller" element={<ReviewSellerLanding />} />
               <Route path="/review/agent" element={<ReviewAgentLanding />} />
+              {/* The seller page: its own Tag Manager container, no Meta Pixel (index.html). */}
+              <Route path="/sell" element={<SellLanding />} />
               {/* Their first, longer addresses: ads and emails already out may still use them. */}
               <Route path="/property-assessment/seller" element={<KeepQueryRedirect to="/g/seller" />} />
               <Route path="/property-assessment/agent" element={<KeepQueryRedirect to="/g/agent" />} />
