@@ -45,6 +45,19 @@
         // dataLayer above; a second one would count the page view twice.
       }
     </script>
+    <!-- Google Tag Manager for the Buy Abroad listings page
+         (/buyabroad/listings) only: GTM-WS22MXCM. The page also loads it
+         itself when reached from elsewhere on the site (src/lib/gtm.ts). -->
+    <script>
+      if (/^\/buyabroad\/listings\/?$/.test(location.pathname)) {
+        (function(){
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-WS22MXCM';
+          document.head.appendChild(s);
+        })();
+      }
+    </script>
     <!-- Meta Pixel Code (every page but /sell) -->
     <script>
       if (!window.havloSellPage)

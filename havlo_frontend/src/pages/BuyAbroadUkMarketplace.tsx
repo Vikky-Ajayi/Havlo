@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BUY_ABROAD_LISTINGS_GTM_ID, loadGtmContainer } from '../lib/gtm';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Bath, Bed, Bitcoin, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CreditCard, Eye, EyeOff, Heart, Info, Landmark, Link2, MapPin, Menu, Play, Search, ShoppingBasket, SlidersHorizontal, Trash2, Undo2, X } from 'lucide-react';
 import { api, API_BASE } from '../lib/api';
@@ -1652,6 +1653,7 @@ function MarketplaceStyles() {
 
 export const BuyAbroadUkListingsRedesign: React.FC = () => {
   useGbpRates();
+  useEffect(() => { loadGtmContainer(BUY_ABROAD_LISTINGS_GTM_ID); }, []);
   usePageMeta({ title: 'Browse United Kingdom Properties in Pounds & Naira | Havlo', description: 'Browse homes across the United Kingdom, the United States, Dubai and Canada with Havlo Buy Abroad.' });
   const typedCountry = useTypewriter(HERO_COUNTRIES);
   const [listingsByCountry, setListingsByCountry] = useState<Record<CountryKey, Listing[]>>(() => emptyCountryListings());
