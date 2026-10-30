@@ -33,21 +33,42 @@ PRICE_FINDING = {
         "higher than the average price per bedroom for recent sales nearby."
     ),
 }
-DESCRIPTION_FINDING = {
+# Sue's third finding: the model had only the first 1,600 of her 6,176
+# characters, cut mid-word, so "stops abruptly mid-sentence" was our cut.
+SUE_DESCRIPTION_FINDING = {
     "title": "Description lacks compelling detail",
     "icon": "description",
     "type": "issue",
     "description": (
         'The property description repeats generic phrases such as "practical area for food preparation" and '
-        "stops abruptly mid-sentence."
+        "stops abruptly mid-sentence after mentioning the conservatory."
     ),
+}
+DESCRIPTION_FINDING = {
+    "title": "Description leans on generic phrases",
+    "icon": "description",
+    "type": "issue",
+    "description": 'The property description repeats generic phrases such as "practical area for food preparation".',
 }
 
 
 class GuardTests(unittest.TestCase):
-    def test_the_finding_that_lost_the_sale_is_removed(self):
-        findings = report_guard.clean_findings([PRICE_FINDING, SUE_FINDING, DESCRIPTION_FINDING])
-        self.assertEqual([f["title"] for f in findings], [PRICE_FINDING["title"], DESCRIPTION_FINDING["title"]])
+    def test_the_findings_that_lost_the_sale_are_removed(self):
+        findings = report_guard.clean_findings([PRICE_FINDING, SUE_FINDING, SUE_DESCRIPTION_FINDING])
+        self.assertEqual([f["title"] for f in findings], [PRICE_FINDING["title"]])
+
+    def test_our_cut_is_never_called_the_sellers(self):
+        for sentence in (
+            "The description stops abruptly mid-sentence.",
+            "The listing text is cut off after the kitchen.",
+            "The copy trails off without a conclusion.",
+        ):
+            self.assertEqual(report_guard.clean_text(sentence, {}), "", sentence)
+
+    def test_missing_measurements_only_when_the_model_saw_it_all(self):
+        claim = "The description gives no room sizes or measurements."
+        self.assertEqual(report_guard.clean_text(claim, {}), claim)
+        self.assertEqual(report_guard.clean_text(claim, {}, description_cut=True), "")
 
     def test_genuine_findings_are_untouched(self):
         findings = report_guard.clean_findings([PRICE_FINDING, DESCRIPTION_FINDING])

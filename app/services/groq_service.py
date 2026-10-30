@@ -114,6 +114,31 @@ STANDING_ADVISORY_ACTIONS: list[dict[str, Any]] = [
 ]
 
 
+# How much of a listing's description the model reads. Long descriptions
+# (6,000+ characters with room measurements) used to be cut at 1,600 mid-word,
+# and the model then told the seller their description "stops abruptly
+# mid-sentence" and lacked detail that came later (Oct 2026).
+DESCRIPTION_LIMIT = 4000
+
+
+def description_excerpt(text: Any, limit: int = DESCRIPTION_LIMIT) -> str:
+    """The description for the prompt: whole if it fits, otherwise cut at
+    the end of a sentence and labelled as an excerpt, so the model never
+    mistakes our cut for the seller's writing."""
+    text = " ".join(str(text or "").split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    end = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+    if end > limit // 2:
+        cut = cut[: end + 1]
+    return (
+        "[EXCERPT of a longer description: it continues beyond this point. Never say the description stops, "
+        "ends abruptly, is cut off or unfinished, and never say it lacks room sizes, measurements or details "
+        "it may give later.] " + cut
+    )
+
+
 def _get_client():
     from groq import Groq
     import os
@@ -153,7 +178,7 @@ async def generate_property_report(
     if listing_price:
         context_parts.append(f"Listed price: {listing_price}")
     if listing_description:
-        context_parts.append(f"Description: {listing_description[:1500]}")
+        context_parts.append(f"Description: {description_excerpt(listing_description, 3000)}")
 
     context = "\n".join(context_parts)
 
@@ -236,7 +261,7 @@ async def generate_public_property_report(
     if listing_price:
         context_parts.append(f"Listed price: {listing_price}")
     if listing_description:
-        context_parts.append(f"Description: {listing_description[:1500]}")
+        context_parts.append(f"Description: {description_excerpt(listing_description, 3000)}")
 
     context = "\n".join(context_parts)
 
@@ -524,7 +549,7 @@ async def generate_stale_listing_report(
         )
         if snapshot.get("features")
         else "",
-        f"Listing description: {str(snapshot.get('description') or '').strip()[:1600]}"
+        f"Listing description: {description_excerpt(snapshot.get('description'))}"
         if snapshot.get("description")
         else "",
     ]
@@ -1317,7 +1342,7 @@ prices for any property; the only sales you may cite are any listed under
 "Recorded sold prices nearby" in the property context, quoted exactly.
 {override_note}
 Property context:
-{property_context[:2600]}
+{property_context[:6500]}
 
 Questionnaire:
 {questionnaire[:1800]}

@@ -692,8 +692,10 @@ def clean_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     elif preview.get("key_issues") and not getattr(prospect, "agent_edited_report_json", None):
         from app.services import report_guard
 
-        media = _safe_json(getattr(prospect, "listing_snapshot_json", None)).get("media")
-        preview["key_issues"] = report_guard.clean_findings(preview["key_issues"], media)[:3]
+        snapshot = _safe_json(getattr(prospect, "listing_snapshot_json", None))
+        cut = len(" ".join(str(snapshot.get("description") or "").split())) > report_guard.DESCRIPTION_CUT
+        preview["key_issues"] = report_guard.clean_findings(
+            preview["key_issues"], snapshot.get("media"), description_cut=cut)[:3]
     return preview
 
 
@@ -740,8 +742,11 @@ def current_report_json(prospect: StaleListingProspect) -> str | None:
         return raw
     from app.services import report_guard
 
-    media = _safe_json(getattr(prospect, "listing_snapshot_json", None)).get("media")
-    cleaned = report_guard.clean_report(report, media, ai_written=not edited)
+    snapshot = _safe_json(getattr(prospect, "listing_snapshot_json", None))
+    cleaned = report_guard.clean_report(
+        report, snapshot.get("media"), ai_written=not edited,
+        description_cut=len(" ".join(str(snapshot.get("description") or "").split())) > report_guard.DESCRIPTION_CUT,
+    )
     return json.dumps(cleaned, ensure_ascii=False)
 
 
