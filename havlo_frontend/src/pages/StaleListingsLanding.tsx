@@ -227,14 +227,44 @@ function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
 }
 
 /* ─── MAIN COMPONENT ─── */
-export function StaleListingsLanding() {
-  usePageMeta({
+// The seller page (/sell, SellLanding.tsx) is this page, with its search box
+// starting the instant listing-link funnel instead of the questionnaire: a
+// Rightmove link only, no property-code box, and copy to match.
+export type SellLandingStart = {
+  onSubmit: (listingUrl: string) => void;
+  loading: boolean;
+  error: string;
+  // The link last tried, shown again with the error if it couldn't be read.
+  listingUrl: string;
+};
+
+// What changes on /sell: the funnel needs a live Rightmove listing and opens
+// the full report as soon as it's paid for.
+const SELL_FAQ_ANSWERS: Record<string, string | null> = {
+  '3. How does it work?': 'Paste the link to your Rightmove listing. We analyse your home and show what may be holding your sale back, with\nactionable recommendations to improve buyer appeal and selling potential.',
+  '5. Can I use this before listing my home?': null,
+  '6. How long does the report take?': 'Your free first scan takes under a minute, and your full report opens as soon as you unlock it.',
+  '13. What property websites do you support?': 'We currently read Rightmove listings.',
+};
+
+const SELL_FAQS = ALL_FAQS.flatMap((faq) => {
+  if (!(faq.q in SELL_FAQ_ANSWERS)) return [faq];
+  const answer = SELL_FAQ_ANSWERS[faq.q];
+  return answer === null ? [] : [{ ...faq, a: answer }];
+}).map((faq, i) => ({ ...faq, q: faq.q.replace(/^\d+\./, `${i + 1}.`) }));
+
+export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {}) {
+  usePageMeta(sell ? {
+    title: 'Why Hasn’t My Property Sold? | Free Listing Assessment | Havlo',
+    description: 'Paste your Rightmove link and see what could be holding back your property’s sale, with recommendations you can use alongside your current estate agent.',
+    canonical: 'https://www.heyhavlo.com/sell',
+  } : {
     title: 'Is Your Property Not Selling? Get a Free Listing Audit | Havlo',
     description: 'Find out exactly why your property isn\'t selling. Stale Listings by Havlo gives you an expert review, pricing analysis, and action plan to attract buyers again.',
     canonical: 'https://www.heyhavlo.com/stale-listings',
   });
   const navigate = useNavigate();
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(sell?.listingUrl ?? '');
   const [inputError, setInputError] = useState('');
   const [showAllFaq, setShowAllFaq] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -267,6 +297,16 @@ export function StaleListingsLanding() {
   };
 
   const handleStart = () => {
+    if (sell) {
+      if (!input.trim()) {
+        setInputError('Please paste your Rightmove listing link to continue.');
+        focusHeroInput();
+        return;
+      }
+      setInputError('');
+      sell.onSubmit(input.trim());
+      return;
+    }
     const parsedInput = parsePropertyInput(input);
     if (!parsedInput.value) {
       setInputError('Please enter your property address or listing URL to continue.');
@@ -285,14 +325,17 @@ export function StaleListingsLanding() {
 
   const handlePricingStart = () => {
     if (!input.trim()) {
-      setInputError('Please enter your property address or listing URL to continue.');
+      setInputError(sell ? 'Please paste your Rightmove listing link to continue.' : 'Please enter your property address or listing URL to continue.');
       focusHeroInput();
       return;
     }
     handleStart();
   };
 
-  const faqsToShow = showAllFaq ? ALL_FAQS : ALL_FAQS.slice(0, 5);
+  const faqs = sell ? SELL_FAQS : ALL_FAQS;
+  const faqsToShow = showAllFaq ? faqs : faqs.slice(0, 5);
+  const heroInputPlaceholder = sell ? 'Paste your Rightmove listing link…' : 'Enter property address or Rightmove/Zoopla URL…';
+  const shownInputError = inputError || sell?.error || '';
 
   const handleOpenPortal = () => {
     navigate('/stale-listings/portal');
@@ -1281,7 +1324,7 @@ export function StaleListingsLanding() {
                 <span style={{ color:PURPLE }}>on the Market</span>
               </h1>
               <p className="sl-hero-desc text-justify" style={{ fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:400, color:'#000000', lineHeight:'150%', letterSpacing:'-0.02em', margin:0 }}>
-                Whether you're preparing to sell or already on the market, get personalised insights combining data-driven analysis with experienced local agent expertise to help your home sell faster — all while working with your current agent, no switching required.
+                {sell ? 'If your home is already on the market, get' : 'Whether you\'re preparing to sell or already on the market, get'} personalised insights combining data-driven analysis with experienced local agent expertise to help your home sell faster — all while working with your current agent, no switching required.
               </p>
             </div>
 
@@ -1300,29 +1343,30 @@ export function StaleListingsLanding() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleStart()}
-                  placeholder={isMobileHeroInput ? '' : 'Enter property address or Rightmove/Zoopla URL…'}
+                  placeholder={isMobileHeroInput ? '' : heroInputPlaceholder}
                   style={{ flex:1, background:'transparent', border:'none', outline:'none', fontFamily:'"Libre Franklin", sans-serif', fontWeight:500, fontSize:16, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'20px', minWidth:0 }}
                   />
                   {isMobileHeroInput && !input && (
                     <span className="sl-input-placeholder-mobile">
-                      Enter property address or Rightmove/Zoopla URL…
+                      {heroInputPlaceholder}
                     </span>
                   )}
                 </div>
                 <button
                   className="sl-input-btn"
                   onClick={handleStart}
+                  disabled={!!sell?.loading}
                   style={{ display:'flex', width:160, height:48, padding:'12px 18px', justifyContent:'center', alignItems:'center', gap:4, background:'#000000', color:'#FFFFFF', fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:16, letterSpacing:'-0.02em', borderRadius:12, border:'none', cursor:'pointer', whiteSpace:'nowrap', flexShrink:0 }}
                 >
                   Assess my home
                 </button>
               </div>
 
-              {inputError && (
-                <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{inputError}</p>
+              {shownInputError && (
+                <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{shownInputError}</p>
               )}
 
-              <PropertyCodeForm audience="owner" className="sl-code-form" />
+              {!sell && <PropertyCodeForm audience="owner" className="sl-code-form" />}
 
               {/* Trustpilot row */}
               <div className="sl-trustpilot-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -1408,15 +1452,17 @@ export function StaleListingsLanding() {
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 1</span>
             </div>
             <div className="sl-step-copy">
-              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Tell Us About Your Home</div>
-              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.</div>
+              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{sell ? 'Paste Your Rightmove Link' : 'Tell Us About Your Home'}</div>
+              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>{sell ? 'Copy the link to your property on Rightmove and paste it in to start your analysis. No account needed.' : 'Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.'}</div>
             </div>
             <div className="sl-step-float sl-step-float--inputs" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
-              {[
+              {(sell ? [
+                { Icon: LinkIcon, label:'Paste your Rightmove link…' },
+              ] : [
                 { Icon: HomeInputIcon, label:'Enter property address…' },
                 { Icon: LinkIcon, label:'Paste Rightmove / Zoopla URL…' },
                 { Icon: UploadIcon, label:'Upload listing document' },
-              ].map(({ Icon, label }, i) => (
+              ]).map(({ Icon, label }, i) => (
                 <div key={i} className="sl-step-float-row sl-step-float-row--input">
                   <Icon />
                   <span className="sl-step-float-sub">{label}</span>
@@ -1458,7 +1504,7 @@ export function StaleListingsLanding() {
             </div>
             <div className="sl-step-copy">
               <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>Improve your chances of a faster sale</div>
-              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:661 }}>Receive your expert report within 6–12 hours, with actionable recommendations you can implement alongside your current estate agent.</div>
+              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:661 }}>{sell ? 'Unlock your full report straight away, with actionable recommendations you can implement alongside your current estate agent.' : 'Receive your expert report within 6–12 hours, with actionable recommendations you can implement alongside your current estate agent.'}</div>
             </div>
             <div className="sl-step-float sl-step-float--report" style={{ position:'absolute', right:-192, bottom:0, width:679, padding:32, display:'flex', flexDirection:'column', gap:37, borderRadius:'32px 32px 0px 0px', border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               <span className="sl-step-report-title">Your report includes</span>

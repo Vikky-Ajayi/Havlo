@@ -1317,12 +1317,22 @@ function pushSellPurchaseEvent(data: ProspectPreview) {
 // /check. channel="review" (/review/seller, /review/agent) is the
 // analyst-review funnel (ReviewFunnel.tsx): Initial scan and Your details on
 // 'confirm', Preview & pay on 'payment', and on 'success' the wait for the
-// analyst until the report is released.
+// analyst until the report is released. `landing` replaces the ads landing
+// step with a page of its own (the seller page, SellLanding.tsx), given what
+// it needs to start the assessment from its own listing-link box.
 export const StaleProspectWizard = ({
   ads,
   channel = 'meta',
-}: { ads?: AdsAudience; channel?: AdsChannel } = {}) => {
+  landing,
+}: {
+  ads?: AdsAudience;
+  channel?: AdsChannel;
+  landing?: (start: { onSubmit: (listingUrl: string) => void; loading: boolean; error: string; listingUrl: string }) => ReactNode;
+} = {}) => {
   const review = !!ads && channel === 'review';
+  // The link last tried, so a page of its own (`landing`) can show it again
+  // next to the error when it couldn't be read.
+  const [lastListingUrl, setLastListingUrl] = useState('');
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
@@ -1592,6 +1602,7 @@ export const StaleProspectWizard = ({
 
   const handleAdsSubmit = async (listingUrl: string) => {
     if (!ads) return;
+    setLastListingUrl(listingUrl);
     setLoading(true);
     setError('');
     setStep('finding');
@@ -1831,6 +1842,10 @@ export const StaleProspectWizard = ({
         {ads && <AdsStyles />}
       </div>
     );
+  }
+
+  if (step === 'landing' && ads && landing) {
+    return <>{landing({ onSubmit: handleAdsSubmit, loading, error, listingUrl: lastListingUrl })}</>;
   }
 
   return (
