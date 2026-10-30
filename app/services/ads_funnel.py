@@ -518,7 +518,7 @@ def _loads(raw: str | None) -> dict[str, Any]:
 
 def assessment_summary(prospect: StaleListingProspect) -> dict[str, Any]:
     report = _loads(sps.current_report_json(prospect))
-    preview = _loads(prospect.preview_json)
+    preview = sps.clean_preview(prospect)
     scores = report.get("scores") or preview.get("scores") or {}
     issues = [f for f in (report.get("key_findings") or preview.get("key_issues") or [])
               if isinstance(f, dict) and f.get("type") != "strength"]

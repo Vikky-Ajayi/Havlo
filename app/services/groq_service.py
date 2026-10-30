@@ -490,7 +490,7 @@ async def generate_stale_listing_report(
         questionnaire = (
             "No homeowner questionnaire exists for this property. This is an automated "
             "outreach assessment based solely on the public Rightmove listing shown below "
-            "(address, asking price, description, photos, and property type)."
+            "(address, asking price, description and property type)."
             + _known_days_line
             + " We have not spoken to this homeowner and have no information about "
             "viewings, buyer feedback, enquiries, or offers — do not state, estimate, or "
@@ -528,7 +528,18 @@ async def generate_stale_listing_report(
         if snapshot.get("description")
         else "",
     ]
-    property_context = "\n".join(line for line in property_lines if line) or "Property details: not provided"
+    # The model reads text only: it never sees the photos. Say so plainly, or
+    # it describes rooms it has never seen ("the living room appears
+    # cluttered" about an empty room, Oct 2026). First, so the expansion
+    # step's truncated copy of this context still carries it.
+    # report_guard.py removes any that slip through.
+    property_context = (
+        "PHOTOS: you have NOT seen the listing photos, floor plan or any virtual tour, and you do not know how "
+        "many photos there are. Never describe what a photo or room looks like (clutter, furniture, light, "
+        "angles, decor, condition, staging, image quality, number of photos), and never say a floor plan, "
+        "video or virtual tour is missing. Use only the listing text and the facts below.\n\n"
+        + ("\n".join(line for line in property_lines if line) or "Property details: not provided")
+    )
 
     def _clean_scalar(value: Any) -> str:
         if value is None:
@@ -1087,8 +1098,10 @@ rule above:
 This is a cold outreach assessment. There is no homeowner questionnaire behind it —
 nobody has told us anything about viewings, buyer feedback, enquiry levels, or whether
 the property has been under offer. You only have the public Rightmove listing itself:
-address, asking price, description, photos, property type, and days on market
-computed from the listing's own dates.
+address, asking price, description, key features, property type, and days on market
+computed from the listing's own dates. You have NOT seen the photos, floor plan or
+any virtual tour: ignore every instruction above about what photos show, how many
+there are, or which listing assets are missing.
 
 Wherever the dimensions or format rules above refer to viewings, buyer feedback,
 enquiry activity, under-offer history, "the seller reports", or "the homeowner says",
@@ -1096,7 +1109,7 @@ ignore those specific data points entirely. Do not invent, estimate, or imply a 
 of viewings, a feedback quote, or an offer history under any circumstance — this is an
 absolute rule, not a stylistic preference. Ground every finding and action only in
 what is actually knowable: how long the property has been listed, how it is priced,
-what the description and photos communicate, and what a buyer scrolling past a
+what the description communicates, and what a buyer scrolling past a
 listing this stale would reasonably conclude. Frame every observation as what the
 public listing itself suggests to a buyer, never as something the seller told you."""
         system_msg += " This is an automated cold-outreach assessment with no homeowner questionnaire behind it — base every claim only on the public listing itself, and never state or imply a viewing count, buyer feedback, or offer history, since none of that data exists for this property."
@@ -1109,14 +1122,16 @@ public listing itself suggests to a buyer, never as something the seller told yo
         absolute_rule_1 = "NEVER use generic placeholder descriptions. Every sentence must reference THIS homeowner's actual questionnaire answers."
         absolute_rule_2 = "overall_score: calibrate against the number of viewings, buyer feedback, price reductions, portal coverage, and photo quality. Most stale listings score 35–60."
         absolute_rule_price = "pricing_recommendation and pricing_recommendation_detail must reference the actual price range from q9_asking_price."
+        presentation_rule = "be strict on photo/description quality. Weak photos or a thin description = 20-45. Adequate = 45-65. Only 70+ if both photos and description are clearly strong AND the listing is not stale"
     else:
-        overall_score_rule = "honest saleability score — be tough. 0-40 = serious problems, 41-60 = significant issues, 61-75 = moderate issues, 76-100 = minor polish needed. Long time on market + weak description + few photos = max 55"
+        overall_score_rule = "honest saleability score — be tough. 0-40 = serious problems, 41-60 = significant issues, 61-75 = moderate issues, 76-100 = minor polish needed. Long time on market + weak description = max 55"
         pricing_score_rule = "low if the price looks out of step with a listing that has sat unsold this long. 0-35 = confirmed overpriced for how long it has been on market. 36-55 = likely overpriced. 56-70 = borderline. 71+ = reasonable for the market"
         finding_description_rule = "as per format rules above — specific to THIS property's public listing details, never a viewing count, feedback quote, or offer history"
         summary_rule = "as per format rules above — written for this homeowner based only on the public listing, never referencing viewings, feedback, or offers"
-        absolute_rule_1 = "NEVER use generic placeholder descriptions. Every sentence must reference THIS property's actual public listing details (price, description, photos, days on market) — never invent or imply a viewing count, buyer feedback, or offer history, since none of that data exists for this property."
-        absolute_rule_2 = "overall_score: calibrate against days on market, price positioning, listing content quality, and photo count. Most stale listings score 35–60."
+        absolute_rule_1 = "NEVER use generic placeholder descriptions. Every sentence must reference THIS property's actual public listing details (price, description, key features, days on market) — never invent or imply a viewing count, buyer feedback, or offer history, since none of that data exists for this property."
+        absolute_rule_2 = "overall_score: calibrate against days on market, price positioning, and how complete and specific the description is. Most stale listings score 35–60."
         absolute_rule_price = "pricing_recommendation and pricing_recommendation_detail must reference the actual asking price from the listing itself."
+        presentation_rule = "judge the description and key features only (you have not seen the photos). Thin, generic or unfinished wording = 20-45. Adequate = 45-65. Only 70+ if the description is clearly strong AND the listing is not stale"
 
     schema_block = f"""
 {property_context}
@@ -1133,7 +1148,7 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
   "days_on_market": <integer estimate based on signals: multiple price reductions suggests 90+ days, no reductions + few viewings suggests 60-90 days. Return null only if truly impossible to estimate>,
   "scores": {{
     "pricing": <integer 0-100 — {pricing_score_rule}>,
-    "listing_presentation": <integer 0-100 — be strict on photo/description quality. Weak photos or a thin description = 20-45. Adequate = 45-65. Only 70+ if both photos and description are clearly strong AND the listing is not stale>,
+    "listing_presentation": <integer 0-100 — {presentation_rule}>,
     "market_positioning": <integer 0-100 based on portal coverage, marketing channels, and how well the listing is positioned against comparable local stock>,
     "competition": <integer 0-100 — how favourably this property compares to the active_competition entries below on price, presentation, and days listed. Lower if competitors look more attractive>,
     "buyer_appeal": <integer 0-100 — how compelling the property is likely to feel to a buyer scrolling search results: headline features, location, first-impression pull>
@@ -1144,7 +1159,7 @@ Return ONLY a valid JSON object (absolutely no markdown, no code fences, no text
       "description": "<{finding_description_rule}>",
       "type": "<'issue' or 'strength'>",
       "icon": "<one of: price | photos | description | location | marketing | condition | timing>",
-      "evidence": "<one factual sentence citing the specific number/detail this finding is based on — e.g. an exact price gap, days-on-market figure, or photo count>",
+      "evidence": "<one factual sentence citing the specific number/detail this finding is based on — e.g. an exact price gap, a days-on-market figure, or a quoted phrase from the description>",
       "impact": "<one sentence on the concrete commercial consequence for the seller — fewer enquiries, lower click-through, buyers hesitating, etc.>",
       "recommend": "<one sentence, direct and actionable, on what to do about it>"
     }}
@@ -1203,8 +1218,12 @@ ABSOLUTE RULES — breaking any of these is a failure:
         schema_block += (
             "\n- Never write or imply a specific number of viewings, a buyer feedback quote, an enquiry "
             "count, or an under-offer history anywhere in the report — none of that data exists for this "
-            "property. Base every claim only on the public listing (price, description, photos, property "
-            "type, days on market)."
+            "property. Base every claim only on the public listing (price, description, key features, "
+            "property type, days on market)."
+            "\n- You have NOT seen the photos, floor plan or virtual tour. Never write a key finding about the "
+            "current photos or listing media (no 'photos' icon), and never describe a room's appearance. "
+            "Photography may appear only in action_plan, as a general opportunity (e.g. 'a fresh professional "
+            "shoot can renew interest'), never as a judgement of the current photos."
         )
 
     prompt = schema_block

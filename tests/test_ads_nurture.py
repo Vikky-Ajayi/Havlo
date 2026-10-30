@@ -255,7 +255,9 @@ class SummaryTests(unittest.TestCase):
         summary = ads_funnel.assessment_summary(self._prospect({"status": "ready", "count": 7, "basis": "similar", "area": "within a mile"}))
         self.assertEqual(summary["buyer_appeal"], "Needs attention")
         self.assertEqual(summary["pricing"], "Review recommended")
-        self.assertEqual(summary["presentation"]["count"], 3)
+        # The AI's "lead photo undersells the garden" finding is removed (it has
+        # never seen the photos, report_guard.py); the reshoot and floorplan stay.
+        self.assertEqual(summary["presentation"]["count"], 2)
         self.assertEqual(summary["competition"]["count"], 7)
         self.assertEqual(summary["competition"]["fallback"], "Needs attention")
         self.assertTrue(summary["finding"].startswith("Your property has undergone a price reduction"))

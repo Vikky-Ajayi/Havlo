@@ -679,6 +679,24 @@ def reduced_date_info(prospect: StaleListingProspect, snapshot: dict[str, Any]) 
     return when.date().isoformat() if when else ""
 
 
+def clean_preview(prospect: StaleListingProspect) -> dict[str, Any]:
+    """The stored preview with the same checks as the report: its findings
+    are the report's first three, so they're taken from the cleaned report
+    (or, with no report, cleaned themselves). See report_guard.py."""
+    preview = _safe_json(getattr(prospect, "preview_json", None))
+    report = _safe_json(current_report_json(prospect))
+    if preview and report.get("key_findings"):
+        preview["key_issues"] = report["key_findings"][:3]
+        preview["recommendations"] = (report.get("action_plan") or [])[:3]
+        preview["executive_summary"] = report.get("executive_summary") or preview.get("executive_summary") or ""
+    elif preview.get("key_issues") and not getattr(prospect, "agent_edited_report_json", None):
+        from app.services import report_guard
+
+        media = _safe_json(getattr(prospect, "listing_snapshot_json", None)).get("media")
+        preview["key_issues"] = report_guard.clean_findings(preview["key_issues"], media)[:3]
+    return preview
+
+
 def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     snapshot = _safe_json(prospect.listing_snapshot_json)
     return {
@@ -692,7 +710,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "bathrooms": prospect.bathrooms,
         "listing_snapshot": snapshot,
         "reduced_date": reduced_date_info(prospect, snapshot),
-        "preview": _safe_json(prospect.preview_json),
+        "preview": clean_preview(prospect),
         "payment_status": prospect.payment_status,
         "is_unlocked": prospect.payment_status == "completed",
         "property_confirmed": prospect.property_confirmed_at is not None,
@@ -713,8 +731,18 @@ def current_report_json(prospect: StaleListingProspect) -> str | None:
     """The report actually in effect for this prospect: an ops-console edit
     (agent_edited_report_json) always wins over the original AI output
     (report_json) once one exists — same precedence as
-    StaleListingAssessment.agent_edited_report_json elsewhere."""
-    return prospect.agent_edited_report_json or prospect.report_json
+    StaleListingAssessment.agent_edited_report_json elsewhere. Unverified
+    claims are taken out on the way (report_guard.py)."""
+    edited = getattr(prospect, "agent_edited_report_json", None)
+    raw = edited or getattr(prospect, "report_json", None)
+    report = _safe_json(raw)
+    if not report:
+        return raw
+    from app.services import report_guard
+
+    media = _safe_json(getattr(prospect, "listing_snapshot_json", None)).get("media")
+    cleaned = report_guard.clean_report(report, media, ai_written=not edited)
+    return json.dumps(cleaned, ensure_ascii=False)
 
 
 SOLD_COMPARABLES_MAX_AGE_DAYS = 30
