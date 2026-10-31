@@ -65,6 +65,23 @@ export const ReportAccuracyPanel = ({ country }: { country: 'UK' | 'US' }) => {
         </p>
       </div>
 
+      {data.regeneration && (
+        <div style={{ ...card, background: '#F5F3FF', borderColor: '#DDD6FE' }}>
+          <div style={{ fontWeight: 700 }}>
+            Rewriting these older free reports{data.regeneration.model ? ` with ${data.regeneration.model}` : ''}:{' '}
+            {data.regeneration.status === 'done' ? 'finished' : data.regeneration.status === 'failed' ? 'stopped' : 'in progress'}
+          </div>
+          <div style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }}>
+            {data.regeneration.regenerated ?? 0} rewritten from a fresh read of the listing
+            {data.regeneration.total != null ? ` of ${data.regeneration.total} unpaid prospects` : ''}
+            {data.regeneration.gone ? ` · ${data.regeneration.gone} listings no longer on Rightmove (kept their checked report)` : ''}
+            {data.regeneration.failed ? ` · ${data.regeneration.failed} couldn’t be rewritten (kept their checked report)` : ''}
+            {data.regeneration.error ? ` · ${data.regeneration.error}` : ''}.
+            {' '}The figures above still judge what people saw before the rewrite.
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
         <div style={card}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#B45309' }}>PREVIEW HAD A CLAIM WE NOW REMOVE</div>

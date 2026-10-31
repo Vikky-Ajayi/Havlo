@@ -231,6 +231,18 @@ export interface ReportAccuracyResponse {
     removed: { rule: string; where: string; text: string }[];
   }[];
   limited_to: number;
+  // The one-off rewrite of those older free reports (report_regeneration.py).
+  regeneration?: {
+    status: 'starting' | 'running' | 'done' | 'failed';
+    model?: string;
+    total?: number;
+    regenerated?: number;
+    gone?: number;
+    failed?: number;
+    error?: string;
+    started_at?: string;
+    finished_at?: string;
+  } | null;
 }
 
 export interface StaleProspectAbandonedResponse {

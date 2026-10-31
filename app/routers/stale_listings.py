@@ -1851,9 +1851,11 @@ async def report_accuracy(
     claim the checks now remove, and whether those people paid less often.
     Runs today's checks over the first three findings each prospect was
     shown (the stored preview). Reports an analyst edited are left out."""
-    from app.services import report_guard
+    from app.services import report_guard, report_regeneration
     from app.services.stale_prospect_service import _safe_json, prospect_report_facts
 
+    # Rewritten reports: judge the preview people actually saw (kept aside).
+    saw_before = await report_regeneration.backup()
     rows = (await db.execute(
         select(StaleListingProspect)
         .where(
@@ -1883,8 +1885,10 @@ async def report_accuracy(
             after["previews"] += 1
             after["paid"] += int(p.payment_status == "completed")
             continue
-        report = _safe_json(p.report_json)
-        shown = (_safe_json(p.preview_json).get("key_issues") or report.get("key_findings") or [])[:3]
+        original = saw_before.get(str(p.id)) or {}
+        report = _safe_json(original.get("report_json") or p.report_json)
+        preview_seen = _safe_json(original.get("preview_json") or p.preview_json)
+        shown = (preview_seen.get("key_issues") or report.get("key_findings") or [])[:3]
         if not shown:
             continue
         removed: list[dict[str, Any]] = []
@@ -1917,6 +1921,7 @@ async def report_accuracy(
         "by_rule": dict(sorted(rules.items(), key=lambda item: -item[1])),
         "examples": examples,
         "limited_to": limit,
+        "regeneration": await report_regeneration.status(),
     }
 
 

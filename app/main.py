@@ -745,6 +745,14 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Listing monitor disabled by ENABLE_LISTING_MONITOR.")
 
+    # ── One-off: rewrite the free reports seen before the report checks ───
+    # (report_regeneration). Runs at most once ever, in whichever worker
+    # claims it first; needs OPENAI_API_KEY.
+    if HAS_DATABASE and _env_enabled("ENABLE_REPORT_REGEN", True):
+        from app.services.report_regeneration import start_after_delay
+
+        app.state.scraper_tasks.append(asyncio.create_task(start_after_delay(90)))
+
     # ── 4-digit property codes running out ────────────────────────────────
     # Emails ADMIN_NOTIFY_EMAIL once when 90% of the owner property codes
     # are in use (see property_code_capacity). Every 6 hours.
