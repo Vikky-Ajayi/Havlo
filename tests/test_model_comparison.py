@@ -26,8 +26,33 @@ def fake_response(content="{}", prompt_tokens=1000, completion_tokens=500):
 
 
 class RoutingTests(unittest.TestCase):
-    def test_default_is_the_current_model(self):
-        self.assertEqual(groq_service.REPORT_MODEL.get(), ("groq", groq_service.GROQ_MODEL))
+    def test_live_reports_use_gpt_6_1_terra(self):
+        import os
+        self.assertIsNone(groq_service.REPORT_MODEL.get())  # no override = a live report
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False):
+            os.environ.pop("REPORT_MODEL", None)
+            self.assertEqual(groq_service.live_report_model(), ("openai", "gpt-6.1-terra"))
+            # Instant rollback without a deploy.
+            os.environ["REPORT_MODEL"] = "groq:openai/gpt-oss-120b"
+            self.assertEqual(groq_service.live_report_model(), ("groq", groq_service.GROQ_MODEL))
+
+    def test_a_live_report_falls_back_to_groq_when_openai_fails(self):
+        import os
+        calls = []
+
+        async def go():
+            groq_service.REPORT_CALLS.set(calls)
+            groq_client = types.SimpleNamespace(chat=types.SimpleNamespace(
+                completions=types.SimpleNamespace(create=lambda **kw: fake_response("groq-ok"))))
+            with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False), \
+                    mock.patch.object(groq_service, "_openai_chat", side_effect=RuntimeError("OpenAI 500")), \
+                    mock.patch.object(groq_service, "_get_client", return_value=groq_client):
+                os.environ.pop("REPORT_MODEL", None)
+                return await asyncio.to_thread(groq_service._report_chat, messages=[], max_tokens=10)
+
+        out = asyncio.run(go())
+        self.assertEqual(out.choices[0].message.content, "groq-ok")
+        self.assertEqual([c.get("provider") for c in calls], ["openai", "groq"])
 
     def test_openai_calls_go_to_openai_and_are_logged(self):
         calls = []
@@ -41,8 +66,8 @@ class RoutingTests(unittest.TestCase):
 
         self.assertEqual(asyncio.run(go()), "gpt-6-luna")
         self.assertEqual(calls[0]["prompt_tokens"], 1000)
-        # Set inside that run's own context: live reports still use Groq.
-        self.assertEqual(groq_service.REPORT_MODEL.get(), ("groq", groq_service.GROQ_MODEL))
+        # Set inside that run's own context: it doesn't change the live default.
+        self.assertIsNone(groq_service.REPORT_MODEL.get())
 
     def test_refused_parameters_are_dropped(self):
         responses = [

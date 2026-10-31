@@ -451,7 +451,7 @@ async def create_prospect_from_listing_snapshot(
         timeout=20,
     )
     report_snapshot = with_recorded_sales(listing_snapshot, sold_comparables)
-    report = await generate_prospect_report(
+    report = await _generate_live_report(
         property_address=property_address,
         rightmove_url=rightmove_url,
         snapshot=report_snapshot,
@@ -846,6 +846,28 @@ def prospect_report_facts(prospect: StaleListingProspect, report: dict[str, Any]
     )
 
 
+async def _generate_live_report(**kwargs) -> dict[str, Any]:
+    """generate_prospect_report for a live homeowner report, stamped with the
+    model that actually wrote it (report["_model"]) — the live default, or
+    Groq if OpenAI fell back. Lets us see in the data which model each report
+    used and spot any fallback. Comparison and the rewrite set their own
+    model, so they call generate_prospect_report directly."""
+    from app.services import groq_service
+
+    calls: list[dict[str, Any]] = []
+    groq_service.REPORT_CALLS.set(calls)
+    try:
+        report = await generate_prospect_report(**kwargs)
+    finally:
+        groq_service.REPORT_CALLS.set(None)
+    ok = [c for c in calls if "error" not in c]
+    if ok:
+        report["_model"] = f"{ok[-1]['provider']}:{ok[-1]['model']}"
+        if any(c.get("provider") == "openai" and "error" in c for c in calls):
+            report["_model_fallback"] = True
+    return report
+
+
 def check_new_report(report: dict[str, Any], facts: "report_guard.ReportFacts", label: str) -> None:
     """Run the claim checks on a report just written, log what they removed
     and note the count on it (the report itself is cleaned when read)."""
@@ -1146,7 +1168,7 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
     snapshot = _safe_json(prospect.listing_snapshot_json)
     recorded = await refresh_sold_comparables(prospect)
     report_snapshot = with_recorded_sales(snapshot, recorded)
-    expanded = await generate_prospect_report(
+    expanded = await _generate_live_report(
         property_address=prospect.property_address,
         rightmove_url=prospect.rightmove_url,
         snapshot=report_snapshot,

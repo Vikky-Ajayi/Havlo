@@ -31,7 +31,8 @@ from app.services import stale_prospect_service as sps
 logger = logging.getLogger(__name__)
 
 STATE_KEY = "report_model_comparison"
-CURRENT = ("groq", groq_service.GROQ_MODEL)
+# The model live reports use now (the comparison baseline).
+CURRENT = groq_service.live_report_model()
 
 # US dollars per million tokens (input, output), standard tier, as listed on
 # 31 Oct 2026: developers.openai.com/api/docs/pricing, and for gpt-oss-120b

@@ -177,7 +177,28 @@ def _get_client():
 # another one for the reports it writes. A context variable, so a comparison
 # never changes the model for live reports written at the same time
 # (asyncio.to_thread carries it into the worker thread).
-REPORT_MODEL: ContextVar[tuple[str, str]] = ContextVar("report_model", default=("groq", GROQ_MODEL))
+# All live homeowner reports use this model. gpt-6.1-terra on OpenAI since
+# Nov 2026 (the move off gpt-oss-120b, which couldn't see photos and invented
+# claims). Override with env REPORT_MODEL="provider:model" — e.g.
+# "groq:openai/gpt-oss-120b" to roll back without a deploy. Falls back to
+# Groq when OpenAI isn't configured, and (per call) when OpenAI errors.
+DEFAULT_REPORT_MODEL = ("openai", "gpt-6.1-terra")
+
+
+def live_report_model() -> tuple[str, str]:
+    raw = (os.environ.get("REPORT_MODEL") or "").strip()
+    if raw:
+        provider, _, model = raw.partition(":")
+        if provider in ("openai", "groq") and model:
+            return (provider, model)
+    if DEFAULT_REPORT_MODEL[0] == "openai" and not (os.environ.get("OPENAI_API_KEY") or "").strip():
+        return ("groq", GROQ_MODEL)  # no key: don't break live reports
+    return DEFAULT_REPORT_MODEL
+
+
+# A comparison or the report rewrite sets this for its own task; unset (None)
+# means a live report, which uses live_report_model().
+REPORT_MODEL: ContextVar[tuple[str, str] | None] = ContextVar("report_model", default=None)
 # Each model call made while set: provider, model, seconds, tokens, error.
 REPORT_CALLS: ContextVar[list | None] = ContextVar("report_calls", default=None)
 _OPENAI_URL = "https://api.openai.com/v1/chat/completions"
@@ -236,11 +257,7 @@ def _openai_chat(model: str, body: dict[str, Any]) -> Any:
     raise RuntimeError(f"OpenAI refused the request: {last_error}")
 
 
-def _report_chat(**body: Any) -> Any:
-    """A chat completion for a homeowner report, from whichever model
-    REPORT_MODEL names. Logged to REPORT_CALLS when a comparison is watching."""
-    provider, model = REPORT_MODEL.get()
-    calls = REPORT_CALLS.get()
+def _one_report_call(provider: str, model: str, body: dict[str, Any], calls: list | None) -> Any:
     started = time.monotonic()
     try:
         if provider == "openai":
@@ -261,6 +278,26 @@ def _report_chat(**body: Any) -> Any:
             "finish_reason": getattr(response.choices[0], "finish_reason", None),
         })
     return response
+
+
+def _report_chat(**body: Any) -> Any:
+    """A chat completion for a homeowner report. A comparison or the rewrite
+    sets REPORT_MODEL for its own run (and REPORT_CALLS to record it); a live
+    report uses live_report_model(), and if that model errors (e.g. an OpenAI
+    outage) it falls back to Groq rather than serving the stock fallback."""
+    override = REPORT_MODEL.get()
+    calls = REPORT_CALLS.get()
+    if override is not None:
+        return _one_report_call(override[0], override[1], body, calls)
+    provider, model = live_report_model()
+    try:
+        return _one_report_call(provider, model, body, calls)
+    except Exception as exc:
+        if provider == "groq":
+            raise
+        logger.warning("Live report model %s:%s failed (%s) — falling back to Groq %s",
+                       provider, model, type(exc).__name__, GROQ_MODEL)
+        return _one_report_call("groq", GROQ_MODEL, body, calls)
 
 
 async def generate_property_report(
