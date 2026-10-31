@@ -51,7 +51,7 @@ export const ReportAccuracyPanel = ({ country }: { country: 'UK' | 'US' }) => {
   const { affected, clean } = data.before_checks;
   const total = affected.previews + clean.previews;
   const live = new Date(data.checks_live_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const small = affected.previews < 30 || clean.previews < 30;
+  const small = affected.previews < 30 || (clean.previews > 0 && clean.previews < 30) || data.after_checks.previews < 30;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -71,15 +71,25 @@ export const ReportAccuracyPanel = ({ country }: { country: 'UK' | 'US' }) => {
           <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{rate(affected)}</div>
           <div style={{ fontSize: 13, color: '#6B7280' }}>paid ({affected.paid} of {affected.previews})</div>
         </div>
+        {clean.previews > 0 && (
+          <div style={card}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>PREVIEW HELD UP</div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{rate(clean)}</div>
+            <div style={{ fontSize: 13, color: '#6B7280' }}>paid ({clean.paid} of {clean.previews})</div>
+          </div>
+        )}
         <div style={card}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>PREVIEW HELD UP</div>
-          <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{rate(clean)}</div>
-          <div style={{ fontSize: 13, color: '#6B7280' }}>paid ({clean.paid} of {clean.previews})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1D4ED8' }}>SINCE THE CHECKS WENT LIVE</div>
+          <div style={{ fontSize: 28, fontWeight: 800, marginTop: 6 }}>{rate(data.after_checks)}</div>
+          <div style={{ fontSize: 13, color: '#6B7280' }}>
+            paid ({data.after_checks.paid} of {data.after_checks.previews}). People who only just saw their findings may still pay.
+          </div>
         </div>
       </div>
       {small && (
         <p style={{ margin: 0, fontSize: 13, color: '#92400E' }}>
           Fewer than 30 people in a group: treat the difference in payment rates as a hint, not proof.
+          {clean.previews === 0 && ' Every preview before the checks had a bad claim, so the fair comparison is before against since the checks.'}
         </p>
       )}
 

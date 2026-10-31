@@ -1817,13 +1817,16 @@ async def report_accuracy(
     funnels: dict[str, dict[str, dict[str, int]]] = {}
     rules: dict[str, int] = {}
     examples: list[dict[str, Any]] = []
-    seen_after = 0
+    after = bucket()
     for p in rows:
         seen_at = p.contact_details_submitted_at
         if seen_at.tzinfo is None:
             seen_at = seen_at.replace(tzinfo=timezone.utc)
         if seen_at >= _REPORT_CHECKS_LIVE_AT:
-            seen_after += 1
+            # Only checked reports since: the before/after payment rates are
+            # the real test of whether bad claims cost sales.
+            after["previews"] += 1
+            after["paid"] += int(p.payment_status == "completed")
             continue
         report = _safe_json(p.report_json)
         shown = (_safe_json(p.preview_json).get("key_issues") or report.get("key_findings") or [])[:3]
@@ -1853,7 +1856,8 @@ async def report_accuracy(
         "country": country,
         "checks_live_at": _REPORT_CHECKS_LIVE_AT.isoformat(),
         "before_checks": groups,
-        "seen_after_checks": seen_after,
+        "seen_after_checks": after["previews"],
+        "after_checks": after,
         "by_funnel": funnels,
         "by_rule": dict(sorted(rules.items(), key=lambda item: -item[1])),
         "examples": examples,

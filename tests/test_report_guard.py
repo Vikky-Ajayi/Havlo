@@ -168,6 +168,38 @@ class MarketTests(unittest.TestCase):
         self.assertEqual(clean("It is 7 percent higher than the average price per bedroom for recent sales."), "")
 
 
+class LiveExampleTests(unittest.TestCase):
+    """Sentences from the live accuracy check (Oct 2026): what must go, and
+    what the first version of the checks removed by mistake."""
+
+    def test_kept(self):
+        for sentence in (
+            "Reduce the asking price to £215,000 to align with market expectations.",
+            "In a market where buyers compare energy performance and outdoor space, the omission makes the property "
+            "appear less transparent and harder to benchmark against rivals.",
+            "This thin copy does not differentiate the bungalow from other listings and leaves the buyer without a "
+            "compelling narrative, which can lower the perceived uniqueness of the home in a crowded search result.",
+            "The current copy omits lifestyle-focused keywords such as “pet-friendly” and “family-oriented”, which "
+            "limits visibility in niche searches.",
+        ):
+            self.assertEqual(clean(sentence, NO_SALES), sentence, sentence)
+
+    def test_removed(self):
+        for sentence, rule in (
+            ("At £250,000 the asking price sits roughly £10,000 above the median price for three-bedroom detached "
+             "homes in the Beckside Manor area.", "market"),
+            ("Local market data shows similar flats selling around £215,000.", "market"),
+            ("The asking price of £250,000 for a 573 sq ft two-bed flat sits noticeably above the average price per "
+             "square foot for comparable recent sales in the W12 postcode.", "market"),
+            ("The description relies on standard phrases such as “generous two-bedroom flat” and “well-appointed "
+             "kitchen”.", "quote"),
+            ("The asking price of £275,000 puts it in a crowded bracket.", "asking_price"),
+        ):
+            removed = []
+            report_guard.clean_text(sentence, NO_SALES, removed)
+            self.assertEqual([r["rule"] for r in removed], [rule], sentence)
+
+
 class ReportTests(unittest.TestCase):
     def test_action_plan_photography_advice_can_stay(self):
         report = {"key_findings": [TIME_FINDING], "action_plan": [

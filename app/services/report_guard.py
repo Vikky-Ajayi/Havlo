@@ -54,7 +54,7 @@ _MISSING_MEDIA = re.compile(
 # looks...", "rooms appear...".
 _PERCEIVED = re.compile(
     r"\b(photo\w*|image\w*|picture\w*|gallery|shots?|visuals?|living room|lounge|kitchen|bedrooms?|bathrooms?|"
-    r"conservatory|garden|hallway|interiors?|exterior|rooms?|spaces?)\b[^.]{0,60}?"
+    r"conservatory|garden|hallway|interiors?|exterior|rooms?)\b[^.]{0,60}?"
     r"\b(appears?|appearing|looks?|looking|seems?|feels?|shows?|showing|shown|captured|captures|depicts?|reveals?)\b",
     re.IGNORECASE,
 )
@@ -86,12 +86,40 @@ DESCRIPTION_LIMIT = 4000
 _QUOTE = re.compile(r"[\"“”]([^\"“”]{3,200})[\"“”]|‘([^‘’]{3,200})’")
 _MONEY = re.compile(r"£\s?(\d[\d,]*(?:\.\d+)?)\s?(k|m|million)?\b", re.IGNORECASE)
 _PERCENT = re.compile(r"(\d+(?:\.\d+)?)\s?(%|per ?cent)", re.IGNORECASE)
+# "asking price of £X", "priced at £X": the current price, stated as fact.
 _ASKING = re.compile(
-    r"\b(asking price|priced at|listed at|on the market at|guide price|marketed at)\b[^.£]{0,40}£", re.IGNORECASE)
+    r"\b(asking price|guide price)( of| is| at|:)?\s*£|\b(priced|listed|marketed|on the market) at\s*£", re.IGNORECASE)
+# A price we suggest, not the current one: "reduce the asking price to £215,000".
+_NEW_PRICE = re.compile(
+    r"\b(reduc\w*|lower\w*|cut\w*|drop\w*|adjust\w*|revis\w*|new|re-?pric\w*|bring\w*|mov\w*|target\w*|"
+    r"suggest\w*|recommend\w*|consider\w*|set\w*)\b",
+    re.IGNORECASE,
+)
+# Quotes said to be in the listing ("repeats phrases such as ..."), as
+# opposed to words it suggests adding or says are missing.
+_QUOTED_FROM_LISTING = re.compile(
+    r"\b(description|listing|copy|text|wording|phrases?|headline|title|advert|features?|calls?|called|describes?|"
+    r"described|mentions?|mentioned|says|states|uses|used|repeats?|relies|reads|opens|leads|labels?|refers?|"
+    r"promises?|promised|boasts?|claims?|touts?|highlights?|emphasi[sz]es|lists|includes|offers)\b",
+    re.IGNORECASE,
+)
+_SUGGESTED = re.compile(
+    r"\b(omit\w*|lack\w*|missing|without|no mention|(doesn'?t|does not|don'?t) (mention|use|include|say)|add\w*|"
+    r"consider\w*|try|keywords?|terms?|could|should|instead|replace|swap|rewrite|e\.g\.?|for example)\b",
+    re.IGNORECASE,
+)
+# Price words: a comparison with other homes only needs sales behind it if
+# it's about price.
+_PRICE_WORDS = re.compile(
+    r"(£|%|\bper ?cent\b|\bpric\w*|\bcost\w*|\bcheaper\b|\bexpensive\b|\bvalu\w*|\boverpriced\b|"
+    r"\bsold\b|\bsells?\b|\bselling\b)",
+    re.IGNORECASE,
+)
 # A comparison with sales or other homes: needs real sales behind it.
 _MARKET = re.compile(
     r"\b(sold|recent sales|comparable sales|sales (nearby|in the area|data|evidence|history|around)|sold prices?|"
-    r"sale prices?|achieved|average (asking |sold |sale )?price|area average|market average|local average|"
+    r"sale prices?|achieved|(average|median|mean|typical) (asking |sold |sale )?price|median|area average|"
+    r"market average|local average|market data|"
     r"price per (bedroom|square|sq)|per (bedroom|square (foot|feet|metre|meter)|sq\.? ?ft)|comparables?|"
     r"(similar|competing|comparable|nearby|neighbouring|other|equivalent) (homes|properties|listings|houses|flats|"
     r"semis|terraces|bungalows|stock))\b",
@@ -188,20 +216,26 @@ def _check(sentence: str, facts: ReportFacts) -> str | None:
             return "media"
     for m in _QUOTE.finditer(sentence):
         quote = _norm(m.group(1) or m.group(2) or "")
-        if len(quote.split()) >= 2 and quote not in _norm(facts.source_text):
+        before = sentence[: m.start()]
+        if (len(quote.split()) >= 2 and _QUOTED_FROM_LISTING.search(before) and not _SUGGESTED.search(before)
+                and quote not in _norm(facts.source_text)):
             return "quote"
-    if _ASKING.search(sentence) and facts.asking_price:
-        first = _MONEY.search(sentence, _ASKING.search(sentence).start())
+    asking = _ASKING.search(sentence)
+    if asking and facts.asking_price and not _NEW_PRICE.search(sentence[: asking.start()]):
+        first = _MONEY.search(sentence, asking.start())
         if first and not _close(_money(first), facts.asking_price, 0.01):
             return "asking_price"
-    if facts.bedrooms:
-        for m in _BEDS.finditer(sentence):
-            if _number(m.group(1)) not in (None, facts.bedrooms):
-                return "bedrooms"
-    if facts.bathrooms:
-        for m in _BATHS.finditer(sentence):
-            if _number(m.group(1)) not in (None, facts.bathrooms):
-                return "bathrooms"
+    # Bedroom counts of other homes ("comparable three-bedroom houses") are
+    # for the market check below, not this property's.
+    if not _MARKET.search(sentence):
+        if facts.bedrooms:
+            for m in _BEDS.finditer(sentence):
+                if _number(m.group(1)) not in (None, facts.bedrooms):
+                    return "bedrooms"
+        if facts.bathrooms:
+            for m in _BATHS.finditer(sentence):
+                if _number(m.group(1)) not in (None, facts.bathrooms):
+                    return "bathrooms"
     for m in _DAYS.finditer(sentence):
         amount = _number(m.group(3) or m.group(5) or "")
         unit = (m.group(4) or m.group(6) or "").lower()
@@ -217,8 +251,8 @@ def _check(sentence: str, facts: ReportFacts) -> str | None:
             return "market"  # no floor areas or bedrooms for the sales we hold
         amounts = [_money(m) for m in _MONEY.finditer(sentence)]
         percents = [float(m.group(1)) for m in _PERCENT.finditer(sentence)]
-        if not (amounts or percents or _COMPARE.search(sentence)):
-            return None  # a general remark, no figures or comparison
+        if not (amounts or percents or (_COMPARE.search(sentence) and _PRICE_WORDS.search(sentence))):
+            return None  # a general remark: no figures, or not about price
         if not facts.sales_given or not facts.sale_prices:
             return "market"
         for amount in amounts:

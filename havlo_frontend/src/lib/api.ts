@@ -156,6 +156,7 @@ export interface ReportAccuracyResponse {
   checks_live_at: string;
   before_checks: { affected: ReportAccuracyGroup; clean: ReportAccuracyGroup };
   seen_after_checks: number;
+  after_checks: ReportAccuracyGroup;
   by_funnel: Record<string, { affected: ReportAccuracyGroup; clean: ReportAccuracyGroup }>;
   by_rule: Record<string, number>;
   examples: {
