@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, API_BASE } from '../lib/api';
 import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
+import { ReportAccuracyPanel } from './ReportAccuracyPanel';
 
 interface AgentConsoleItem {
   account_id: string;
@@ -230,7 +231,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   // ── Tab: "Prospects" (above) vs "Follow-up" (everyone a customer
   // actually interacted with by code/token — from just looking the code
   // up, through confirmed, details-submitted, to paid) ──────────────────
-  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents'>('prospects');
+  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents' | 'accuracy'>('prospects');
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
@@ -1035,7 +1036,15 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               Agents
             </button>
           )}
+          <button
+            onClick={() => setTab('accuracy')}
+            style={{ padding: '10px 4px', marginLeft: 20, background: 'none', border: 'none', borderBottom: tab === 'accuracy' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'accuracy' ? '#111111' : '#888', cursor: 'pointer' }}
+          >
+            Report accuracy
+          </button>
         </div>
+
+        {tab === 'accuracy' && <ReportAccuracyPanel country={country} />}
 
         {tab === 'prospects' && (
         <div className="spc-stats">

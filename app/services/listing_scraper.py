@@ -124,6 +124,28 @@ def _detect_platform(url: str) -> str:
 
 
 # ── General helpers ─────────────────────────────────────────────────────────
+# Rightmove descriptions run to 6,000+ characters, with room sizes at the
+# end. They used to be cut at 800, and the report model then told sellers
+# their description "stops abruptly mid-sentence" (Oct 2026).
+DESCRIPTION_MAX = 8000
+
+
+def _description(raw: Any) -> tuple[str, bool]:
+    """A listing description with its markup removed, and whether it was
+    longer than DESCRIPTION_MAX (so cut)."""
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", str(raw or ""))).strip()
+    return _clean(text, DESCRIPTION_MAX), len(text) > DESCRIPTION_MAX
+
+
+def _media_count(items: Any, resolve: Any = lambda value: value) -> int | None:
+    """How many floor plans / virtual tours a listing has; None when the
+    page doesn't say (so we never claim there are none)."""
+    items = resolve(items)
+    if not isinstance(items, list):
+        return None
+    return len([item for item in items if resolve(item)])
+
+
 def _clean(s: Any, maxlen: int = 500) -> str:
     if not s:
         return ""
@@ -979,10 +1001,11 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
 
         # ── Description (may contain HTML tags) ───────────────────────────────
         description = ""
+        description_truncated = False
         text_schema = r(prop_schema.get("text"))
         if isinstance(text_schema, dict):
             raw_desc = r(text_schema.get("description")) or ""
-            description = _clean(re.sub(r"<[^>]+>", " ", str(raw_desc)), 800)
+            description, description_truncated = _description(raw_desc)
 
         # ── Bedrooms / bathrooms ───────────────────────────────────────────────
         bedrooms = str(r(prop_schema.get("bedrooms")) or "")
@@ -1065,6 +1088,13 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
             "floor_area": "",
             "platform": "rightmove",
             "agent": _rm_agent_details(prop_schema.get("customer"), prop_schema.get("contactInfo"), r),
+            "description_truncated": description_truncated,
+            # Counted from the page, for the report (it never sees the media).
+            "media": {
+                "photos": len(images),
+                "floorplans": _media_count(prop_schema.get("floorplans"), r),
+                "virtual_tours": _media_count(prop_schema.get("virtualTours"), r),
+            },
         }
     except Exception as exc:
         logger.debug("PAGE_MODEL v2 decode error: %s", exc)
@@ -1129,12 +1159,20 @@ async def scrape_single_listing(url: str) -> dict:
                     for k in ("addedOrReduced", "listingUpdateReason")
                 )
                 if addr_str or price_str or images:
+                    description, description_truncated = _description(
+                        (prop.get("text") or {}).get("description") or prop.get("summary") or "")
                     result = {
                         "title": addr_str,
                         "address": addr_str,
                         "postcode": postcode,
                         "price": price_str,
-                        "description": _clean((prop.get("text") or {}).get("description") or prop.get("summary") or "", 800),
+                        "description": description,
+                        "description_truncated": description_truncated,
+                        "media": {
+                            "photos": len(images),
+                            "floorplans": _media_count(prop.get("floorplans")),
+                            "virtual_tours": _media_count(prop.get("virtualTours")),
+                        },
                         "url": url,
                         "images": images,
                         "image": images[0] if images else "",

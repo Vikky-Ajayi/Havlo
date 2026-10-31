@@ -301,6 +301,20 @@ def extract_price(value: Any) -> float | None:
         return None
 
 
+def with_recorded_sales(snapshot: dict[str, Any], sales: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """The snapshot for the report prompt, with the Land Registry sales the
+    model may cite (the only ones it may); "recorded_sales_nearby" is [] when
+    there are none, so the prompt can say so."""
+    rows = [s for s in sales or [] if isinstance(s, dict) and s.get("price")]
+    lines = []
+    for s in rows:
+        try:
+            lines.append(f"{s.get('address')} ({s.get('property_type') or 'property'}) sold for £{int(s['price']):,} on {s.get('date')}")
+        except (TypeError, ValueError):
+            continue
+    return {**snapshot, "recorded_sales_nearby": lines}
+
+
 def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
     images = scraped.get("images") if isinstance(scraped.get("images"), list) else []
     return {
@@ -319,6 +333,11 @@ def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
         "features": scraped.get("features") if isinstance(scraped.get("features"), list) else [],
         "price_reduced": bool(scraped.get("price_reduced")),
         "agent": scraped.get("agent") if isinstance(scraped.get("agent"), dict) else None,
+        # Counted from the Rightmove page (photos, floorplans, virtual_tours;
+        # None = not known), so reports can state them; see report_guard.py.
+        "media": scraped.get("media") if isinstance(scraped.get("media"), dict) else {},
+        # Set by the scraper: True when even its copy of the description is cut.
+        "description_truncated": scraped.get("description_truncated"),
     }
 
 
@@ -415,28 +434,41 @@ async def create_prospect_from_listing_snapshot(
     letter, which is otherwise made on first download from the console."""
     token = create_access_token()
     property_code = await make_property_code(db)
-    # Recorded sales are looked up alongside the report so creation takes no
-    # longer; a failed lookup leaves them to be fetched on first view.
-    report, sold_comparables = await asyncio.gather(
-        generate_prospect_report(
-            property_address=property_address,
-            rightmove_url=rightmove_url,
-            snapshot=listing_snapshot,
-            listing_duration_days=listing_duration_days,
-            expand_report=expand_report,
-            market=country,
+    # Recorded sales are looked up first and handed to the report, so any
+    # sale it cites is a real one. They used to run side by side, and the
+    # free report compared the price with "recent sales nearby" it had never
+    # been given (Oct 2026). A failed lookup leaves them to be fetched on
+    # first view, and the report is told it has no sales to cite.
+    sold_comparables = await _lookup_sold_comparables(
+        country=country,
+        postcode=listing_snapshot.get("postcode"),
+        address=property_address,
+        property_type=listing_snapshot.get("property_type"),
+        asking_price=asking_price,
+        # Bulk runs create several prospects at once and the lookups are
+        # rate-limited, so don't let them hold creation up; anything that
+        # misses this is filled in by backfill_sold_comparables.
+        timeout=20,
+    )
+    report_snapshot = with_recorded_sales(listing_snapshot, sold_comparables)
+    report = await generate_prospect_report(
+        property_address=property_address,
+        rightmove_url=rightmove_url,
+        snapshot=report_snapshot,
+        listing_duration_days=listing_duration_days,
+        expand_report=expand_report,
+        market=country,
+    )
+    # What this report was given, so its claims are checked against it.
+    report["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
+    report["_media_given"] = media_known(listing_snapshot.get("media"))
+    check_new_report(
+        report,
+        report_facts(
+            listing_snapshot, report, asking_price=asking_price, listing_duration_days=listing_duration_days,
+            listed_date=listed_date, written_at=datetime.now(timezone.utc), sales=sold_comparables,
         ),
-        _lookup_sold_comparables(
-            country=country,
-            postcode=listing_snapshot.get("postcode"),
-            address=property_address,
-            property_type=listing_snapshot.get("property_type"),
-            asking_price=asking_price,
-            # Bulk runs create several prospects at once and the lookups are
-            # rate-limited, so don't let them hold creation up; anything that
-            # misses this is filled in by backfill_sold_comparables.
-            timeout=20,
-        ),
+        property_address,
     )
     preview = build_preview(report, listing_snapshot, property_address)
     now = datetime.now(timezone.utc)
@@ -692,10 +724,8 @@ def clean_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     elif preview.get("key_issues") and not getattr(prospect, "agent_edited_report_json", None):
         from app.services import report_guard
 
-        snapshot = _safe_json(getattr(prospect, "listing_snapshot_json", None))
-        cut = len(" ".join(str(snapshot.get("description") or "").split())) > report_guard.DESCRIPTION_CUT
-        preview["key_issues"] = report_guard.clean_findings(
-            preview["key_issues"], snapshot.get("media"), description_cut=cut)[:3]
+        facts = prospect_report_facts(prospect, preview)
+        preview["key_issues"] = report_guard.clean_findings(preview["key_issues"], facts)[:3]
     return preview
 
 
@@ -729,6 +759,107 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     }
 
 
+def media_known(media: Any) -> bool:
+    """Whether the Rightmove page gave us any photo / floor plan / tour count."""
+    return isinstance(media, dict) and any(isinstance(v, int) for v in media.values())
+
+
+def _int_or_none(value: Any) -> int | None:
+    try:
+        return int(value) if str(value).strip().isdigit() else None
+    except (TypeError, ValueError):
+        return None
+
+
+def report_facts(
+    snapshot: dict[str, Any],
+    report: dict[str, Any],
+    *,
+    asking_price: float | None = None,
+    bedrooms: int | None = None,
+    bathrooms: int | None = None,
+    listing_duration_days: int | None = None,
+    listed_date: datetime | None = None,
+    written_at: datetime | None = None,
+    sales: list[dict[str, Any]] | None = None,
+) -> "report_guard.ReportFacts":
+    """What a report's claims are checked against (report_guard.py)."""
+    from app.services import report_guard
+
+    now = datetime.now(timezone.utc)
+    if listed_date is not None and listed_date.tzinfo is None:
+        listed_date = listed_date.replace(tzinfo=timezone.utc)
+    if written_at is not None and written_at.tzinfo is None:
+        written_at = written_at.replace(tzinfo=timezone.utc)
+    known = [d for d in (
+        listing_duration_days,
+        (written_at - listed_date).days if listed_date and written_at else None,
+    ) if isinstance(d, int) and d >= 0]
+    current = [d for d in (
+        (now - listed_date).days if listed_date else None,
+        listing_duration_days + (now - written_at).days if listing_duration_days is not None and written_at else None,
+    ) if isinstance(d, int) and d >= 0]
+    description = " ".join(str(snapshot.get("description") or "").split())
+    if "description_truncated" in snapshot:
+        cut = bool(snapshot.get("description_truncated")) or len(description) > report_guard.DESCRIPTION_LIMIT
+    else:
+        cut = len(description) >= report_guard.OLD_DESCRIPTION_CAP - 10
+    sale_prices = []
+    for row in sales or []:
+        try:
+            sale_prices.append(float(row.get("price")))
+        except (AttributeError, TypeError, ValueError):
+            continue
+    sales_given = report.get("_sales_given")
+    if sales_given is None:
+        # Before Oct 2026 only the expanded (paid) report was given sales.
+        sales_given = bool(report.get("_expanded")) and bool(sale_prices)
+    return report_guard.ReportFacts(
+        asking_price=asking_price or extract_price(snapshot.get("price")),
+        bedrooms=bedrooms or _int_or_none(snapshot.get("bedrooms")),
+        bathrooms=bathrooms or _int_or_none(snapshot.get("bathrooms")),
+        days_min=min(known + current) if known or current else None,
+        days_max=max(known + current) if known or current else None,
+        media=snapshot.get("media") if isinstance(snapshot.get("media"), dict) else {},
+        media_given=bool(report.get("_media_given")),
+        sale_prices=sale_prices,
+        sales_given=bool(sales_given),
+        source_text=" ".join([
+            str(snapshot.get("title") or ""), str(snapshot.get("address") or ""), description,
+            " ".join(str(f) for f in snapshot.get("features") or []),
+        ]),
+        description_cut=cut,
+    )
+
+
+def prospect_report_facts(prospect: StaleListingProspect, report: dict[str, Any]) -> "report_guard.ReportFacts":
+    return report_facts(
+        _safe_json(getattr(prospect, "listing_snapshot_json", None)),
+        report,
+        asking_price=getattr(prospect, "asking_price", None),
+        bedrooms=getattr(prospect, "bedrooms", None),
+        bathrooms=getattr(prospect, "bathrooms", None),
+        listing_duration_days=getattr(prospect, "listing_duration_days", None),
+        listed_date=getattr(prospect, "listed_date", None),
+        written_at=getattr(prospect, "processed_at", None) or getattr(prospect, "created_at", None),
+        sales=cached_sold_comparables(prospect) if getattr(prospect, "sold_comparables_at", None) else None,
+    )
+
+
+def check_new_report(report: dict[str, Any], facts: "report_guard.ReportFacts", label: str) -> None:
+    """Run the claim checks on a report just written, log what they removed
+    and note the count on it (the report itself is cleaned when read)."""
+    from collections import Counter
+
+    from app.services import report_guard
+
+    removed: list[dict[str, Any]] = []
+    report_guard.clean_report(report, facts, removed=removed)
+    report["_checks"] = {"removed": len(removed), "rules": dict(Counter(r["rule"] for r in removed))}
+    if removed:
+        logger.info("Report checks removed %s claim(s) from %s: %s", len(removed), label, report["_checks"]["rules"])
+
+
 def current_report_json(prospect: StaleListingProspect) -> str | None:
     """The report actually in effect for this prospect: an ops-console edit
     (agent_edited_report_json) always wins over the original AI output
@@ -742,11 +873,7 @@ def current_report_json(prospect: StaleListingProspect) -> str | None:
         return raw
     from app.services import report_guard
 
-    snapshot = _safe_json(getattr(prospect, "listing_snapshot_json", None))
-    cleaned = report_guard.clean_report(
-        report, snapshot.get("media"), ai_written=not edited,
-        description_cut=len(" ".join(str(snapshot.get("description") or "").split())) > report_guard.DESCRIPTION_CUT,
-    )
+    cleaned = report_guard.clean_report(report, prospect_report_facts(prospect, report), ai_written=not edited)
     return json.dumps(cleaned, ensure_ascii=False)
 
 
@@ -1018,21 +1145,20 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
         return report
     snapshot = _safe_json(prospect.listing_snapshot_json)
     recorded = await refresh_sold_comparables(prospect)
-    if recorded:
-        # Real sales the AI may cite; it's told never to invent any others.
-        snapshot["recorded_sales_nearby"] = [
-            f"{s['address']} ({s['property_type']}) sold for £{s['price']:,} on {s['date']}" for s in recorded
-        ]
+    report_snapshot = with_recorded_sales(snapshot, recorded)
     expanded = await generate_prospect_report(
         property_address=prospect.property_address,
         rightmove_url=prospect.rightmove_url,
-        snapshot=snapshot,
+        snapshot=report_snapshot,
         listing_duration_days=prospect.listing_duration_days,
         expand_report=True,
         base_report=report,
         market=prospect_country(prospect),
     )
     expanded["_expanded"] = True
+    expanded["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
+    expanded["_media_given"] = media_known(snapshot.get("media"))
+    check_new_report(expanded, prospect_report_facts(prospect, expanded), prospect.property_address)
     prospect.report_json = json.dumps(expanded, ensure_ascii=False)
     return expanded
 

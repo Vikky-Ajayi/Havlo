@@ -13,6 +13,7 @@ import string
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
@@ -1771,6 +1772,93 @@ def _awaiting_review_filter():
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
+
+
+# When the report checks (report_guard.py) went live: free previews seen
+# before this showed the AI's text unchecked.
+_REPORT_CHECKS_LIVE_AT = datetime(2026, 10, 31, tzinfo=timezone.utc)
+
+
+def _funnel_of(lead_source: str | None) -> str:
+    for name in ("meta", "google", "review", "sell"):
+        if (lead_source or "").startswith(f"{name}_"):
+            return name
+    return "letter"
+
+
+@public_router.get("/prospects-console/report-accuracy")
+async def report_accuracy(
+    db: AsyncSession = Depends(get_db),
+    country: str = Query(default="UK", pattern="^(UK|US)$"),
+    limit: int = Query(default=5000, ge=1, le=20000),
+) -> dict[str, Any]:
+    """How many free previews people saw before the report checks contained a
+    claim the checks now remove, and whether those people paid less often.
+    Runs today's checks over the first three findings each prospect was
+    shown (the stored preview). Reports an analyst edited are left out."""
+    from app.services import report_guard
+    from app.services.stale_prospect_service import _safe_json, prospect_report_facts
+
+    rows = (await db.execute(
+        select(StaleListingProspect)
+        .where(
+            StaleListingProspect.contact_details_submitted_at.is_not(None),
+            StaleListingProspect.country == country,
+            StaleListingProspect.agent_edited_report_json.is_(None),
+        )
+        .order_by(StaleListingProspect.contact_details_submitted_at.desc())
+        .limit(limit)
+    )).scalars().all()
+
+    def bucket() -> dict[str, int]:
+        return {"previews": 0, "paid": 0}
+
+    groups = {"affected": bucket(), "clean": bucket()}
+    funnels: dict[str, dict[str, dict[str, int]]] = {}
+    rules: dict[str, int] = {}
+    examples: list[dict[str, Any]] = []
+    seen_after = 0
+    for p in rows:
+        seen_at = p.contact_details_submitted_at
+        if seen_at.tzinfo is None:
+            seen_at = seen_at.replace(tzinfo=timezone.utc)
+        if seen_at >= _REPORT_CHECKS_LIVE_AT:
+            seen_after += 1
+            continue
+        report = _safe_json(p.report_json)
+        shown = (_safe_json(p.preview_json).get("key_issues") or report.get("key_findings") or [])[:3]
+        if not shown:
+            continue
+        removed: list[dict[str, Any]] = []
+        report_guard.clean_findings(shown, prospect_report_facts(p, report), removed)
+        removed = [r for r in removed if r["rule"] != "emptied"]
+        key = "affected" if removed else "clean"
+        paid = p.payment_status == "completed"
+        funnel = funnels.setdefault(_funnel_of(p.lead_source), {"affected": bucket(), "clean": bucket()})
+        for target in (groups[key], funnel[key]):
+            target["previews"] += 1
+            target["paid"] += int(paid)
+        for rule in {r["rule"] for r in removed}:
+            rules[rule] = rules.get(rule, 0) + 1
+        if removed and len(examples) < 15:
+            examples.append({
+                "property_code": p.property_code,
+                "address": p.property_address,
+                "funnel": _funnel_of(p.lead_source),
+                "paid": paid,
+                "seen_at": seen_at.isoformat(),
+                "removed": removed[:4],
+            })
+    return {
+        "country": country,
+        "checks_live_at": _REPORT_CHECKS_LIVE_AT.isoformat(),
+        "before_checks": groups,
+        "seen_after_checks": seen_after,
+        "by_funnel": funnels,
+        "by_rule": dict(sorted(rules.items(), key=lambda item: -item[1])),
+        "examples": examples,
+        "limited_to": limit,
+    }
 
 
 @public_router.get("/prospects-console/abandoned", response_model=StaleProspectAbandonedResponse)

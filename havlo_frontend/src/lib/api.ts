@@ -146,6 +146,29 @@ export interface StaleProspectAbandonedItem {
   report_ready_emailed_at?: string | null;
 }
 
+export interface ReportAccuracyGroup {
+  previews: number;
+  paid: number;
+}
+
+export interface ReportAccuracyResponse {
+  country: string;
+  checks_live_at: string;
+  before_checks: { affected: ReportAccuracyGroup; clean: ReportAccuracyGroup };
+  seen_after_checks: number;
+  by_funnel: Record<string, { affected: ReportAccuracyGroup; clean: ReportAccuracyGroup }>;
+  by_rule: Record<string, number>;
+  examples: {
+    property_code: string;
+    address: string;
+    funnel: string;
+    paid: boolean;
+    seen_at: string;
+    removed: { rule: string; where: string; text: string }[];
+  }[];
+  limited_to: number;
+}
+
 export interface StaleProspectAbandonedResponse {
   items: StaleProspectAbandonedItem[];
   total: number;
@@ -1215,6 +1238,11 @@ export const api = {
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
   },
+
+  // How many free previews seen before the report checks held a claim the
+  // checks now remove, and how often those people paid (report_guard.py).
+  staleProspectsConsoleReportAccuracy: (country: 'UK' | 'US' = 'UK') =>
+    request<ReportAccuracyResponse>('/stale-listings/prospects-console/report-accuracy', { queryParams: { country } }),
 
   staleProspectsConsoleListAbandoned: (params: {
     includeUnsubscribed?: boolean;

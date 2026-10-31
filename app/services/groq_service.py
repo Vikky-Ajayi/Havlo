@@ -121,6 +121,20 @@ STANDING_ADVISORY_ACTIONS: list[dict[str, Any]] = [
 DESCRIPTION_LIMIT = 4000
 
 
+def _media_line(media: Any) -> str:
+    """The listing's photo / floor plan / virtual tour counts, as counted from
+    the Rightmove page, for the prompt; "" when none of them is known."""
+    if not isinstance(media, dict):
+        return ""
+    parts = []
+    for key, one, many in (("photos", "photo", "photos"), ("floorplans", "floor plan", "floor plans"),
+                           ("virtual_tours", "virtual tour", "virtual tours")):
+        count = media.get(key)
+        if isinstance(count, int) and count >= 0:
+            parts.append(f"{count} {one if count == 1 else many}" if count else f"no {one}")
+    return ("Listing media (counted from the Rightmove page, exact): " + ", ".join(parts)) if parts else ""
+
+
 def description_excerpt(text: Any, limit: int = DESCRIPTION_LIMIT) -> str:
     """The description for the prompt: whole if it fits, otherwise cut at
     the end of a sentence and labelled as an excerpt, so the model never
@@ -542,7 +556,13 @@ async def generate_stale_listing_report(
             + "; ".join(str(line) for line in snapshot.get("recorded_sales_nearby") or [])
         )
         if snapshot.get("recorded_sales_nearby")
-        else "",
+        else (
+            "Recorded sold prices nearby: NONE available. Do not mention nearby sales, sold prices, area "
+            "averages, price per bedroom or per square foot, or any percentage above or below the market."
+            if "recorded_sales_nearby" in snapshot
+            else ""
+        ),
+        _media_line(snapshot.get("media")),
         (
             "Key features from listing: "
             + ", ".join(str(feature).strip() for feature in (snapshot.get("features") or []) if str(feature).strip())
@@ -558,11 +578,18 @@ async def generate_stale_listing_report(
     # cluttered" about an empty room, Oct 2026). First, so the expansion
     # step's truncated copy of this context still carries it.
     # report_guard.py removes any that slip through.
+    media_known = bool(_media_line(snapshot.get("media")))
     property_context = (
-        "PHOTOS: you have NOT seen the listing photos, floor plan or any virtual tour, and you do not know how "
-        "many photos there are. Never describe what a photo or room looks like (clutter, furniture, light, "
-        "angles, decor, condition, staging, image quality, number of photos), and never say a floor plan, "
-        "video or virtual tour is missing. Use only the listing text and the facts below.\n\n"
+        "PHOTOS: you have NOT seen the listing photos, floor plan or any virtual tour. Never describe what a "
+        "photo or room looks like (clutter, furniture, light, angles, decor, condition, staging, image quality). "
+        + (
+            "The listing media counts below are exact and you may state them, but nothing about what the "
+            "media shows. "
+            if media_known
+            else "You do not know how many photos there are or whether there is a floor plan, video or "
+            "virtual tour, so never say any of these is few or missing. "
+        )
+        + "Use only the listing text and the facts below.\n\n"
         + ("\n".join(line for line in property_lines if line) or "Property details: not provided")
     )
 
