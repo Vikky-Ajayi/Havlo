@@ -345,8 +345,19 @@ async def run_abandonment_sms_cycle() -> dict:
             logger.exception("Abandonment SMS send raised for prospect=%s stage=%s", prospect.id, stage)
             continue
 
+        if not delivered and getattr(delivered, "permanent", False):
+            # Refused for good (invalid number, STOP...): stop the series
+            # rather than be refused, and charged, again every cycle.
+            async with AsyncSessionLocal() as db:
+                fresh = await db.get(StaleListingProspect, prospect.id)
+                if fresh and fresh.sms_stopped_at is None:
+                    fresh.sms_stopped_at = now
+                    fresh.sms_stopped_reason = f"refused by Twilio ({getattr(delivered, 'error_code', '')})"[:120]
+                    await db.commit()
+            stopped += 1
+            continue
         if not delivered:
-            # Twilio unconfigured or refused the request - leave this stage
+            # Twilio unconfigured or a passing error - leave this stage
             # unrecorded so it retries next cycle, same as the email cycle.
             async with AsyncSessionLocal() as db:
                 fresh = await db.get(StaleListingProspect, prospect.id)

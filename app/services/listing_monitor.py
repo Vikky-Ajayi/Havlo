@@ -548,7 +548,9 @@ async def send_dashboard_texts(now: datetime) -> int:
                 monitor.sms_status = "opted_out"
                 continue
             phone = twilio_service.normalize_to_e164(prospect.contact_phone or "")
-            if not phone:
+            if not phone or twilio_service.sms_number_problem(phone):
+                # Not a number that can take a text: Twilio would refuse it,
+                # and charge for each refusal, every cycle.
                 monitor.sms_status = "no_phone"
                 continue
             token = issue_token(monitor)
@@ -560,7 +562,7 @@ async def send_dashboard_texts(now: datetime) -> int:
             if ok:
                 monitor.sms_status, monitor.sms_sent_at = "sent", now
                 sent += 1
-            elif now - monitor.created_at > SMS_GIVE_UP_AFTER:
+            elif getattr(ok, "permanent", False) or now - monitor.created_at > SMS_GIVE_UP_AFTER:
                 monitor.sms_status = "failed"
             await db.commit()
         await db.commit()

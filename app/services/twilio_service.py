@@ -119,13 +119,40 @@ def last_sms_failure(e164: str) -> str | None:
     return None
 
 
+# Refusals Twilio gives at once that sending again can't fix (and that it
+# charges for each time): https://www.twilio.com/docs/api/errors. In Oct 2026
+# two invalid agency numbers were retried every few minutes: 8,400 refusals.
+PERMANENT_SEND_ERRORS = {21211, 21214, 21217, 21401, 21407, 21408, 21421, 21601, 21606, 21610, 21612, 21614}
+
+
+class SmsResult:
+    """What a send did: truthy when Twilio accepted the text. error_code is
+    Twilio's code when it refused it ("invalid_number" when we didn't try);
+    `permanent` means trying again would only be refused (and charged) again."""
+
+    def __init__(self, ok: bool, error_code: int | str | None = None, message: str = "") -> None:
+        self.ok = ok
+        self.error_code = error_code
+        self.message = message
+
+    def __bool__(self) -> bool:
+        return self.ok
+
+    @property
+    def permanent(self) -> bool:
+        return self.error_code == "invalid_number" or self.error_code in PERMANENT_SEND_ERRORS
+
+    def __repr__(self) -> str:
+        return f"SmsResult(ok={self.ok}, error_code={self.error_code!r})"
+
+
 @lru_cache
 def _get_client() -> Client:
     settings = get_settings()
     return Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 
 
-def _send_sms(to_phone: str, body: str, *, from_override: str | None = None) -> bool:
+def _send_sms(to_phone: str, body: str, *, from_override: str | None = None) -> SmsResult:
     """Shared send path: validates the number and config, sends via Twilio,
     and turns every failure mode into a plain False rather than an
     exception — callers (background loops, HTTP routes) should never have
@@ -140,12 +167,12 @@ def _send_sms(to_phone: str, body: str, *, from_override: str | None = None) -> 
     (inbox notifications), which stays on the real number."""
     if not is_valid_e164(to_phone):
         logger.warning("Skipping SMS — invalid E.164 phone: %r", to_phone)
-        return False
+        return SmsResult(False, "invalid_number", "not E.164")
 
     settings = get_settings()
     if not (settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN and settings.TWILIO_PHONE_NUMBER):
         logger.warning("Skipping SMS — Twilio is not configured.")
-        return False
+        return SmsResult(False, None, "Twilio not configured")
 
     try:
         client = _get_client()
@@ -155,20 +182,20 @@ def _send_sms(to_phone: str, body: str, *, from_override: str | None = None) -> 
             to=to_phone,
         )
         logger.info("SMS sent to %s — SID: %s", to_phone, message.sid)
-        return True
+        return SmsResult(True)
     except TwilioRestException as exc:
         logger.error("Twilio error sending to %s: %s", to_phone, exc)
-        return False
+        return SmsResult(False, exc.code, str(exc.msg or exc)[:200])
     except Exception as exc:
         logger.error("Unexpected error sending SMS to %s: %s", to_phone, exc)
-        return False
+        return SmsResult(False, None, str(exc)[:200])
 
 
 def send_new_message_sms(
     to_phone: str,
     sender_name: str,
     app_url: str,
-) -> bool:
+) -> SmsResult:
     """Send an SMS notifying a user of a new inbox message.
 
     Returns True only if Twilio accepted the message. Twilio failures and
@@ -182,7 +209,7 @@ def send_new_message_sms(
     return _send_sms(to_phone, body)
 
 
-def send_test_sms(to_phone: str) -> bool:
+def send_test_sms(to_phone: str) -> SmsResult:
     """Admin QA helper — confirms TWILIO_ACCOUNT_SID/AUTH_TOKEN/PHONE_NUMBER
     and the destination number actually work, without needing a real inbox
     message or stale-prospect abandonment event to trigger one."""
@@ -254,7 +281,7 @@ def sms_abandonment_schedule(already_sent: set[int]) -> tuple[int, ...]:
     return SMS_ABANDONMENT_STAGE_DAYS
 
 
-def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url: str, unsubscribe_url: str) -> bool:
+def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url: str, unsubscribe_url: str) -> SmsResult:
     """One text of the abandonment SMS series. `message` is its position in
     SMS_ABANDONMENT_MESSAGES (0 = the first). Always ends with an "Opt out"
     link distinct from the email drip's unsubscribe — see
@@ -265,7 +292,7 @@ def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url
     """
     if not 0 <= message < len(SMS_ABANDONMENT_MESSAGES):
         logger.error("Unknown SMS abandonment message: %r", message)
-        return False
+        return SmsResult(False, None, "unknown message")
     body = SMS_ABANDONMENT_MESSAGES[message].format(link=preview_url) + f"\n\nOpt out: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
 
@@ -277,12 +304,12 @@ AGENT_FOLLOWUP_SMS_TEMPLATES: dict[int, str] = {
 }
 
 
-def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, count: int, link: str, unsubscribe_url: str) -> bool:
+def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, count: int, link: str, unsubscribe_url: str) -> SmsResult:
     """One agency follow-up text. Same never-raise contract as the other senders."""
     template = AGENT_FOLLOWUP_SMS_TEMPLATES.get(stage)
     if not template:
         logger.error("Unknown agent follow-up SMS stage: %r", stage)
-        return False
+        return SmsResult(False, None, "unknown stage")
     body = template.format(brand=brand, count=count, link=link) + f"\n\nOpt out: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
 
@@ -296,5 +323,5 @@ MONITOR_DASHBOARD_SMS = (
 )
 
 
-def send_monitor_dashboard_sms(to_phone: str, *, address: str, link: str) -> bool:
+def send_monitor_dashboard_sms(to_phone: str, *, address: str, link: str) -> SmsResult:
     return _send_sms(to_phone, MONITOR_DASHBOARD_SMS.format(address=address, link=link), from_override="Havlo")

@@ -85,3 +85,43 @@ class ShortLinkTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RefusalTests(unittest.TestCase):
+    """Twilio refuses some texts on the spot (21211: invalid number) and
+    charges for each refusal. In Oct 2026 two invalid agency numbers were
+    retried every few minutes for 12 days: 8,400 refusals."""
+
+    def send_with(self, exc=None):
+        from twilio.base.exceptions import TwilioRestException
+
+        settings = types.SimpleNamespace(TWILIO_ACCOUNT_SID="AC", TWILIO_AUTH_TOKEN="t", TWILIO_PHONE_NUMBER="+447700900000")
+
+        def create(**kw):
+            if exc:
+                raise TwilioRestException(400, "https://api.twilio.com", msg="Invalid 'To' Phone Number", code=exc)
+            return types.SimpleNamespace(sid="SM1")
+
+        client = types.SimpleNamespace(messages=types.SimpleNamespace(create=create))
+        with mock.patch.object(twilio_service, "get_settings", return_value=settings), \
+                mock.patch.object(twilio_service, "_get_client", return_value=client):
+            return twilio_service._send_sms("+447911123456", "hi")
+
+    def test_a_refusal_for_an_invalid_number_is_permanent(self):
+        result = self.send_with(21211)
+        self.assertFalse(result)
+        self.assertEqual(result.error_code, 21211)
+        self.assertTrue(result.permanent)
+
+    def test_a_passing_error_is_retried(self):
+        result = self.send_with(20429)  # too many requests
+        self.assertFalse(result)
+        self.assertFalse(result.permanent)
+
+    def test_an_accepted_text_is_true(self):
+        self.assertTrue(self.send_with(None))
+
+    def test_the_agency_numbers_from_the_log_are_never_sent(self):
+        # The shapes of the two numbers retried 4,200 times each (masked in the log).
+        for number in ("+4451234567765", "+444123888"):
+            self.assertIsNotNone(twilio_service.sms_number_problem(number), number)

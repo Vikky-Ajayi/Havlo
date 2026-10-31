@@ -203,8 +203,11 @@ async def run_agent_followup_cycle() -> dict:
                 )
             else:
                 e164 = twilio_service.normalize_to_e164(account.contact_phone or "")
-                if not e164:
-                    # Never becomes usable on its own: mark it handled.
+                problem = twilio_service.sms_number_problem(e164) if e164 else "not a valid phone number"
+                if problem:
+                    # Never becomes textable on its own: mark the stage handled
+                    # without sending (Twilio charges for every refusal).
+                    logger.info("Agent follow-up text stage %s skipped for agency %s: %s", stage, account.id, problem)
                     await _record(account.id, "sms", stage)
                     continue
                 delivered = await asyncio.to_thread(
@@ -216,6 +219,13 @@ async def run_agent_followup_cycle() -> dict:
             logger.exception("Agent follow-up %s stage %s raised for agency %s", channel, stage, account.id)
             continue
         if not delivered:
+            if channel == "sms" and getattr(delivered, "permanent", False):
+                # Twilio refused it for good (invalid number, STOP...): retrying
+                # every cycle cost 8,400 refusals in Oct 2026. Mark it handled.
+                logger.warning("Agent follow-up text stage %s refused for agency %s (Twilio %s); not retrying",
+                               stage, account.id, getattr(delivered, "error_code", None))
+                await _record(account.id, "sms", stage)
+                continue
             logger.warning("Agent follow-up %s stage %s not delivered for agency %s; will retry", channel, stage, account.id)
             continue
         if await _record(account.id, channel, stage):
