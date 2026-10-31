@@ -1,8 +1,10 @@
 """Groq LLM service for AI property analysis reports."""
 from __future__ import annotations
 
+from contextvars import ContextVar
 from copy import deepcopy
 import logging
+import os
 import re
 import time
 from typing import Any, Callable, Optional, TypeVar
@@ -168,6 +170,97 @@ def _get_client():
     if not api_key:
         raise ValueError("GROQ_API_KEY is not configured.")
     return Groq(api_key=api_key)
+
+
+# ── Which model writes the homeowner reports ─────────────────────────────
+# Groq's gpt-oss-120b, unless a comparison run (model_comparison.py) asks for
+# another one for the reports it writes. A context variable, so a comparison
+# never changes the model for live reports written at the same time
+# (asyncio.to_thread carries it into the worker thread).
+REPORT_MODEL: ContextVar[tuple[str, str]] = ContextVar("report_model", default=("groq", GROQ_MODEL))
+# Each model call made while set: provider, model, seconds, tokens, error.
+REPORT_CALLS: ContextVar[list | None] = ContextVar("report_calls", default=None)
+_OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+
+
+def _openai_key() -> str:
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not key:
+        try:
+            from app.config import get_settings
+
+            key = (getattr(get_settings(), "OPENAI_API_KEY", "") or "").strip()
+        except Exception:
+            key = ""
+    if not key:
+        raise ValueError("OPENAI_API_KEY is not configured.")
+    return key
+
+
+def _openai_chat(model: str, body: dict[str, Any]) -> Any:
+    """One chat completion from OpenAI, shaped like the Groq SDK's response.
+    Newer models refuse some parameters (temperature, reasoning_effort, the
+    old max_tokens), so a refused one is dropped and the call retried."""
+    import httpx
+    from types import SimpleNamespace
+
+    payload = {"model": model, **body}
+    if "max_tokens" in payload:
+        payload["max_completion_tokens"] = payload.pop("max_tokens")
+    last_error = ""
+    for _ in range(4):
+        resp = httpx.post(
+            _OPENAI_URL, json=payload, headers={"Authorization": f"Bearer {_openai_key()}"}, timeout=180,
+        )
+        if resp.status_code == 400:
+            last_error = resp.text[:500]
+            dropped = next((k for k in ("temperature", "reasoning_effort", "response_format") if k in payload
+                            and k in last_error), None)
+            if dropped:
+                payload.pop(dropped)
+                continue
+        if resp.status_code >= 400:
+            raise RuntimeError(f"OpenAI returned {resp.status_code}: {resp.text[:300]}")
+        data = resp.json()
+        choice = (data.get("choices") or [{}])[0]
+        usage = data.get("usage") or {}
+        return SimpleNamespace(
+            choices=[SimpleNamespace(
+                message=SimpleNamespace(content=(choice.get("message") or {}).get("content") or ""),
+                finish_reason=choice.get("finish_reason"),
+            )],
+            usage=SimpleNamespace(
+                prompt_tokens=usage.get("prompt_tokens") or 0, completion_tokens=usage.get("completion_tokens") or 0,
+            ),
+        )
+    raise RuntimeError(f"OpenAI refused the request: {last_error}")
+
+
+def _report_chat(**body: Any) -> Any:
+    """A chat completion for a homeowner report, from whichever model
+    REPORT_MODEL names. Logged to REPORT_CALLS when a comparison is watching."""
+    provider, model = REPORT_MODEL.get()
+    calls = REPORT_CALLS.get()
+    started = time.monotonic()
+    try:
+        if provider == "openai":
+            response = _openai_chat(model, body)
+        else:
+            response = _get_client().chat.completions.create(model=model, **body)
+    except Exception as exc:
+        if calls is not None:
+            calls.append({"provider": provider, "model": model, "seconds": round(time.monotonic() - started, 1),
+                          "error": f"{type(exc).__name__}: {exc}"[:300]})
+        raise
+    if calls is not None:
+        usage = getattr(response, "usage", None)
+        calls.append({
+            "provider": provider, "model": model, "seconds": round(time.monotonic() - started, 1),
+            "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+            "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+            "finish_reason": getattr(response.choices[0], "finish_reason", None),
+        })
+    return response
 
 
 async def generate_property_report(
@@ -1284,9 +1377,7 @@ ABSOLUTE RULES — breaking any of these is a failure:
         system_msg = _us_text(system_msg)
 
     def _call_groq() -> str:
-        client = _get_client()
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
+        response = _report_chat(
             messages=[
                 {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt},
@@ -1387,9 +1478,7 @@ Return this exact shape:
 """
         if is_us:
             expansion_prompt = _us_text(expansion_prompt) + US_MARKET_OVERRIDE
-        client = _get_client()
-        response = client.chat.completions.create(
-            model=GROQ_MODEL,
+        response = _report_chat(
             messages=[
                 {
                     "role": "system",

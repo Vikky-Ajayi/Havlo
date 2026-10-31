@@ -5,6 +5,7 @@ import csv
 import hmac
 import io
 import json
+import os
 import asyncio
 import logging
 import random
@@ -22,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_admin
 from app.models.models import (
     AdsUrlReminderLead,
     StaleAgentAccount,
@@ -1772,6 +1773,60 @@ def _awaiting_review_filter():
 
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
+
+
+# ── Compare report models (console > Compare models) ─────────────────────
+# Admin only: a run spends money on the OpenAI account.
+
+
+@admin_router.get("/prospects-console/model-comparison/models")
+async def model_comparison_models(_admin=Depends(require_admin)) -> dict[str, Any]:
+    from app.services import model_comparison
+
+    try:
+        available = await model_comparison.openai_models()
+        error = None
+    except Exception as exc:  # noqa: BLE001
+        available, error = [], str(exc)[:200]
+    return {
+        "current": {"provider": model_comparison.CURRENT[0], "model": model_comparison.CURRENT[1]},
+        "openai_models": available,
+        "openai_configured": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
+        "error": error,
+        "suggested": [m for m in model_comparison.SUGGESTED if m in available],
+        "prices": model_comparison.PRICES,
+        "prices_as_of": model_comparison.PRICES_AS_OF,
+    }
+
+
+@admin_router.get("/prospects-console/model-comparison")
+async def model_comparison_status(_admin=Depends(require_admin)) -> dict[str, Any]:
+    from app.services import model_comparison
+
+    state = await model_comparison.load_state()
+    return {**state, "running": model_comparison.is_running(state), "summary": model_comparison.summary(state)}
+
+
+@admin_router.post("/prospects-console/model-comparison")
+async def model_comparison_start(payload: dict[str, Any], _admin=Depends(require_admin)) -> dict[str, Any]:
+    """Start a run: the current model plus up to two OpenAI models, on
+    5-30 recent listings."""
+    from app.services import model_comparison
+
+    if model_comparison.is_running(await model_comparison.load_state()):
+        raise HTTPException(status_code=409, detail="A comparison is already running.")
+    wanted = [str(m) for m in (payload.get("models") or []) if isinstance(m, str)][:2]
+    available = set(await model_comparison.openai_models())
+    unknown = [m for m in wanted if m not in available]
+    if not wanted or unknown:
+        raise HTTPException(status_code=422, detail=f"Choose one or two OpenAI models your key can use{': ' + ', '.join(unknown) if unknown else ''}.")
+    try:
+        limit = max(5, min(30, int(payload.get("listings") or 25)))
+    except (TypeError, ValueError):
+        limit = 25
+    models = [model_comparison.CURRENT] + [("openai", m) for m in dict.fromkeys(wanted)]
+    model_comparison.start(models, limit)
+    return {"started": True, "models": [m for _p, m in models], "listings": limit}
 
 
 # When the report checks (report_guard.py) went live: free previews seen

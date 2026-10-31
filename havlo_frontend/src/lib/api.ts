@@ -146,6 +146,69 @@ export interface StaleProspectAbandonedItem {
   report_ready_emailed_at?: string | null;
 }
 
+export interface ModelComparisonModels {
+  current: { provider: string; model: string };
+  openai_models: string[];
+  openai_configured: boolean;
+  error: string | null;
+  suggested: string[];
+  prices: Record<string, [number, number]>;
+  prices_as_of: string;
+}
+
+export interface ModelComparisonResult {
+  provider: string;
+  model: string;
+  ok: boolean;
+  error: string | null;
+  seconds: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost_usd: number | null;
+  findings_written?: number;
+  findings_kept?: number;
+  removed?: { rule: string; where: string; text: string }[];
+  preview?: { title: string; description: string }[];
+}
+
+export interface ModelComparisonSummary {
+  provider: string;
+  model: string;
+  current: boolean;
+  reports: number;
+  failed: number;
+  reports_with_removals: number;
+  claims_removed: number;
+  previews_under_3: number;
+  avg_findings_kept: number | null;
+  avg_seconds: number | null;
+  avg_cost_usd: number | null;
+  by_rule: Record<string, number>;
+}
+
+export interface ModelComparisonState {
+  status?: 'running' | 'done' | 'failed';
+  running: boolean;
+  started_at?: string;
+  finished_at?: string;
+  target?: number;
+  skipped?: number;
+  error?: string;
+  prices_as_of?: string;
+  models?: { provider: string; model: string }[];
+  results?: {
+    property_code: string;
+    address: string;
+    url: string;
+    asking_price: number | null;
+    sales_given: boolean;
+    media: Record<string, number | null> | null;
+    description_chars: number;
+    models: ModelComparisonResult[];
+  }[];
+  summary: ModelComparisonSummary[];
+}
+
 export interface ReportAccuracyGroup {
   previews: number;
   paid: number;
@@ -1239,6 +1302,19 @@ export const api = {
     if (params.offset !== undefined) queryParams.offset = String(params.offset);
     return request<StaleProspectConsoleListResponse>('/stale-listings/prospects-console/prospects', { queryParams });
   },
+
+  // Console > Compare models (admin login needed: a run spends OpenAI credit).
+  modelComparisonModels: (token: string) =>
+    request<ModelComparisonModels>('/stale-listings/prospects-console/model-comparison/models', { token, timeout: 30000 }),
+  modelComparisonStatus: (token: string) =>
+    request<ModelComparisonState>('/stale-listings/prospects-console/model-comparison', { token }),
+  modelComparisonStart: (token: string, models: string[], listings: number) =>
+    request<{ started: boolean; models: string[]; listings: number }>('/stale-listings/prospects-console/model-comparison', {
+      method: 'POST',
+      token,
+      body: { models, listings },
+      timeout: 30000,
+    }),
 
   // How many free previews seen before the report checks held a claim the
   // checks now remove, and how often those people paid (report_guard.py).
