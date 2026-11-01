@@ -462,6 +462,8 @@ async def create_prospect_from_listing_snapshot(
     # What this report was given, so its claims are checked against it.
     report["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
     report["_media_given"] = media_known(listing_snapshot.get("media"))
+    if not make_letter:  # interactive funnels only, not bulk discovery
+        report = await add_photo_review(report, listing_snapshot, property_address)
     check_new_report(
         report,
         report_facts(
@@ -868,6 +870,55 @@ async def _generate_live_report(**kwargs) -> dict[str, Any]:
     return report
 
 
+async def add_photo_review(
+    report: dict[str, Any], snapshot: dict[str, Any], address: str,
+) -> dict[str, Any]:
+    """Add real photo feedback to a report, if the live model can see images.
+    One vision call (photo_review); its findings go in flagged _photo_verified
+    so the checks keep them. Stored in report["_photo_review"] and reused when
+    the report is expanded, so paid reports keep the same photo findings
+    without a second call. Falls back silently to no photo feedback."""
+    from app.services import photo_review
+
+    if not photo_review.enabled():
+        return report
+    provider, model = groq_service.live_report_model()
+    if provider != "openai":  # the Groq fallback can't see images
+        return report
+    review = await photo_review.review_photos(
+        snapshot.get("images"), address=address, property_type=snapshot.get("property_type"),
+        photo_count=(snapshot.get("media") or {}).get("photos"), model=model,
+    )
+    return _apply_photo_review(report, review) if review else report
+
+
+def _apply_photo_review(report: dict[str, Any], review: dict[str, Any]) -> dict[str, Any]:
+    """Put the vision step's photo findings into the report, replacing any
+    earlier ones (so it's safe to re-run after an expansion)."""
+    photo_findings = [
+        {"title": f["title"], "description": f["description"], "type": f.get("type", "issue"),
+         "icon": "photos", "_photo_verified": True}
+        for f in review.get("findings") or []
+    ]
+    from app.services import report_guard
+
+    others = [
+        f for f in report.get("key_findings") or []
+        if isinstance(f, dict) and not f.get("_photo_verified") and not report_guard.is_media_finding(f)
+    ]
+    report["key_findings"] = (others[:1] + photo_findings + others[1:]) if others else photo_findings
+    actions = [a for a in report.get("action_plan") or [] if isinstance(a, dict) and not a.get("_photo_verified")]
+    if review.get("actions"):
+        actions = actions + [{
+            "title": "Strengthen the listing photos",
+            "description": review.get("overall") or "Improve how the photos present the home to buyers.",
+            "bullets": list(review["actions"]), "_photo_verified": True,
+        }]
+    report["action_plan"] = actions
+    report["_photo_review"] = {k: review[k] for k in ("overall", "model", "photos_seen") if k in review}
+    return report
+
+
 def check_new_report(report: dict[str, Any], facts: "report_guard.ReportFacts", label: str) -> None:
     """Run the claim checks on a report just written, log what they removed
     and note the count on it (the report itself is cleaned when read)."""
@@ -1168,18 +1219,31 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
     snapshot = _safe_json(prospect.listing_snapshot_json)
     recorded = await refresh_sold_comparables(prospect)
     report_snapshot = with_recorded_sales(snapshot, recorded)
+    # Keep the verified photo findings out of the text expansion (so its
+    # addenda line up with the text findings), then re-apply them after.
+    photo_review = report.get("_photo_review")
+    photo_findings = [f for f in report.get("key_findings") or [] if isinstance(f, dict) and f.get("_photo_verified")]
+    photo_actions = [a for a in report.get("action_plan") or [] if isinstance(a, dict) and a.get("_photo_verified")]
+    base_report = dict(report)
+    base_report["key_findings"] = [f for f in report.get("key_findings") or [] if not (isinstance(f, dict) and f.get("_photo_verified"))]
+    base_report["action_plan"] = [a for a in report.get("action_plan") or [] if not (isinstance(a, dict) and a.get("_photo_verified"))]
     expanded = await _generate_live_report(
         property_address=prospect.property_address,
         rightmove_url=prospect.rightmove_url,
         snapshot=report_snapshot,
         listing_duration_days=prospect.listing_duration_days,
         expand_report=True,
-        base_report=report,
+        base_report=base_report,
         market=prospect_country(prospect),
     )
     expanded["_expanded"] = True
     expanded["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
     expanded["_media_given"] = media_known(snapshot.get("media"))
+    if photo_findings:  # re-insert the photos work the expansion was kept away from
+        expanded["key_findings"] = (expanded.get("key_findings") or [])[:1] + photo_findings + (expanded.get("key_findings") or [])[1:]
+        expanded["action_plan"] = (expanded.get("action_plan") or []) + photo_actions
+        if photo_review:
+            expanded["_photo_review"] = photo_review
     check_new_report(expanded, prospect_report_facts(prospect, expanded), prospect.property_address)
     prospect.report_json = json.dumps(expanded, ensure_ascii=False)
     return expanded

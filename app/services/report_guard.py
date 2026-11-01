@@ -189,31 +189,34 @@ def _close(value: float, target: float, tolerance: float = 0.015) -> bool:
     return target > 0 and abs(value - target) <= target * tolerance
 
 
-def _check(sentence: str, facts: ReportFacts) -> str | None:
-    """The rule a sentence breaks, or None if it holds up."""
+def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str | None:
+    """The rule a sentence breaks, or None if it holds up. trust_photos: this
+    came from the vision step, which actually looked at the photos, so claims
+    about what the photos show are allowed (photo_review.py)."""
     media = facts.media if isinstance(facts.media, dict) else {}
     if _TRUNCATED.search(sentence):
         return "description_cut"
     if facts.description_cut and _NO_MEASUREMENTS.search(sentence):
         return "description_cut"
-    if _SUBJECT.search(sentence) and _SEEN_STATE.search(sentence):
-        return "unseen_photos"
-    if _PERCEIVED.search(sentence):
-        return "unseen_photos"
-    if _MISSING_MEDIA.search(sentence):
-        text = sentence.lower()
-        checks = []
-        if "floor" in text:
-            checks.append(media.get("floorplans"))
-        if any(w in text for w in ("tour", "360", "walkthrough", "video")):
-            checks.append(media.get("virtual_tours"))
-        if not facts.media_given or not checks or any(c != 0 for c in checks):
-            return "media"
-    for m in _MEDIA_COUNT.finditer(sentence):
-        kind = m.group(3).lower().replace(" ", "")
-        key = "floorplans" if kind.startswith("floor") else "virtual_tours" if kind.startswith("virtual") else "photos"
-        if not facts.media_given or _number(m.group(2)) != media.get(key):
-            return "media"
+    if not trust_photos:
+        if _SUBJECT.search(sentence) and _SEEN_STATE.search(sentence):
+            return "unseen_photos"
+        if _PERCEIVED.search(sentence):
+            return "unseen_photos"
+        if _MISSING_MEDIA.search(sentence):
+            text = sentence.lower()
+            checks = []
+            if "floor" in text:
+                checks.append(media.get("floorplans"))
+            if any(w in text for w in ("tour", "360", "walkthrough", "video")):
+                checks.append(media.get("virtual_tours"))
+            if not facts.media_given or not checks or any(c != 0 for c in checks):
+                return "media"
+        for m in _MEDIA_COUNT.finditer(sentence):
+            kind = m.group(3).lower().replace(" ", "")
+            key = "floorplans" if kind.startswith("floor") else "virtual_tours" if kind.startswith("virtual") else "photos"
+            if not facts.media_given or _number(m.group(2)) != media.get(key):
+                return "media"
     for m in _QUOTE.finditer(sentence):
         quote = _norm(m.group(1) or m.group(2) or "")
         before = sentence[: m.start()]
@@ -270,7 +273,8 @@ def _check(sentence: str, facts: ReportFacts) -> str | None:
     return None
 
 
-def clean_text(text: Any, facts: ReportFacts | None = None, removed: list | None = None, where: str = "") -> str:
+def clean_text(text: Any, facts: ReportFacts | None = None, removed: list | None = None, where: str = "",
+               trust_photos: bool = False) -> str:
     if not isinstance(text, str) or not text:
         return text if isinstance(text, str) else ""
     facts = facts or ReportFacts()
@@ -280,7 +284,7 @@ def clean_text(text: Any, facts: ReportFacts | None = None, removed: list | None
         for sentence in _SENTENCE.split(para.strip()):
             if not sentence:
                 continue
-            rule = _check(sentence, facts)
+            rule = _check(sentence, facts, trust_photos)
             if rule:
                 if removed is not None:
                     removed.append({"rule": rule, "where": where, "text": sentence[:300]})
@@ -305,13 +309,16 @@ def _clean_items(
         if not isinstance(item, dict):
             continue
         place = f"{where}[{i}]"
-        # Without the counts the model could only guess about the media, so
-        # the whole finding goes, title included ("Sparse visual storytelling").
-        if findings and is_media_finding(item) and not facts.media_given:
+        # From the vision step: it really saw the photos, so keep it and don't
+        # strip its photo descriptions (photo_review.py).
+        trust = bool(item.get("_photo_verified"))
+        # Without the counts the text model could only guess about the media,
+        # so the whole finding goes, title included ("Sparse visual storytelling").
+        if findings and is_media_finding(item) and not facts.media_given and not trust:
             if removed is not None:
                 removed.append({"rule": "unseen_photos", "where": place, "text": str(item.get("title") or "")[:300]})
             continue
-        title_rule = _check(str(item.get("title") or ""), facts) if findings else None
+        title_rule = _check(str(item.get("title") or ""), facts, trust) if findings else None
         if title_rule:
             if removed is not None:
                 removed.append({"rule": title_rule, "where": place, "text": str(item.get("title") or "")[:300]})
@@ -319,9 +326,9 @@ def _clean_items(
         item = dict(item)
         for f in fields:
             if f in item:
-                item[f] = clean_text(item[f], facts, removed, f"{place}.{f}")
+                item[f] = clean_text(item[f], facts, removed, f"{place}.{f}", trust)
         if "bullets" in item and isinstance(item["bullets"], list):
-            item["bullets"] = [b for b in (clean_text(x, facts, removed, f"{place}.bullets") for x in item["bullets"]) if b]
+            item["bullets"] = [b for b in (clean_text(x, facts, removed, f"{place}.bullets", trust) for x in item["bullets"]) if b]
         if item.get(must_keep):
             out.append(item)
         elif removed is not None:

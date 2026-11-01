@@ -29,9 +29,11 @@ import {
   lookupProspect,
   recordCheckoutVisit,
   startAdsAssessment,
+  MANUAL_DETAILS_NEEDED,
   submitProspectDetails,
   type AdsAudience,
   type AdsChannel,
+  type ManualListingDetails,
 } from './api';
 import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles } from './AdsLanding';
 import {
@@ -704,6 +706,12 @@ const AssessmentStep = ({
               <span className="slw-finding-icon">{FINDING_ICONS[finding.icon || 'timing'] || '●'}</span>
               <div>
                 <b>{finding.title}</b>
+                {finding._photo_verified && (
+                  <span className="slw-photo-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    Based on your photos
+                  </span>
+                )}
                 <ExpandableText text={finding.description} maxChars={150} />
               </div>
             </div>
@@ -1327,12 +1335,20 @@ export const StaleProspectWizard = ({
 }: {
   ads?: AdsAudience;
   channel?: AdsChannel;
-  landing?: (start: { onSubmit: (listingUrl: string) => void; loading: boolean; error: string; listingUrl: string }) => ReactNode;
+  landing?: (start: {
+    onSubmit: (listingUrl: string, manual?: ManualListingDetails) => void;
+    loading: boolean;
+    error: string;
+    listingUrl: string;
+    manual: { url: string; message: string } | null;
+  }) => ReactNode;
 } = {}) => {
   const review = !!ads && channel === 'review';
   // The link last tried, so a page of its own (`landing`) can show it again
   // next to the error when it couldn't be read.
   const [lastListingUrl, setLastListingUrl] = useState('');
+  // A Zoopla link we couldn't read: ask for the address and price (ManualDetailsFields).
+  const [manualNeeded, setManualNeeded] = useState<{ url: string; message: string } | null>(null);
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
@@ -1600,14 +1616,18 @@ export const StaleProspectWizard = ({
     }
   };
 
-  const handleAdsSubmit = async (listingUrl: string) => {
+  const handleAdsSubmit = async (listingUrl: string, details?: ManualListingDetails) => {
     if (!ads) return;
     setLastListingUrl(listingUrl);
     setLoading(true);
     setError('');
     setStep('finding');
     try {
-      const started = await startAdsAssessment({ listing_url: listingUrl, audience: ads, channel, reminder_token: query.reminder });
+      const started = await startAdsAssessment({
+        listing_url: listingUrl, audience: ads, channel, reminder_token: query.reminder,
+        manual_address: details?.address, manual_price: details?.price,
+      });
+      setManualNeeded(null);
       if (started.prefill?.email) setPrefill(started.prefill);
       const data = await getProspectPreview({ token: started.token });
       setProspect(data);
@@ -1628,6 +1648,13 @@ export const StaleProspectWizard = ({
       }
     } catch (e) {
       const message = (e as Error).message;
+      if ((e as Error & { code?: string }).code === MANUAL_DETAILS_NEEDED) {
+        setManualNeeded({ url: listingUrl.trim(), message });
+        setError('');
+        setStep('landing');
+        return;
+      }
+      setManualNeeded(null);
       setError(message && message !== 'request_failed'
         ? message
         : 'We couldn’t assess that listing just now. Please check the link and try again.');
@@ -1845,7 +1872,7 @@ export const StaleProspectWizard = ({
   }
 
   if (step === 'landing' && ads && landing) {
-    return <>{landing({ onSubmit: handleAdsSubmit, loading, error, listingUrl: lastListingUrl })}</>;
+    return <>{landing({ onSubmit: handleAdsSubmit, loading, error, listingUrl: lastListingUrl, manual: manualNeeded })}</>;
   }
 
   return (
@@ -1871,7 +1898,7 @@ export const StaleProspectWizard = ({
               copy={ADS_COPY[ads].copy}
               discover={ADS_COPY[ads].discover}
               value={ADS_COPY[ads].value}
-              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
+              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} manual={manualNeeded} />}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
@@ -2146,6 +2173,8 @@ export const WizardStyles = () => (
     .slw-finding-card{display:flex;gap:16px;border:2px solid #edf0f4;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 0 rgba(15,23,42,.02)}
     .slw-finding-icon{font-size:20px;flex:none}
     .slw-finding-card b{display:block;margin-bottom:7px;font-size:17px;color:#202124}
+    .slw-photo-badge{display:inline-flex;align-items:center;gap:5px;margin:0 0 7px;padding:3px 9px;border-radius:999px;background:#F3E8FD;color:#7A079C;font-size:12px;font-weight:700;letter-spacing:-0.01em}
+    .slw-photo-badge svg{flex:none}
     .slw-finding-card p{color:#475467;font-size:14px;line-height:1.42;margin:0}
     .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:28px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}

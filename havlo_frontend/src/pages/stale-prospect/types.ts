@@ -23,6 +23,8 @@ export interface PreviewFinding {
   description?: string;
   type?: string;
   icon?: string;
+  // Set when the finding comes from the vision review of the actual photos.
+  _photo_verified?: boolean;
 }
 
 export interface PreviewData {
