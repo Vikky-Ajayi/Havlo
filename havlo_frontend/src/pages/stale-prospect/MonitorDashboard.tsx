@@ -233,7 +233,7 @@ const ChecklistRow = ({
 const SECTIONS = [
   ['updates', 'Updates'],
   ['checklist', 'Your changes'],
-  ['plan', '90-day plan'],
+  ['plan', 'Plan'],
   ['nearby', 'Nearby'],
 ] as const;
 
@@ -332,6 +332,9 @@ export const MonitorDashboard = () => {
   }
 
   const h = data.headline;
+  // The 20-factor report's dashboard runs 30 days (vs 90 for older purchases):
+  // its plan is three ten-day boxes and it points to Next Steps, not a call.
+  const isShortWindow = data.total_days <= 30;
   const progress = Math.round((100 * data.day) / data.total_days);
   const doneCount = data.checklist.filter((c) => c.done).length;
   const nextKey = data.checklist.find((c) => !c.done && c.title === data.next_step.title);
@@ -342,13 +345,13 @@ export const MonitorDashboard = () => {
     <div className={`slw-page${data.audience === 'agent' ? ' slw-agent' : ''}`}>
       <Header />
       <div className="slw-shell lmd-shell">
-        <main className="slw-main lmd">
+        <main className={`slw-main lmd${isShortWindow ? ' lmd-v2' : ''}`}>
           {/* Hero */}
           <section className="lmd-hero">
             <div className="lmd-hero-image" style={data.property.image ? { backgroundImage: `url(${data.property.image})` } : undefined} />
             <div className="lmd-hero-text">
               <p className="lmd-eyebrow">
-                {data.read_only ? 'Shared listing dashboard' : data.contact_first_name ? `${data.contact_first_name}'s 90-day listing dashboard` : 'Your 90-day listing dashboard'}
+                {data.read_only ? 'Shared listing dashboard' : data.contact_first_name ? `${data.contact_first_name}'s ${data.total_days}-day listing dashboard` : `Your ${data.total_days}-day listing dashboard`}
               </p>
               <h1 className="lmd-h1">{data.property.address}</h1>
               <p className="lmd-muted">
@@ -360,7 +363,7 @@ export const MonitorDashboard = () => {
               <div className="lmd-progress" aria-label={`Day ${data.day} of ${data.total_days}`}>
                 <div className="lmd-progress-bar"><span style={{ width: `${progress}%` }} /></div>
                 <div className="lmd-progress-labels">
-                  <b>{data.ended ? 'Your 90 days are complete' : `Day ${data.day} of ${data.total_days}`}</b>
+                  <b>{data.ended ? `Your ${data.total_days} days are complete` : `Day ${data.day} of ${data.total_days}`}</b>
                   <span>{data.last_checked_at ? `Listing checked ${timeAgo(data.last_checked_at)}` : 'First check under way'}</span>
                 </div>
               </div>
@@ -391,7 +394,7 @@ export const MonitorDashboard = () => {
 
           {data.summary && (
             <section className="lmd-card lmd-summary">
-              <h2>Your 90-day summary</h2>
+              <h2>Your {data.total_days}-day summary</h2>
               <ul>
                 <li><b>{data.summary.price_start && data.summary.price_end ? `${formatGbp(data.summary.price_start)} → ${formatGbp(data.summary.price_end)}` : '—'}</b><span>Asking price</span></li>
                 <li><b>{data.summary.listing_changes}</b><span>Listing changes spotted</span></li>
@@ -464,10 +467,10 @@ export const MonitorDashboard = () => {
             </ul>
           </section>
 
-          {/* 90-day plan */}
+          {/* The plan: 13 weeks across 90 days, or three ten-day boxes at 30. */}
           <section id="plan" className="lmd-section">
-            <h2 className="lmd-h2">Your 90-day plan</h2>
-            <p className="lmd-muted">Week {data.plan.current_week} of 13.</p>
+            <h2 className="lmd-h2">Your {data.total_days}-day plan</h2>
+            {data.plan.current_week > 0 && <p className="lmd-muted">Week {data.plan.current_week} of 13.</p>}
             <div className="lmd-phases">
               {data.plan.phases.map((phase) => (
                 <div key={phase.title} className={`lmd-card lmd-phase ${phase.current ? 'lmd-phase-current' : ''}`}>
@@ -556,7 +559,11 @@ export const MonitorDashboard = () => {
               <button type="button" className="slw-btn-outline" onClick={share}>
                 {data.audience === 'agent' ? 'Share with your vendor' : 'Share with your agent'}
               </button>
-              {data.audience !== 'agent' && <a className="slw-btn-outline lmd-link-btn" href="/contact-us">Book a call with Havlo</a>}
+              {data.audience !== 'agent' && (
+                isShortWindow
+                  ? <button type="button" className="slw-btn-outline lmd-link-btn" onClick={openReport}>Explore your next steps</button>
+                  : <a className="slw-btn-outline lmd-link-btn" href="/contact-us">Book a call with Havlo</a>
+              )}
             </section>
           )}
           {notice && <div className="lmd-toast" role="status">{notice}</div>}
@@ -566,8 +573,8 @@ export const MonitorDashboard = () => {
               title={data.audience === 'agent' ? 'Share with your vendor' : 'Share with your agent'}
               subtitle="Anyone with the link can view this dashboard. They can't change anything."
               text={data.audience === 'agent'
-                ? `The 90-day instruction watch for ${data.property.address}, from Havlo:`
-                : `My 90-day listing dashboard for ${data.property.address}, from Havlo:`}
+                ? `The ${data.total_days}-day instruction watch for ${data.property.address}, from Havlo:`
+                : `My ${data.total_days}-day listing dashboard for ${data.property.address}, from Havlo:`}
               error={shareError}
               onClose={() => setSharing(false)}
             />
@@ -590,6 +597,10 @@ const DashboardStyles = () => (
     .lmd-center .slw-spinner{margin:0 auto 16px}
     .lmd-h1{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:36px;line-height:1.08;letter-spacing:-0.02em;margin:6px 0 8px;color:#202124}
     .lmd-h2{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-weight:900;font-size:26px;line-height:1.15;letter-spacing:-0.01em;margin:0 0 6px;color:#202124}
+    /* The 20-factor dashboard uses the Havlo brand fonts (Plus Jakarta Sans
+       headings, Inter body) rather than Right Grotesk. */
+    .lmd-v2 .lmd-h1{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:800;letter-spacing:-0.03em}
+    .lmd-v2 .lmd-h2{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:800;letter-spacing:-0.025em}
     .lmd-h3{font-size:16px;font-weight:700;margin:26px 0 12px;color:#202124}
     .lmd-muted{color:#556274;font-size:14.5px;line-height:1.55;margin:0 0 14px}
     .lmd-muted a{color:#A409D2;font-weight:600}

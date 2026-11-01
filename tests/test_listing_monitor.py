@@ -223,11 +223,33 @@ class ChecklistTests(unittest.TestCase):
         self.assertEqual([t["key"] for t in plan["phases"][0]["tasks"]], ["price", "photos"])
         self.assertIn("Reduce to £499,950.", plan["phases"][2]["notes"][1])
 
+    def test_plan_v2_is_three_ten_day_boxes(self):
+        checklist = lm.build_checklist(REPORT, {}, [], {})
+        plan = lm.build_plan(REPORT, 15, checklist, window=lm.MONITOR_DAYS_V2)
+        self.assertEqual(plan["current_week"], 0)  # the 90-day week line is hidden
+        self.assertEqual(plan["weeks"], [])
+        self.assertEqual([(p["start_day"], p["end_day"]) for p in plan["phases"]],
+                         [(1, 10), (11, 20), (21, 30)])
+        self.assertEqual([p["current"] for p in plan["phases"]], [False, True, False])
+        self.assertEqual([t["key"] for t in plan["phases"][0]["tasks"]], ["price", "photos"])
+        # Box 3 carries the written take-stock guidance ending on next steps.
+        self.assertEqual(len(plan["phases"][2]["notes"]), 3)
+        self.assertIn("Optional Next Steps", plan["phases"][2]["notes"][2])
+
     def test_next_step(self):
         checklist = lm.build_checklist(REPORT, {}, [], {})
         self.assertEqual(lm.next_step(checklist, "on_market", False)["title"], "Reset the asking price")
         self.assertEqual(lm.next_step(checklist, "sold_stc", False)["title"], "Keep the sale moving")
         self.assertEqual(lm.next_step(checklist, "on_market", True)["title"], "Plan what's next")
+
+    def test_next_step_ended_points_to_next_steps_on_the_30_day_window(self):
+        checklist = lm.build_checklist(REPORT, {}, [], {})
+        ninety = lm.next_step(checklist, "on_market", True, window=lm.MONITOR_DAYS)["detail"]
+        thirty = lm.next_step(checklist, "on_market", True, window=lm.MONITOR_DAYS_V2)["detail"]
+        self.assertIn("Book a call", ninety)
+        self.assertNotIn("Book a call", thirty)
+        self.assertIn("Optional Next Steps", thirty)
+        self.assertIn("30 days", thirty)
 
 
 class SmsTests(unittest.TestCase):

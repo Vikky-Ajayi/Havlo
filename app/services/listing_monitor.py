@@ -52,6 +52,9 @@ from app.services.stale_prospect_service import current_report_json, hash_access
 logger = logging.getLogger(__name__)
 
 MONITOR_DAYS = 90
+# New (20-factor) purchases get a 30-day dashboard; everything created before
+# keeps its own 90-day window (each monitor stores its own end date).
+MONITOR_DAYS_V2 = 30
 LISTING_CHECK_EVERY = timedelta(hours=24)
 NEARBY_CHECK_EVERY = timedelta(days=7)
 SOLD_CHECK_EVERY = timedelta(days=7)
@@ -484,10 +487,12 @@ async def create_monitor(db: AsyncSession, prospect: StaleListingProspect, *, no
     # From release for an analyst-reviewed (/review/...) report, which can be
     # two days after payment; otherwise SMS_MAX_PURCHASE_AGE would skip its text.
     started = analyst_review.purchase_started_at(prospect) or now
+    from app.services import report_writer
+    window = MONITOR_DAYS_V2 if report_writer.report_is_v2(_loads(prospect.report_json, {})) else MONITOR_DAYS
     monitor = StaleListingMonitor(
         prospect_id=prospect.id,
         started_at=started,
-        ends_at=started + timedelta(days=MONITOR_DAYS),
+        ends_at=started + timedelta(days=window),
         next_listing_check_at=now,
         sms_status="not_texted" if now - started > SMS_MAX_PURCHASE_AGE else None,
     )
@@ -778,6 +783,20 @@ PHASES = (
     {"title": "Build momentum", "days": (31, 60)},
     {"title": "Decide the next move", "days": (61, 90)},
 )
+# The 20-factor report's dashboard runs 30 days as three ten-day boxes. Box 3
+# carries the written guidance (the rest comes from the report's checklist).
+PHASES_V2 = (
+    {"title": "Fix the fundamentals", "days": (1, 10)},
+    {"title": "Build momentum", "days": (11, 20)},
+    {"title": "Decide the next move", "days": (21, 30)},
+)
+BOX3_NOTES_V2 = (
+    "By now you've had a couple of weeks of fresh interest, so this is the point to take stock. "
+    "Look at whether viewings have picked up since you made your changes, and be honest about the feedback.",
+    "If the right buyers are coming through but no offers, it's usually the price or one fixable detail. "
+    "If it's gone quiet again, it may be time to relaunch properly.",
+    "When you're ready to plan your next move, explore your Optional Next Steps.",
+)
 LATER_WEEKS = (
     (5, "Review the first month's enquiries and viewings"),
     (6, "Act on viewing feedback"),
@@ -791,7 +810,34 @@ LATER_WEEKS = (
 )
 
 
-def build_plan(report: dict[str, Any], day: int, checklist: list[dict[str, Any]]) -> dict[str, Any]:
+def build_plan_v2(day: int, checklist: list[dict[str, Any]]) -> dict[str, Any]:
+    """The 30-day plan for a 20-factor report: three ten-day boxes. Boxes 1 and
+    2 carry the report's checklist tasks (urgent first); box 3 carries the
+    written take-stock guidance and points to the optional next steps."""
+    urgent = [c for c in checklist if c.get("priority") in ("URGENT", "HIGH")]
+    rest = [c for c in checklist if c not in urgent]
+    tasks = {
+        0: urgent or checklist[:4],
+        1: [c for c in rest if c["key"] in ("viewing_feedback", "neighbourhood", "buyer_profiles", "photos", "staging")]
+           or rest[:4],
+        2: [],
+    }
+    phases = []
+    for index, phase in enumerate(PHASES_V2):
+        start, end = phase["days"]
+        phases.append({
+            "title": phase["title"], "start_day": start, "end_day": end,
+            "current": start <= day <= end, "weeks": [],
+            "tasks": [{"key": c["key"], "title": c["title"], "done": c["done"]} for c in tasks[index]],
+        })
+    phases[2]["notes"] = list(BOX3_NOTES_V2)
+    return {"current_week": 0, "weeks": [], "phases": phases}
+
+
+def build_plan(report: dict[str, Any], day: int, checklist: list[dict[str, Any]], *,
+               window: int = MONITOR_DAYS) -> dict[str, Any]:
+    if window <= MONITOR_DAYS_V2:
+        return build_plan_v2(day, checklist)
     first_month = {int(w.get("week")): _text(w.get("title")) for w in (report.get("thirty_day_plan") or [])
                    if isinstance(w, dict) and str(w.get("week") or "").isdigit() and _text(w.get("title"))}
     defaults = {1: "Act on the urgent recommendations", 2: "Fix the listing's presentation",
@@ -829,13 +875,16 @@ def build_plan(report: dict[str, Any], day: int, checklist: list[dict[str, Any]]
 STATUS_LABELS = {"on_market": "On the market", "under_offer": "Under offer", "sold_stc": "Sold STC", "removed": "No longer listed"}
 
 
-def next_step(checklist: list[dict[str, Any]], status: str, ended: bool) -> dict[str, str]:
+def next_step(checklist: list[dict[str, Any]], status: str, ended: bool, *,
+              window: int = MONITOR_DAYS) -> dict[str, str]:
     if status == "sold_stc":
         return {"title": "Keep the sale moving", "detail": "Ask your agent for a weekly update on the buyer's mortgage, survey and solicitors until exchange."}
     if status == "under_offer":
         return {"title": "Protect the offer", "detail": "Keep viewings going until the sale is agreed, and ask your agent how the buyer is progressing."}
     if ended:
-        return {"title": "Plan what's next", "detail": "Your 90 days are up. Book a call and we'll go through what's worked and what to change."}
+        if window <= MONITOR_DAYS_V2:
+            return {"title": "Plan what's next", "detail": f"Your {window} days are up. When you're ready to plan your next move, explore your Optional Next Steps."}
+        return {"title": "Plan what's next", "detail": f"Your {window} days are up. Book a call and we'll go through what's worked and what to change."}
     todo = next((c for c in checklist if not c["done"]), None)
     if todo:
         return {"title": todo["title"], "detail": todo["detail"] or "Tick it off here once it's done, or we'll spot it on your listing."}
@@ -864,7 +913,10 @@ async def dashboard(db: AsyncSession, monitor: StaleListingMonitor, *, read_only
     checklist = build_checklist(report, baseline, [e for e in events if e["scope"] == "listing"], ticks)
 
     ended = now >= monitor.ends_at
-    day = min(max((min(now, monitor.ends_at) - monitor.started_at).days + 1, 1), MONITOR_DAYS)
+    # Each monitor carries its own window (30 for new purchases, 90 for the ones
+    # created before the 20-factor report); read it off the stored dates.
+    window = max(1, round((monitor.ends_at - monitor.started_at).total_seconds() / 86400))
+    day = min(max((min(now, monitor.ends_at) - monitor.started_at).days + 1, 1), window)
     listed = prospect.listed_date
     days_on_market = (now.date() - listed.date()).days if listed else prospect.listing_duration_days
     start_price = (baseline or {}).get("price") or (int(prospect.asking_price) if prospect.asking_price else None)
@@ -902,7 +954,7 @@ async def dashboard(db: AsyncSession, monitor: StaleListingMonitor, *, read_only
         },
         "contact_first_name": ((prospect.contact_name or "").split(" ")[0] or None) if not read_only else None,
         "day": day,
-        "total_days": MONITOR_DAYS,
+        "total_days": window,
         "started_at": monitor.started_at.isoformat(),
         "ends_at": monitor.ends_at.isoformat(),
         "ended": ended,
@@ -924,11 +976,11 @@ async def dashboard(db: AsyncSession, monitor: StaleListingMonitor, *, read_only
             "virtual_tours": (latest or {}).get("virtual_tours"),
         },
         "baseline": {k: (baseline or {}).get(k) for k in ("price", "image_count", "floorplans", "virtual_tours", "description_words", "featured")} if baseline else None,
-        "next_step": next_step(checklist, status, ended),
+        "next_step": next_step(checklist, status, ended, window=window),
         "alerts": alerts,
         "timeline": listing_events,
         "checklist": checklist,
-        "plan": build_plan(report, day, checklist),
+        "plan": build_plan(report, day, checklist, window=window),
         "nearby": {
             "checked_at": (nearby or {}).get("checked_at"),
             "radius": (nearby or {}).get("radius"),
