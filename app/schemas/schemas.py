@@ -618,6 +618,10 @@ class AdsStartRequest(BaseModel):
     channel: Literal["meta", "google", "review", "sell"] = "meta"
     # From a reminder email's link, when the visitor came back through one.
     reminder_token: Optional[str] = Field(None, max_length=100)
+    # A Zoopla listing we couldn't read: the address and asking price the
+    # visitor typed in instead (ads_funnel.ManualDetailsNeeded).
+    manual_address: Optional[str] = Field(None, max_length=300)
+    manual_price: Optional[float] = Field(None, gt=0, lt=1_000_000_000)
 
 
 class AdsStartResponse(BaseModel):

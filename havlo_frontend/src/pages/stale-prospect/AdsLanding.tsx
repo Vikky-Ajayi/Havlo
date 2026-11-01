@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsChannel, type AdsSummary } from './api';
+import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsChannel, type AdsSummary, type ManualListingDetails } from './api';
 import { formatGbp, type ProspectPreview } from './types';
 
 // Ads landing pages, Meta (/assess/seller, /assess/agent) and Google
@@ -111,7 +111,7 @@ const ReminderForm = ({ audience, channel }: { audience: AdsAudience; channel: A
       ) : (
         <form className="slw-ads-reminder-form" onSubmit={submit}>
           <p className="slw-ads-reminder-copy">
-            We&rsquo;ll send you a short reminder so you can return and add your Rightmove listing link when you have it.
+            We&rsquo;ll send you a short reminder so you can return and add your Rightmove or Zoopla listing link when you have it.
           </p>
           <div className="slw-ads-reminder-fields">
             <input type="text" placeholder="First name" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
@@ -127,6 +127,52 @@ const ReminderForm = ({ audience, channel }: { audience: AdsAudience; channel: A
   );
 };
 
+/** For a Zoopla listing we couldn't read: the address and asking price,
+ * typed in. Inline styles, because /sell shows it without AdsStyles. */
+export const ManualDetailsFields = ({
+  message,
+  loading,
+  onSubmit,
+}: {
+  message: string;
+  loading: boolean;
+  onSubmit: (details: ManualListingDetails) => void;
+}) => {
+  const [address, setAddress] = useState('');
+  const [price, setPrice] = useState('');
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const value = Number(price.replace(/[^\d.]/g, ''));
+    if (address.trim() && value) onSubmit({ address: address.trim(), price: value });
+  };
+  const field = {
+    border: '1px solid #d9dde3', borderRadius: 10, padding: '12px 14px', font: 'inherit', fontSize: 15,
+    background: '#fff', color: '#1F1F1E', minWidth: 0, boxSizing: 'border-box' as const,
+  };
+  return (
+    <form
+      onSubmit={submit}
+      style={{ marginTop: 12, background: '#f8f5fb', border: '1px solid #eadcf3', borderRadius: 14, padding: 16, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 10 }}
+    >
+      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: '#334155' }}>{message}</p>
+      <input
+        type="text" autoComplete="street-address" placeholder="Property address, including postcode" aria-label="Property address"
+        value={address} onChange={(e) => setAddress(e.target.value)} required minLength={6} maxLength={300} style={{ ...field, width: '100%' }}
+      />
+      <input
+        type="text" inputMode="numeric" placeholder="Asking price, for example 450000" aria-label="Asking price in pounds"
+        value={price} onChange={(e) => setPrice(e.target.value)} required style={{ ...field, width: '100%' }}
+      />
+      <button
+        type="submit" disabled={loading}
+        style={{ border: 0, borderRadius: 10, padding: '14px 20px', font: 'inherit', fontSize: 15, fontWeight: 700, background: '#0B0B0B', color: '#fff', cursor: 'pointer' }}
+      >
+        {loading ? 'Assessing…' : 'Continue with these details'}
+      </button>
+    </form>
+  );
+};
+
 export const AdsListingForm = ({
   audience,
   channel = 'meta',
@@ -134,15 +180,19 @@ export const AdsListingForm = ({
   loading,
   error,
   welcomeName,
+  manual,
 }: {
   audience: AdsAudience;
   channel?: AdsChannel;
-  onSubmit: (listingUrl: string) => void;
+  onSubmit: (listingUrl: string, manual?: ManualListingDetails) => void;
   loading: boolean;
   error: string;
   welcomeName?: string;
+  /** Set when the Zoopla link just sent couldn't be read. */
+  manual?: { url: string; message: string } | null;
 }) => {
-  const [url, setUrl] = useState('');
+  // The form is rebuilt while the listing is being read: a Zoopla link we couldn't read comes back with it.
+  const [url, setUrl] = useState(manual?.url ?? '');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const text = ADS_COPY[audience];
 
@@ -170,8 +220,8 @@ export const AdsListingForm = ({
             type="url"
             inputMode="url"
             autoComplete="url"
-            placeholder="Rightmove URL"
-            aria-label="Rightmove URL"
+            placeholder="Rightmove or Zoopla URL"
+            aria-label="Rightmove or Zoopla URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
@@ -182,9 +232,12 @@ export const AdsListingForm = ({
         </button>
       </form>
       <p className="slw-id-hint slw-ads-hint">
-        <span className="slw-info-dot">i</span> Your property URL is the link to your property listing on Rightmove.
+        <span className="slw-info-dot">i</span> Your property URL is the link to your property listing on Rightmove or Zoopla.
       </p>
       {error && <p className="slw-error">{error}</p>}
+      {manual && url.trim() === manual.url && (
+        <ManualDetailsFields message={manual.message} loading={loading} onSubmit={(details) => onSubmit(url.trim(), details)} />
+      )}
       <ReminderForm audience={audience} channel={channel} />
     </div>
   );

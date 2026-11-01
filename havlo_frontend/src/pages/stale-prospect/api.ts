@@ -4,14 +4,22 @@ import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, Prospect
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
     let detail = 'request_failed';
+    let code: string | undefined;
     try {
       const body = await response.json();
-      detail = body?.detail || detail;
+      // A string, or {code, message} where the page needs to react to the code.
+      if (body?.detail && typeof body.detail === 'object') {
+        detail = body.detail.message || detail;
+        code = body.detail.code;
+      } else {
+        detail = body?.detail || detail;
+      }
     } catch {
       // ignore — non-JSON error body
     }
-    const err = new Error(detail) as Error & { status?: number };
+    const err = new Error(detail) as Error & { status?: number; code?: string };
     err.status = response.status;
+    err.code = code;
     throw err;
   }
   return response.json();
@@ -33,13 +41,22 @@ export type AdsAudience = 'owner' | 'agent';
 // analyst-review funnel (/review/..., ReviewFunnel.tsx).
 export type AdsChannel = 'meta' | 'google' | 'review' | 'sell';
 
-/** Reads the pasted Rightmove listing and returns an access token for the
- * normal funnel. Can take up to a minute for a listing we haven't seen. */
+/** Reads the pasted Rightmove or Zoopla listing and returns an access token
+ * for the normal funnel. Can take up to a minute for a listing we haven't
+ * seen. A Zoopla listing that can't be read fails with code
+ * 'manual_details_needed': ask for the address and price, send them back as
+ * manual_address and manual_price. */
+export const MANUAL_DETAILS_NEEDED = 'manual_details_needed';
+
+export type ManualListingDetails = { address: string; price: number };
+
 export async function startAdsAssessment(payload: {
   listing_url: string;
   audience: AdsAudience;
   channel?: AdsChannel;
   reminder_token?: string;
+  manual_address?: string;
+  manual_price?: number;
 }): Promise<{ token: string; audience: string; property_code: string; prefill: { first_name?: string; email?: string } }> {
   const response = await fetch(`${API_BASE}/stale-listings/ads/start`, {
     method: 'POST',

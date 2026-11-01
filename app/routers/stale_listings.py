@@ -834,8 +834,12 @@ async def start_ads_assessment(
     try:
         result = await ads_funnel.start_from_listing(
             db, listing_url=payload.listing_url, audience=payload.audience, reminder_token=payload.reminder_token,
-            channel=payload.channel,
+            channel=payload.channel, manual_address=payload.manual_address, manual_price=payload.manual_price,
         )
+    except ads_funnel.ManualDetailsNeeded as exc:
+        await db.rollback()
+        # 422 with a code, so the page shows the address and price boxes.
+        raise HTTPException(status_code=422, detail={"code": exc.code, "message": str(exc)}) from exc
     except ads_funnel.ListingLinkError as exc:
         await db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc

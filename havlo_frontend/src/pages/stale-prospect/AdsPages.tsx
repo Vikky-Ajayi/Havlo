@@ -11,7 +11,7 @@ export const AdsSellerLanding = ({ channel = 'meta' }: { channel?: AdsChannel })
   usePageMeta({
     title: 'Why Hasn’t My Property Sold? | Free Listing Assessment | Havlo',
     description:
-      'Paste your Rightmove link and see what could be holding back your property’s sale: market positioning, listing presentation and buyer appeal, with changes that could help.',
+      'Paste your Rightmove or Zoopla link and see what could be holding back your property’s sale: market positioning, listing presentation and buyer appeal, with changes that could help.',
   });
   return <StaleProspectWizard ads="owner" channel={channel} />;
 };
@@ -20,7 +20,7 @@ export const AdsAgentLanding = ({ channel = 'meta' }: { channel?: AdsChannel }) 
   usePageMeta({
     title: 'Slow-Moving Instruction? | Listing Assessment for Estate Agents | Havlo',
     description:
-      'Paste the Rightmove link for a listing that’s taking longer than expected and see what’s worth reviewing before your next vendor conversation.',
+      'Paste the Rightmove or Zoopla link for a listing that’s taking longer than expected and see what’s worth reviewing before your next vendor conversation.',
   });
   return <StaleProspectWizard ads="agent" channel={channel} />;
 };
@@ -78,7 +78,7 @@ export const ReviewSellerLanding = () => {
   usePageMeta({
     title: 'Why Hasn’t My Property Sold? | Analyst-Reviewed Property Report | Havlo',
     description:
-      'Paste your Rightmove link for a free first scan. A Havlo property analyst then checks every point and sends you a clear report within 48 hours.',
+      'Paste your Rightmove or Zoopla link for a free first scan. A Havlo property analyst then checks every point and sends you a clear report within 48 hours.',
   });
   return <StaleProspectWizard ads="owner" channel="review" />;
 };
@@ -87,7 +87,7 @@ export const ReviewAgentLanding = () => {
   usePageMeta({
     title: 'Slow-Moving Instruction? | Analyst-Reviewed Listing Report | Havlo',
     description:
-      'Paste the Rightmove link for a free first scan. A Havlo property analyst then reviews the listing and sends you a report for your vendor within 48 hours.',
+      'Paste the Rightmove or Zoopla link for a free first scan. A Havlo property analyst then reviews the listing and sends you a report for your vendor within 48 hours.',
   });
   return <StaleProspectWizard ads="agent" channel="review" />;
 };

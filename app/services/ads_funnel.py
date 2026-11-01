@@ -33,6 +33,7 @@ import hmac
 import json
 import logging
 import re
+import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -99,21 +100,70 @@ class ListingLinkError(ValueError):
     """A problem with the pasted link, worded for the visitor."""
 
 
+class ManualDetailsNeeded(ListingLinkError):
+    """A Zoopla listing the existing reader couldn't read (listing_scraper
+    stops at a block page, it doesn't try to get past one): the visitor is
+    asked for the address and asking price instead, and the assessment runs
+    from those."""
+
+    code = "manual_details_needed"
+
+
+_ZOOPLA_ID_RE = re.compile(r"zoopla\.co\.uk/(?:for-sale|new-homes)/details/(?:[a-z0-9-]+/)?(\d{6,})", re.IGNORECASE)
+_POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b", re.IGNORECASE)
+MANUAL_PRICE_RANGE = (10_000, 50_000_000)
+
+
+def zoopla_listing_id(raw: str | None) -> str | None:
+    found = _ZOOPLA_ID_RE.search(raw or "")
+    return found.group(1) if found else None
+
+
 def clean_rightmove_url(raw: str) -> str:
     """The canonical listing URL for whatever form of Rightmove link was
     pasted (app links, ?channel=..., #/ fragments, utm tags)."""
     text = (raw or "").strip()
     listing_id = sps.rightmove_listing_id(text)
     if not listing_id:
-        if re.search(r"zoopla|onthemarket|primelocation", text, re.IGNORECASE):
+        if re.search(r"zoopla", text, re.IGNORECASE):
             raise ListingLinkError(
-                "We can only read Rightmove listings at the moment. Please paste your property's Rightmove link."
+                "That Zoopla link isn't a property page. Please paste the link that opens your property "
+                "(it looks like zoopla.co.uk/for-sale/details/12345678)."
+            )
+        if re.search(r"onthemarket|primelocation", text, re.IGNORECASE):
+            raise ListingLinkError(
+                "We can only read Rightmove and Zoopla listings at the moment. Please paste your property's "
+                "Rightmove or Zoopla link."
             )
         raise ListingLinkError(
-            "Please paste the link to the property's Rightmove listing "
-            "(it looks like rightmove.co.uk/properties/123456789)."
+            "Please paste the link to the property's Rightmove or Zoopla listing "
+            "(it looks like rightmove.co.uk/properties/123456789 or zoopla.co.uk/for-sale/details/12345678)."
         )
     return f"https://www.rightmove.co.uk/properties/{listing_id}"
+
+
+def clean_listing_url(raw: str) -> str:
+    """The canonical address of the pasted listing: Rightmove's, or Zoopla's
+    for a Zoopla property page."""
+    zoopla_id = zoopla_listing_id(raw)
+    if zoopla_id and not sps.rightmove_listing_id(raw):
+        return f"https://www.zoopla.co.uk/for-sale/details/{zoopla_id}/"
+    return clean_rightmove_url(raw)
+
+
+def manual_listing_details(address: str | None, price: Any) -> tuple[str, float] | None:
+    """The address and asking price a visitor typed in, checked; None when
+    they gave neither. Raises ListingLinkError for one that can't be right."""
+    text = re.sub(r"\s+", " ", address or "").strip()
+    if not text and price in (None, "", 0):
+        return None
+    number = sps.extract_price(price)
+    if len(text) < 6 or not number:
+        raise ListingLinkError("Please enter the property's address and its asking price.")
+    low, high = MANUAL_PRICE_RANGE
+    if not low <= number <= high:
+        raise ListingLinkError("Please check the asking price: enter it in pounds, for example 450000.")
+    return text[:300], float(number)
 
 
 def _city_from_address(address: str) -> str | None:
@@ -139,24 +189,52 @@ async def _owner_prospect(db: AsyncSession, url: str) -> StaleListingProspect | 
     )).scalar_one_or_none()
 
 
-async def _create_owner_prospect(db: AsyncSession, url: str, lead_source: str) -> StaleListingProspect:
+async def _create_owner_prospect(
+    db: AsyncSession, url: str, lead_source: str, manual: tuple[str, float] | None = None
+) -> StaleListingProspect:
     """Read the listing and make its prospect, report and preview. No price,
     age or property-type gate: the visitor chose to have this listing looked
-    at, unlike discovery picking listings to write to."""
-    try:
-        scraped = await scrape_single_listing(url)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Ads funnel: scrape failed for %s: %s", url, exc)
-        scraped = {}
-    snapshot = sps.snapshot_from_scrape(scraped or {}, url)
+    at, unlike discovery picking listings to write to.
+
+    A Zoopla listing the reader can't get is not forced: the visitor is asked
+    for the address and asking price (ManualDetailsNeeded), and `manual`
+    carries them back. The reader isn't tried again then (it had just failed),
+    and the prospect gets a link of its own, so the next person to paste the
+    same Zoopla link never inherits someone else's typing."""
+    zoopla = bool(zoopla_listing_id(url)) and not sps.rightmove_listing_id(url)
+    scraped: dict[str, Any] = {}
+    if not (zoopla and manual):
+        try:
+            scraped = await scrape_single_listing(url) or {}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Ads funnel: scrape failed for %s: %s", url, exc)
+    snapshot = sps.snapshot_from_scrape(scraped, url)
     snapshot["rightmove_id"] = sps.rightmove_listing_id(url)
+    if zoopla:
+        snapshot["platform"] = "Zoopla"
     address = (snapshot.get("address") or "").strip()
     price = sps.extract_price(snapshot.get("price"))
-    if (scraped or {}).get("blocked") or not address or not price:
-        raise ListingLinkError(
-            "We couldn't read that listing just now. Please check the link opens your property on "
-            "Rightmove and try again."
-        )
+    if scraped.get("blocked") or not address or not price:
+        if not zoopla:
+            raise ListingLinkError(
+                "We couldn't read that listing just now. Please check the link opens your property on "
+                "Rightmove and try again."
+            )
+        if manual is None:
+            raise ManualDetailsNeeded(
+                "We couldn't read that Zoopla listing automatically. Enter the property's address and asking "
+                "price below and we'll run the assessment from those."
+            )
+        # Whatever the reader did get is kept; the visitor fills the rest.
+        address = address or manual[0]
+        price = price or manual[1]
+        snapshot["address"] = snapshot["title"] = address
+        snapshot["price"] = f"£{price:,.0f}"
+        snapshot["manual_details"] = True
+        found = _POSTCODE_RE.search(address)
+        if found and not snapshot.get("postcode"):
+            snapshot["postcode"] = f"{found.group(1).upper()} {found.group(2).upper()}"
+        url = f"{url}#manual-{secrets.token_hex(4)}"
     listed_date = sps.parse_listed_date(snapshot.get("listed_date"))
     days = max((datetime.now(timezone.utc) - listed_date).days, 0) if listed_date else 0
     prospect, _token, _letter = await sps.create_prospect_from_listing_snapshot(
@@ -269,18 +347,22 @@ def _grant_access(prospect: StaleListingProspect) -> str:
 
 
 async def start_from_listing(
-    db: AsyncSession, *, listing_url: str, audience: str, reminder_token: str | None = None, channel: str = "meta"
+    db: AsyncSession, *, listing_url: str, audience: str, reminder_token: str | None = None, channel: str = "meta",
+    manual_address: str | None = None, manual_price: Any = None,
 ) -> dict[str, Any]:
     """The access token for the pasted listing, making whatever is needed.
-    Commits. Raises ListingLinkError for a link we can't use."""
+    Commits. Raises ListingLinkError for a link we can't use, and
+    ManualDetailsNeeded for a Zoopla one the reader couldn't get (the page
+    then asks for manual_address and manual_price)."""
     if audience not in AUDIENCES:
         raise ListingLinkError("Unknown audience.")
     channel = _channel(channel)
-    url = clean_rightmove_url(listing_url)
+    url = clean_listing_url(listing_url)
+    manual = manual_listing_details(manual_address, manual_price)
     owner = await _owner_prospect(db, url)
     if audience == "owner":
         if owner is None:
-            target = await _create_owner_prospect(db, url, seller_source(channel))
+            target = await _create_owner_prospect(db, url, seller_source(channel), manual)
         elif not owner.contact_email and owner.payment_status != "completed":
             # Found by discovery (or made for an agent's link) but nobody
             # has started its funnel: the ads visitor is the one doing so.
@@ -293,7 +375,7 @@ async def start_from_listing(
             target = await _seller_copy(db, owner, seller_source(channel))
     else:
         if owner is None:
-            owner = await _create_owner_prospect(db, url, agent_listing_source(channel))
+            owner = await _create_owner_prospect(db, url, agent_listing_source(channel), manual)
         target = await _agent_copy(db, owner, agent_source(channel))
     if target.code_looked_up_at is None:
         target.code_looked_up_at = datetime.now(timezone.utc)

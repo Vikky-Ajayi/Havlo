@@ -142,8 +142,12 @@ class LinkTests(unittest.TestCase):
             self.assertEqual(ads_funnel.clean_rightmove_url(raw), "https://www.rightmove.co.uk/properties/123456789")
 
     def test_other_links_are_refused_with_a_reason(self):
+        # Zoopla property pages are accepted (clean_listing_url); other portals and
+        # Zoopla pages that aren't a property are refused with a reason.
         with self.assertRaisesRegex(ads_funnel.ListingLinkError, "Rightmove"):
-            ads_funnel.clean_rightmove_url("https://www.zoopla.co.uk/for-sale/details/12345/")
+            ads_funnel.clean_listing_url("https://www.onthemarket.com/details/12345678/")
+        with self.assertRaisesRegex(ads_funnel.ListingLinkError, "property page"):
+            ads_funnel.clean_listing_url("https://www.zoopla.co.uk/for-sale/houses/leeds/")
         with self.assertRaises(ads_funnel.ListingLinkError):
             ads_funnel.clean_rightmove_url("my house")
 
@@ -270,12 +274,11 @@ class SummaryTests(unittest.TestCase):
         self.assertFalse(ads_funnel.competition_needs_search(self._prospect({"status": "ready", "count": 3})))
         self.assertFalse(ads_funnel.competition_needs_search(self._prospect({"status": "unavailable"})))
 
-    def test_reminder_emails_only_mention_rightmove(self):
+    def test_reminder_emails_name_the_portals_we_read(self):
         import json
         text = json.dumps(an.flow_content("url_reminder"), ensure_ascii=False)
-        self.assertNotIn("Zoopla", text)
         self.assertNotIn("OnTheMarket", text)
-        self.assertIn("Rightmove", text)
+        self.assertIn("Rightmove or Zoopla", text)
 
 
 class SheetTests(unittest.TestCase):

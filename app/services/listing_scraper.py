@@ -703,6 +703,72 @@ def _zp_enrich_from_detail(html: str) -> dict:
     return enriched
 
 
+def _zp_extract_listing_detail(html: str, url: str) -> dict | None:
+    """Extract a Zoopla detail record from the Next.js payload.
+
+    Zoopla has shipped several pageProps layouts over time. Keep the known
+    detail paths here and pass the selected object through the same normalizer
+    used for search results so the public API has one stable result shape.
+    """
+    nd = _extract_next_data(html)
+    if not nd:
+        return None
+    page_props = _safe_get(nd, "props", "pageProps")
+    if not isinstance(page_props, dict):
+        return None
+
+    candidates = (
+        _safe_get(page_props, "listingDetails", "listing"),
+        _safe_get(page_props, "listingDetails", "property"),
+        page_props.get("listing"),
+        page_props.get("propertyDetails"),
+        page_props.get("property"),
+    )
+    listing = next((item for item in candidates if isinstance(item, dict)), None)
+    if not listing:
+        return None
+
+    result = _zp_obj_to_listing(listing)
+    if not result:
+        return None
+
+    # Detail payloads use a few fields not present in search-card payloads.
+    address = listing.get("displayAddress") or listing.get("address")
+    if isinstance(address, dict):
+        address = address.get("displayAddress") or address.get("streetAddress") or address.get("formattedAddress")
+    if address:
+        result["address"] = _clean(address, 500)
+    result["title"] = _clean(listing.get("title") or listing.get("listingTitle") or result["address"] or result["title"], 500)
+
+    price = listing.get("price") or listing.get("listingPrice") or listing.get("pricing")
+    if isinstance(price, dict):
+        displays = price.get("displayPrices")
+        if isinstance(displays, list) and displays:
+            display = displays[0]
+            if isinstance(display, dict):
+                result["price"] = _clean(display.get("displayPrice") or display.get("price") or "")
+        result["price"] = result["price"] or _clean(price.get("label") or price.get("displayPrice") or "")
+        result["price"] = result["price"] or _fmt_price(price.get("amount"), price.get("currencyCode", "GBP"))
+
+    description = listing.get("description") or listing.get("detailedDescription") or listing.get("summaryDescription") or listing.get("summary")
+    if description:
+        result["description"] = _clean(re.sub(r"<[^>]+>", " ", str(description)), DESCRIPTION_MAX)
+    features = listing.get("keyFeatures") or listing.get("features")
+    if isinstance(features, list):
+        result["features"] = [
+            _clean(item if isinstance(item, str) else item.get("text") or item.get("label") or "", 300)
+            for item in features[:20]
+        ]
+        result["features"] = [item for item in result["features"] if item]
+    result["bedrooms"] = str(listing.get("numBedrooms") or listing.get("bedrooms") or result["bedrooms"] or "")
+    result["bathrooms"] = str(listing.get("numBathrooms") or listing.get("bathrooms") or result["bathrooms"] or "")
+    result["property_type"] = _clean(str(listing.get("propertyType") or listing.get("propertySubType") or result["property_type"] or "")).replace("_", " ").title()
+    result["floor_area"] = _clean(str(listing.get("floorArea") or listing.get("size") or result["floor_area"] or ""), 100)
+    result["url"] = url
+    result["platform"] = "zoopla"
+    return result
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # GENERIC (OnTheMarket, PrimeLocation, etc.)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1188,68 +1254,23 @@ async def scrape_single_listing(url: str) -> dict:
                     }
 
     elif platform == "zoopla":
-        # Zoopla is protected by Cloudflare — detect challenge/block pages
-        if (len(html) < 50_000
-                or "Just a moment" in html
-                or "__cf_chl_" in html
-                or "cf-browser-verification" in html):
+        # Treat explicit challenge pages as blocks. Page size alone is not a
+        # reliable signal: valid listings can have compact server-rendered
+        # payloads, especially when image assets are lazy-loaded.
+        lower_html = html.lower()
+        has_listing_payload = any(marker in html for marker in (
+            "__NEXT_DATA__", 'application/ld+json', 'itemprop="price"',
+        ))
+        if ("__cf_chl_" in lower_html
+                or "cf-browser-verification" in lower_html
+                or ("just a moment" in lower_html and not has_listing_payload)
+                or (len(html) < 5000 and not has_listing_payload)):
             logger.warning("Zoopla Cloudflare block detected for %s", url)
             empty = _empty_listing(platform, url)
             empty["blocked"] = True
             return empty
 
-        nd = _extract_next_data(html)
-        if nd:
-            ld = (
-                _safe_get(nd, "props", "pageProps", "listingDetails", "listing")
-                or _safe_get(nd, "props", "pageProps", "listing")
-                or _safe_get(nd, "props", "pageProps", "propertyDetails")
-            )
-            if isinstance(ld, dict):
-                images = []
-                for k in ("images", "media", "photos"):
-                    imgs = ld.get(k)
-                    if isinstance(imgs, list):
-                        images = [i.get("src") or i.get("url") or "" for i in imgs if isinstance(i, dict)]
-                        images = [i for i in images if i]
-                        break
-                addr_raw = ld.get("displayAddress") or ld.get("address") or {}
-                addr_str = addr_raw if isinstance(addr_raw, str) else _clean(_safe_get(addr_raw, "displayAddress") or _safe_get(addr_raw, "streetAddress") or "")
-                price_raw = ld.get("price") or ld.get("listingPrice") or {}
-                price_str = ""
-                if isinstance(price_raw, dict):
-                    dps = price_raw.get("displayPrices")
-                    price_str = (dps[0].get("displayPrice") or "") if dps else _fmt_price(price_raw.get("amount"))
-                elif isinstance(price_raw, (int, float)):
-                    price_str = _fmt_price(price_raw)
-                features: list[str] = []
-                for k in ("keyFeatures", "features"):
-                    feats = ld.get(k)
-                    if isinstance(feats, list):
-                        features = [_clean(f if isinstance(f, str) else f.get("text") or "") for f in feats[:10]]
-                        break
-                listed_date = ""
-                for k in ("firstPublishedAt", "firstListedAt", "listingDate"):
-                    raw = ld.get(k)
-                    if raw:
-                        listed_date = _parse_iso_date(str(raw)[:25])
-                        break
-                result = {
-                    "title": _clean(ld.get("title") or addr_str),
-                    "address": _clean(addr_str),
-                    "price": price_str,
-                    "description": _clean(ld.get("description") or ld.get("summaryDescription") or "", 800),
-                    "url": url,
-                    "images": images,
-                    "image": images[0] if images else "",
-                    "bedrooms": str(ld.get("numBedrooms") or ld.get("bedrooms") or ""),
-                    "bathrooms": str(ld.get("numBathrooms") or ld.get("bathrooms") or ""),
-                    "property_type": _clean(str(ld.get("propertyType") or "")).replace("_", " ").title(),
-                    "listed_date": listed_date,
-                    "features": features,
-                    "floor_area": str(ld.get("floorArea") or ""),
-                    "platform": "zoopla",
-                }
+        result = _zp_extract_listing_detail(html, url)
 
     elif platform == "onthemarket":
         result = _otm_extract_from_redux(html, url)

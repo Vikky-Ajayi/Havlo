@@ -7,6 +7,8 @@ import { PropertyCodeForm } from '../components/shared/PropertyCodeForm';
 import { CountryBadge } from '../components/shared/CountryBadge';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
 import { parsePropertyInput } from '../lib/propertyInput';
+import { ManualDetailsFields } from './stale-prospect/AdsLanding';
+import type { ManualListingDetails } from './stale-prospect/api';
 import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
 
 const PURPLE = '#A409D2';
@@ -229,11 +231,14 @@ function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
 /* ─── MAIN COMPONENT ─── */
 // The seller page (/sell, SellLanding.tsx) is this page, with its search box
 // starting the instant listing-link funnel instead of the questionnaire: a
-// Rightmove link only, no property-code box, and copy to match.
+// Rightmove or Zoopla link only, no property-code box, and copy to match.
 export type SellLandingStart = {
-  onSubmit: (listingUrl: string) => void;
+  onSubmit: (listingUrl: string, manual?: ManualListingDetails) => void;
   loading: boolean;
   error: string;
+  // Set when the Zoopla link just sent couldn't be read: the address and
+  // price boxes then show under the link box.
+  manual: { url: string; message: string } | null;
   // The link last tried, shown again with the error if it couldn't be read.
   listingUrl: string;
 };
@@ -241,10 +246,10 @@ export type SellLandingStart = {
 // What changes on /sell: the funnel needs a live Rightmove listing and opens
 // the full report as soon as it's paid for.
 const SELL_FAQ_ANSWERS: Record<string, string | null> = {
-  '3. How does it work?': 'Paste the link to your Rightmove listing. We analyse your home and show what may be holding your sale back, with\nactionable recommendations to improve buyer appeal and selling potential.',
+  '3. How does it work?': 'Paste the link to your Rightmove or Zoopla listing. We analyse your home and show what may be holding your sale back, with\nactionable recommendations to improve buyer appeal and selling potential.',
   '5. Can I use this before listing my home?': null,
   '6. How long does the report take?': 'Your free first scan takes under a minute, and your full report opens as soon as you unlock it.',
-  '13. What property websites do you support?': 'We currently read Rightmove listings.',
+  '13. What property websites do you support?': 'We currently read Rightmove and Zoopla listings.',
 };
 
 const SELL_FAQS = ALL_FAQS.flatMap((faq) => {
@@ -256,7 +261,7 @@ const SELL_FAQS = ALL_FAQS.flatMap((faq) => {
 export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {}) {
   usePageMeta(sell ? {
     title: 'Why Hasn’t My Property Sold? | Free Listing Assessment | Havlo',
-    description: 'Paste your Rightmove link and see what could be holding back your property’s sale, with recommendations you can use alongside your current estate agent.',
+    description: 'Paste your Rightmove or Zoopla link and see what could be holding back your property’s sale, with recommendations you can use alongside your current estate agent.',
     canonical: 'https://www.heyhavlo.com/sell',
   } : {
     title: 'Is Your Property Not Selling? Get a Free Listing Audit | Havlo',
@@ -299,7 +304,7 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
   const handleStart = () => {
     if (sell) {
       if (!input.trim()) {
-        setInputError('Please paste your Rightmove listing link to continue.');
+        setInputError('Please paste your Rightmove or Zoopla listing link to continue.');
         focusHeroInput();
         return;
       }
@@ -325,7 +330,7 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
 
   const handlePricingStart = () => {
     if (!input.trim()) {
-      setInputError(sell ? 'Please paste your Rightmove listing link to continue.' : 'Please enter your property address or listing URL to continue.');
+      setInputError(sell ? 'Please paste your Rightmove or Zoopla listing link to continue.' : 'Please enter your property address or listing URL to continue.');
       focusHeroInput();
       return;
     }
@@ -334,7 +339,7 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
 
   const faqs = sell ? SELL_FAQS : ALL_FAQS;
   const faqsToShow = showAllFaq ? faqs : faqs.slice(0, 5);
-  const heroInputPlaceholder = sell ? 'Paste your Rightmove listing link…' : 'Enter property address or Rightmove/Zoopla URL…';
+  const heroInputPlaceholder = sell ? 'Paste your Rightmove or Zoopla link…' : 'Enter property address or Rightmove/Zoopla URL…';
   const shownInputError = inputError || sell?.error || '';
 
   const handleOpenPortal = () => {
@@ -1366,6 +1371,14 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
                 <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{shownInputError}</p>
               )}
 
+              {sell?.manual && input.trim() === sell.manual.url && (
+                <ManualDetailsFields
+                  message={sell.manual.message}
+                  loading={sell.loading}
+                  onSubmit={(details) => sell.onSubmit(input.trim(), details)}
+                />
+              )}
+
               {!sell && <PropertyCodeForm audience="owner" className="sl-code-form" />}
 
               {/* Trustpilot row */}
@@ -1452,12 +1465,12 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
               <span style={{ color:'#FFF', fontFamily:'Inter, sans-serif', fontSize:16, fontWeight:700, letterSpacing:'-0.02em' }}>Step 1</span>
             </div>
             <div className="sl-step-copy">
-              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{sell ? 'Paste Your Rightmove Link' : 'Tell Us About Your Home'}</div>
-              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>{sell ? 'Copy the link to your property on Rightmove and paste it in to start your analysis. No account needed.' : 'Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.'}</div>
+              <div className="sl-step-title" style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontWeight:700, fontSize:40, color:'#1F1F1E', letterSpacing:'-0.03em', lineHeight:'120%' }}>{sell ? 'Paste Your Rightmove or Zoopla Link' : 'Tell Us About Your Home'}</div>
+              <div className="sl-step-desc" style={{ fontFamily:'Inter, sans-serif', fontWeight:400, fontSize:20, color:'#000000', letterSpacing:'-0.03em', lineHeight:'150%', maxWidth:514 }}>{sell ? 'Copy the link to your property on Rightmove or Zoopla and paste it in to start your analysis. No account needed.' : 'Enter your property details, upload your listing, or share your Rightmove/Zoopla link to start your analysis.'}</div>
             </div>
             <div className="sl-step-float sl-step-float--inputs" style={{ position:'absolute', right:-144, top:40, width:679, padding:32, display:'flex', flexDirection:'column', gap:32, borderRadius:32, border:'1px solid rgba(0,0,0,0.10)', background:'#FFFFFF', zIndex:3, boxSizing:'border-box' }}>
               {(sell ? [
-                { Icon: LinkIcon, label:'Paste your Rightmove link…' },
+                { Icon: LinkIcon, label:'Paste your Rightmove or Zoopla link…' },
               ] : [
                 { Icon: HomeInputIcon, label:'Enter property address…' },
                 { Icon: LinkIcon, label:'Paste Rightmove / Zoopla URL…' },
