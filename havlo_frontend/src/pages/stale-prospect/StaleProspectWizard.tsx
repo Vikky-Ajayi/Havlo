@@ -1068,7 +1068,7 @@ const FullReportStep = ({
     if (counts.check_with_agent) summaryBits.push(`${counts.check_with_agent} to check with your agent`);
     if (counts.working_well) summaryBits.push(`${counts.working_well} working well`);
     return (
-      <section className="slw-report">
+      <section className="slw-report slw-report-v2">
         <div className="slw-report-head">
           <h1>Full Property Assessment</h1>
           <div className="slw-report-head-actions">
@@ -1146,6 +1146,26 @@ const FullReportStep = ({
             <SoldPricesList sales={soldComparables} attribution={report.sold_comparables_attribution} />
           </div>
         )}
+
+        {/* Print only: the PDF can't carry the live Next Steps basket, so it
+            closes with the optional services as text instead (replaces the old
+            standing "Premium Digital Buyer Acquisition" action in the PDF). */}
+        <div className="slw-print-nextsteps">
+          <h2 className="slw-section-heading">Havlo Optional Property Improvement Services</h2>
+          <p className="slw-print-nextsteps-intro">If you&rsquo;d like us to act on this report for you, three optional services are available. Open your report online and choose <b>Explore Next Steps</b> to order.</p>
+          <div className="slw-print-nextsteps-item">
+            <b>Listing Rewrite &mdash; £199</b>
+            <p>We rewrite your listing&rsquo;s headline, description and photo order based on these findings. Delivered in 3&ndash;7 working days.</p>
+          </div>
+          <div className="slw-print-nextsteps-item">
+            <b>Relaunch Strategy &mdash; £299</b>
+            <p>A full repositioning and relaunch plan: pricing, timing, where to advertise and a week-by-week schedule.</p>
+          </div>
+          <div className="slw-print-nextsteps-item">
+            <b>30-Day Monitoring &mdash; Included</b>
+            <p>Your dashboard tracks views, enquiries and nearby activity for 30 days &mdash; free with every report.</p>
+          </div>
+        </div>
       </section>
     );
   }
@@ -2520,6 +2540,7 @@ export const WizardStyles = () => (
     .slw-recommendation-callout b{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1}
     .slw-recommendation-callout .slw-btn-black{width:auto;padding:14px 22px}
     .slw-print-recommendation{display:none}
+    .slw-print-nextsteps{display:none}
 
     /* Recommendation modal */
     .slw-modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:flex;align-items:flex-start;justify-content:center;z-index:100}
@@ -2618,6 +2639,21 @@ export const WizardStyles = () => (
          and read as one intro, not a section of their own. */
       .slw-section-heading{break-before:page;page-break-before:always}
       .slw-report-head,.slw-report-summary-row{break-before:avoid;page-break-before:avoid}
+
+      /* The 20-factor report (version 2) is one long factor list, not a set
+         of distinct sections — forcing a page before each heading would leave
+         half-empty pages, exactly the "page gaps" the brief says to avoid. So
+         let it flow: no forced section breaks, a single factor column, and
+         break-inside:avoid so a factor card is never split across pages. The
+         optional-services block closes it (shown only in print). */
+      .slw-report-v2 .slw-section-heading{break-before:auto !important;page-break-before:auto !important}
+      .slw-report-v2 .slw-factor-grid{grid-template-columns:1fr !important;gap:12px !important}
+      .slw-report-v2 .slw-factor-card{break-inside:avoid;page-break-inside:avoid}
+      .slw-print-nextsteps{display:block !important;margin-top:22px}
+      .slw-print-nextsteps .slw-print-nextsteps-intro{font-size:14px;line-height:1.5;color:#353a42;margin:0 0 14px}
+      .slw-print-nextsteps-item{break-inside:avoid;page-break-inside:avoid;border-top:1px solid #eceef1;padding:12px 0}
+      .slw-print-nextsteps-item b{display:block;font-size:15px;margin-bottom:4px}
+      .slw-print-nextsteps-item p{margin:0;font-size:14px;line-height:1.5;color:#353a42}
     }
 
     @media (max-width: 900px){
