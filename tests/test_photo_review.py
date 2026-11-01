@@ -61,6 +61,48 @@ class ReviewTests(unittest.TestCase):
                 ["https://img/1.jpg"], address="x", property_type=None, photo_count=1, model="m")))
 
 
+class AddPhotoReviewTests(unittest.TestCase):
+    def test_runs_the_whole_path_with_a_key_present_without_erroring(self):
+        # Regression: add_photo_review used groq_service without importing it,
+        # which NameError'd on prod (where the key is set) and would have
+        # broken report generation. Exercise the full path.
+        import os
+        from app.services import stale_prospect_service as sps, photo_review as pr
+
+        review = {"overall": "Dark.", "model": "gpt-6.1-terra", "photos_seen": 1,
+                  "findings": [{"title": "Lead photo is dim", "description": "The first image is dark.", "type": "issue"}],
+                  "actions": ["Reshoot the lead photo"]}
+
+        async def fake_review(image_urls, **kw):
+            return review
+
+        async def go():
+            with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False):
+                os.environ.pop("REPORT_MODEL", None)
+                with mock.patch.object(pr, "review_photos", fake_review):
+                    return await sps.add_photo_review(
+                        {"key_findings": [{"title": "Price", "description": "x", "icon": "price"}], "action_plan": []},
+                        {"images": ["https://img/1.jpg"], "media": {"photos": 6}, "property_type": "Flat"}, "1 Test Rd")
+
+        out = asyncio.run(go())
+        self.assertIn("Lead photo is dim", [f["title"] for f in out["key_findings"]])
+
+    def test_a_crash_in_the_photo_step_never_breaks_the_report(self):
+        import os
+        from app.services import stale_prospect_service as sps, photo_review as pr
+
+        async def boom(image_urls, **kw):
+            raise RuntimeError("vision exploded")
+
+        async def go():
+            with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False):
+                os.environ.pop("REPORT_MODEL", None)
+                with mock.patch.object(pr, "review_photos", boom):
+                    return await sps.add_photo_review({"key_findings": []}, {"images": ["https://img/1.jpg"]}, "x")
+
+        self.assertEqual(asyncio.run(go()), {"key_findings": []})
+
+
 class MergeAndCheckTests(unittest.TestCase):
     def test_photo_findings_survive_the_checks_but_text_photo_claims_do_not(self):
         review = {"overall": "Dark photos.", "model": "gpt-6.1-terra", "photos_seen": 2,

@@ -878,17 +878,21 @@ async def add_photo_review(
     so the checks keep them. Stored in report["_photo_review"] and reused when
     the report is expanded, so paid reports keep the same photo findings
     without a second call. Falls back silently to no photo feedback."""
-    from app.services import photo_review
+    from app.services import groq_service, photo_review
 
     if not photo_review.enabled():
         return report
-    provider, model = groq_service.live_report_model()
-    if provider != "openai":  # the Groq fallback can't see images
+    try:
+        provider, model = groq_service.live_report_model()
+        if provider != "openai":  # the Groq fallback can't see images
+            return report
+        review = await photo_review.review_photos(
+            snapshot.get("images"), address=address, property_type=snapshot.get("property_type"),
+            photo_count=(snapshot.get("media") or {}).get("photos"), model=model,
+        )
+    except Exception:  # noqa: BLE001 -- photo feedback must never break the report
+        logger.exception("Photo review step failed for %s", address)
         return report
-    review = await photo_review.review_photos(
-        snapshot.get("images"), address=address, property_type=snapshot.get("property_type"),
-        photo_count=(snapshot.get("media") or {}).get("photos"), model=model,
-    )
     return _apply_photo_review(report, review) if review else report
 
 
