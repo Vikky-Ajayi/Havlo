@@ -1261,6 +1261,42 @@ async def generate_prospect_report(
     )
 
 
+async def ensure_expanded_v2_report(
+    prospect: StaleListingProspect, free_report: dict[str, Any]
+) -> dict[str, Any]:
+    """The paid pass for a 20-factor report: keep the free verdicts, expand
+    every factor with live market data (report_writer.write_paid_report —
+    two parallel AI calls), then re-run the accuracy and tone checks. Mutates
+    prospect.report_json in place; the caller commits."""
+    from app.services import report_writer
+
+    snapshot = _safe_json(prospect.listing_snapshot_json)
+    recorded = await refresh_sold_comparables(prospect)
+    reduced = bool(snapshot.get("price_reduced"))
+    reduced_days = prospect.listing_duration_days if reduced else None
+    advertised_days = None if reduced else prospect.listing_duration_days
+    agent = (getattr(prospect, "audience", None) == "agent")
+    # The vision pass ran for the free report; its metadata (not a re-run)
+    # keeps the photography factor marked photo-verified through the rewrite.
+    photo_review = free_report.get("_photo_review")
+
+    paid = await report_writer.write_paid_report(
+        prospect, free_report, snapshot, asking_price=prospect.asking_price,
+        country=prospect_country(prospect), reduced_days=reduced_days,
+        advertised_days=advertised_days, sales=recorded, photo_review=photo_review, agent=agent)
+    facts = report_facts(
+        snapshot, paid, asking_price=prospect.asking_price,
+        listing_duration_days=prospect.listing_duration_days,
+        listed_date=parse_listed_date(snapshot.get("listed_date")),
+        written_at=datetime.now(timezone.utc), sales=recorded)
+    paid = await report_writer.finalize_report(paid, facts, agent=agent)
+    paid["_expanded"] = True
+    if photo_review:
+        paid["_photo_review"] = photo_review
+    prospect.report_json = json.dumps(paid, ensure_ascii=False)
+    return paid
+
+
 async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, Any]:
     """Enrich the existing report in full detail the first time it's unlocked.
 
@@ -1282,6 +1318,9 @@ async def ensure_expanded_report(prospect: StaleListingProspect) -> dict[str, An
     report = _safe_json(prospect.report_json)
     if report.get("_expanded"):
         return report
+    from app.services import report_writer
+    if report_writer.report_is_v2(report):
+        return await ensure_expanded_v2_report(prospect, report)
     snapshot = _safe_json(prospect.listing_snapshot_json)
     recorded = await refresh_sold_comparables(prospect)
     report_snapshot = with_recorded_sales(snapshot, recorded)

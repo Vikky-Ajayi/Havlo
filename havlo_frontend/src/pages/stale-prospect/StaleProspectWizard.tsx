@@ -573,12 +573,15 @@ const totalFactorsFor = (prospect: ProspectPreview) =>
     ? (prospect.preview?.total_factors ?? 20)
     : (prospect.preview?.key_issues || []).length + LOCKED_FINDINGS.length;
 
-// A short label for a 20-factor verdict (version 2 preview only).
+// A short label for a 20-factor verdict (version 2 preview and full report).
 const VERDICT_TAG: Record<string, { label: string; className: string }> = {
   problem: { label: 'Problem', className: 'slw-tag-problem' },
   working_well: { label: 'Working well', className: 'slw-tag-good' },
   check_with_agent: { label: 'Check with your agent', className: 'slw-tag-check' },
 };
+
+// Problems first, then check-with-agent, then working-well, on the full report.
+const V2_VERDICT_ORDER = ['problem', 'check_with_agent', 'working_well'];
 
 const FULL_REPORT_INCLUDES = [
   'Detailed property analysis', 'Pricing analysis', 'Comparable property analysis',
@@ -1050,6 +1053,102 @@ const FullReportStep = ({
   const thirtyDayPlan = (data.thirty_day_plan || []).length > 0
     ? (data.thirty_day_plan as ThirtyDayPlanWeek[])
     : deriveThirtyDayPlanFromActions(data.action_plan);
+
+  // The 20-factor report (version 2) renders every factor in full, grouped by
+  // verdict, instead of the old key_findings/action_plan sections.
+  const isV2 = data.version === 2 || (Array.isArray(data.factors) && data.factors.length > 0);
+  if (isV2) {
+    const factors = (data.factors || []).filter((f) => f && f.name);
+    const counts = { problem: 0, working_well: 0, check_with_agent: 0 } as Record<string, number>;
+    factors.forEach((f) => { if (f.verdict && counts[f.verdict] !== undefined) counts[f.verdict] += 1; });
+    const ordered = [...factors].sort((a, b) =>
+      V2_VERDICT_ORDER.indexOf(a.verdict || 'working_well') - V2_VERDICT_ORDER.indexOf(b.verdict || 'working_well'));
+    const summaryBits: string[] = [];
+    if (counts.problem) summaryBits.push(`${counts.problem} ${counts.problem === 1 ? 'problem' : 'problems'}`);
+    if (counts.check_with_agent) summaryBits.push(`${counts.check_with_agent} to check with your agent`);
+    if (counts.working_well) summaryBits.push(`${counts.working_well} working well`);
+    return (
+      <section className="slw-report">
+        <div className="slw-report-head">
+          <h1>Full Property Assessment</h1>
+          <div className="slw-report-head-actions">
+            <button type="button" className="slw-btn-black slw-pdf-btn" onClick={onOpenDashboard}>30-Day Dashboard</button>
+            <button type="button" className="slw-btn-outline slw-pdf-btn" onClick={onDownloadPdf}>Download PDF Report</button>
+          </div>
+        </div>
+
+        <div className="slw-report-summary-row">
+          <div className="slw-report-property-card" ref={propertyCardRef}>
+            <div className="slw-report-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
+            <div className="slw-report-property-text">
+              <h2>{report.property_address}</h2>
+              <div className="slw-assess-facts">
+                <div><span>Asking Price</span><b className="slw-accent">{formatGbp(report.asking_price)}</b></div>
+                {report.reduced_date != null ? (
+                  <div><span>Date Reduced</span><b className="slw-fact-date">{formatReducedDate(report.reduced_date)}</b></div>
+                ) : (
+                  <div><span>Days on Market</span><b>{report.listing_duration_days ?? '—'} days</b></div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="slw-report-summary-card" style={propertyCardHeight ? { minHeight: propertyCardHeight } : undefined}>
+            <b>Executive summary</b>
+            <ExpandableText text={data.executive_summary} maxChars={320} />
+          </div>
+        </div>
+
+        <h2 className="slw-section-heading">Saleability Score</h2>
+        <div className="slw-score-row">
+          <div className="slw-score-gauge-card">
+            <SaleabilityGauge score={data.overall_score ?? 50} />
+            <b>Property Saleability Score</b>
+            <p>Our assessment identified several factors that may be affecting your property&rsquo;s ability to attract and convert buyers.</p>
+          </div>
+          <div className="slw-score-bars-card slw-factor-summary-card">
+            {summaryBits.length > 0 && (
+              <div className="slw-factor-summary-counts">
+                {counts.problem > 0 && <span className="slw-verdict-tag slw-tag-problem">{counts.problem} problem{counts.problem === 1 ? '' : 's'}</span>}
+                {counts.check_with_agent > 0 && <span className="slw-verdict-tag slw-tag-check">{counts.check_with_agent} to check</span>}
+                {counts.working_well > 0 && <span className="slw-verdict-tag slw-tag-good">{counts.working_well} working well</span>}
+              </div>
+            )}
+            {data.pricing_line ? <p className="slw-factor-summary-pricing">{data.pricing_line}</p> : null}
+            <p className="slw-factor-summary-note">Every factor we check is below, with what we found and what to do about it.</p>
+          </div>
+        </div>
+
+        <h2 className="slw-section-heading">All {factors.length} factors</h2>
+        <div className="slw-factor-grid">
+          {ordered.map((f, index) => {
+            const v = VERDICT_TAG[f.verdict || 'check_with_agent'] || VERDICT_TAG.check_with_agent;
+            return (
+              <div className={`slw-factor-card slw-factor-${f.verdict || 'check_with_agent'}`} key={f.key || f.num || index}>
+                <div className="slw-factor-head">
+                  <span className="slw-factor-num">{f.num ?? index + 1}</span>
+                  <div className="slw-factor-titles">
+                    <h3>{f.name}</h3>
+                    <span className={`slw-verdict-tag ${v.className}`}>{v.label}</span>
+                  </div>
+                </div>
+                <div className="slw-factor-body">
+                  {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={220} /></div> : null}
+                  {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={220} /></div> : null}
+                  {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={220} /></div> : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {soldComparables.length > 0 && (
+          <div className="slw-report-sold-comps">
+            <SoldPricesList sales={soldComparables} attribution={report.sold_comparables_attribution} />
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className="slw-report">
@@ -2200,6 +2299,25 @@ export const WizardStyles = () => (
     .slw-tag-problem{background:#FDECEC;color:#B42318}
     .slw-tag-good{background:#E7F6EC;color:#1A7F4B}
     .slw-tag-check{background:#F1F0FB;color:#5A4AA8}
+    .slw-factor-summary-card{justify-content:center;gap:14px}
+    .slw-factor-summary-counts{display:flex;flex-wrap:wrap;gap:8px}
+    .slw-factor-summary-counts .slw-verdict-tag{margin:0}
+    .slw-factor-summary-pricing{margin:0;font-size:15px;line-height:1.45;color:#202124;font-weight:600}
+    .slw-factor-summary-note{margin:0;font-size:13.5px;line-height:1.45;color:#5f6671}
+    .slw-factor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:4px 0 8px}
+    .slw-factor-card{background:#fff;border:1px solid #e8eaed;border-left:3px solid #c7ccd3;border-radius:14px;padding:20px 22px}
+    .slw-factor-problem{border-left-color:#B42318}
+    .slw-factor-working_well{border-left-color:#1A7F4B}
+    .slw-factor-check_with_agent{border-left-color:#5A4AA8}
+    .slw-factor-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:12px}
+    .slw-factor-num{flex:none;width:28px;height:28px;border-radius:8px;background:#f2f3f5;color:#6b7280;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+    .slw-factor-titles{flex:1 1 auto;min-width:0}
+    .slw-factor-titles h3{margin:0 0 7px;font-size:17px;font-weight:700;letter-spacing:-0.02em;color:#141414;line-height:1.22}
+    .slw-factor-body{display:grid;gap:11px}
+    .slw-factor-label{display:block;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#9097a1;margin-bottom:3px}
+    .slw-factor-body p{margin:0;font-size:14.5px;line-height:1.5;color:#353a42}
+    .slw-factor-action{background:#f7f8fa;border-radius:10px;padding:11px 13px}
+    @media (max-width:760px){.slw-factor-grid{grid-template-columns:1fr}.slw-factor-card{padding:16px 16px}}
     .slw-finding-card p{color:#475467;font-size:14px;line-height:1.42;margin:0}
     .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:28px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}

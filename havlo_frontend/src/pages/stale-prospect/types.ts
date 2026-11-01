@@ -140,6 +140,18 @@ export interface ThirtyDayPlanWeek {
   title: string;
 }
 
+// A single factor in the 20-factor report (version 2).
+export interface ReportFactor {
+  num?: number;
+  key?: string;
+  name?: string;
+  verdict?: 'problem' | 'working_well' | 'check_with_agent';
+  found?: string;
+  why?: string;
+  action?: string;
+  _photo_verified?: boolean;
+}
+
 export interface FullReportData {
   overall_score?: number;
   days_on_market?: number | null;
@@ -158,6 +170,11 @@ export interface FullReportData {
   pricing_recommendation?: string;
   pricing_recommendation_detail?: string;
   executive_summary?: string;
+  // Present only on the 20-factor report (version 2).
+  version?: number;
+  factors?: ReportFactor[];
+  pricing_line?: string;
+  day_sentence?: string | null;
 }
 
 export interface ProspectReport {
