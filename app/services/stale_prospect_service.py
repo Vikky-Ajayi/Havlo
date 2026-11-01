@@ -450,29 +450,40 @@ async def create_prospect_from_listing_snapshot(
         # misses this is filled in by backfill_sold_comparables.
         timeout=20,
     )
-    report_snapshot = with_recorded_sales(listing_snapshot, sold_comparables)
-    report = await _generate_live_report(
-        property_address=property_address,
-        rightmove_url=rightmove_url,
-        snapshot=report_snapshot,
-        listing_duration_days=listing_duration_days,
-        expand_report=expand_report,
-        market=country,
-    )
-    # What this report was given, so its claims are checked against it.
-    report["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
-    report["_media_given"] = media_known(listing_snapshot.get("media"))
-    if not make_letter:  # interactive funnels only, not bulk discovery
-        report = await add_photo_review(report, listing_snapshot, property_address)
-    check_new_report(
-        report,
-        report_facts(
-            listing_snapshot, report, asking_price=asking_price, listing_duration_days=listing_duration_days,
-            listed_date=listed_date, written_at=datetime.now(timezone.utc), sales=sold_comparables,
-        ),
-        property_address,
-    )
-    preview = build_preview(report, listing_snapshot, property_address)
+    if report_v2_enabled() and not make_letter:
+        # The 20-factor report (overhaul). Already accuracy- and tone-checked.
+        # This is the owner's copy; the agent's is derived and written later.
+        from app.services import report_writer
+
+        report = await generate_v2_report(
+            property_address, rightmove_url, listing_snapshot, asking_price=asking_price,
+            listing_duration_days=listing_duration_days, country=country, sold_comparables=sold_comparables,
+            agent=False)
+        preview = report_writer.v2_preview(report)
+    else:
+        report_snapshot = with_recorded_sales(listing_snapshot, sold_comparables)
+        report = await _generate_live_report(
+            property_address=property_address,
+            rightmove_url=rightmove_url,
+            snapshot=report_snapshot,
+            listing_duration_days=listing_duration_days,
+            expand_report=expand_report,
+            market=country,
+        )
+        # What this report was given, so its claims are checked against it.
+        report["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
+        report["_media_given"] = media_known(listing_snapshot.get("media"))
+        if not make_letter:  # interactive funnels only, not bulk discovery
+            report = await add_photo_review(report, listing_snapshot, property_address)
+        check_new_report(
+            report,
+            report_facts(
+                listing_snapshot, report, asking_price=asking_price, listing_duration_days=listing_duration_days,
+                listed_date=listed_date, written_at=datetime.now(timezone.utc), sales=sold_comparables,
+            ),
+            property_address,
+        )
+        preview = build_preview(report, listing_snapshot, property_address)
     now = datetime.now(timezone.utc)
     prospect = StaleListingProspect(
         country=country,
@@ -719,6 +730,9 @@ def clean_preview(prospect: StaleListingProspect) -> dict[str, Any]:
     (or, with no report, cleaned themselves). See report_guard.py."""
     preview = _safe_json(getattr(prospect, "preview_json", None))
     report = _safe_json(current_report_json(prospect))
+    from app.services import report_writer
+    if report_writer.report_is_v2(report):
+        return report_writer.v2_preview(report)
     if preview and report.get("key_findings"):
         preview["key_issues"] = report["key_findings"][:3]
         preview["recommendations"] = (report.get("action_plan") or [])[:3]
@@ -848,6 +862,49 @@ def prospect_report_facts(prospect: StaleListingProspect, report: dict[str, Any]
     )
 
 
+def report_v2_enabled() -> bool:
+    """The new 20-factor report. Off by default so the live funnels keep the
+    old report until the overhaul is finished (set REPORT_V2=true to switch)."""
+    return (os.environ.get("REPORT_V2", "").strip().lower() in ("1", "true", "yes", "on"))
+
+
+async def generate_v2_report(
+    property_address: str, rightmove_url: str, listing_snapshot: dict[str, Any], *,
+    asking_price: float | None, listing_duration_days: int | None, country: str,
+    sold_comparables: list[dict[str, Any]] | None, agent: bool = False,
+) -> dict[str, Any]:
+    """A finished 20-factor report: the free write, the photo review folded into
+    factor 10, then the accuracy and tone passes (report_writer.finalize_report)."""
+    from app.services import groq_service, photo_review, report_writer
+
+    reduced = bool(listing_snapshot.get("price_reduced"))
+    reduced_days = listing_duration_days if reduced else None
+    advertised_days = None if reduced else listing_duration_days
+
+    pr = None
+    provider, model = groq_service.live_report_model()
+    if photo_review.enabled() and provider == "openai":
+        try:
+            pr = await photo_review.review_photos(
+                listing_snapshot.get("images"), address=property_address,
+                property_type=listing_snapshot.get("property_type"),
+                photo_count=(listing_snapshot.get("media") or {}).get("photos"), model=model)
+        except Exception:  # noqa: BLE001
+            pr = None
+
+    report = await report_writer.write_free_report(
+        listing_snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
+        advertised_days=advertised_days, sales=sold_comparables, photo_review=pr, agent=agent)
+    facts = report_facts(
+        listing_snapshot, report, asking_price=asking_price, listing_duration_days=listing_duration_days,
+        listed_date=parse_listed_date(listing_snapshot.get("listed_date")),
+        written_at=datetime.now(timezone.utc), sales=sold_comparables)
+    report = await report_writer.finalize_report(report, facts, agent=agent)
+    if pr:
+        report["_photo_review"] = {k: pr[k] for k in ("overall", "model", "photos_seen") if k in pr}
+    return report
+
+
 async def _generate_live_report(**kwargs) -> dict[str, Any]:
     """generate_prospect_report for a live homeowner report, stamped with the
     model that actually wrote it (report["_model"]) — the live default, or
@@ -948,9 +1005,14 @@ def current_report_json(prospect: StaleListingProspect) -> str | None:
     report = _safe_json(raw)
     if not report:
         return raw
-    from app.services import report_guard
+    from app.services import report_guard, report_writer
 
-    cleaned = report_guard.clean_report(report, prospect_report_facts(prospect, report), ai_written=not edited)
+    facts = prospect_report_facts(prospect, report)
+    if report_writer.report_is_v2(report):
+        # 20-factor report: an emptied factor becomes "check with your agent".
+        cleaned = report if edited else report_guard.clean_factor_report(report, facts)
+    else:
+        cleaned = report_guard.clean_report(report, facts, ai_written=not edited)
     return json.dumps(cleaned, ensure_ascii=False)
 
 

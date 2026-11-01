@@ -569,7 +569,16 @@ const LOCKED_FINDINGS = [
 // The Assessment page's headline count ("We've identified N potential
 // factors"); Confirm Property quotes the same number.
 const totalFactorsFor = (prospect: ProspectPreview) =>
-  (prospect.preview?.key_issues || []).length + LOCKED_FINDINGS.length;
+  prospect.preview?.version === 2
+    ? (prospect.preview?.total_factors ?? 20)
+    : (prospect.preview?.key_issues || []).length + LOCKED_FINDINGS.length;
+
+// A short label for a 20-factor verdict (version 2 preview only).
+const VERDICT_TAG: Record<string, { label: string; className: string }> = {
+  problem: { label: 'Problem', className: 'slw-tag-problem' },
+  working_well: { label: 'Working well', className: 'slw-tag-good' },
+  check_with_agent: { label: 'Check with your agent', className: 'slw-tag-check' },
+};
 
 const FULL_REPORT_INCLUDES = [
   'Detailed property analysis', 'Pricing analysis', 'Comparable property analysis',
@@ -664,7 +673,16 @@ const AssessmentStep = ({
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
   const preview = prospect.preview || {};
-  const revealed = preview.key_issues || [];
+  const isV2 = preview.version === 2;
+  const revealed = isV2
+    ? (preview.revealed || []).map((f) => ({
+        title: f.name, description: f.found, verdict: f.verdict, icon: undefined as string | undefined,
+        _photo_verified: f.key === 'photography' && f.verdict !== 'check_with_agent',
+      }))
+    : (preview.key_issues || []);
+  const lockedList = isV2
+    ? (preview.locked || []).map((f) => ({ title: f.name || '', description: f.subtext || '' }))
+    : LOCKED_FINDINGS;
   const totalFactors = totalFactorsFor(prospect);
   const price = formatGbp(prospectPrice(prospect));
   useHideChatWidget();
@@ -696,7 +714,7 @@ const AssessmentStep = ({
       </div>
 
       <h2 className="slw-assess-heading">We&rsquo;ve identified {totalFactors} potential factors</h2>
-      <p className="slw-assess-subheading"><span className="slw-hl">{revealed.length}</span> revealed &middot; <span className="slw-hl">{LOCKED_FINDINGS.length}</span> remain locked in your full report.</p>
+      <p className="slw-assess-subheading"><span className="slw-hl">{revealed.length}</span> revealed &middot; <span className="slw-hl">{lockedList.length}</span> remain locked in your full report.</p>
 
       <div className="slw-assess-findings-grid">
         <div>
@@ -706,6 +724,9 @@ const AssessmentStep = ({
               <span className="slw-finding-icon">{FINDING_ICONS[finding.icon || 'timing'] || '●'}</span>
               <div>
                 <b>{finding.title}</b>
+                {(() => { const v = (finding as { verdict?: string }).verdict; return v && VERDICT_TAG[v] ? (
+                  <span className={`slw-verdict-tag ${VERDICT_TAG[v].className}`}>{VERDICT_TAG[v].label}</span>
+                ) : null; })()}
                 {finding._photo_verified && (
                   <span className="slw-photo-badge">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -719,11 +740,11 @@ const AssessmentStep = ({
         </div>
         <div>
           <div className="slw-locked-head">
-            <h3>{LOCKED_FINDINGS.length} findings locked</h3>
+            <h3>{lockedList.length} findings locked</h3>
             <button type="button" className="slw-locked-unlock" onClick={onUnlock}>Unlock all &ndash; {price} &rarr;</button>
           </div>
           <div className="slw-locked-grid">
-            {LOCKED_FINDINGS.map((finding) => (
+            {lockedList.map((finding) => (
               <button type="button" className="slw-locked-card slw-locked-card-btn" key={finding.title} onClick={onUnlock}>
                 <LockIcon />
                 <div className="slw-locked-text">
@@ -812,7 +833,7 @@ const AssessmentStep = ({
         </div>
       </div>
 
-      <StickyPayBar price={price} locked={LOCKED_FINDINGS.length} address={prospect.property_address} onUnlock={onUnlock} />
+      <StickyPayBar price={price} locked={lockedList.length} address={prospect.property_address} onUnlock={onUnlock} />
     </section>
   );
 };
@@ -2175,6 +2196,10 @@ export const WizardStyles = () => (
     .slw-finding-card b{display:block;margin-bottom:7px;font-size:17px;color:#202124}
     .slw-photo-badge{display:inline-flex;align-items:center;gap:5px;margin:0 0 7px;padding:3px 9px;border-radius:999px;background:#F3E8FD;color:#7A079C;font-size:12px;font-weight:700;letter-spacing:-0.01em}
     .slw-photo-badge svg{flex:none}
+    .slw-verdict-tag{display:inline-block;margin:0 0 7px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:-0.01em}
+    .slw-tag-problem{background:#FDECEC;color:#B42318}
+    .slw-tag-good{background:#E7F6EC;color:#1A7F4B}
+    .slw-tag-check{background:#F1F0FB;color:#5A4AA8}
     .slw-finding-card p{color:#475467;font-size:14px;line-height:1.42;margin:0}
     .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:28px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}

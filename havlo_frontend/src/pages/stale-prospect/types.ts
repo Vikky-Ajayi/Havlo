@@ -27,6 +27,22 @@ export interface PreviewFinding {
   _photo_verified?: boolean;
 }
 
+// 20-factor report (version 2): a revealed problem and a locked factor.
+export interface PreviewFactor {
+  num?: number;
+  key?: string;
+  name?: string;
+  verdict?: 'problem' | 'working_well' | 'check_with_agent';
+  found?: string;
+  why?: string;
+}
+export interface PreviewLockedFactor {
+  num?: number;
+  key?: string;
+  name?: string;
+  subtext?: string;
+}
+
 export interface PreviewData {
   overall_score?: number;
   scores?: Record<string, number>;
@@ -34,6 +50,14 @@ export interface PreviewData {
   recommendations?: PreviewFinding[];
   executive_summary?: string;
   locked_message?: string;
+  // Present only on the 20-factor report (version 2).
+  version?: number;
+  pricing_line?: string;
+  total_factors?: number;
+  revealed_count?: number;
+  locked_count?: number;
+  revealed?: PreviewFactor[];
+  locked?: PreviewLockedFactor[];
 }
 
 export interface ProspectPreview {

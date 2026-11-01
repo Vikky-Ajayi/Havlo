@@ -414,6 +414,37 @@ def _mark_photography_verified(report: dict[str, Any], photo_review: dict[str, A
             f["_photo_verified"] = True
 
 
+def report_is_v2(report: Any) -> bool:
+    return isinstance(report, dict) and (report.get("version") == REPORT_VERSION or bool(report.get("factors")))
+
+
+def v2_preview(report: dict[str, Any]) -> dict[str, Any]:
+    """The free-preview shape for a 20-factor report: the 3 most serious
+    problems revealed in full, the other 17 locked as names and subtext.
+    Gaps in the 3 are filled with check-with-agent factors, never strengths."""
+    factors = [f for f in (report.get("factors") or []) if isinstance(f, dict)]
+    problems = [f for f in factors if f.get("verdict") == rf.PROBLEM]
+    checks = [f for f in factors if f.get("verdict") == rf.CHECK_WITH_AGENT]
+    revealed = (problems + checks)[:3]
+    revealed_keys = {f.get("key") for f in revealed}
+    locked = [{"num": s["num"], "key": s["key"], "name": s["name"], "subtext": s["locked_subtext"]}
+              for s in rf.FACTORS if s["key"] not in revealed_keys]
+    return {
+        "version": REPORT_VERSION,
+        "overall_score": report.get("overall_score", 50),
+        "pricing_line": report.get("pricing_line", ""),
+        "executive_summary": report.get("executive_summary", ""),
+        "day_sentence": report.get("day_sentence"),
+        "total_factors": len(rf.FACTORS),
+        "revealed_count": len(revealed),
+        "locked_count": len(locked),
+        "revealed": [{"num": f.get("num"), "key": f.get("key"), "name": f.get("name"),
+                      "verdict": f.get("verdict"), "found": f.get("found"), "why": f.get("why", "")}
+                     for f in revealed],
+        "locked": locked,
+    }
+
+
 # ── Finish a report: accuracy checks, tone fix, accuracy again ────────────
 async def finalize_report(report: dict[str, Any], facts: Any, *, agent: bool = False,
                           trusted_keys: tuple[str, ...] = ()) -> dict[str, Any]:
