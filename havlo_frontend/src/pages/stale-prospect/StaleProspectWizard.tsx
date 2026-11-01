@@ -29,11 +29,9 @@ import {
   lookupProspect,
   recordCheckoutVisit,
   startAdsAssessment,
-  MANUAL_DETAILS_NEEDED,
   submitProspectDetails,
   type AdsAudience,
   type AdsChannel,
-  type ManualListingDetails,
 } from './api';
 import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles } from './AdsLanding';
 import {
@@ -1335,20 +1333,12 @@ export const StaleProspectWizard = ({
 }: {
   ads?: AdsAudience;
   channel?: AdsChannel;
-  landing?: (start: {
-    onSubmit: (listingUrl: string, manual?: ManualListingDetails) => void;
-    loading: boolean;
-    error: string;
-    listingUrl: string;
-    manual: { url: string; message: string } | null;
-  }) => ReactNode;
+  landing?: (start: { onSubmit: (listingUrl: string) => void; loading: boolean; error: string; listingUrl: string }) => ReactNode;
 } = {}) => {
   const review = !!ads && channel === 'review';
   // The link last tried, so a page of its own (`landing`) can show it again
   // next to the error when it couldn't be read.
   const [lastListingUrl, setLastListingUrl] = useState('');
-  // A Zoopla link we couldn't read: ask for the address and price (ManualDetailsFields).
-  const [manualNeeded, setManualNeeded] = useState<{ url: string; message: string } | null>(null);
   const [params, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('landing');
@@ -1616,18 +1606,14 @@ export const StaleProspectWizard = ({
     }
   };
 
-  const handleAdsSubmit = async (listingUrl: string, details?: ManualListingDetails) => {
+  const handleAdsSubmit = async (listingUrl: string) => {
     if (!ads) return;
     setLastListingUrl(listingUrl);
     setLoading(true);
     setError('');
     setStep('finding');
     try {
-      const started = await startAdsAssessment({
-        listing_url: listingUrl, audience: ads, channel, reminder_token: query.reminder,
-        manual_address: details?.address, manual_price: details?.price,
-      });
-      setManualNeeded(null);
+      const started = await startAdsAssessment({ listing_url: listingUrl, audience: ads, channel, reminder_token: query.reminder });
       if (started.prefill?.email) setPrefill(started.prefill);
       const data = await getProspectPreview({ token: started.token });
       setProspect(data);
@@ -1648,13 +1634,6 @@ export const StaleProspectWizard = ({
       }
     } catch (e) {
       const message = (e as Error).message;
-      if ((e as Error & { code?: string }).code === MANUAL_DETAILS_NEEDED) {
-        setManualNeeded({ url: listingUrl.trim(), message });
-        setError('');
-        setStep('landing');
-        return;
-      }
-      setManualNeeded(null);
       setError(message && message !== 'request_failed'
         ? message
         : 'We couldn’t assess that listing just now. Please check the link and try again.');
@@ -1872,7 +1851,7 @@ export const StaleProspectWizard = ({
   }
 
   if (step === 'landing' && ads && landing) {
-    return <>{landing({ onSubmit: handleAdsSubmit, loading, error, listingUrl: lastListingUrl, manual: manualNeeded })}</>;
+    return <>{landing({ onSubmit: handleAdsSubmit, loading, error, listingUrl: lastListingUrl })}</>;
   }
 
   return (
@@ -1898,7 +1877,7 @@ export const StaleProspectWizard = ({
               copy={ADS_COPY[ads].copy}
               discover={ADS_COPY[ads].discover}
               value={ADS_COPY[ads].value}
-              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} manual={manualNeeded} />}
+              form={<AdsListingForm audience={ads} channel={channel} onSubmit={handleAdsSubmit} loading={loading} error={error} welcomeName={welcomeName} />}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
