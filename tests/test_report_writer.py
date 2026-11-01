@@ -105,3 +105,63 @@ class FactsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PaidWriterTests(unittest.TestCase):
+    def test_paid_keeps_free_verdicts_and_expands_all_twenty(self):
+        from app.services import agent_report
+
+        free = None
+        with mock.patch.object(groq_service, "_report_chat", return_value=response(ai_report(
+                factors=[{"key": "visibility", "verdict": "problem", "found": "Just above £375k.", "why": "x", "action": "y"}]
+                        + [{"key": f["key"], "verdict": "working_well", "found": "ok", "why": "w", "action": "a"}
+                           for f in rf.FACTORS if f["key"] != "visibility"]))):
+            free = asyncio.run(rw.write_free_report(SNAPSHOT, asking_price=390_000, advertised_days=96))
+
+        intel = {"market": {"for_sale": 23, "competing": [{"price": 380000, "type": "Semi"}]},
+                 "headline": {"dom_benchmark": 60}, "vendor_view": {"agreed_since_listed": 4, "since_label": "since you listed", "sold_since_listed": 2},
+                 "sold": {"count_12m": 31, "median_12m": 372000}}
+
+        detail = {"factors": [{"key": f["key"], "found": f"Detailed {f['key']}.", "why": "because", "action": "do it"}
+                              for f in rf.FACTORS]}
+
+        async def go():
+            with mock.patch.object(agent_report, "build_intel", return_value=intel), \
+                    mock.patch.object(groq_service, "_report_chat", return_value=response(detail)):
+                return await rw.write_paid_report(object(), free, SNAPSHOT, asking_price=390_000, advertised_days=96)
+
+        paid = asyncio.run(go())
+        self.assertEqual(len(paid["factors"]), 20)
+        self.assertTrue(paid["_expanded"])
+        self.assertTrue(paid["_market_data"])
+        vis = next(f for f in paid["factors"] if f["key"] == "visibility")
+        self.assertEqual(vis["verdict"], "problem")  # verdict kept from free
+        self.assertIn("Detailed visibility", vis["found"])
+        eng = next(f for f in paid["factors"] if f["key"] == "engagement")
+        self.assertEqual(eng["verdict"], "check_with_agent")  # still forced
+
+    def test_market_facts_extraction(self):
+        intel = {"market": {"for_sale": 12, "competing": []}, "headline": {"dom_benchmark": 55},
+                 "vendor_view": {"agreed_since_listed": 3}, "sold": {"count_12m": 20, "median_12m": 300000}}
+        m = rw.build_market_facts(intel)
+        self.assertEqual(m["active_competition"]["homes_for_sale_nearby"], 12)
+        self.assertEqual(m["buyer_demand"]["agreed_since_you_listed"], 3)
+        self.assertEqual(m["asking_price"]["median_sold_nearby_12m"], 300000)
+        self.assertEqual(rw.build_market_facts({}), {})
+
+    def test_paid_survives_no_market_data(self):
+        from app.services import agent_report
+
+        with mock.patch.object(groq_service, "_report_chat", return_value=response(ai_report())):
+            free = asyncio.run(rw.write_free_report(SNAPSHOT, asking_price=390_000, advertised_days=96))
+
+        async def go():
+            with mock.patch.object(agent_report, "build_intel", side_effect=RuntimeError("search down")), \
+                    mock.patch.object(groq_service, "_report_chat", return_value=response({"factors": []})):
+                return await rw.write_paid_report(object(), free, SNAPSHOT, asking_price=390_000, advertised_days=96)
+
+        paid = asyncio.run(go())
+        self.assertEqual(len(paid["factors"]), 20)
+        self.assertFalse(paid["_market_data"])
+        # Falls back to the free text when a detail half returns nothing.
+        self.assertTrue(all(f["found"] for f in paid["factors"]))

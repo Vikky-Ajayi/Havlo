@@ -265,3 +265,138 @@ async def write_free_report(
     report["_sales_given"] = bool(_fmt_sales(sales))
     report["_media_given"] = bool((snapshot.get("media") or {}))
     return report
+
+
+# ── Paid report: live market data + a detailed two-call write ─────────────
+def build_market_facts(intel: dict[str, Any]) -> dict[str, Any]:
+    """The live-market numbers the paid factors use, pulled from
+    agent_report.compute_intel. Anything missing stays absent, and that
+    factor keeps its free verdict."""
+    if not isinstance(intel, dict):
+        return {}
+    market = intel.get("market") or {}
+    headline = intel.get("headline") or {}
+    vendor = intel.get("vendor_view") or {}
+    sold = intel.get("sold") or {}
+    out: dict[str, Any] = {}
+    if market.get("for_sale") is not None:
+        out["active_competition"] = {
+            "homes_for_sale_nearby": market.get("for_sale"),
+            "typical_days_listed": headline.get("dom_benchmark"),
+            "competing": [{"price": r.get("price"), "type": r.get("type")} for r in (market.get("competing") or [])[:5]],
+        }
+    if vendor.get("agreed_since_listed") is not None or sold.get("count_12m") is not None:
+        out["buyer_demand"] = {
+            "since_label": vendor.get("since_label"),
+            "agreed_since_you_listed": vendor.get("agreed_since_listed"),
+            "sold_since_you_listed": vendor.get("sold_since_listed"),
+            "sold_last_12_months": sold.get("count_12m"),
+        }
+    if headline.get("dom_benchmark") is not None:
+        out["time_on_market"] = {"typical_days_for_similar": headline.get("dom_benchmark")}
+    if sold.get("median_12m") is not None:
+        out["asking_price"] = {"median_sold_nearby_12m": sold.get("median_12m"),
+                               "low_12m": sold.get("low_12m"), "high_12m": sold.get("high_12m")}
+    return out
+
+
+def _paid_prompt(specs: tuple[dict[str, Any], ...], free_by_key: dict[str, Any], facts: dict[str, Any],
+                 *, agent: bool, day_sentence: str | None) -> str:
+    whose = "this property" if agent else "your property"
+    lines = [
+        f"Expand these property factors for {whose} into a detailed version. Use ONLY the facts given. Keep each "
+        "factor's verdict exactly as stated. Never state a number of days on the market; the fixed day line is "
+        + (f'"{day_sentence}".' if day_sentence else "not available, so don't mention days."),
+        "",
+    ]
+    for spec in specs:
+        key = spec["key"]
+        free = free_by_key.get(key) or {}
+        data = {k: v for k, v in (facts.get(key, {}).get("data") or {}).items() if v not in (None, "", [], {})}
+        preview = free.get("found") or ""
+        rendered = json.dumps(data, ensure_ascii=False) if data else "none"
+        lines.append(
+            f'{spec["num"]}. {spec["name"]} [key: {key}] [verdict: {free.get("verdict")}]'
+            + f'\n   preview said: {preview}'
+            + f'\n   facts: {rendered}')
+    lines += [
+        "",
+        'Return JSON: {"factors": [{"key": "...", "found": "2-3 sentences on what we found", '
+        '"why": "1-2 sentences on why it matters", "action": "1-2 sentences on what to do"}, ...]}',
+        "", "Tone:", TONE_INSTRUCTION, "", "Examples of the voice:", TONE_EXAMPLES,
+    ]
+    return "\n".join(lines)
+
+
+async def _paid_half(specs, free_by_key, facts, *, agent, day_sentence) -> dict[str, Any]:
+    import asyncio
+
+    prompt = _paid_prompt(specs, free_by_key, facts, agent=agent, day_sentence=day_sentence)
+    system = "You are a senior UK estate agent. Return only valid JSON. Follow the tone exactly."
+
+    def _call() -> str:
+        resp = groq_service._report_chat(
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+            max_tokens=3200, temperature=0.4, response_format={"type": "json_object"})
+        return resp.choices[0].message.content or "{}"
+
+    try:
+        data = json.loads(await asyncio.to_thread(_call))
+        return {str(f.get("key")): f for f in (data.get("factors") or []) if isinstance(f, dict)}
+    except Exception:  # noqa: BLE001
+        logger.exception("Paid 20-factor half failed")
+        return {}
+
+
+async def write_paid_report(
+    prospect: Any, free_report: dict[str, Any], snapshot: dict[str, Any], *,
+    asking_price: float | None, country: str = "UK", reduced_days: int | None = None,
+    advertised_days: int | None = None, sales: list[dict[str, Any]] | None = None,
+    photo_review: dict[str, Any] | None = None, agent: bool = False,
+) -> dict[str, Any]:
+    """The full report: the free verdicts kept, each factor expanded with the
+    live market data. Two AI calls (10 factors each) run together."""
+    import asyncio
+
+    from app.services import agent_report
+
+    async def _intel() -> dict[str, Any]:
+        try:
+            return await asyncio.wait_for(agent_report.build_intel(prospect), 45)
+        except Exception:  # noqa: BLE001 -- the market search can fail; factors stay on free facts
+            logger.warning("Paid report: live market data unavailable for %s", getattr(prospect, "id", "?"))
+            return {}
+
+    intel = await _intel()
+    market = build_market_facts(intel)
+    facts = build_free_facts(
+        snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
+        advertised_days=advertised_days, sales=sales, photo_review=photo_review, agent=agent)
+    for key, extra in market.items():  # fold live data into the relevant factors
+        facts.setdefault(key, {"data": {}, "verdict": None})
+        facts[key]["data"] = {**(facts[key].get("data") or {}), **extra}
+
+    free_by_key = {f["key"]: f for f in free_report.get("factors") or []}
+    day = free_report.get("day_sentence") or rf.day_sentence(reduced_days, advertised_days, agent=agent)
+    half = len(rf.FACTORS) // 2
+    first, second = await asyncio.gather(
+        _paid_half(rf.FACTORS[:half], free_by_key, facts, agent=agent, day_sentence=day),
+        _paid_half(rf.FACTORS[half:], free_by_key, facts, agent=agent, day_sentence=day))
+    written = {**first, **second}
+
+    factors = []
+    for spec in rf.FACTORS:
+        key = spec["key"]
+        free = free_by_key.get(key) or {}
+        w = written.get(key) or {}
+        found = scrub_place_names(str(w.get("found") or free.get("found") or ""), snapshot, agent=agent)
+        why = scrub_place_names(str(w.get("why") or free.get("why") or ""), snapshot, agent=agent)
+        action = scrub_place_names(str(w.get("action") or free.get("action") or ""), snapshot, agent=agent)
+        factors.append({"num": spec["num"], "key": key, "name": spec["name"],
+                        "verdict": free.get("verdict") or rf.CHECK_WITH_AGENT,
+                        "found": found, "why": why, "action": action})
+    paid = dict(free_report)
+    paid["factors"] = factors
+    paid["_expanded"] = True
+    paid["_market_data"] = bool(market)
+    return paid
