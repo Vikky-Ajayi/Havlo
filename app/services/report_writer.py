@@ -262,6 +262,7 @@ async def write_free_report(
         logger.exception("Free 20-factor report generation failed")
         raw = {}
     report = normalize_report(raw if isinstance(raw, dict) else {}, facts, snapshot, agent=agent, day_sentence=day)
+    _mark_photography_verified(report, photo_review)
     report["_sales_given"] = bool(_fmt_sales(sales))
     report["_media_given"] = bool((snapshot.get("media") or {}))
     return report
@@ -397,6 +398,32 @@ async def write_paid_report(
                         "found": found, "why": why, "action": action})
     paid = dict(free_report)
     paid["factors"] = factors
+    _mark_photography_verified(paid, photo_review)
     paid["_expanded"] = True
     paid["_market_data"] = bool(market)
     return paid
+
+
+def _mark_photography_verified(report: dict[str, Any], photo_review: dict[str, Any] | None) -> None:
+    """Flag the photography factor as photo-verified when the vision step ran,
+    so the accuracy checks keep its photo descriptions."""
+    if not photo_review:
+        return
+    for f in report.get("factors") or []:
+        if isinstance(f, dict) and f.get("key") == "photography":
+            f["_photo_verified"] = True
+
+
+# ── Finish a report: accuracy checks, tone fix, accuracy again ────────────
+async def finalize_report(report: dict[str, Any], facts: Any, *, agent: bool = False,
+                          trusted_keys: tuple[str, ...] = ()) -> dict[str, Any]:
+    """The last pass over a written report: check every factor's claims, rewrite
+    only the paragraphs that read as AI, then check again (report_guard +
+    report_tone). A factor flagged _photo_verified (photography, when the vision
+    step ran) keeps its photo descriptions."""
+    from app.services import report_guard, report_tone
+
+    report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys)
+    report = await report_tone.fix_report_tone(report, agent=agent)
+    report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys)
+    return report

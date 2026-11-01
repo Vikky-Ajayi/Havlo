@@ -344,6 +344,49 @@ def clean_findings(findings: Any, facts: ReportFacts | None = None, removed: lis
     )
 
 
+# What an emptied factor falls back to (the 20-factor report always has 20).
+FACTOR_CHECK_FALLBACK = {
+    "verdict": "check_with_agent",
+    "found": "We don't hold solid data for this one.",
+    "why": "It still affects your sale, so it's worth checking.",
+    "action": "Ask your agent about this.",
+}
+
+
+def clean_factor_report(
+    report: dict[str, Any], facts: ReportFacts | None = None, *, trusted_keys: tuple[str, ...] = (),
+    removed: list | None = None,
+) -> dict[str, Any]:
+    """Run the claim checks over a 20-factor report's text. Every factor's
+    found / why / action is cleaned; a factor whose `found` is emptied becomes
+    "check with your agent", so there are always 20. `trusted_keys` are factors
+    written from the vision step (photography), whose photo descriptions stay."""
+    if not isinstance(report, dict) or not report.get("factors"):
+        return report
+    facts = facts or ReportFacts()
+    out = dict(report)
+    factors = []
+    for item in report.get("factors") or []:
+        if not isinstance(item, dict):
+            continue
+        f = dict(item)
+        trust = f.get("key") in trusted_keys or bool(f.get("_photo_verified"))
+        where = f"factor:{f.get('key')}"
+        f["found"] = clean_text(f.get("found"), facts, removed, f"{where}.found", trust)
+        f["why"] = clean_text(f.get("why"), facts, removed, f"{where}.why", trust)
+        f["action"] = clean_text(f.get("action"), facts, removed, f"{where}.action", trust)
+        if not f["found"]:
+            if removed is not None:
+                removed.append({"rule": "factor_emptied", "where": where, "text": str(item.get("found") or "")[:300]})
+            f.update(FACTOR_CHECK_FALLBACK)
+        factors.append(f)
+    out["factors"] = factors
+    for key in ("executive_summary", "pricing_line"):
+        if key in report:
+            out[key] = clean_text(report.get(key), facts, removed, key)
+    return out
+
+
 def clean_report(
     report: dict[str, Any], facts: ReportFacts | None = None, *, ai_written: bool = True, removed: list | None = None,
 ) -> dict[str, Any]:
