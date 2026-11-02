@@ -217,3 +217,18 @@ class GuardFalsePositiveRoundTwoTests(GuardFalsePositiveTests):
         self.assertEqual(rg._check("Your home has three bathrooms.", f), "bathrooms")
         self.assertEqual(rg._check('The description describes it as "a stunning penthouse".', f), "quote")
         self.assertEqual(rg._check("The asking price is £3,400,000.", f), "asking_price")
+
+
+class ReconcileTests(unittest.TestCase):
+    def test_pricing_plan_follows_a_price_problem(self):
+        from app.services import report_writer as rw
+        fs = [{"key": "asking_price", "verdict": "problem", "severity": 5},
+              {"key": "pricing_range", "verdict": "working_well"}]
+        rw.reconcile_verdicts(fs)
+        self.assertEqual((fs[1]["verdict"], fs[1]["severity"]), ("problem", 5))
+
+    def test_a_fine_price_leaves_the_plan_alone(self):
+        from app.services import report_writer as rw
+        fs = [{"key": "asking_price", "verdict": "working_well"}, {"key": "pricing_range", "verdict": "working_well"}]
+        rw.reconcile_verdicts(fs)
+        self.assertEqual(fs[1]["verdict"], "working_well")

@@ -409,6 +409,18 @@ def _free_prompt(facts: dict[str, Any], *, agent: bool, day_sentence: str | None
     return "\n".join(lines)
 
 
+def reconcile_verdicts(factors: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Verdicts that must agree. If the asking price is a problem, the pricing
+    plan is to change it, so Recommended Pricing Range can't read as working
+    well next to it."""
+    by_key = {f.get("key"): f for f in factors if isinstance(f, dict)}
+    price, plan = by_key.get("asking_price"), by_key.get("pricing_range")
+    if price and plan and price.get("verdict") == rf.PROBLEM and plan.get("verdict") != rf.PROBLEM:
+        plan["verdict"] = rf.PROBLEM
+        plan["severity"] = plan.get("severity") or price.get("severity") or 4
+    return factors
+
+
 def _severity(value: Any) -> int | None:
     try:
         n = int(value)
@@ -442,6 +454,7 @@ def normalize_report(
         if verdict == rf.PROBLEM:
             item["severity"] = _severity(w.get("severity")) or 3
         factors.append(item)
+    reconcile_verdicts(factors)
     summary = scrub_place_names(str(raw.get("executive_summary") or ""), snapshot, agent=agent)
     if day_sentence and day_sentence.lower() not in summary.lower():
         summary = f"{day_sentence} {summary}".strip()
@@ -680,6 +693,7 @@ async def write_paid_report(
             item["severity"] = free.get("severity") or 3
         factors.append(item)
 
+    reconcile_verdicts(factors)
     paid = dict(free_report)
     paid["factors"] = factors
     # The senior-partner check over all twenty: rewrite the ones that only
