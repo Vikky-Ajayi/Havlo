@@ -232,3 +232,13 @@ class ReconcileTests(unittest.TestCase):
         fs = [{"key": "asking_price", "verdict": "working_well"}, {"key": "pricing_range", "verdict": "working_well"}]
         rw.reconcile_verdicts(fs)
         self.assertEqual(fs[1]["verdict"], "working_well")
+
+
+class GuardFalsePositiveRoundThreeTests(GuardFalsePositiveTests):
+    def test_true_sentences_are_kept(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        for s in ("Compare their lead images with yours and make sure your kitchen, garden and outbuilding appear prominently.",
+                  "One listing detail says 4 bathrooms and another says 5, so buyers can't tell which is right.",
+                  'Give them this wording: "A refurbished Victorian home offering 4,860 sq ft of accommodation."'):
+            self.assertIsNone(rg._check(s, f), s)

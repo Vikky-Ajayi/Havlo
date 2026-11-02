@@ -107,7 +107,8 @@ _SUGGESTED = re.compile(
     r"\b(omit\w*|lack\w*|missing|without|no mention|(doesn'?t|does not|don'?t) (mention|use|include|say)|add\w*|"
     r"consider\w*|try|keywords?|terms?|could|should|instead|replace|swap|rewrite|e\.g\.?|for example|"
     r"use (this|these|the following|a|an)|open (it |the (advert|description|listing) )?with|lead with|start with|"
-    r"(headline|line|opening) (such as|like)|suggested)\b",
+    r"(headline|line|opening) (such as|like)|suggested|"
+    r"(this|the following|new|suggested|revised) (wording|line|headline|text|copy|opening|sentence)|wording:)\b",
     re.IGNORECASE,
 )
 # Price words: a comparison with other homes only needs sales behind it if
@@ -212,7 +213,12 @@ _APPEAR_ON_MARKET = re.compile(r"\b(listings?|homes|properties|competitors?|riva
 # A sentence pointing out that two sources disagree ("four bathrooms, while
 # the details say five") is reporting a discrepancy, not getting a count wrong.
 _CONFLICT = re.compile(r"\b(while|whereas|but|conflict\w*|discrepanc\w*|differ\w*|mismatch\w*|inconsisten\w*|"
-                       r"contradict\w*)\b", re.IGNORECASE)
+                       r"contradict\w*|another (says|states|shows|lists|gives)|elsewhere|versus|vs)\b", re.IGNORECASE)
+# An instruction about where a photo should sit, not a description of it:
+# "make sure the garden appears prominently".
+_APPEAR_PLACEMENT = re.compile(r"\b(make sure|ensure|so that|so)\b[^.]{0,60}\bappears?\b|"
+                               r"\bappears?\s+(prominently|first|earlier|higher|sooner|near the (top|start)|at the (top|start))",
+                               re.IGNORECASE)
 
 
 def _perceived(sentence: str) -> bool:
@@ -223,7 +229,7 @@ def _perceived(sentence: str) -> bool:
         around = sentence[max(0, m.start(2) - 30): m.end(2) + 20]
         if verb.startswith("look") and _LOOK_ACTION.search(around):
             continue
-        if verb.startswith("appear") and _APPEAR_ON_MARKET.search(around):
+        if verb.startswith("appear") and (_APPEAR_ON_MARKET.search(around) or _APPEAR_PLACEMENT.search(sentence)):
             continue
         return True
     return False
