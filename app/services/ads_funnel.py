@@ -56,7 +56,8 @@ logger = logging.getLogger(__name__)
 # listing link in works the same for all of them; the channel changes the
 # lead_source tag, where links back point and (for "review") what happens
 # after payment.
-CHANNELS = ("meta", "google", "review", "sell")
+# "rm": copies of the Meta pages at /rm/seller and /rm/agent (Nov 2026).
+CHANNELS = ("meta", "google", "review", "sell", "rm")
 
 
 def seller_source(channel: str) -> str:
@@ -80,7 +81,8 @@ def channel_of(lead_source: str | None) -> str:
     return prefix if prefix in CHANNELS else "meta"
 
 
-CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review", "sell": "Seller page"}
+CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review", "sell": "Seller page",
+                  "rm": "RM page"}
 
 
 LEAD_SELLER = seller_source("meta")

@@ -1557,19 +1557,20 @@ const RecommendationModal = ({
 type PaidHow = 'card' | 'promo';
 
 // On the Meta ads pages that address is /assess/complete for owners and agents
-// alike; elsewhere the page's own address. `step` is a one-shot instruction
-// for the page's first load and never belongs on the way back from paying.
-function paidAddress(href: string, how: PaidHow, metaAds: boolean): URL {
+// alike (/rm/complete on their /rm/ copies); elsewhere the page's own address.
+// `step` is a one-shot instruction for the page's first load and never
+// belongs on the way back from paying.
+function paidAddress(href: string, how: PaidHow, completePath: string | null): URL {
   const url = new URL(href);
   url.hash = '';
-  if (metaAds) url.pathname = '/assess/complete';
+  if (completePath) url.pathname = completePath;
   url.searchParams.delete('step');
   url.searchParams.set('paid', how);
   return url;
 }
 
-function withPaidMarker(href: string, how: PaidHow, metaAds = false): string {
-  return paidAddress(href, how, metaAds).toString();
+function withPaidMarker(href: string, how: PaidHow, completePath: string | null = null): string {
+  return paidAddress(href, how, completePath).toString();
 }
 
 // A "Lead" is this specific prospect actually being found (a real letter
@@ -1703,14 +1704,17 @@ export const StaleProspectWizard = ({
   // The analyst-review funnel starts owners and agents on its Initial scan.
   const [showDetailsForm, setShowDetailsForm] = useState(review ? false : ads !== 'owner');
   const leadPixelName = ads
-    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
+    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : channel === 'rm' ? 'RM Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
   // No Meta Pixel 'Lead' event on the Meta ads pages (/assess/...): the ads
   // agency sets up those events itself. The base pixel (PageView, in
   // index.html) still loads there as on every page. Nor on the seller page
   // (/sell), which has no Meta Pixel at all: it tells Tag Manager instead.
   const sellPage = !!ads && channel === 'sell';
-  const firesLeadPixel = !(ads && (channel === 'meta' || sellPage));
+  // The /rm/ pages copy the Meta pages here too: no Lead event from the page.
+  const firesLeadPixel = !(ads && (channel === 'meta' || channel === 'rm' || sellPage));
+  // Where payment ends on the Meta pages and their /rm/ copies.
+  const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : ads && channel === 'rm' ? '/rm/complete' : null;
   const fireLeadEvents = (data: ProspectPreview) => {
     if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
     if (sellPage) pushSellLeadEvent(data);
@@ -2072,7 +2076,7 @@ export const StaleProspectWizard = ({
     setLoading(true);
     setError('');
     try {
-      const redirectUrl = withPaidMarker(window.location.href, 'card', !!ads && channel === 'meta');
+      const redirectUrl = withPaidMarker(window.location.href, 'card', adsCompletePath);
       const result = await createProspectCheckout({ ...checkoutAccess(), payment_method: 'card', redirect_url: redirectUrl });
       if (result.unlocked) {
         await afterUnlock();
@@ -2098,7 +2102,7 @@ export const StaleProspectWizard = ({
         await afterUnlock();
         // A new address (a history entry, not a replacement, so page-view
         // tracking sees it) that says this unlock was a promo code.
-        const address = paidAddress(window.location.href, 'promo', !!ads && channel === 'meta');
+        const address = paidAddress(window.location.href, 'promo', adsCompletePath);
         navigate({ pathname: address.pathname, search: address.search });
       } else {
         setError('That promo code is not valid. Please check it and try again.');

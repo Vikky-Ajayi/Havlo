@@ -615,7 +615,7 @@ class AdsStartRequest(BaseModel):
     audience: Literal["owner", "agent"] = "owner"
     # Which landing page: "meta" (/assess/...), "google" (/g/...),
     # "review" (/review/..., the analyst-review funnel) or "sell" (/sell).
-    channel: Literal["meta", "google", "review", "sell"] = "meta"
+    channel: Literal["meta", "google", "review", "sell", "rm"] = "meta"
     # From a reminder email's link, when the visitor came back through one.
     reminder_token: Optional[str] = Field(None, max_length=100)
     # A Zoopla listing we couldn't read: the address and asking price the
@@ -635,7 +635,7 @@ class AdsReminderRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     audience: Literal["owner", "agent"] = "owner"
-    channel: Literal["meta", "google", "review", "sell"] = "meta"
+    channel: Literal["meta", "google", "review", "sell", "rm"] = "meta"
 
 
 class AdsReminderLeadResponse(BaseModel):

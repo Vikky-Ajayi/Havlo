@@ -31,7 +31,12 @@ export const AdsAgentLanding = ({ channel = 'meta' }: { channel?: AdsChannel }) 
 // promo-code unlock. /assess/seller and /assess/agent are the landing pages;
 // /assess/complete is where payment ends, and is worked out from the
 // property whose token is in the address.
-export const MetaAdsFunnel = () => {
+// The /rm/ pages (rm/seller, rm/agent, rm/complete) are the same funnel with
+// their own channel, so their leads are tagged rm_... and emails link back to /rm/.
+export const MetaAdsFunnel = () => <AdsFunnel channel="meta" base="/assess" />;
+export const RmAdsFunnel = () => <AdsFunnel channel="rm" base="/rm" />;
+
+const AdsFunnel = ({ channel, base }: { channel: AdsChannel; base: string }) => {
   const { page } = useParams();
   const [params] = useSearchParams();
   const [audience, setAudience] = useState<AdsAudience | null>(
@@ -51,7 +56,7 @@ export const MetaAdsFunnel = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!known) return <Navigate to="/assess/seller" replace />;
+  if (!known) return <Navigate to={`${base}/seller`} replace />;
   if (!audience) {
     return (
       <div className="slw-page">
@@ -66,7 +71,7 @@ export const MetaAdsFunnel = () => {
       </div>
     );
   }
-  return audience === 'agent' ? <AdsAgentLanding /> : <AdsSellerLanding />;
+  return audience === 'agent' ? <AdsAgentLanding channel={channel} /> : <AdsSellerLanding channel={channel} />;
 };
 
 export const GoogleAdsSellerLanding = () => <AdsSellerLanding channel="google" />;

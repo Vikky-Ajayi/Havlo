@@ -57,6 +57,7 @@ const StaleListingsAgents = React.lazy(() => import('./pages/StaleListingsAgents
 const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListingsPartnerships').then(m => ({ default: m.StaleListingsPartnerships })));
 const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/StaleProspectWizard').then(m => ({ default: m.StaleProspectWizard })));
 const MetaAdsFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.MetaAdsFunnel })));
+const RmAdsFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.RmAdsFunnel })));
 const GoogleAdsSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsSellerLanding })));
 const GoogleAdsAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsAgentLanding })));
 const SellLanding = React.lazy(() => import('./pages/stale-prospect/SellLanding').then(m => ({ default: m.SellLanding })));
@@ -332,7 +333,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   // /property-assessment/...), the analyst-review pages (/review/...) and the
   // seller page (/sell)
   // are the same wizard, so they get the same treatment.
-  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/g/') || pathname.startsWith('/review/') || pathname === '/sell' || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/rm/') || pathname.startsWith('/g/') || pathname.startsWith('/review/') || pathname === '/sell' || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
@@ -455,6 +456,8 @@ export default function App() {
               {/* Meta-ads landing pages: /check with a listing-link box. */}
               {/* /assess/seller, /assess/agent and /assess/complete (where payment ends, the same address for both) share this route. */}
               <Route path="/assess/:page" element={<MetaAdsFunnel />} />
+              {/* Copies of the Meta pages: /rm/seller, /rm/agent and /rm/complete; leads tagged "rm_". */}
+              <Route path="/rm/:page" element={<RmAdsFunnel />} />
               {/* The same pages for Google Ads; leads are tagged "Google ad". */}
               <Route path="/g/seller" element={<GoogleAdsSellerLanding />} />
               <Route path="/g/agent" element={<GoogleAdsAgentLanding />} />
