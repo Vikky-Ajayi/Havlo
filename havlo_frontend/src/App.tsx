@@ -64,6 +64,7 @@ const ReviewSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsP
 const ReviewAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.ReviewAgentLanding })));
 const AgentPortal = React.lazy(() => import('./pages/stale-prospect/AgentPortal').then(m => ({ default: m.AgentPortal })));
 const MonitorDashboard = React.lazy(() => import('./pages/stale-prospect/MonitorDashboard').then(m => ({ default: m.MonitorDashboard })));
+const ProspectNextSteps = React.lazy(() => import('./pages/stale-prospect/ProspectNextSteps').then(m => ({ default: m.ProspectNextSteps })));
 const StaleListingsAccess = React.lazy(() => import('./pages/StaleListingsAccess').then(m => ({ default: m.StaleListingsAccess })));
 const StaleListingsReviewAccess = React.lazy(() => import('./pages/StaleListingsReviewAccess').then(m => ({ default: m.StaleListingsReviewAccess })));
 const StaleListingsPortal = React.lazy(() => import('./pages/StaleListingsPortal').then(m => ({ default: m.StaleListingsPortal })));
@@ -441,6 +442,7 @@ export default function App() {
               <Route path="/stale-listings/partnerships" element={<StaleListingsPartnerships />} />
               <Route path="/stale-listings/prospect/complete" element={<StaleProspectWizard />} />
               <Route path="/stale-listings/prospect/report" element={<StaleProspectWizard />} />
+              <Route path="/stale-listings/prospect/next-steps" element={<ProspectNextSteps />} />
               <Route path="/stale-listings/prospect" element={<StaleProspectWizard />} />
               {/* Short alias for the letter's printed fallback URL
                   ("heyhavlo.com/check") — added alongside /stale-listings/prospect,

@@ -53,6 +53,7 @@ from app.schemas.schemas import (
     MonitorChecklistRequest,
     MonitorTokenRequest,
     ProspectMonitorLinkRequest,
+    ProspectNextStepsCheckoutRequest,
     AgentOpenPropertyResponse,
     AgentPortfolioProperty,
     AgentPortfolioResponse,
@@ -3226,6 +3227,89 @@ async def prospect_monitor_link(payload: ProspectMonitorLinkRequest, db: AsyncSe
     token = listing_monitor.issue_token(monitor)
     await db.commit()
     return {"url": f"/m/{token}"}
+
+
+# ── Optional next steps (the add-ons basket) ─────────────────────────────
+async def _addon_prospect(db: AsyncSession, token: str | None, property_code: str | None):
+    """The paid prospect whose report these add-ons follow from."""
+    prospect = await _get_prospect_by_access(db, token=token, property_code=property_code)
+    if prospect.payment_status != "completed":
+        raise HTTPException(status_code=402, detail="The next steps open once your report is unlocked.")
+    return prospect
+
+
+@public_router.get("/prospects/next-steps")
+async def get_prospect_next_steps(
+    token: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The optional services for a paid prospect, with what's already ordered."""
+    from app.services import stale_prospect_addons as addons
+
+    prospect = await _addon_prospect(db, token, code)
+    orders = await addons.completed_orders(db, prospect)
+    return {
+        "property_code": prospect.property_code,
+        "property_address": prospect.property_address,
+        "currency": addons.CURRENCY,
+        "services": addons.catalog(orders),
+        "orders": [addons.serialize_order(o) for o in orders],
+    }
+
+
+@public_router.post("/prospects/next-steps/checkout")
+async def create_prospect_next_steps_checkout(
+    payload: ProspectNextStepsCheckoutRequest,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Create one SumUp checkout for the chosen add-ons."""
+    from app.services import stale_prospect_addons as addons
+
+    prospect = await _addon_prospect(db, payload.token, payload.property_code)
+    frontend = _frontend_base_url()
+    access_key = f"token={payload.token.strip()}" if payload.token else f"code={prospect.property_code}"
+    redirect_url = (payload.redirect_url or f"{frontend}/stale-listings/prospect/next-steps").rstrip("/")
+    sep = "&" if "?" in redirect_url else "?"
+    redirect_url = f"{redirect_url}{sep}{access_key}"
+    try:
+        result = await addons.create_order(db, prospect, payload.items, redirect_url=redirect_url)
+    except addons.AddonError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except SumUpError as exc:
+        logger.error("SumUp add-on checkout failed for %s: %s", prospect.property_code, exc)
+        raise HTTPException(status_code=502, detail="Unable to create a secure payment session right now. Please try again.") from exc
+    await db.commit()
+    return result
+
+
+@public_router.get("/prospects/next-steps/status")
+async def get_prospect_next_steps_status(
+    order_id: str,
+    background_tasks: BackgroundTasks,
+    token: str | None = Query(default=None),
+    code: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Poll a pending add-on order; on payment, mark it paid and email the team."""
+    from app.services import stale_prospect_addons as addons
+    from app.models.models import StaleProspectAddonOrder
+
+    prospect = await _addon_prospect(db, token, code)
+    try:
+        oid = uuid.UUID(order_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Order not found.") from exc
+    order = await db.get(StaleProspectAddonOrder, oid)
+    if order is None or order.prospect_id != prospect.id:
+        raise HTTPException(status_code=404, detail="Order not found.")
+    was_completed = order.status == "completed"
+    await addons.confirm_order(db, order)
+    if order.status == "completed" and not was_completed:
+        # Email the team once, now that it's genuinely paid.
+        await addons.email_team(order, prospect)
+    await db.commit()
+    return {"order": addons.serialize_order(order)}
 
 
 @public_router.api_route("/agents/unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)

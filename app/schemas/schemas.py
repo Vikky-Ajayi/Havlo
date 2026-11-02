@@ -714,6 +714,13 @@ class ProspectMonitorLinkRequest(BaseModel):
     property_code: Optional[str] = Field(None, max_length=12)
 
 
+class ProspectNextStepsCheckoutRequest(BaseModel):
+    token: Optional[str] = Field(None, max_length=200)
+    property_code: Optional[str] = Field(None, min_length=4, max_length=12)
+    items: list[str] = Field(..., min_length=1, max_length=10)
+    redirect_url: Optional[str] = Field(None, max_length=2000)
+
+
 class AgentOpenPropertyRequest(BaseModel):
     token: Optional[str] = Field(None, max_length=200)
     agent_code: Optional[str] = Field(None, max_length=12)

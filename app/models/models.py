@@ -1216,3 +1216,29 @@ class StaleListingMonitorEvent(Base):
     kind: Mapped[str] = mapped_column(String(40), nullable=False)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     data_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class StaleProspectAddonOrder(Base):
+    """An order for the optional services offered after a 20-factor report
+    (Listing Rewrite, Relaunch Strategy; 30-Day Monitoring is included free).
+    One SumUp payment covers the whole basket, and the team is emailed per paid
+    order — see app/services/stale_prospect_addons.py. A prospect can place
+    more than one order over time, so this is not unique per prospect."""
+    __tablename__ = "stale_prospect_addon_orders"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    items_json: Mapped[str] = mapped_column(Text, nullable=False)  # [{"key","name","price"}]
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="GBP", server_default="GBP")
+    # pending | completed
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", server_default="pending")
+    payment_method: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # card | promo
+    sumup_checkout_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    sumup_checkout_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reference: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    team_emailed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

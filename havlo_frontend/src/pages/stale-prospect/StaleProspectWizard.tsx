@@ -1166,6 +1166,15 @@ const FullReportStep = ({
             <p>Your dashboard tracks views, enquiries and nearby activity for 30 days &mdash; free with every report.</p>
           </div>
         </div>
+
+        {/* Screen only: the floating bar to the optional-services basket. */}
+        <a className="slw-nextsteps-bar slw-noprint" href={`/stale-listings/prospect/next-steps?code=${encodeURIComponent(report.property_code)}`}>
+          <span className="slw-nextsteps-bar-text">
+            <b>Want us to act on this report?</b>
+            <span>Listing Rewrite, Relaunch Strategy &amp; more &mdash; one payment.</span>
+          </span>
+          <span className="slw-nextsteps-bar-cta">Explore Next Steps &rarr;</span>
+        </a>
       </section>
     );
   }
@@ -2338,6 +2347,12 @@ export const WizardStyles = () => (
     .slw-factor-body p{margin:0;font-size:14.5px;line-height:1.5;color:#353a42}
     .slw-factor-action{background:#f7f8fa;border-radius:10px;padding:11px 13px}
     @media (max-width:760px){.slw-factor-grid{grid-template-columns:1fr}.slw-factor-card{padding:16px 16px}}
+    .slw-nextsteps-bar{position:sticky;bottom:16px;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:26px 0 0;padding:16px 22px;border-radius:16px;background:#141414;color:#fff;text-decoration:none;box-shadow:0 10px 30px rgba(16,17,21,.22)}
+    .slw-nextsteps-bar-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .slw-nextsteps-bar-text b{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;letter-spacing:-0.02em}
+    .slw-nextsteps-bar-text span{font-size:13.5px;color:#c9ced8}
+    .slw-nextsteps-bar-cta{flex:none;font-weight:700;font-size:14.5px;background:#A409D2;padding:11px 18px;border-radius:10px;white-space:nowrap}
+    @media (max-width:620px){.slw-nextsteps-bar{flex-direction:column;align-items:flex-start;gap:12px}.slw-nextsteps-bar-cta{align-self:stretch;text-align:center}}
     .slw-finding-card p{color:#475467;font-size:14px;line-height:1.42;margin:0}
     .slw-locked-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
     .slw-locked-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:28px;background:#f5f6f8;border-radius:10px;padding:18px;color:#737b86;font-size:14px;line-height:1.35;min-height:118px}

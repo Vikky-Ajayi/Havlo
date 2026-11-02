@@ -193,6 +193,32 @@ export interface ProspectReport {
   payment_status: string;
 }
 
+// ── Optional next steps (the add-ons basket) ───────────────────────────────
+export interface NextStepsService {
+  key: string;
+  name: string;
+  price: number;
+  blurb: string;
+  status: 'available' | 'ordered' | 'included';
+}
+export interface NextStepsOrder {
+  order_id: string;
+  items: { key: string; name: string; price: number }[];
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed';
+  reference?: string | null;
+  created_at?: string | null;
+  paid_at?: string | null;
+}
+export interface NextStepsData {
+  property_code: string;
+  property_address: string;
+  currency: string;
+  services: NextStepsService[];
+  orders: NextStepsOrder[];
+}
+
 export type WizardStep =
   | 'landing'
   | 'finding'

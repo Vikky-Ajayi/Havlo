@@ -1,5 +1,5 @@
 import { API_BASE } from '../../lib/api';
-import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, ProspectPreview, ProspectReport, SoldComparable } from './types';
+import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, NextStepsData, NextStepsOrder, ProspectPreview, ProspectReport, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
@@ -270,6 +270,41 @@ export async function getProspectDashboardLink(access: { token?: string; code?: 
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: access.token, property_code: access.code }),
   });
+  return parseJsonOrThrow(response);
+}
+
+// ── Optional next steps (the add-ons basket) ───────────────────────────────
+
+export async function getNextSteps(access: { token?: string; code?: string }): Promise<NextStepsData> {
+  const query = new URLSearchParams();
+  if (access.token) query.set('token', access.token);
+  if (access.code) query.set('code', access.code);
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/next-steps?${query.toString()}`);
+  return parseJsonOrThrow(response);
+}
+
+export async function createNextStepsCheckout(payload: {
+  token?: string;
+  property_code?: string;
+  items: string[];
+  redirect_url?: string;
+}): Promise<{ order_id: string; checkout_url: string; amount: number; currency: string }> {
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/next-steps/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonOrThrow(response);
+}
+
+export async function getNextStepsOrderStatus(
+  access: { token?: string; code?: string }, orderId: string,
+): Promise<{ order: NextStepsOrder }> {
+  const query = new URLSearchParams();
+  if (access.token) query.set('token', access.token);
+  if (access.code) query.set('code', access.code);
+  query.set('order_id', orderId);
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/next-steps/status?${query.toString()}`);
   return parseJsonOrThrow(response);
 }
 
