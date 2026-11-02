@@ -61,6 +61,50 @@ class ReviewTests(unittest.TestCase):
                 ["https://img/1.jpg"], address="x", property_type=None, photo_count=1, model="m")))
 
 
+class EveryPhotoTests(unittest.TestCase):
+    URLS = [f"https://img/{i}.jpg" for i in range(1, 54)]  # a 53-photo listing
+
+    def test_every_photo_is_sent_and_numbered(self):
+        sent = {}
+
+        def fake_openai(model, body):
+            sent["content"] = body["messages"][1]["content"]
+            return vision_response(json.dumps({**json.loads(VISION_JSON),
+                                               "rooms_shown": ["exterior", "kitchen", "garden"],
+                                               "missing_shots": ["bathroom"],
+                                               "weak_photos": [{"photo": 14, "issue": "duplicate of photo 9"},
+                                                               {"photo": 99, "issue": "not a real photo number"}]}))
+
+        with mock.patch.object(groq_service, "_openai_chat", fake_openai):
+            out = asyncio.run(photo_review.review_photos(self.URLS, address="x", property_type="Detached",
+                                                         photo_count=53, model="m"))
+        images = [c["image_url"]["url"] for c in sent["content"] if c["type"] == "image_url"]
+        labels = [c["text"] for c in sent["content"] if c["type"] == "text" and c["text"].startswith("Photo ")]
+        self.assertEqual(images, self.URLS)  # all 53, in order (it used to send 8)
+        self.assertEqual(labels[0], "Photo 1")
+        self.assertEqual(labels[-1], "Photo 53")
+        self.assertIn("all photos", sent["content"][0]["text"])
+        self.assertEqual((out["photos_seen"], out["photos_total"]), (53, 53))
+        self.assertEqual(out["missing_shots"], ["bathroom"])
+        self.assertEqual(out["weak_photos"], [{"photo": 14, "issue": "duplicate of photo 9"}])  # 99 dropped
+
+    def test_a_failed_full_review_retries_with_the_first_photos(self):
+        calls = []
+
+        def flaky(model, body):
+            n = sum(1 for c in body["messages"][1]["content"] if c["type"] == "image_url")
+            calls.append(n)
+            if n > photo_review.FALLBACK_PHOTOS:
+                raise RuntimeError("payload too large")
+            return vision_response()
+
+        with mock.patch.object(groq_service, "_openai_chat", flaky):
+            out = asyncio.run(photo_review.review_photos(self.URLS, address="x", property_type=None,
+                                                         photo_count=53, model="m"))
+        self.assertEqual(calls, [53, photo_review.FALLBACK_PHOTOS])
+        self.assertEqual(out["photos_seen"], photo_review.FALLBACK_PHOTOS)
+
+
 class AddPhotoReviewTests(unittest.TestCase):
     def test_runs_the_whole_path_with_a_key_present_without_erroring(self):
         # Regression: add_photo_review used groq_service without importing it,

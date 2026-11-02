@@ -13,6 +13,7 @@ import {
   ScoreBar,
   SoldPricesList,
   firstSentence,
+  scoresFromFactors,
   splitIntoThree,
 } from './reportParts';
 import { readAgencyToken } from './agentSession';
@@ -1104,11 +1105,14 @@ const FullReportStep = ({
     const factors = (data.factors || []).filter((f) => f && f.name);
     const counts = { problem: 0, working_well: 0, check_with_agent: 0 } as Record<string, number>;
     factors.forEach((f) => { if (f.verdict && counts[f.verdict] !== undefined) counts[f.verdict] += 1; });
-    const ordered = [...factors].sort((a, b) =>
+    // The cards run 1 to 20; problems stand out by their tag and border.
+    const ordered = [...factors].sort((a, b) => (a.num ?? 0) - (b.num ?? 0));
+    const bySeverity = [...factors].sort((a, b) =>
       (V2_VERDICT_ORDER.indexOf(a.verdict || 'working_well') - V2_VERDICT_ORDER.indexOf(b.verdict || 'working_well'))
       || ((b.severity ?? 0) - (a.severity ?? 0)) || ((a.num ?? 0) - (b.num ?? 0)));
+    const areaScores = scoresFromFactors(factors);
     const topActions = (data.top_actions || []).filter((t) => t && t.title);
-    const problemFactors = ordered.filter((f) => f.verdict === 'problem');
+    const problemFactors = bySeverity.filter((f) => f.verdict === 'problem');
     const box1 = topActions.length ? topActions.map((t) => t.title) : problemFactors.slice(0, 3).map((f) => PLAN_TASK[f.key || ''] || f.name || '');
     const box2 = ['Get your listing figures from your agent', 'Get written feedback after every viewing',
       // The three most serious problems are what the top actions (box 1) cover.
@@ -1165,7 +1169,11 @@ const FullReportStep = ({
               </div>
             )}
             {data.pricing_line ? <p className="slw-factor-summary-pricing">{data.pricing_line}</p> : null}
-            <p className="slw-factor-summary-note">Every factor we check is below, with what we found and what to do about it.</p>
+            <div className="slw-factor-summary-bars">
+              {Object.entries(SCORE_LABELS).filter(([key]) => areaScores[key] != null).map(([key, label]) => (
+                <ScoreBar key={key} label={label} value={areaScores[key]} />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -2453,6 +2461,7 @@ export const WizardStyles = () => (
     .slw-factor-summary-counts .slw-verdict-tag{margin:0}
     .slw-factor-summary-pricing{margin:0;font-size:15px;line-height:1.45;color:#202124;font-weight:600}
     .slw-factor-summary-note{margin:0;font-size:13.5px;line-height:1.45;color:#5f6671}
+    .slw-factor-summary-bars{display:grid;gap:4px;margin-top:6px}
     .slw-factor-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:4px 0 8px}
     .slw-factor-card{background:#fff;border:1px solid #e8eaed;border-left:3px solid #c7ccd3;border-radius:14px;padding:20px 22px}
     .slw-factor-problem{border-left-color:#B42318}

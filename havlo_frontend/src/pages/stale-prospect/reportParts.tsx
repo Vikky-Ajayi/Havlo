@@ -74,6 +74,31 @@ export const SCORE_LABELS: Record<string, string> = {
   buyer_appeal: 'Buyer appeal',
 };
 
+// The 20-factor report's score bars, from its verdicts: each area averages the
+// factors in it (working well 85, check with your agent 60, a problem 20-72 by
+// how serious it is). The two factors only the agent can see don't count.
+const AREA_FACTORS: Record<string, string[]> = {
+  pricing: ['visibility', 'asking_price', 'pricing_range', 'comparable_sold', 'reduction_history', 'affordability'],
+  listing_presentation: ['photography', 'description', 'floor_plan', 'agent_marketing'],
+  market_positioning: ['positioning', 'time_on_market', 'buyer_objections'],
+  competition: ['active_competition', 'buyer_demand'],
+  buyer_appeal: ['target_buyer', 'condition_readiness', 'positioning', 'buyer_objections'],
+};
+const PROBLEM_POINTS: Record<number, number> = { 5: 20, 4: 35, 3: 50, 2: 62, 1: 72 };
+
+export const scoresFromFactors = (
+  factors: { key?: string; verdict?: string; severity?: number }[],
+): Record<string, number> => {
+  const byKey = new Map(factors.map((f) => [f.key, f]));
+  const out: Record<string, number> = {};
+  for (const [area, keys] of Object.entries(AREA_FACTORS)) {
+    const points = keys.map((k) => byKey.get(k)).filter(Boolean).map((f) =>
+      f!.verdict === 'working_well' ? 85 : f!.verdict === 'problem' ? (PROBLEM_POINTS[f!.severity ?? 3] ?? 50) : 60);
+    if (points.length) out[area] = Math.round(points.reduce((a, b) => a + b, 0) / points.length);
+  }
+  return out;
+};
+
 export const ScoreBar = ({ label, value }: { key?: string; label: string; value: number }) => {
   const color = value < 45 ? '#E33709' : value < 65 ? '#F5A623' : '#00C08B';
   return (

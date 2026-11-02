@@ -8,6 +8,7 @@ import {
   ScoreBar,
   SoldPricesList,
   splitIntoThree,
+  scoresFromFactors,
 } from './reportParts';
 import {
   formatGbp,
@@ -27,11 +28,10 @@ const AGR_VERDICT: Record<string, { label: string; className: string }> = {
   working_well: { label: 'Working well', className: 'slw-tag-good' },
   check_with_agent: { label: 'Check with the agent', className: 'slw-tag-check' },
 };
-const AGR_VERDICT_ORDER = ['problem', 'check_with_agent', 'working_well'];
 
 const AgentFactorGrid = ({ factors }: { factors: ReportFactor[] }) => {
-  const ordered = [...factors].sort((a, b) =>
-    AGR_VERDICT_ORDER.indexOf(a.verdict || 'working_well') - AGR_VERDICT_ORDER.indexOf(b.verdict || 'working_well'));
+  // The cards run 1 to 20; problems stand out by their tag and border.
+  const ordered = [...factors].sort((a, b) => (a.num ?? 0) - (b.num ?? 0));
   return (
     <div className="slw-factor-grid">
       {ordered.map((f, i) => {
@@ -654,7 +654,12 @@ export const AgentFullReport = ({
                   {v2Counts.working_well > 0 && <span className="slw-verdict-tag slw-tag-good">{v2Counts.working_well} working well</span>}
                 </div>
                 {data.pricing_line ? <p className="slw-factor-summary-pricing">{data.pricing_line}</p> : null}
-                <p className="slw-factor-summary-note">Every factor is below, with what we found and what to do about it.</p>
+                <div className="slw-factor-summary-bars">
+                  {Object.entries(SCORE_LABELS).map(([key, label]) => {
+                    const v = scoresFromFactors(v2Factors)[key];
+                    return v != null ? <ScoreBar key={key} label={label} value={v} /> : null;
+                  })}
+                </div>
               </>
             ) : (
               Object.entries(SCORE_LABELS).map(([key, label]) => (

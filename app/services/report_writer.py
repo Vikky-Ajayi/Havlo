@@ -102,8 +102,9 @@ FACTOR_GUIDE: dict[str, str] = {
     "reduction_history": "If reduced: how long ago, that it hasn't produced a sale, what that signals, and whether "
                          "another change or a relaunch is due. Flag an out-of-date guide price if one is given. If "
                          "never reduced, say whether one is due yet.",
-    "photography": "Use the photo review findings and the photo count. Be specific about the lead photo, which "
-                   "rooms are shown or missing, and the order.",
+    "photography": "Every photo has been reviewed. Use the findings, the rooms shown, the missing shots, the "
+                   "weak photos and the order notes. Be specific: name photo numbers, say which room should follow "
+                   "the lead photo, which photos to drop or retake, and which shots to add.",
     "description": "Judge the full description. Does the opening sell the best thing? Are the details buyers "
                    "filter on there (floor area, EPC, tenure, council tax, parking, transport, schools, garden "
                    "size)? Name exactly what's missing and suggest the line to add.",
@@ -291,8 +292,11 @@ def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
     reduced_stall = (timing.get("days_since_reduction") or 0) >= ra.REDUCTION_STALL_DAYS
     put("reduction_history", {"timing": timing, "guide_range": guide, "asking_price": pos.get("asking_price")},
         rf.PROBLEM if reduced_stall else None, forced=reduced_stall)
-    put("photography", {"photo_count": media.get("photos"), "photo_review": media.get("photo_review"),
-                        "overall": media.get("photo_overall")})
+    put("photography", {"photo_count": media.get("photos"), "photos_reviewed": media.get("photos_reviewed"),
+                        "photo_review": media.get("photo_review"), "overall": media.get("photo_overall"),
+                        "rooms_shown": media.get("rooms_shown"), "missing_shots": media.get("missing_shots"),
+                        "order_notes": media.get("order_notes"), "weak_photos": media.get("weak_photos"),
+                        "suggested_fixes": media.get("photo_actions")})
     put("description", {"description": desc, "full_text": None})
     put("floor_plan", {"floorplans": media.get("floorplans"), "floor_area_sqft": desc.get("floor_area_sqft"),
                        "room_sizes_stated": "floor_area" in (desc.get("covers") or [])},

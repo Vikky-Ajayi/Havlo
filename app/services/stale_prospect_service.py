@@ -908,7 +908,9 @@ async def generate_v2_report(
         written_at=datetime.now(timezone.utc), sales=sold_comparables)
     report = await report_writer.finalize_report(report, facts, agent=agent)
     if pr:
-        report["_photo_review"] = {k: pr[k] for k in ("overall", "model", "photos_seen") if k in pr}
+        # The whole review (findings, rooms shown, missing shots, weak photos),
+        # so the paid write uses everything the photos showed, not just a line.
+        report["_photo_review"] = pr
     return report
 
 
@@ -1859,7 +1861,7 @@ def _letter_listing_photo(prospect: StaleListingProspect, snapshot: dict[str, An
     if current:
         photo = _letter_fetch_photo(current[0])
         if photo is not None:
-            prospect.listing_snapshot_json = json.dumps({**snapshot, "image": current[0], "images": current[:12]})
+            prospect.listing_snapshot_json = json.dumps({**snapshot, "image": current[0], "images": current})
             return photo
     for url in (snapshot.get("images") or [])[:6]:
         if url and url != saved:
