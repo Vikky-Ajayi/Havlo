@@ -105,7 +105,9 @@ _QUOTED_FROM_LISTING = re.compile(
 )
 _SUGGESTED = re.compile(
     r"\b(omit\w*|lack\w*|missing|without|no mention|(doesn'?t|does not|don'?t) (mention|use|include|say)|add\w*|"
-    r"consider\w*|try|keywords?|terms?|could|should|instead|replace|swap|rewrite|e\.g\.?|for example)\b",
+    r"consider\w*|try|keywords?|terms?|could|should|instead|replace|swap|rewrite|e\.g\.?|for example|"
+    r"use (this|these|the following|a|an)|open (it |the (advert|description|listing) )?with|lead with|start with|"
+    r"(headline|line|opening) (such as|like)|suggested)\b",
     re.IGNORECASE,
 )
 # Price words: a comparison with other homes only needs sales behind it if
@@ -199,8 +201,37 @@ def _money(match: re.Match) -> float:
 
 _PHOTO_NUMBER = re.compile(r"\b(photos?|images?|pictures?)\s+(no\.?\s*)?\d+\b|\bposition\s+\d+\b", re.IGNORECASE)
 # A figure that is a difference, not a price: "£1,175,000 above", "£250,000 more than".
-_GAP_AFTER = re.compile(r"\s*(\(\s*[\d.]+\s*%\s*\)\s*)?(above|below|over|under|more than|less than|higher|lower|"
-                        r"cheaper|dearer|short of|beyond)\b", re.IGNORECASE)
+_GAP_AFTER = re.compile(r"(?:\s*,?\s*(?:or\s+)?\(?\s*[\d.]+\s*%\s*\)?\s*,?)?\s*(above|below|over|under|more than|less than|"
+                        r"higher|lower|cheaper|dearer|short of|beyond)\b", re.IGNORECASE)
+# "reasons to look", "look again": the buyer looking, not how a room looks.
+_LOOK_ACTION = re.compile(r"\b(to look|look (at|for|again|round|around|closer|twice|through|elsewhere)|"
+                          r"(second|closer|fresh|another) look|take a look)\b", re.IGNORECASE)
+# "when competing listings appear": homes coming onto the market.
+_APPEAR_ON_MARKET = re.compile(r"\b(listings?|homes|properties|competitors?|rivals?|alternatives)\s+(that\s+)?"
+                               r"(may\s+|might\s+|could\s+|do\s+|start to\s+)?appear", re.IGNORECASE)
+# A sentence pointing out that two sources disagree ("four bathrooms, while
+# the details say five") is reporting a discrepancy, not getting a count wrong.
+_CONFLICT = re.compile(r"\b(while|whereas|but|conflict\w*|discrepanc\w*|differ\w*|mismatch\w*|inconsisten\w*|"
+                       r"contradict\w*)\b", re.IGNORECASE)
+
+
+def _perceived(sentence: str) -> bool:
+    """A room or photo described as seen, skipping the buyer looking and
+    listings appearing on the market."""
+    for m in _PERCEIVED.finditer(sentence):
+        verb = m.group(2).lower()
+        around = sentence[max(0, m.start(2) - 30): m.end(2) + 20]
+        if verb.startswith("look") and _LOOK_ACTION.search(around):
+            continue
+        if verb.startswith("appear") and _APPEAR_ON_MARKET.search(around):
+            continue
+        return True
+    return False
+
+
+def _names_count(sentence: str, n: int) -> bool:
+    words = {v: k for k, v in _NUMBER_WORDS.items() if k not in ("a", "an", "single")}
+    return bool(re.search(rf"\b({n}|{words.get(n, str(n))})\b", sentence, re.IGNORECASE))
 
 
 def _close(value: float, target: float, tolerance: float = 0.015) -> bool:
@@ -259,7 +290,7 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
     if not trust_photos:
         if _SUBJECT.search(sentence) and _SEEN_STATE.search(sentence):
             return "unseen_photos"
-        if _PERCEIVED.search(sentence):
+        if _perceived(sentence):
             return "unseen_photos"
         missing = _MISSING_MEDIA.search(sentence)
         if missing:
@@ -297,13 +328,16 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
     # Bedroom counts of other homes ("comparable three-bedroom houses") are
     # for the market check below, not this property's.
     if not _MARKET.search(sentence):
+        conflict = bool(_CONFLICT.search(sentence))
         if facts.bedrooms:
             for m in _BEDS.finditer(sentence):
-                if _number(m.group(1)) not in (None, facts.bedrooms):
+                if _number(m.group(1)) not in (None, facts.bedrooms) and not (
+                        conflict and _names_count(sentence, facts.bedrooms)):
                     return "bedrooms"
         if facts.bathrooms:
             for m in _BATHS.finditer(sentence):
-                if _number(m.group(1)) not in (None, facts.bathrooms):
+                if _number(m.group(1)) not in (None, facts.bathrooms) and not (
+                        conflict and _names_count(sentence, facts.bathrooms)):
                     return "bathrooms"
     for m in _DAYS.finditer(sentence):
         amount = _number(m.group(3) or m.group(5) or "")

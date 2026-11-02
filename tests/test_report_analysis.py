@@ -11,7 +11,7 @@ from app.services import report_factors as rf
 SNAPSHOT = {
     "title": "Monkhams Avenue, Woodford Green, IG8",
     "address": "Monkhams Avenue, Woodford Green, IG8",
-    "postcode": "IG8 0EX", "price": "£3,250,000", "bedrooms": "5", "bathrooms": "4",
+    "postcode": "IG8 0EX", "price": "£3,250,000", "bedrooms": "5", "bathrooms": "5",
     "property_type": "Detached House", "price_reduced": True,
     "media": {"photos": 53, "floorplans": 1, "virtual_tours": 0},
     "agent": {"brand": "An Agency"},
@@ -192,3 +192,28 @@ class GuardFalsePositiveTests(unittest.TestCase):
         self.assertEqual(rg._check("There's no floor plan on the listing.", f), "media")
         self.assertEqual(rg._check("The asking price is £3,400,000.", f), "asking_price")
         self.assertEqual(rg._check("The kitchen looks dated and cluttered.", f), "unseen_photos")
+
+
+class GuardFalsePositiveRoundTwoTests(GuardFalsePositiveTests):
+    """Five more true sentences cut from the next 2143 rebuild."""
+
+    def test_true_sentences_are_kept(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        for s in (
+            "Your £3,250,000 asking price is £1,175,000, or 56.6%, above the highest recorded detached sale.",
+            "Your 4,860 sq ft home and detached garden building are useful distinctions when competing listings appear.",
+            "The key features also say four bathrooms, while the property details say five.",
+            'Ask the agent to use this headline in the brochure: "A refurbished Victorian home with a detached gym."',
+            "The 4,860 sq ft, refurbishment and circa 120 ft garden give buyers strong reasons to look.",
+        ):
+            self.assertIsNone(rg._check(s, f), s)
+
+    def test_false_ones_are_still_cut(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        self.assertEqual(rg._check("The kitchen looks dated and cluttered.", f), "unseen_photos")
+        self.assertEqual(rg._check("The garden appears overgrown.", f), "unseen_photos")
+        self.assertEqual(rg._check("Your home has three bathrooms.", f), "bathrooms")
+        self.assertEqual(rg._check('The description describes it as "a stunning penthouse".', f), "quote")
+        self.assertEqual(rg._check("The asking price is £3,400,000.", f), "asking_price")
