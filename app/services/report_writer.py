@@ -680,7 +680,30 @@ async def write_paid_report(
     scenarios = analysis.get("scenarios") or []
     if len(scenarios) > 1:
         paid["_next_price_step"] = scenarios[1]["price"]  # the dashboard's day-21 decision point
+    paid["competition"] = competition_table(intel)
     return paid
+
+
+def competition_table(intel: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The homes for sale now that buyers are comparing with this one, for the
+    report's price comparison (from the live market data). None when the
+    market search didn't run."""
+    if not isinstance(intel, dict) or not intel:
+        return None
+    market = intel.get("market") or {}
+    rows = []
+    for r in (market.get("competing") or [])[:8]:
+        if not isinstance(r, dict) or not r.get("price"):
+            continue
+        rows.append({k: r.get(k) for k in ("address", "price", "bedrooms", "type", "status", "first_listed", "distance")
+                     if r.get(k) not in (None, "")})
+    return {
+        "area": intel.get("area_label"),
+        "compared_with": intel.get("basis_label"),
+        "for_sale_now": market.get("for_sale"),
+        "within_15pct": market.get("alternatives"),
+        "listings": rows,
+    }
 
 
 def _mark_photography_verified(report: dict[str, Any], photo_review: dict[str, Any] | None) -> None:

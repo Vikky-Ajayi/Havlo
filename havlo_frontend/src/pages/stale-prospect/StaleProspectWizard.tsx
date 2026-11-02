@@ -1035,6 +1035,95 @@ const SuccessStep = ({
 
 // ── Step: Full Report ───────────────────────────────────────────────────────
 
+// ── The paid report's price comparison: sold nearby vs for sale now ──────
+const daysSince = (iso?: string) => {
+  if (!iso) return null;
+  const t = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).getTime();
+  return Number.isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 86_400_000));
+};
+
+const PriceComparison = ({
+  asking, sold, competition, attribution,
+}: {
+  asking?: number | null;
+  sold: SoldComparable[];
+  competition?: FullReportData['competition'];
+  attribution?: string | null;
+}) => {
+  const prices = sold.map((s) => s.price).filter((p) => p > 0).sort((a, b) => a - b);
+  const median = prices.length
+    ? (prices.length % 2 ? prices[(prices.length - 1) / 2] : (prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2)
+    : null;
+  const diff = (price: number) => {
+    if (!asking) return null;
+    const d = asking - price;
+    const pct = Math.round((d / price) * 1000) / 10;
+    // Your price relative to theirs, as the report states the gap.
+    return d === 0 ? 'Same as yours' : `Yours is ${formatGbp(Math.abs(d))} (${Math.abs(pct)}%) ${d > 0 ? 'higher' : 'lower'}`;
+  };
+  const listings = competition?.listings || [];
+  return (
+    <div className="slw-compare">
+      <div className="slw-compare-card">
+        <div className="slw-compare-head"><b>Sold nearby</b><span>HM Land Registry recorded sales</span></div>
+        {asking ? (
+          <div className="slw-compare-row slw-compare-you">
+            <div><b>Your asking price</b></div>
+            <div className="slw-compare-price"><b>{formatGbp(asking)}</b></div>
+          </div>
+        ) : null}
+        {sold.length === 0 && <p className="slw-compare-empty">No recorded sales of similar homes nearby yet.</p>}
+        {sold.map((s) => (
+          <div className="slw-compare-row" key={`${s.address}-${s.date}`}>
+            <div>
+              <b>{s.address.replace(/ (\d[A-Z]{2})$/, '\u00a0$1')}</b>
+              <span>{[s.property_type, s.date ? `Sold ${new Date(`${s.date}T00:00:00`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}` : null].filter(Boolean).join(' · ')}</span>
+            </div>
+            <div className="slw-compare-price"><b>{formatGbp(s.price)}</b>{diff(s.price) && <span>{diff(s.price)}</span>}</div>
+          </div>
+        ))}
+        {median && sold.length > 1 ? (
+          <div className="slw-compare-row slw-compare-median">
+            <div><b>Median of these sales</b></div>
+            <div className="slw-compare-price"><b>{formatGbp(median)}</b>{diff(median) && <span>{diff(median)}</span>}</div>
+          </div>
+        ) : null}
+        {attribution && sold.length > 0 && <small className="slw-compare-attr">{attribution}</small>}
+      </div>
+      <div className="slw-compare-card">
+        <div className="slw-compare-head">
+          <b>For sale now</b>
+          <span>{competition?.compared_with ? `${competition.compared_with}${competition.area ? ` ${competition.area}` : ''}` : 'Homes buyers are comparing with yours'}</span>
+        </div>
+        {!competition && <p className="slw-compare-empty">We couldn&rsquo;t check the homes for sale around you this time.</p>}
+        {competition && listings.length === 0 && (
+          <p className="slw-compare-empty">
+            {competition.for_sale_now
+              ? `${competition.for_sale_now} similar ${competition.for_sale_now === 1 ? 'home is' : 'homes are'} for sale nearby, but none within 15% of your price.`
+              : 'No similar homes are for sale nearby right now.'}{' '}
+            Buyers at your level have little to compare you with, so if they aren&rsquo;t buying, it&rsquo;s the price or the home itself rather than the competition.
+          </p>
+        )}
+        {listings.map((c, i) => {
+          const days = daysSince(c.first_listed);
+          return (
+            <div className="slw-compare-row" key={`${c.address}-${i}`}>
+              <div>
+                <b>{c.address || 'Nearby listing'}</b>
+                <span>{[c.bedrooms ? `${c.bedrooms} bed` : null, c.type, typeof c.distance === 'number' ? `${c.distance.toFixed(1)} mi` : c.distance, c.status && c.status !== 'for_sale' ? String(c.status).replace(/_/g, ' ') : null].filter(Boolean).join(' · ')}</span>
+              </div>
+              <div className="slw-compare-price">
+                <b>{c.price ? formatGbp(c.price) : '—'}</b>
+                {days != null && <span>{days} days listed</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const FullReportStep = ({
   report,
   onOpenRecommendation,
@@ -1177,6 +1266,10 @@ const FullReportStep = ({
           </div>
         </div>
 
+        <h2 className="slw-section-heading">How your price compares</h2>
+        <PriceComparison asking={report.asking_price} sold={soldComparables} competition={data.competition}
+          attribution={report.sold_comparables_attribution} />
+
         {topActions.length > 0 && (
           <>
             <h2 className="slw-section-heading">Your three most important actions</h2>
@@ -1192,25 +1285,24 @@ const FullReportStep = ({
         )}
 
         <h2 className="slw-section-heading">Your 30-day plan</h2>
+        {/* Each box opens the dashboard, where the plan is a live checklist. */}
         <div className="slw-plan30">
-          <div className="slw-plan30-box">
-            <span>Days 1&ndash;10</span>
-            <b>Fix the fundamentals</b>
-            <ul>{box1.map((t) => <li key={t}>{t}</li>)}</ul>
-          </div>
-          <div className="slw-plan30-box">
-            <span>Days 11&ndash;20</span>
-            <b>Build momentum</b>
-            <ul>{box2.map((t) => <li key={t}>{t}</li>)}</ul>
-          </div>
-          <div className="slw-plan30-box">
-            <span>Days 21&ndash;30</span>
-            <b>Decide the next move</b>
-            <ul>
-              <li>Compare viewings and feedback with before your changes</li>
-              <li>Hold, change the price or relaunch, using the pricing scenarios below</li>
-            </ul>
-          </div>
+          {[
+            { days: <>Days 1&ndash;10</>, title: 'Fix the fundamentals', items: box1 },
+            { days: <>Days 11&ndash;20</>, title: 'Build momentum', items: box2 },
+            { days: <>Days 21&ndash;30</>, title: 'Decide the next move', items: [
+              'Compare viewings and feedback with before your changes',
+              'Hold, change the price or relaunch, using the pricing scenarios below',
+            ] },
+          ].map((box) => (
+            <button type="button" className="slw-plan30-box" key={box.title} onClick={onOpenDashboard}
+              aria-label={`${box.title}: open your 30-day dashboard`}>
+              <span>{box.days}</span>
+              <b>{box.title}</b>
+              <ul>{box.items.map((t) => <li key={t}>{t}</li>)}</ul>
+              <em className="slw-plan30-open slw-noprint">Open in your dashboard &rarr;</em>
+            </button>
+          ))}
         </div>
         <div className="slw-plan30-cta slw-noprint">
           <p>Your dashboard turns this plan into a checklist. We check your listing every day and the homes around it every week, and tick things off when we see you&rsquo;ve made a change.</p>
@@ -1239,12 +1331,6 @@ const FullReportStep = ({
             );
           })}
         </div>
-
-        {soldComparables.length > 0 && (
-          <div className="slw-report-sold-comps">
-            <SoldPricesList sales={soldComparables} attribution={report.sold_comparables_attribution} />
-          </div>
-        )}
 
         {/* Print only: the PDF can't carry the live Next Steps basket, so it
             closes with the optional services as text instead (replaces the old
@@ -2481,13 +2567,32 @@ export const WizardStyles = () => (
     .slw-report-preparing h1{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:800;font-size:30px;letter-spacing:-0.03em;margin:0 0 12px;color:#141414}
     .slw-report-preparing p{color:#475467;font-size:16px;line-height:1.55;margin:0}
     .slw-success-note{max-width:460px;margin:-4px auto 10px;color:#5f6671;font-size:14px;line-height:1.5;text-align:center}
+    .slw-compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:6px}
+    .slw-compare-card{background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:18px 20px}
+    .slw-compare-head{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+    .slw-compare-head b{font-size:16.5px;color:#141414}
+    .slw-compare-head span{font-size:13px;color:#7a818c}
+    .slw-compare-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:11px 0;border-top:1px solid #f0f1f3}
+    .slw-compare-row > div:first-child{min-width:0}
+    .slw-compare-row b{display:block;font-size:14px;color:#202124}
+    .slw-compare-row span{display:block;font-size:12.5px;color:#7a818c;margin-top:2px}
+    .slw-compare-price{text-align:right;flex:none}
+    .slw-compare-you{background:#F5EDFB;border-radius:10px;border-top:none;padding:11px 12px;margin-bottom:2px}
+    .slw-compare-you b{color:#7A079C}
+    .slw-compare-median b{color:#141414}
+    .slw-compare-empty{margin:4px 0 0;font-size:14px;line-height:1.5;color:#475467}
+    .slw-compare-attr{display:block;margin-top:10px;font-size:11px;line-height:1.4;color:#9097a1}
+    @media (max-width:760px){.slw-compare{grid-template-columns:1fr}}
     .slw-top-actions{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:12px}
     .slw-top-actions li{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid #e8eaed;border-left:3px solid #A409D2;border-radius:14px;padding:18px 20px}
     .slw-top-num{flex:none;width:30px;height:30px;border-radius:50%;background:#A409D2;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
     .slw-top-actions b{display:block;font-size:16.5px;letter-spacing:-0.01em;color:#141414;margin:3px 0 6px}
     .slw-top-actions p{margin:0;font-size:14.5px;line-height:1.55;color:#353a42}
     .slw-plan30{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-    .slw-plan30-box{background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:18px 20px}
+    .slw-plan30-box{display:flex;flex-direction:column;align-items:stretch;text-align:left;font:inherit;color:inherit;width:100%;background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:18px 20px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+    .slw-plan30-box:hover,.slw-plan30-box:focus-visible{border-color:#A409D2;box-shadow:0 6px 22px rgba(164,9,210,.1);outline:none}
+    .slw-plan30-box ul{flex:1 1 auto}
+    .slw-plan30-open{display:block;margin-top:14px;font-style:normal;font-size:13.5px;font-weight:700;color:#A409D2}
     .slw-plan30-box span{display:block;color:#D35506;font-size:12px;font-weight:700;margin-bottom:6px}
     .slw-plan30-box b{display:block;font-size:16px;color:#141414;margin-bottom:10px}
     .slw-plan30-box ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14px;line-height:1.45;color:#353a42}

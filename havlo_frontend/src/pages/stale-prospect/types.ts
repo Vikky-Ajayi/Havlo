@@ -177,6 +177,15 @@ export interface FullReportData {
   pricing_line?: string;
   day_sentence?: string | null;
   top_actions?: { title: string; detail: string }[];
+  // The homes for sale now (live market data), for the price comparison.
+  competition?: {
+    area?: string | null;
+    compared_with?: string | null;
+    for_sale_now?: number | null;
+    within_15pct?: number | null;
+    listings?: { address?: string; price?: number; bedrooms?: number; type?: string; status?: string;
+      first_listed?: string; distance?: number | string }[];
+  } | null;
   _expanded?: boolean;
 }
 
