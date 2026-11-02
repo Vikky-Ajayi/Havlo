@@ -23,20 +23,24 @@ logger = logging.getLogger(__name__)
 ADDONS: dict[str, dict[str, Any]] = {
     "listing_rewrite": {
         "key": "listing_rewrite", "name": "Listing Rewrite", "price": 199.0,
-        "blurb": "We rewrite your listing's headline, description and photo order based on these "
-                 "findings. Delivered in 3-7 working days.",
+        "blurb": "We refresh your listing with a stronger headline, a clearer, more compelling description and a "
+                 "recommended photo order based on your report findings.",
+        "deliverable": "You'll receive a ready-to-use, improved listing.",
     },
     "relaunch_strategy": {
         "key": "relaunch_strategy", "name": "Relaunch Strategy", "price": 299.0,
-        "blurb": "A full repositioning and relaunch plan: pricing, timing, where to advertise and a "
-                 "week-by-week schedule.",
+        "blurb": "A complete plan to give your property renewed momentum, including pricing guidance, timing, "
+                 "where to advertise and a week-by-week action plan.",
+        "deliverable": "You'll receive a clear, step-by-step relaunch plan.",
     },
 }
-# Shown in the basket as already yours — the dashboard that comes with the report.
+# Shown in the basket as already yours: the dashboard that comes with the
+# report. It watches the listing and the homes around it; it can't see the
+# views and enquiries, which only the agent has.
 INCLUDED: dict[str, Any] = {
     "key": "monitoring_30", "name": "30-Day Monitoring", "price": 0.0,
-    "blurb": "Your dashboard tracks views, enquiries and nearby activity for 30 days — free with "
-             "every report.",
+    "blurb": "Your dashboard tracks your listing, the changes you make and the homes around you for 30 days, "
+             "free with every report.",
 }
 CURRENCY = "GBP"
 

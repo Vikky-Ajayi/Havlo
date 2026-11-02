@@ -650,7 +650,7 @@ const LockIcon = ({ size = 16 }: { size?: number }) => (
 // loading when the step opens, hence also hiding it from its onLoad.
 type TawkApi = { hideWidget?: () => void; showWidget?: () => void; onLoad?: (...args: unknown[]) => void };
 
-function useHideChatWidget() {
+export function useHideChatWidget() {
   useEffect(() => {
     const w = window as unknown as { Tawk_API?: TawkApi };
     const api: TawkApi = (w.Tawk_API = w.Tawk_API || {});
@@ -1340,15 +1340,15 @@ const FullReportStep = ({
           <p className="slw-print-nextsteps-intro">If you&rsquo;d like us to act on this report for you, three optional services are available. Open your report online and choose <b>Explore Next Steps</b> to order.</p>
           <div className="slw-print-nextsteps-item">
             <b>Listing Rewrite &mdash; £199</b>
-            <p>We rewrite your listing&rsquo;s headline, description and photo order based on these findings. Delivered in 3&ndash;7 working days.</p>
+            <p>We refresh your listing with a stronger headline, a clearer, more compelling description and a recommended photo order based on your report findings. Delivered by email in 3&ndash;7 working days.</p>
           </div>
           <div className="slw-print-nextsteps-item">
             <b>Relaunch Strategy &mdash; £299</b>
-            <p>A full repositioning and relaunch plan: pricing, timing, where to advertise and a week-by-week schedule.</p>
+            <p>A complete plan to give your property renewed momentum, including pricing guidance, timing, where to advertise and a week-by-week action plan. Delivered by email in 3&ndash;7 working days.</p>
           </div>
           <div className="slw-print-nextsteps-item">
             <b>30-Day Monitoring &mdash; Included</b>
-            <p>Your dashboard tracks views, enquiries and nearby activity for 30 days &mdash; free with every report.</p>
+            <p>Your dashboard tracks your listing, the changes you make and the homes around you for 30 days &mdash; free with every report.</p>
           </div>
         </div>
 

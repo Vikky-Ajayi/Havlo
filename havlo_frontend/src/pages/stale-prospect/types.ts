@@ -213,6 +213,8 @@ export interface NextStepsService {
   name: string;
   price: number;
   blurb: string;
+  /** "You'll receive …": what the customer gets. */
+  deliverable?: string;
   status: 'available' | 'ordered' | 'included';
 }
 export interface NextStepsOrder {
