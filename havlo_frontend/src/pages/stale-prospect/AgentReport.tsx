@@ -18,7 +18,44 @@ import {
   type AgentIntelSale,
   type FullReportData,
   type ProspectReport,
+  type ReportFactor,
 } from './types';
+
+// The 20-factor report's verdicts (version 2), written as "this property".
+const AGR_VERDICT: Record<string, { label: string; className: string }> = {
+  problem: { label: 'Problem', className: 'slw-tag-problem' },
+  working_well: { label: 'Working well', className: 'slw-tag-good' },
+  check_with_agent: { label: 'Check with the agent', className: 'slw-tag-check' },
+};
+const AGR_VERDICT_ORDER = ['problem', 'check_with_agent', 'working_well'];
+
+const AgentFactorGrid = ({ factors }: { factors: ReportFactor[] }) => {
+  const ordered = [...factors].sort((a, b) =>
+    AGR_VERDICT_ORDER.indexOf(a.verdict || 'working_well') - AGR_VERDICT_ORDER.indexOf(b.verdict || 'working_well'));
+  return (
+    <div className="slw-factor-grid">
+      {ordered.map((f, i) => {
+        const v = AGR_VERDICT[f.verdict || 'check_with_agent'] || AGR_VERDICT.check_with_agent;
+        return (
+          <div className={`slw-factor-card slw-factor-${f.verdict || 'check_with_agent'}`} key={f.key || f.num || i}>
+            <div className="slw-factor-head">
+              <span className="slw-factor-num">{f.num ?? i + 1}</span>
+              <div className="slw-factor-titles">
+                <h3>{f.name}</h3>
+                <span className={`slw-verdict-tag ${v.className}`}>{v.label}</span>
+              </div>
+            </div>
+            <div className="slw-factor-body">
+              {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={220} /></div> : null}
+              {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={220} /></div> : null}
+              {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={220} /></div> : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // The agent-facing report on one of an agency's stale listings
 // (app/services/agent_report.py): the eight headline figures on the free
@@ -368,6 +405,13 @@ export const AgentFullReport = ({
   const shown = new Set(comparables.map((c) => `${c.address.toLowerCase().replace(/[^a-z0-9]/g, '')}|${c.price}`));
   const soldSince = (sold?.since_listed || []).filter((s) => !shown.has(`${s.address.toLowerCase().replace(/[^a-z0-9]/g, '')}|${s.price}`));
 
+  // The 20-factor report (version 2): the whole factor list replaces the two
+  // "why it may not be selling" findings; the agent-only intel sections stay.
+  const isV2 = data.version === 2 || (Array.isArray(data.factors) && data.factors.length > 0);
+  const v2Factors = (data.factors || []).filter((f) => f && f.name);
+  const v2Counts = { problem: 0, working_well: 0, check_with_agent: 0 } as Record<string, number>;
+  v2Factors.forEach((f) => { if (f.verdict && v2Counts[f.verdict] !== undefined) v2Counts[f.verdict] += 1; });
+
   return (
     <section className="agr agr-full">
       <div className="agr-report-head">
@@ -601,34 +645,55 @@ export const AgentFullReport = ({
             <b>Property Saleability Score</b>
             <p>How likely the listing is to attract and convert buyers as it stands.</p>
           </div>
-          <div className="slw-score-bars-card">
-            {Object.entries(SCORE_LABELS).map(([key, label]) => (
-              <ScoreBar key={key} label={label} value={scores[key as keyof typeof scores] ?? 50} />
-            ))}
+          <div className="slw-score-bars-card slw-factor-summary-card">
+            {isV2 ? (
+              <>
+                <div className="slw-factor-summary-counts">
+                  {v2Counts.problem > 0 && <span className="slw-verdict-tag slw-tag-problem">{v2Counts.problem} problem{v2Counts.problem === 1 ? '' : 's'}</span>}
+                  {v2Counts.check_with_agent > 0 && <span className="slw-verdict-tag slw-tag-check">{v2Counts.check_with_agent} to check</span>}
+                  {v2Counts.working_well > 0 && <span className="slw-verdict-tag slw-tag-good">{v2Counts.working_well} working well</span>}
+                </div>
+                {data.pricing_line ? <p className="slw-factor-summary-pricing">{data.pricing_line}</p> : null}
+                <p className="slw-factor-summary-note">Every factor is below, with what we found and what to do about it.</p>
+              </>
+            ) : (
+              Object.entries(SCORE_LABELS).map(([key, label]) => (
+                <ScoreBar key={key} label={label} value={scores[key as keyof typeof scores] ?? 50} />
+              ))
+            )}
           </div>
         </div>
       </section>
 
-      {findings.length > 0 && (
-        <section className="agr-section">
-          <SectionHead kicker="Havlo's assessment" title="Why it may not be selling" />
-          <div className="slw-why-not-selling">
-            {findings.map((finding, i) => {
-              const structured = finding.evidence && finding.impact && finding.recommend;
-              const [ev, im, rec] = structured
-                ? [finding.evidence as string, finding.impact as string, finding.recommend as string]
-                : splitIntoThree(finding.description || '');
-              return (
-                <div className="slw-why-card" key={finding.title || i}>
-                  <h3>{String(i + 1).padStart(2, '0')} &mdash; {finding.title}</h3>
-                  <div><span className="slw-why-label slw-why-evidence">EVIDENCE</span><ExpandableText text={ev} maxChars={180} /></div>
-                  <div><span className="slw-why-label slw-why-impact">IMPACT</span><ExpandableText text={im} maxChars={180} /></div>
-                  <div><span className="slw-why-label slw-why-recommend">RECOMMEND</span><ExpandableText text={rec} maxChars={180} /></div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      {isV2 ? (
+        v2Factors.length > 0 && (
+          <section className="agr-section">
+            <SectionHead kicker="Havlo's assessment" title={`All ${v2Factors.length} factors`} />
+            <AgentFactorGrid factors={v2Factors} />
+          </section>
+        )
+      ) : (
+        findings.length > 0 && (
+          <section className="agr-section">
+            <SectionHead kicker="Havlo's assessment" title="Why it may not be selling" />
+            <div className="slw-why-not-selling">
+              {findings.map((finding, i) => {
+                const structured = finding.evidence && finding.impact && finding.recommend;
+                const [ev, im, rec] = structured
+                  ? [finding.evidence as string, finding.impact as string, finding.recommend as string]
+                  : splitIntoThree(finding.description || '');
+                return (
+                  <div className="slw-why-card" key={finding.title || i}>
+                    <h3>{String(i + 1).padStart(2, '0')} &mdash; {finding.title}</h3>
+                    <div><span className="slw-why-label slw-why-evidence">EVIDENCE</span><ExpandableText text={ev} maxChars={180} /></div>
+                    <div><span className="slw-why-label slw-why-impact">IMPACT</span><ExpandableText text={im} maxChars={180} /></div>
+                    <div><span className="slw-why-label slw-why-recommend">RECOMMEND</span><ExpandableText text={rec} maxChars={180} /></div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )
       )}
 
       {intel?.branch && h && (

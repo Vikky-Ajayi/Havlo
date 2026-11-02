@@ -289,6 +289,10 @@ async def open_agent_copy(
             agent_checked_at=now,
         )
         db.add(copy)
+        await db.flush()
+        # The 20-factor report is copied from the owner worded "your property";
+        # rewrite the agency's as "this property" (no-op for the old report).
+        await sps.regenerate_agent_v2_free(copy)
     else:
         sps.record_qr_token(copy, token)
     # Details are collected once per agency: pre-fill them, and the funnel

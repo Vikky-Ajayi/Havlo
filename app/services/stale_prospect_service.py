@@ -905,6 +905,32 @@ async def generate_v2_report(
     return report
 
 
+async def regenerate_agent_v2_free(copy: StaleListingProspect) -> bool:
+    """Rewrite an agency copy's free 20-factor report as "this property"
+    (agent=True), replacing the owner text it was copied from. Mutates the copy;
+    the caller commits. A no-op (returns False) unless the copied report is v2.
+    Failures are swallowed so opening a property never depends on the rewrite."""
+    from app.services import report_writer
+
+    report = _safe_json(copy.report_json)
+    if not report_writer.report_is_v2(report):
+        return False
+    snapshot = _safe_json(copy.listing_snapshot_json)
+    try:
+        fresh = await generate_v2_report(
+            copy.property_address, copy.rightmove_url, snapshot,
+            asking_price=copy.asking_price, listing_duration_days=copy.listing_duration_days,
+            country=prospect_country(copy),
+            sold_comparables=cached_sold_comparables(copy) if getattr(copy, "sold_comparables_at", None) else None,
+            agent=True)
+    except Exception:  # noqa: BLE001 -- keep the owner-worded copy rather than fail the open
+        logger.exception("Agent v2 free rewrite failed for %s", getattr(copy, "property_code", "?"))
+        return False
+    copy.report_json = json.dumps(fresh, ensure_ascii=False)
+    copy.preview_json = json.dumps(report_writer.v2_preview(fresh), ensure_ascii=False)
+    return True
+
+
 async def _generate_live_report(**kwargs) -> dict[str, Any]:
     """generate_prospect_report for a live homeowner report, stamped with the
     model that actually wrote it (report["_model"]) — the live default, or
