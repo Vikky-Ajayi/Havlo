@@ -247,6 +247,9 @@ def market_facts(intel: dict[str, Any] | None) -> dict[str, Any]:
         "agreed_since_you_listed": vendor.get("agreed_since_listed"),
         "sold_since_you_listed": vendor.get("sold_since_listed"),
         "since": vendor.get("since_label"),
+        # A different set from the recorded comparables above: every sale of
+        # this kind of home in this area in the last year, so say which it is.
+        "sold_last_12_months_covers": " ".join(x for x in (sold.get("homes_label"), sold.get("area_label")) if x) or None,
         "sold_last_12_months": sold.get("count_12m"),
         "sold_12m_median": sold.get("median_12m"),
         "sold_12m_low": sold.get("low_12m"),

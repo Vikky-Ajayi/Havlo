@@ -98,11 +98,14 @@ FACTOR_GUIDE: dict[str, str] = {
                           "in 30 days, reductions nearby. Few or no alternatives: buyers at this level have little "
                           "choice, so if they aren't buying it's the price or the home, not competition, and any "
                           "new listing nearby will draw the same buyers fast. Many: say how the home must stand out.",
-    "buyer_demand": "Interpret the sales agreed since listing and the sales in the last 12 months and their range: "
+    "buyer_demand": "The 12-month sales are a different, wider set from the recorded comparables: say what they "
+                    "cover (sold_last_12_months_covers) so the two can't read as a contradiction. "
+                    "Interpret the sales agreed since listing and the sales in the last 12 months and their range: "
                     "are buyers active at this price level or only below it, and what does that mean for timing "
                     "and for which buyers to target.",
-    "time_on_market": "Don't just repeat how long it's been: the seller knows. Explain what it is doing to the "
-                      "sale. A price reduction sends an alert to buyers who've saved the home or a matching search; "
+    "time_on_market": "Don't open with how long it's been: the seller knows, and the summary already says it. Lead "
+                      "with what it is doing to the sale. "
+                      "A price reduction sends an alert to buyers who've saved the home or a matching search; "
                       "since that alert, nothing new has gone out to them, so to active buyers the listing has gone "
                       "quiet. Buyers can see the 'Reduced on' date, and after a few months they wonder what's wrong "
                       "and offer low. Then give the reset plan: what to change, all on the same day, so the next "
@@ -580,11 +583,15 @@ def _summary_prompt(free_report: dict[str, Any], analysis: dict[str, Any], *, ag
         f"The factor verdicts: {json.dumps(verdicts, ensure_ascii=False)}",
         f"The analysis: {json.dumps(key, ensure_ascii=False, default=str)}",
         "",
-        "executive_summary: four to six sentences. Open with the fixed day line if there is one. Then give the main "
-        "reason it hasn't sold, with the key figure, what is genuinely working, and the move you recommend.",
+        "executive_summary: four to six sentences. Open with the fixed day line if there is one. Then the main reason "
+        "it hasn't sold, stated in full with its figures (e.g. how far the price is above which recorded sales), what "
+        "is genuinely working, and the specific moves you recommend with their figures (the new price, the top "
+        "fixes). It is read on its own: never refer to \"those sales\" or anything not stated in the summary itself, "
+        "and never end on a generic line.",
         "pricing_line: one sentence on the price with the key figure.",
         "top_actions: exactly three, most important first. Each has a short title (at most eight words) and a detail "
-        "of two or three sentences with the specific figure, wording or deadline.",
+        "of two or three sentences with the specific figure, wording or deadline. Each is self-contained: state the "
+        "price or wording itself, never \"the price in the pricing line\" or another section's name.",
         "",
         'Return JSON only: {"executive_summary": "...", "pricing_line": "...", "overall_score": <0-100>, '
         '"top_actions": [{"title": "...", "detail": "..."}, ...]}',
@@ -810,13 +817,17 @@ async def finalize_report(report: dict[str, Any], facts: Any, *, agent: bool = F
     step ran) keeps its photo descriptions."""
     from app.services import report_guard, report_tone
 
-    report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys)
+    removed: list[dict[str, Any]] = []
+    report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys, removed=removed)
     report = await report_tone.fix_report_tone(report, agent=agent)
-    report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys)
+    report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys, removed=removed)
     if isinstance(report.get("top_actions"), list):
         report["top_actions"] = [
-            {"title": t.get("title"), "detail": report_guard.clean_text(t.get("detail"), facts)}
+            {"title": t.get("title"), "detail": report_guard.clean_text(t.get("detail"), facts, removed, "top_actions")}
             for t in report["top_actions"] if isinstance(t, dict)
         ]
         report["top_actions"] = [t for t in report["top_actions"] if t.get("title") and t.get("detail")]
+    # What the checks took out, kept so a weak or broken paragraph can be
+    # traced to the rule that cut it (never shown to the customer).
+    report["_removed"] = removed[:60]
     return report
