@@ -1846,6 +1846,26 @@ def _funnel_of(lead_source: str | None) -> str:
     return "letter"
 
 
+@public_router.get("/prospects-console/rewrite-reports-v2")
+async def rewrite_reports_v2_status() -> dict[str, Any]:
+    """Progress of the 20-factor rewrite over the latest 100 unpaid reports."""
+    from app.services import report_v2_migration
+
+    return await report_v2_migration.status()
+
+
+@public_router.post("/prospects-console/rewrite-reports-v2")
+async def rewrite_reports_v2_run(
+    limit: int = Query(default=0, ge=0, le=100),
+) -> dict[str, Any]:
+    """Rewrite one batch of the latest 100 unpaid reports into the 20-factor
+    structure (homeowner and agent, UK; paid and analyst-edited ones skipped).
+    Click again until it reports done. This makes billed AI calls."""
+    from app.services import report_v2_migration
+
+    return await report_v2_migration.run_batch(limit=limit or report_v2_migration.BATCH_SIZE)
+
+
 @public_router.get("/prospects-console/report-accuracy")
 async def report_accuracy(
     db: AsyncSession = Depends(get_db),

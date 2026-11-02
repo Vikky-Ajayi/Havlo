@@ -1,6 +1,58 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { api } from '../lib/api';
+import { api, API_BASE } from '../lib/api';
 import type { ReportAccuracyGroup, ReportAccuracyResponse } from '../lib/api';
+
+type V2Status = { migrated?: number; skipped?: number; failed?: number; remaining?: number; candidates?: number; done?: boolean; model?: string | null };
+
+// The 20-factor rewrite over the latest 100 unpaid reports. Each click does one
+// batch (billed AI calls); keep clicking until it says done.
+const V2RewriteTool = () => {
+  const [st, setSt] = useState<V2Status | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const loadStatus = () =>
+    fetch(`${API_BASE}/stale-listings/prospects-console/rewrite-reports-v2`)
+      .then((r) => r.json()).then(setSt).catch(() => setErr('Could not load rewrite status.'));
+
+  useEffect(() => { void loadStatus(); }, []);
+
+  const runBatch = async () => {
+    setBusy(true); setErr('');
+    try {
+      const res = await fetch(`${API_BASE}/stale-listings/prospects-console/rewrite-reports-v2`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || `Failed (HTTP ${res.status}).`);
+      if (data?.error) setErr(data.error);
+      await loadStatus();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Rewrite failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remaining = st?.remaining ?? 0;
+  const candidates = st?.candidates ?? 0;
+  const done = Boolean(st && st.done);
+  return (
+    <div style={{ ...card, background: '#ECFEFF', borderColor: '#A5F3FC' }}>
+      <div style={{ fontWeight: 800, fontSize: 15, color: '#111' }}>Rewrite to the 20-factor report</div>
+      <div style={{ fontSize: 13, color: '#4B5563', margin: '4px 0 12px' }}>
+        The latest {candidates || 100} unpaid reports (homeowner and agent, UK). Paid and analyst-edited ones are skipped.{' '}
+        {st ? (done ? 'All done.' : `${remaining} still to rewrite`) : 'Checking…'}
+        {st ? ` · ${st.migrated ?? 0} rewritten${st.failed ? ` · ${st.failed} failed` : ''}${st.model ? ` · ${st.model}` : ''}.` : ''}
+      </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <button className="spc-btn" onClick={runBatch} disabled={busy || done}>
+          {busy ? 'Rewriting a batch…' : done ? 'Done' : 'Rewrite next batch'}
+        </button>
+        <button className="spc-btn spc-btn-ghost" onClick={loadStatus} disabled={busy}>Refresh</button>
+      </div>
+      {err && <p style={{ color: '#B91C1C', fontSize: 13, margin: '10px 0 0' }}>{err}</p>}
+    </div>
+  );
+};
 
 // The console's "Report accuracy" tab: how many free previews people saw
 // before the report checks (app/services/report_guard.py) held a claim the
@@ -44,9 +96,9 @@ export const ReportAccuracyPanel = ({ country }: { country: 'UK' | 'US' }) => {
 
   useEffect(load, [country]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading && !data) return <p style={{ color: '#6B7280' }}>Checking every free preview…</p>;
-  if (error) return <p style={{ color: '#B91C1C' }}>{error} <button className="spc-btn spc-btn-ghost" onClick={load}>Retry</button></p>;
-  if (!data) return null;
+  if (loading && !data) return <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}><V2RewriteTool /><p style={{ color: '#6B7280' }}>Checking every free preview…</p></div>;
+  if (error) return <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}><V2RewriteTool /><p style={{ color: '#B91C1C' }}>{error} <button className="spc-btn spc-btn-ghost" onClick={load}>Retry</button></p></div>;
+  if (!data) return <V2RewriteTool />;
 
   const { affected, clean } = data.before_checks;
   const total = affected.previews + clean.previews;
@@ -55,6 +107,7 @@ export const ReportAccuracyPanel = ({ country }: { country: 'UK' | 'US' }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <V2RewriteTool />
       <div style={card}>
         <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#111' }}>
           {affected.previews} of {total} free previews ({total ? Math.round((affected.previews / total) * 100) : 0}%) contained a claim the checks now remove.
