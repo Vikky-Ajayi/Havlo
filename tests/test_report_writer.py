@@ -108,7 +108,9 @@ class WriteTests(unittest.TestCase):
         seen = {}
 
         def capture(**body):
-            seen["prompt"] = body["messages"][-1]["content"]
+            text = body["messages"][-1]["content"]
+            if "Write the free assessment" in text:  # the writer, not the editor pass after it
+                seen["prompt"] = text
             return response(ai_report())
 
         snap = {**SNAPSHOT, "description": long_desc}
@@ -118,6 +120,7 @@ class WriteTests(unittest.TestCase):
         self.assertIn("how to judge:", seen["prompt"])
         self.assertIn('ONLY for listing engagement, viewing-to-offer and seller net proceeds', seen["prompt"])
         self.assertIn("the full report", seen["prompt"])  # named as something never to say
+        self.assertIn("Never just repeat what the seller already knows", seen["prompt"])
 
     def test_preview_reveals_the_most_serious_problems_first(self):
         factors = [{"key": f["key"], "verdict": "working_well", "found": "ok", "why": "w", "action": "a"} for f in rf.FACTORS]

@@ -71,72 +71,87 @@ TONE_EXAMPLES = (
 # How an experienced agent judges each factor. The model gets the relevant
 # line with each factor, so it reasons from the evidence instead of hedging.
 FACTOR_GUIDE: dict[str, str] = {
-    "visibility": "Use the search-step figures. On a step: working well; say which searches it appears in and "
-                  "what the next step down would add. Just above a step: a problem; name the step and say buyers "
-                  "searching up to it never see the home.",
-    "engagement": "Always check_with_agent. Give the exact figures to request (total views since launch, views in "
-                  "the last 14 days, enquiries, viewings booked) and how to read them: falling views mean buyers "
-                  "aren't finding it; steady views but few viewings mean the listing isn't convincing; viewings "
-                  "but no second viewings mean price or something seen in person.",
-    "asking_price": "Compare the asking price with the recorded sales: give the range and the gap to the highest "
-                    "in £ and %. If the home is much bigger or better (floor area, bedrooms, plot), say plainly "
-                    "those sales are a weak guide and the price needs evidence from comparable homes, and say what "
-                    "that evidence should be. Weigh the time since the reduction and demand: months with no sale "
-                    "agreed means the price is very likely the main barrier, so say so.",
-    "pricing_range": "Lay out the scenarios given: hold, the next step down and the one below, with the change, "
-                     "the searches each appears in, and the buyer's stamp duty saving. Recommend one with a reason "
-                     "and a trigger, e.g. hold for 14 days with the fixes, then move to the next step if viewings "
-                     "don't pick up. Never invent any other price.",
-    "comparable_sold": "Walk through the recorded sales with dates and types. Say how useful they are as evidence "
-                       "for this home (how old, what type, likely size) and what better comparables would look like.",
+    "visibility": "Insight: buyers set a maximum price in round steps, and a listing only appears in searches whose "
+                  "maximum is at or above it. On a step: working well; say which buyers can't see it today (those "
+                  "searching up to the step below) and how many more a move would reach. Just above a step: a "
+                  "problem; name the step and say those buyers never see the home at all.",
+    "engagement": "Always check_with_agent. The seller can't see these figures, so give them the exact ones to "
+                  "request (total views since launch, views in the last 14 days, enquiries, viewings booked) and "
+                  "how to read them: falling views mean buyers aren't finding it; steady views but few viewings "
+                  "mean the listing isn't convincing; viewings but no second viewings mean price or something "
+                  "seen in person. Say what to do in each case.",
+    "asking_price": "Insight beyond the gap: compare the price with the recorded sales (range, gap to the highest "
+                    "in £ and %). If the home is much bigger or better (floor area, bedrooms, plot), say plainly "
+                    "those sales are a weak guide and what evidence the price needs. Explain the hidden risk: a "
+                    "buyer's mortgage lender sends a surveyor who values against comparable sales, so without "
+                    "evidence the price can be down-valued and the deal renegotiated or lost after an offer. Weigh "
+                    "the time since the reduction and demand, and say if price is the main barrier.",
+    "pricing_range": "Lay out the scenarios given: hold, the next step down and the one below, with the change, the "
+                     "searches each appears in and the buyer's stamp duty saving. Recommend one with a reason and "
+                     "a trigger (e.g. hold for 14 days with the fixes, then move if viewings don't pick up). Say why "
+                     "one decisive move to a search step beats several small cuts: small cuts tell buyers to wait "
+                     "for the next one. Never invent any other price.",
+    "comparable_sold": "Walk through the recorded sales with dates and types and say how useful each is as "
+                       "evidence (how old, what type, likely size). Say what better comparables look like and why "
+                       "they matter: they are what buyers, their agents and lenders' surveyors will use.",
     "active_competition": "Use the live counts: homes for sale now, how many within 15% of the price, new listings "
-                          "in 30 days, reductions nearby. Few or no alternatives: say buyers at this level have "
-                          "little choice, so if they aren't buying it's the price or the home, not competition. "
-                          "Many: say how the home must stand out. If there are no live counts, judge from the price "
-                          "level and the recorded sales without mentioning missing data.",
-    "buyer_demand": "Use sales agreed since listing, sales in the last 12 months and their range. Judge whether "
-                    "buyers are active at this price level and what that means for the seller's timing.",
-    "time_on_market": "Use the days since the reduction (or days advertised) and the local benchmark if given. "
-                      "Explain what a long time does to buyers (they wonder what's wrong and offer low) and set a "
-                      "clear reset point: what to change and by when.",
-    "reduction_history": "If reduced: how long ago, that it hasn't produced a sale, what that signals, and whether "
-                         "another change or a relaunch is due. Flag an out-of-date guide price if one is given. If "
-                         "never reduced, say whether one is due yet.",
-    "photography": "Every photo has been reviewed. Use the findings, the rooms shown, the missing shots, the "
-                   "weak photos and the order notes. Be specific: name photo numbers, say which room should follow "
-                   "the lead photo, which photos to drop or retake, and which shots to add.",
-    "description": "Judge the full description. Does the opening sell the best thing? Are the details buyers "
-                   "filter on there (floor area, EPC, tenure, council tax, parking, transport, schools, garden "
-                   "size)? Name exactly what's missing and suggest the line to add.",
-    "floor_plan": "Floor plan count and whether room sizes and total area are stated. Say what buyers at this "
-                  "level use it for and whether anything should change.",
-    "positioning": "Pick the two or three strongest selling points from the facts (size, garden, transport, "
-                   "period, recent works) and say whether the listing leads with them. Suggest a sharper headline "
-                   "or opening line.",
-    "target_buyer": "Describe the likely buyer from the facts: who can afford it (deposit, income) and what they "
-                    "want (space, schools, commute). Say where and how the agent should reach them.",
+                          "in 30 days, reductions nearby. Few or no alternatives: buyers at this level have little "
+                          "choice, so if they aren't buying it's the price or the home, not competition, and any "
+                          "new listing nearby will draw the same buyers fast. Many: say how the home must stand out.",
+    "buyer_demand": "Interpret the sales agreed since listing and the sales in the last 12 months and their range: "
+                    "are buyers active at this price level or only below it, and what does that mean for timing "
+                    "and for which buyers to target.",
+    "time_on_market": "Don't just repeat how long it's been: the seller knows. Explain what it is doing to the "
+                      "sale. A price reduction sends an alert to buyers who've saved the home or a matching search; "
+                      "since that alert, nothing new has gone out to them, so to active buyers the listing has gone "
+                      "quiet. Buyers can see the 'Reduced on' date, and after a few months they wonder what's wrong "
+                      "and offer low. Then give the reset plan: what to change, all on the same day, so the next "
+                      "alert lands on a listing that looks fresh.",
+    "reduction_history": "Say what the last reduction did and didn't achieve, and what that signals: the gap to what "
+                         "buyers will pay is still there. Explain that repeated small cuts teach buyers to wait, "
+                         "while one clear move to a search step resets interest. Flag an out-of-date guide price "
+                         "if one is given. If never reduced, say whether one is due yet.",
+    "photography": "Every photo has been reviewed. Use the findings, the rooms shown, the missing shots, the weak "
+                   "photos and the order notes. Be specific: name photo numbers, say which room should follow the "
+                   "lead photo, which photos to drop or retake, and which shots to add. Buyers decide from the first "
+                   "few images whether to open the listing at all.",
+    "description": "Judge the full description. Does the opening sell the best thing in the first line, which is "
+                   "all most buyers read? Are the details buyers filter and ask about there (floor area, EPC, tenure, "
+                   "council tax, parking, transport, schools, garden size)? Name exactly what's missing and write "
+                   "the line to add.",
+    "floor_plan": "Floor plan count and whether room sizes and total area are stated. Say what buyers at this level "
+                  "use it for (judging space before travelling to view) and whether its position or content should "
+                  "change.",
+    "positioning": "Pick the two or three strongest selling points from the facts (size, garden, transport, period, "
+                   "recent works) and say whether the listing leads with them. Write a sharper headline or opening "
+                   "line in advert voice.",
+    "target_buyer": "Describe the likely buyer from the facts: who can afford it (deposit, income or equity) and what "
+                    "they want (space, schools, commute). At the top end most buyers are moving up from a home they "
+                    "must sell, so say why proceedable buyers matter and where and how the agent should reach them.",
     "buyer_objections": "Name the two or three doubts a buyer is likely to have from the evidence (price against "
-                        "sales, time on the market, an out-of-date guide price, missing tour or details) and how "
-                        "to answer each before they view.",
+                        "sales, time on the market, an out-of-date guide price, a missing tour or details) and give "
+                        "a specific answer to each that the agent can use before and during viewings.",
     "viewing_conversion": "Always check_with_agent. Give the figures to get (viewings, second viewings, offers, "
                           "feedback from each viewing) and how to act on them: no second viewings points to price "
-                          "or a fixable objection; repeated feedback tells you what to fix.",
+                          "or a fixable objection; repeated feedback tells you what to fix before the next viewing.",
     "agent_marketing": "Judge the marketing from what's visible: photos, floor plan, virtual tour, the guide price "
-                       "wording. At this price a missing virtual tour or video is a problem. Say exactly what to "
-                       "ask the agent to add and by when.",
-    "condition_readiness": "Use the EPC rating and any works mentioned. List the paperwork a buyer's solicitor will "
-                           "ask for (EPC, building regulations and warranties for the works, boiler service and "
-                           "Gas Safe records, electrical certificate, FENSA for windows) and say to gather it now so "
-                           "a sale doesn't stall.",
-    "affordability": "Use the deposit, loan, income and stamp duty at the asking price and at each scenario, and "
-                     "say how the buyer's total cost changes at the next step down. At the top of the market the "
-                     "buyer pool is small by nature: that alone isn't a problem. Mark it a problem only if the "
-                     "purchase costs themselves look out of line for this kind of buyer; don't repeat the price "
-                     "problem here.",
+                       "wording. At this price a missing virtual tour or video is a problem. Say what a strong "
+                       "campaign at this level includes (a filmed tour, a featured or premium portal placement, a "
+                       "printed brochure, the agent's own buyer list) and exactly what to ask the agent to add and "
+                       "by when.",
+    "condition_readiness": "Use the EPC rating and any works mentioned. List the paperwork a buyer's solicitor will ask "
+                           "for (EPC, building regulations and warranties for the works, boiler service and Gas Safe "
+                           "records, electrical certificate, FENSA for windows) and say to gather it now: missing "
+                           "paperwork is a common reason agreed sales stall or fall through.",
+    "affordability": "Use the deposit, loan, income and stamp duty at the asking price and at each scenario, and say "
+                     "how the buyer's total cost changes at the next step down. At the top of the market the buyer "
+                     "pool is small by nature: that alone isn't a problem. Mark it a problem only if the purchase "
+                     "costs themselves look out of line for this kind of buyer; don't repeat the price problem here.",
     "net_proceeds": "Always check_with_agent: the fee and mortgage figures sit with the agent and lender. Use the "
-                    "fee per 0.5% and the scenario price changes. Explain how to work out what they walk away with "
-                    "and which figures to gather (agent fee %, mortgage redemption, early repayment charges, legal "
-                    "fees), and compare selling lower in weeks with holding for months.",
+                    "fee per 0.5% and the scenario price changes. Show how to work out what they walk away with at "
+                    "each price, which figures to gather (agent fee %, mortgage redemption, early repayment charges, "
+                    "legal fees), and that every month unsold has its own cost (mortgage, bills, council tax) to set "
+                    "against a lower price that sells sooner.",
 }
 
 JUDGEMENT_RULES = (
@@ -146,6 +161,12 @@ JUDGEMENT_RULES = (
     "and seller net proceeds, where the figures sit with the agent or lender. Never use it because you're unsure: "
     "judge from what you have and say what would change your view.\n"
     "- Where a verdict is given in brackets, use it.\n"
+    "- Never just repeat what the seller already knows (their price, how long it has been, their bedrooms). Use "
+    "those facts only as the lead-in to something they don't know: what it means, why it's happening, how buyers, "
+    "portals and lenders behave as a result, and what usually fixes it. For every factor ask: what does the seller "
+    "learn here that they didn't know? If the answer is nothing, rewrite it.\n"
+    "- You may use well-established knowledge of how the UK market works (portal searches and alerts, mortgage "
+    "surveys, how buyers read reductions), but never a number that isn't in the facts.\n"
     "- Join the dots like a valuer: a price far above every recorded sale, months since the reduction and no "
     "sale agreed all point the same way. Say so plainly, once.\n"
     "- Don't count the same problem twice. Make the price recommendation (which price, and when to move to it) in "
@@ -468,6 +489,12 @@ async def write_free_report(
         logger.exception("Free 20-factor report generation failed")
         raw = {}
     report = normalize_report(raw if isinstance(raw, dict) else {}, facts, snapshot, agent=agent, day_sentence=day)
+    # The three revealed on the free preview are what sells the report: give
+    # them the senior-partner check (report_editor) before anyone sees them.
+    from app.services import report_editor
+
+    revealed = {f.get("key") for f in v2_preview(report).get("revealed") or []}
+    report = await report_editor.edit_report(report, facts, agent=agent, keys=revealed, snapshot=snapshot)
     _mark_photography_verified(report, photo_review)
     report["_sales_given"] = bool(_fmt_sales(sales)) or bool((analysis.get("price_position") or {}).get("sales_known"))
     report["_media_given"] = bool((snapshot.get("media") or {}))
@@ -648,6 +675,11 @@ async def write_paid_report(
 
     paid = dict(free_report)
     paid["factors"] = factors
+    # The senior-partner check over all twenty: rewrite the ones that only
+    # repeat what the seller knows, stay generic or repeat another factor.
+    from app.services import report_editor
+
+    paid = await report_editor.edit_report(paid, facts, agent=agent, snapshot=snapshot)
     exec_summary = scrub_place_names(str(summary.get("executive_summary") or ""), snapshot, agent=agent)
     if exec_summary:
         if day and day.lower() not in exec_summary.lower():
