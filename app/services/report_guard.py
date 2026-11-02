@@ -178,6 +178,8 @@ class ReportFacts:
     trusted_percents: list[float] = field(default_factory=list)
     trusted_days: list[int] = field(default_factory=list)
     subject_sqft: int | None = None
+    # How many listing photos the vision review looked at (0: none).
+    photos_reviewed: int = 0
 
 
 def _norm(text: str) -> str:
@@ -193,6 +195,12 @@ def _money(match: re.Match) -> float:
     value = float(match.group(1).replace(",", ""))
     unit = (match.group(2) or "").lower()
     return value * (1_000 if unit == "k" else 1_000_000 if unit in ("m", "million") else 1)
+
+
+_PHOTO_NUMBER = re.compile(r"\b(photos?|images?|pictures?)\s+(no\.?\s*)?\d+\b|\bposition\s+\d+\b", re.IGNORECASE)
+# A figure that is a difference, not a price: "£1,175,000 above", "£250,000 more than".
+_GAP_AFTER = re.compile(r"\s*(\(\s*[\d.]+\s*%\s*\)\s*)?(above|below|over|under|more than|less than|higher|lower|"
+                        r"cheaper|dearer|short of|beyond)\b", re.IGNORECASE)
 
 
 def _close(value: float, target: float, tolerance: float = 0.015) -> bool:
@@ -240,6 +248,10 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
     came from the vision step, which actually looked at the photos, so claims
     about what the photos show are allowed (photo_review.py)."""
     media = facts.media if isinstance(facts.media, dict) else {}
+    # A sentence citing photo numbers ("photos 48 and 49") can only come from
+    # the vision review, which looked at every photo: its photo claims stand.
+    if facts.photos_reviewed and _PHOTO_NUMBER.search(sentence):
+        trust_photos = True
     if _TRUNCATED.search(sentence):
         return "description_cut"
     if facts.description_cut and _NO_MEASUREMENTS.search(sentence):
@@ -249,8 +261,11 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
             return "unseen_photos"
         if _PERCEIVED.search(sentence):
             return "unseen_photos"
-        if _MISSING_MEDIA.search(sentence):
-            text = sentence.lower()
+        missing = _MISSING_MEDIA.search(sentence)
+        if missing:
+            # Only the media the "no ..." phrase names: "one floor plan, but no
+            # virtual tour" says nothing is wrong with the floor plan.
+            text = missing.group(0).lower()
             checks = []
             if "floor" in text:
                 checks.append(media.get("floorplans"))
@@ -275,7 +290,9 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
         # Another home's price ("one of them is priced at £X") from the live
         # market data is fine; this rule is about this property's own price.
         other_home = bool(first and _MARKET.search(sentence) and any(_close(_money(first), t) for t in facts.trusted_amounts))
-        if first and not other_home and not _close(_money(first), facts.asking_price, 0.01):
+        # "Your asking price is £1,175,000 above the highest sale": a gap.
+        gap = bool(first and _GAP_AFTER.match(sentence, first.end()))
+        if first and not other_home and not gap and not _close(_money(first), facts.asking_price, 0.01):
             return "asking_price"
     # Bedroom counts of other homes ("comparable three-bedroom houses") are
     # for the market check below, not this property's.

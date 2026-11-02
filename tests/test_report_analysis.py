@@ -166,3 +166,29 @@ class GuardFigureTests(unittest.TestCase):
                   "Comparable homes nearby sold for around £2.6m.",
                   "A comparable detached house achieved £2,750,000 in the spring."):
             self.assertEqual(rg._check(s, f), "market", s)
+
+
+class GuardFalsePositiveTests(unittest.TestCase):
+    """Three true sentences the checks wrongly cut from the live 2143 report."""
+
+    def facts(self):
+        from app.services import stale_prospect_service as sps
+        a = ra.analyse(SNAPSHOT, asking_price=3_250_000, reduced_days=118, sales=SALES)
+        report = {"_trusted": a["trusted"], "_sales_given": True, "_media_given": True,
+                  "_photo_review": {"photos_seen": 53}}
+        return sps.report_facts(SNAPSHOT, report, asking_price=3_250_000, listing_duration_days=118, sales=SALES)
+
+    def test_true_sentences_are_kept(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        for s in ("Your listing has 53 photographs and one floor plan, but no virtual tour or video.",
+                  "Your £3,250,000 asking price is £1,175,000 above the highest recorded detached sale of £2,075,000.",
+                  "Declutter the gym before retaking photos 48 and 49."):
+            self.assertIsNone(rg._check(s, f), s)
+
+    def test_false_ones_are_still_cut(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        self.assertEqual(rg._check("There's no floor plan on the listing.", f), "media")
+        self.assertEqual(rg._check("The asking price is £3,400,000.", f), "asking_price")
+        self.assertEqual(rg._check("The kitchen looks dated and cluttered.", f), "unseen_photos")

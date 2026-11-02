@@ -838,6 +838,8 @@ def report_facts(
         trusted_percents=[float(x) for x in trusted.get("percents") or [] if isinstance(x, (int, float))],
         trusted_days=[int(x) for x in trusted.get("days") or [] if isinstance(x, (int, float))],
         subject_sqft=trusted.get("sqft") if isinstance(trusted.get("sqft"), int) else None,
+        photos_reviewed=int((report.get("_photo_review") or {}).get("photos_seen") or 0)
+        if isinstance(report.get("_photo_review"), dict) else 0,
         asking_price=asking_price or extract_price(snapshot.get("price")),
         bedrooms=bedrooms or _int_or_none(snapshot.get("bedrooms")),
         bathrooms=bathrooms or _int_or_none(snapshot.get("bathrooms")),
