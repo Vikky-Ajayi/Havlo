@@ -27,10 +27,15 @@ _BANNED_PHRASES = (
 _BANNED_RE = re.compile(r"\b(" + "|".join(re.escape(p) for p in _BANNED_PHRASES) + r")\b", re.IGNORECASE)
 _EM_DASH = re.compile(r"\s[—–]\s|\w—\w")
 _NOT_JUST = re.compile(r"\bnot just\b[^.]{0,60}\bbut\b", re.IGNORECASE)
-# Three adjectives in a row: "a bright, spacious, modern home".
-_THREE_ADJECTIVES = re.compile(r"\b\w+ly?\b,\s+\b\w+\b,\s+and\s+\b\w+\b", re.IGNORECASE)
+# Three adjectives before a noun: "a bright, spacious and modern home". A
+# plain list of three things ("views, enquiries and viewings") is fine.
+_THREE_ADJECTIVES = re.compile(r"\b(?:a|an)\s+\w+,\s+\w+,?\s+and\s+\w+\s+(?:home|house|property|flat|space|room|kitchen|garden)\b",
+                               re.IGNORECASE)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
-MAX_SENTENCE_WORDS = 34
+MAX_SENTENCE_WORDS = 40
+# Only flag repeated openings when this many factors start the same way.
+REPEATED_OPENING_MIN = 4
+_FIGURE = re.compile(r"£\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:k|m|million))?|\d+(?:\.\d+)?\s?%", re.IGNORECASE)
 
 
 def _sentences(text: str) -> list[str]:
@@ -72,49 +77,65 @@ def report_tone_issues(report: dict[str, Any]) -> dict[str, list[str]]:
         if found:
             issues[key] = found
         words = str(f.get("found") or "").split()
-        if words:
-            openings.setdefault(" ".join(words[:2]).lower(), []).append(key)
+        if len(words) >= 3:
+            openings.setdefault(" ".join(words[:3]).lower(), []).append(key)
     for opening, keys in openings.items():
-        if len(keys) >= 2:  # same two-word opening on two or more factors
-            for key in keys:
+        if len(keys) >= REPEATED_OPENING_MIN:
+            for key in keys[1:]:  # leave the first as it is; vary the rest
                 issues.setdefault(key, []).append(f"repeated opening: {opening}")
     return issues
 
 
-def _rewrite_prompt(factors: list[dict[str, Any]], *, agent: bool) -> str:
+def _rewrite_prompt(factors: list[dict[str, Any]], *, agent: bool, issues: dict[str, list[str]] | None = None) -> str:
     whose = "this property" if agent else "your property"
     items = [
-        {"key": f.get("key"), "found": f.get("found"), "why": f.get("why"), "action": f.get("action")}
+        {"key": f.get("key"), "fix": (issues or {}).get(str(f.get("key"))) or [],
+         "found": f.get("found"), "why": f.get("why"), "action": f.get("action")}
         for f in factors
     ]
     return (
-        f"Rewrite these property-report paragraphs for {whose} in plain, natural English, keeping the exact same "
-        "meaning and every real figure. Fix anything that sounds like AI.\n"
-        "Rules: short sentences (under 30 words). Everyday words. Use contractions. No dashes dropped into "
-        "sentences. Never use: leverage, navigate, crucially, it's worth noting, in today's market, furthermore, "
-        'proposition, narrative, optimise. No "not just X but Y". No lists of three adjectives. Don\'t start two '
-        "paragraphs the same way.\n\n"
+        f"Edit these property-report paragraphs for {whose}. Fix only the problems listed under \"fix\" for each "
+        "one, in plain, natural English.\n"
+        "Keep every fact, every figure, every step and the same length. Don't summarise or shorten. Don't add "
+        "anything new.\n"
+        "Rules: sentences under 30 words. Everyday words. Use contractions. No dashes dropped into sentences. Never "
+        "use: leverage, navigate, crucially, it's worth noting, in today's market, furthermore, proposition, "
+        'narrative, optimise. No "not just X but Y". For a repeated opening, start that paragraph a different way.\n\n'
         f"Paragraphs:\n{json.dumps(items, ensure_ascii=False)}\n\n"
         'Return JSON: {"rewrites": [{"key": "...", "found": "...", "why": "...", "action": "..."}, ...]}'
     )
 
 
+def _keeps_substance(before: str, after: str) -> bool:
+    """A rewrite is only taken if it keeps every £ figure and percentage and
+    isn't much shorter: a tone fix must never cost the seller content."""
+    if not after:
+        return False
+    norm = lambda s: re.sub(r"\s+", "", s.lower())  # noqa: E731
+    figures_before = {norm(m.group(0)) for m in _FIGURE.finditer(before or "")}
+    figures_after = {norm(m.group(0)) for m in _FIGURE.finditer(after)}
+    if not figures_before <= figures_after:
+        return False
+    return len(after) >= 0.75 * len(before or "")
+
+
 async def fix_report_tone(report: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
-    """Rewrite only the factors that read as AI, in one call. The report is
-    returned unchanged when nothing fails or the rewrite call fails."""
+    """Rewrite only the factors that read as AI, in one call. A rewritten field
+    is kept only if it keeps all the figures and most of the length; the report
+    is returned unchanged when nothing fails or the rewrite call fails."""
     import asyncio
 
     issues = report_tone_issues(report)
     if not issues:
         return report
     failing = [f for f in report.get("factors") or [] if isinstance(f, dict) and str(f.get("key")) in issues]
-    prompt = _rewrite_prompt(failing, agent=agent)
+    prompt = _rewrite_prompt(failing, agent=agent, issues=issues)
 
     def _call() -> str:
         resp = groq_service._report_chat(
-            messages=[{"role": "system", "content": "You rewrite text in a plain human voice. Return only JSON."},
+            messages=[{"role": "system", "content": "You edit text into a plain human voice. Return only JSON."},
                       {"role": "user", "content": prompt}],
-            max_tokens=2600, temperature=0.4, response_format={"type": "json_object"})
+            max_tokens=9000, temperature=0.3, response_format={"type": "json_object"})
         return resp.choices[0].message.content or "{}"
 
     try:
@@ -125,11 +146,16 @@ async def fix_report_tone(report: dict[str, Any], *, agent: bool = False) -> dic
         return report
     out = dict(report)
     factors = []
+    fixed = []
     for f in report.get("factors") or []:
         r = rewrites.get(str(f.get("key"))) if isinstance(f, dict) else None
         if r:
-            f = {**f, **{k: str(r[k]) for k in ("found", "why", "action") if r.get(k)}}
+            changed = {k: str(r[k]) for k in ("found", "why", "action")
+                       if r.get(k) and _keeps_substance(str(f.get(k) or ""), str(r[k]))}
+            if changed:
+                f = {**f, **changed}
+                fixed.append(str(f.get("key")))
         factors.append(f)
     out["factors"] = factors
-    out["_tone_fixed"] = sorted(issues)
+    out["_tone_fixed"] = sorted(fixed)
     return out

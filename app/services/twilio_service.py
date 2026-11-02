@@ -314,14 +314,15 @@ def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, coun
     return _send_sms(to_phone, body, from_override="Havlo")
 
 
-# The one text with a purchased report's 90-day dashboard link
-# (app/services/listing_monitor.py). A service message about something
-# they've bought, so no marketing opt-out link, but never sent after one.
+# The one text with a purchased report's dashboard link (30 days for the
+# 20-factor report, 90 for purchases before it; app/services/listing_monitor.py).
+# A service message about something they've bought, so no marketing opt-out
+# link, but never sent after one.
 MONITOR_DASHBOARD_SMS = (
-    "Havlo: your 90-day listing dashboard for {address} is live. We'll track your listing, "
-    "the changes you make and homes nearby: {link}"
+    "Havlo: your {days}-day listing dashboard for {address} is live. Your report's to-do list is on it, "
+    "and we'll track your listing, the changes you make and homes nearby: {link}"
 )
 
 
-def send_monitor_dashboard_sms(to_phone: str, *, address: str, link: str) -> SmsResult:
-    return _send_sms(to_phone, MONITOR_DASHBOARD_SMS.format(address=address, link=link), from_override="Havlo")
+def send_monitor_dashboard_sms(to_phone: str, *, address: str, link: str, days: int = 90) -> SmsResult:
+    return _send_sms(to_phone, MONITOR_DASHBOARD_SMS.format(days=days, address=address, link=link), from_override="Havlo")

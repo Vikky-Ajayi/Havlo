@@ -1866,6 +1866,39 @@ async def rewrite_reports_v2_run(
     return await report_v2_migration.run_batch(limit=limit or report_v2_migration.BATCH_SIZE)
 
 
+@public_router.get("/prospects-console/upgrade-reports-v2")
+async def upgrade_reports_v2_status() -> dict[str, Any]:
+    """How many 20-factor reports from the first writer still need rebuilding."""
+    from app.services import report_v2_migration
+
+    return await report_v2_migration.upgrade_status()
+
+
+@public_router.post("/prospects-console/upgrade-reports-v2")
+async def upgrade_reports_v2_run(limit: int = Query(default=0, ge=0, le=100)) -> dict[str, Any]:
+    """Rebuild one batch of 20-factor reports written by the first writer, paid
+    ones included (they get the full write again). Click until done. Billed."""
+    from app.services import report_v2_migration
+
+    return await report_v2_migration.run_upgrade_batch(limit=limit or report_v2_migration.BATCH_SIZE)
+
+
+@public_router.post("/prospects-console/prospects/{prospect_id}/rebuild-report")
+async def rebuild_console_prospect_report(prospect_id: str) -> dict[str, Any]:
+    """Rebuild one property's 20-factor report now with the current writer
+    (and the full paid write if it's been bought). Billed AI calls."""
+    from app.services import report_v2_migration
+
+    try:
+        pid = uuid.UUID(prospect_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Prospect not found.") from exc
+    result = await report_v2_migration.rebuild_one_now(pid)
+    if result.get("error") == "not found":
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+    return result
+
+
 @public_router.get("/prospects-console/report-accuracy")
 async def report_accuracy(
     db: AsyncSession = Depends(get_db),

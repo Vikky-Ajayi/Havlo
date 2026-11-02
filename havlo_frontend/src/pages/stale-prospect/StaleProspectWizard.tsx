@@ -583,6 +583,28 @@ const VERDICT_TAG: Record<string, { label: string; className: string }> = {
 // Problems first, then check-with-agent, then working-well, on the full report.
 const V2_VERDICT_ORDER = ['problem', 'check_with_agent', 'working_well'];
 
+// A problem factor as a 30-day-plan task (mirrors listing_monitor.FACTOR_TASKS).
+const PLAN_TASK: Record<string, string> = {
+  visibility: 'Move to the next search price step',
+  asking_price: 'Get evidence for your asking price',
+  pricing_range: 'Agree your price plan and its trigger',
+  comparable_sold: 'Get sales of homes like yours',
+  active_competition: "Check your price against what's for sale",
+  buyer_demand: 'Review buyer demand with your agent',
+  time_on_market: 'Reset the listing',
+  reduction_history: 'Decide your next price move',
+  photography: 'Fix the photos, starting with the lead image',
+  description: 'Fill the gaps in your description',
+  floor_plan: 'Add or improve the floor plan',
+  positioning: 'Lead with your best features',
+  target_buyer: 'Aim the marketing at the right buyers',
+  buyer_objections: "Answer buyers' doubts before they view",
+  agent_marketing: 'Upgrade the marketing',
+  condition_readiness: 'Gather your sale paperwork now',
+  affordability: "Make the price work for buyers' budgets",
+  net_proceeds: "Work out what you'll walk away with",
+};
+
 const FULL_REPORT_INCLUDES = [
   'Detailed property analysis', 'Pricing analysis', 'Comparable property analysis',
   'Local competition', 'Listing assessment', 'Buyer appeal analysis',
@@ -993,8 +1015,18 @@ const SuccessStep = ({
       {prospect.audience === 'agent' ? 'View the Agent Report' : 'View My Property Assessment Report'}
     </button>
     <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>
-      Open my 90-Day Instruction Watch
+      {(() => {
+        const days = prospect.preview?.version === 2 ? 30 : 90;
+        return prospect.audience === 'agent' ? `Open the ${days}-Day Instruction Watch` : `Open my ${days}-Day Listing Dashboard`;
+      })()}
     </button>
+    {prospect.preview?.version === 2 && (
+      <p className="slw-success-note">
+        {prospect.audience === 'agent'
+          ? 'Your report’s actions as a 30-day to-do list, with the listing and the homes around it checked daily.'
+          : 'Your report’s actions as a 30-day to-do list. We check your listing every day and the homes around it every week, and tick things off as you change them.'}
+      </p>
+    )}
     <button type="button" className="slw-btn-outline" onClick={onDownloadPdf}>Download PDF Report</button>
     {error && <p className="slw-error">{error}</p>}
   </section>
@@ -1058,11 +1090,30 @@ const FullReportStep = ({
   // verdict, instead of the old key_findings/action_plan sections.
   const isV2 = data.version === 2 || (Array.isArray(data.factors) && data.factors.length > 0);
   if (isV2) {
+    if (report.payment_status === 'completed' && report.report_expanded === false) {
+      // Paid, and the full write is still running (about a minute): show that,
+      // not the free preview's shorter text. The wizard polls and swaps it in.
+      return (
+        <section className="slw-report slw-report-preparing">
+          <Spinner />
+          <h1>We&rsquo;re finishing your full report</h1>
+          <p>We&rsquo;re writing up all 20 factors for {report.property_address} with the live market data around it: what we found, why it matters and exactly what to do. This usually takes about a minute, and it&rsquo;ll appear here by itself.</p>
+        </section>
+      );
+    }
     const factors = (data.factors || []).filter((f) => f && f.name);
     const counts = { problem: 0, working_well: 0, check_with_agent: 0 } as Record<string, number>;
     factors.forEach((f) => { if (f.verdict && counts[f.verdict] !== undefined) counts[f.verdict] += 1; });
     const ordered = [...factors].sort((a, b) =>
-      V2_VERDICT_ORDER.indexOf(a.verdict || 'working_well') - V2_VERDICT_ORDER.indexOf(b.verdict || 'working_well'));
+      (V2_VERDICT_ORDER.indexOf(a.verdict || 'working_well') - V2_VERDICT_ORDER.indexOf(b.verdict || 'working_well'))
+      || ((b.severity ?? 0) - (a.severity ?? 0)) || ((a.num ?? 0) - (b.num ?? 0)));
+    const topActions = (data.top_actions || []).filter((t) => t && t.title);
+    const problemFactors = ordered.filter((f) => f.verdict === 'problem');
+    const box1 = topActions.length ? topActions.map((t) => t.title) : problemFactors.slice(0, 3).map((f) => PLAN_TASK[f.key || ''] || f.name || '');
+    const box2 = ['Get your listing figures from your agent', 'Get written feedback after every viewing',
+      // The three most serious problems are what the top actions (box 1) cover.
+      ...problemFactors.slice(3).map((f) => PLAN_TASK[f.key || ''] || f.name || '')]
+      .filter((t, i, all) => t && all.indexOf(t) === i && !box1.includes(t)).slice(0, 5);
     const summaryBits: string[] = [];
     if (counts.problem) summaryBits.push(`${counts.problem} ${counts.problem === 1 ? 'problem' : 'problems'}`);
     if (counts.check_with_agent) summaryBits.push(`${counts.check_with_agent} to check with your agent`);
@@ -1118,6 +1169,46 @@ const FullReportStep = ({
           </div>
         </div>
 
+        {topActions.length > 0 && (
+          <>
+            <h2 className="slw-section-heading">Your three most important actions</h2>
+            <ol className="slw-top-actions">
+              {topActions.map((t, i) => (
+                <li key={i}>
+                  <span className="slw-top-num">{i + 1}</span>
+                  <div><b>{t.title}</b><p>{t.detail}</p></div>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+
+        <h2 className="slw-section-heading">Your 30-day plan</h2>
+        <div className="slw-plan30">
+          <div className="slw-plan30-box">
+            <span>Days 1&ndash;10</span>
+            <b>Fix the fundamentals</b>
+            <ul>{box1.map((t) => <li key={t}>{t}</li>)}</ul>
+          </div>
+          <div className="slw-plan30-box">
+            <span>Days 11&ndash;20</span>
+            <b>Build momentum</b>
+            <ul>{box2.map((t) => <li key={t}>{t}</li>)}</ul>
+          </div>
+          <div className="slw-plan30-box">
+            <span>Days 21&ndash;30</span>
+            <b>Decide the next move</b>
+            <ul>
+              <li>Compare viewings and feedback with before your changes</li>
+              <li>Hold, change the price or relaunch, using the pricing scenarios below</li>
+            </ul>
+          </div>
+        </div>
+        <div className="slw-plan30-cta slw-noprint">
+          <p>Your dashboard turns this plan into a checklist. We check your listing every day and the homes around it every week, and tick things off when we see you&rsquo;ve made a change.</p>
+          <button type="button" className="slw-btn-black" onClick={onOpenDashboard}>Open your 30-day dashboard</button>
+        </div>
+
         <h2 className="slw-section-heading">All {factors.length} factors</h2>
         <div className="slw-factor-grid">
           {ordered.map((f, index) => {
@@ -1132,9 +1223,9 @@ const FullReportStep = ({
                   </div>
                 </div>
                 <div className="slw-factor-body">
-                  {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={220} /></div> : null}
-                  {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={220} /></div> : null}
-                  {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={220} /></div> : null}
+                  {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={900} /></div> : null}
+                  {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={900} /></div> : null}
+                  {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={900} /></div> : null}
                 </div>
               </div>
             );
@@ -1833,6 +1924,35 @@ export const StaleProspectWizard = ({
     return data;
   };
 
+  // The full (paid) 20-factor write runs in the background after payment and
+  // takes about a minute. Until it lands, keep checking, so the customer gets
+  // the full report on this page rather than the free preview's text.
+  const reportIsV2 = Boolean(report && (report.report_data?.version === 2 || (report.report_data?.factors || []).length));
+  const reportPending = Boolean(report && reportIsV2 && report.payment_status === 'completed' && !report.report_expanded);
+  useEffect(() => {
+    if (!reportPending || !(access.token || access.code)) return;
+    let cancelled = false;
+    let tries = 0;
+    let timer = 0;
+    const tick = async () => {
+      tries += 1;
+      try {
+        const fresh = await getProspectReport(access);
+        if (cancelled) return;
+        if (fresh.report_expanded || tries >= 60) {
+          setReport({ ...fresh, report_expanded: true });
+          return;
+        }
+      } catch {
+        // keep trying; a network blip shouldn't strand the customer
+      }
+      if (!cancelled) timer = window.setTimeout(tick, 4000);
+    };
+    timer = window.setTimeout(tick, 3000);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportPending, access.token, access.code]);
+
   // createProspectCheckout (unlike getProspectReport/getProspectPaymentStatus)
   // matches the backend schema field name property_code, not access's own
   // code field - spreading `access` straight into it sends a `code` key the
@@ -2347,6 +2467,25 @@ export const WizardStyles = () => (
     .slw-factor-body p{margin:0;font-size:14.5px;line-height:1.5;color:#353a42}
     .slw-factor-action{background:#f7f8fa;border-radius:10px;padding:11px 13px}
     @media (max-width:760px){.slw-factor-grid{grid-template-columns:1fr}.slw-factor-card{padding:16px 16px}}
+    .slw-report-preparing{text-align:center;padding:90px 16px 120px;max-width:620px;margin:0 auto}
+    .slw-report-preparing .slw-spinner{margin:0 auto 22px}
+    .slw-report-preparing h1{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-weight:800;font-size:30px;letter-spacing:-0.03em;margin:0 0 12px;color:#141414}
+    .slw-report-preparing p{color:#475467;font-size:16px;line-height:1.55;margin:0}
+    .slw-success-note{max-width:460px;margin:-4px auto 10px;color:#5f6671;font-size:14px;line-height:1.5;text-align:center}
+    .slw-top-actions{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:12px}
+    .slw-top-actions li{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid #e8eaed;border-left:3px solid #A409D2;border-radius:14px;padding:18px 20px}
+    .slw-top-num{flex:none;width:30px;height:30px;border-radius:50%;background:#A409D2;color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+    .slw-top-actions b{display:block;font-size:16.5px;letter-spacing:-0.01em;color:#141414;margin:3px 0 6px}
+    .slw-top-actions p{margin:0;font-size:14.5px;line-height:1.55;color:#353a42}
+    .slw-plan30{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .slw-plan30-box{background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:18px 20px}
+    .slw-plan30-box span{display:block;color:#D35506;font-size:12px;font-weight:700;margin-bottom:6px}
+    .slw-plan30-box b{display:block;font-size:16px;color:#141414;margin-bottom:10px}
+    .slw-plan30-box ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14px;line-height:1.45;color:#353a42}
+    .slw-plan30-cta{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:14px 0 4px;padding:16px 20px;background:#f7f8fa;border-radius:14px}
+    .slw-plan30-cta p{flex:1 1 auto;min-width:0;margin:0;font-size:14px;line-height:1.5;color:#475467}
+    .slw-plan30-cta .slw-btn-black{flex:none;width:auto;white-space:nowrap;padding-left:22px;padding-right:22px}
+    @media (max-width:760px){.slw-plan30{grid-template-columns:1fr}.slw-plan30-cta{flex-direction:column;align-items:stretch}}
     .slw-nextsteps-bar{position:sticky;bottom:16px;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:26px 0 0;padding:16px 22px;border-radius:16px;background:#141414;color:#fff;text-decoration:none;box-shadow:0 10px 30px rgba(16,17,21,.22)}
     .slw-nextsteps-bar-text{display:flex;flex-direction:column;gap:2px;min-width:0}
     .slw-nextsteps-bar-text b{font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:16px;letter-spacing:-0.02em}

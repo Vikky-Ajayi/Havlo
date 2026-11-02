@@ -47,13 +47,18 @@ def _response(payload) -> types.SimpleNamespace:
 
 
 def _fake_report_chat(**body):
-    """Expand → fuller text per key; Rewrite → unchanged; else empty."""
+    """Full paid write → fuller text per key; summary → summary + three
+    actions; tone edit → unchanged; else empty."""
     text = str(body["messages"][-1]["content"])
-    if "Expand these property factors" in text:
+    if "Write the full paid assessment" in text:
         keys = [m.group(1) for m in re.finditer(r"\[key: ([a-z_]+)\]", text)]
         return _response({"factors": [{"key": k, "found": f"A fuller look at your {k}.",
                                        "why": "It matters to the sale.", "action": "Here is the step."} for k in keys]})
-    if "Rewrite these" in text:
+    if "three most important actions" in text:
+        return _response({"executive_summary": "The price is the main barrier.", "pricing_line": "Priced high.",
+                          "overall_score": 41,
+                          "top_actions": [{"title": f"Action {i}", "detail": f"Do thing {i} this week."} for i in (1, 2, 3)]})
+    if "Edit these property-report paragraphs" in text:
         before = text.split("Return JSON")[0]
         items = json.loads(re.search(r"\[.*\]", before, re.S).group(0))
         return _response({"rewrites": [{"key": i["key"], "found": i.get("found", ""),
@@ -99,6 +104,16 @@ class EnsureExpandedV2Tests(unittest.TestCase):
         prospect, report = self._run()
         self.assertIsNotNone(prospect.report_json)
         self.assertEqual(json.loads(prospect.report_json)["factors"][0]["key"], report["factors"][0]["key"])
+
+    def test_paid_report_has_a_summary_and_three_top_actions(self):
+        _, report = self._run()
+        self.assertEqual([t["title"] for t in report["top_actions"]], ["Action 1", "Action 2", "Action 3"])
+        self.assertIn("The price is the main barrier.", report["executive_summary"])
+        self.assertEqual(report["_writer_rev"], rw.WRITER_REV)
+
+    def test_computed_figures_are_kept_for_the_checks(self):
+        _, report = self._run()
+        self.assertIn(390_000.0, report["_trusted"]["amounts"])
 
     def test_no_street_or_house_names_survive(self):
         _, report = self._run()

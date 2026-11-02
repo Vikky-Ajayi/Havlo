@@ -50,6 +50,48 @@ const V2RewriteTool = () => {
         <button className="spc-btn spc-btn-ghost" onClick={loadStatus} disabled={busy}>Refresh</button>
       </div>
       {err && <p style={{ color: '#B91C1C', fontSize: 13, margin: '10px 0 0' }}>{err}</p>}
+      <V2UpgradeTool />
+    </div>
+  );
+};
+
+type UpgradeStatus = { upgraded?: number; failed?: number; remaining?: number; done?: boolean; model?: string | null };
+
+// Rebuild the 20-factor reports the first (thin) writer produced, paid ones
+// included, with the analysis-led writer. Each click is one billed batch.
+const V2UpgradeTool = () => {
+  const [st, setSt] = useState<UpgradeStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const url = `${API_BASE}/stale-listings/prospects-console/upgrade-reports-v2`;
+  const load = () => fetch(url).then((r) => r.json()).then(setSt).catch(() => setErr('Could not load upgrade status.'));
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const run = async () => {
+    setBusy(true); setErr('');
+    try {
+      const res = await fetch(url, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || `Failed (HTTP ${res.status}).`);
+      if (data?.error) setErr(data.error);
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Upgrade failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const done = Boolean(st && st.done);
+  return (
+    <div style={{ borderTop: '1px solid #A5F3FC', marginTop: 14, paddingTop: 12 }}>
+      <div style={{ fontWeight: 700, fontSize: 14, color: '#111' }}>Rebuild reports from the first 20-factor writer</div>
+      <div style={{ fontSize: 13, color: '#4B5563', margin: '4px 0 10px' }}>
+        Rewrites them with the full analysis, paid reports included (their buyers get the detailed version).{' '}
+        {st ? (done ? 'All rebuilt.' : `${st.remaining ?? 0} to rebuild · ${st.upgraded ?? 0} done${st.failed ? ` · ${st.failed} failed` : ''}.`) : 'Checking…'}
+      </div>
+      <button className="spc-btn" onClick={run} disabled={busy || done}>
+        {busy ? 'Rebuilding a batch…' : done ? 'Done' : 'Rebuild next batch'}
+      </button>
+      {err && <p style={{ color: '#B91C1C', fontSize: 13, margin: '10px 0 0' }}>{err}</p>}
     </div>
   );
 };

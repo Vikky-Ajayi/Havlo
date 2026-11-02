@@ -830,7 +830,13 @@ def report_facts(
     if sales_given is None:
         # Before Oct 2026 only the expanded (paid) report was given sales.
         sales_given = bool(report.get("_expanded")) and bool(sale_prices)
+    # The 20-factor report keeps the figures its analysis computed in code.
+    trusted = report.get("_trusted") if isinstance(report.get("_trusted"), dict) else {}
     return report_guard.ReportFacts(
+        trusted_amounts=[float(x) for x in trusted.get("amounts") or [] if isinstance(x, (int, float))],
+        trusted_percents=[float(x) for x in trusted.get("percents") or [] if isinstance(x, (int, float))],
+        trusted_days=[int(x) for x in trusted.get("days") or [] if isinstance(x, (int, float))],
+        subject_sqft=trusted.get("sqft") if isinstance(trusted.get("sqft"), int) else None,
         asking_price=asking_price or extract_price(snapshot.get("price")),
         bedrooms=bedrooms or _int_or_none(snapshot.get("bedrooms")),
         bathrooms=bathrooms or _int_or_none(snapshot.get("bathrooms")),
@@ -1250,6 +1256,9 @@ def serialize_report(prospect: StaleListingProspect) -> dict[str, Any]:
         "report_data": report_data,
         "sold_comparables_attribution": land_registry.attribution() if report_data["comparable_sales"] else None,
         "payment_status": prospect.payment_status,
+        # The full (paid) write runs in the background after payment; until it
+        # lands the page shows a "finishing your report" state, not the preview.
+        "report_expanded": bool(report_data.get("_expanded")),
     }
 
 
@@ -1285,6 +1294,27 @@ async def generate_prospect_report(
         base_report=base_report,
         market=market,
     )
+
+
+async def rebuild_v2_report(prospect: StaleListingProspect) -> dict[str, Any]:
+    """Rewrite a prospect's 20-factor report with the current writer: the free
+    report (and preview) again, then the full paid write if they've paid.
+    For reports written by an earlier writer (report_writer.WRITER_REV).
+    Mutates the prospect; the caller commits."""
+    from app.services import report_writer
+
+    snapshot = _safe_json(prospect.listing_snapshot_json)
+    agent = (getattr(prospect, "audience", None) == "agent")
+    sales = cached_sold_comparables(prospect) if getattr(prospect, "sold_comparables_at", None) else None
+    free = await generate_v2_report(
+        prospect.property_address, prospect.rightmove_url, snapshot,
+        asking_price=prospect.asking_price, listing_duration_days=prospect.listing_duration_days,
+        country=prospect_country(prospect), sold_comparables=sales, agent=agent)
+    prospect.report_json = json.dumps(free, ensure_ascii=False)
+    prospect.preview_json = json.dumps(report_writer.v2_preview(free), ensure_ascii=False)
+    if prospect.payment_status == "completed":
+        return await ensure_expanded_v2_report(prospect, free)
+    return free
 
 
 async def ensure_expanded_v2_report(
@@ -1411,7 +1441,15 @@ async def expand_report_in_background(prospect_id: str) -> None:
     transaction, so a second concurrent call blocks until the first commits,
     then re-reads is_report_expanded() as True and returns without expanding
     again - the same guard, just no longer raceable.
+
+    The paid report page now polls every few seconds until the write lands,
+    and each poll schedules this task. _EXPANDING drops the repeats in this
+    worker straight away, so they don't queue on the row lock holding a
+    database connection each for the minute the write takes.
     """
+    if prospect_id in _EXPANDING:
+        return
+    _EXPANDING.add(prospect_id)
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
@@ -1428,6 +1466,12 @@ async def expand_report_in_background(prospect_id: str) -> None:
             await db.commit()
     except Exception:
         logger.exception("Background report expansion failed for prospect %s", prospect_id)
+    finally:
+        _EXPANDING.discard(prospect_id)
+
+
+# Prospect ids whose background expansion is running in this worker.
+_EXPANDING: set[str] = set()
 
 
 # ── Letter PDF drawing helpers ──────────────────────────────────────────────

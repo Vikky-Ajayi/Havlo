@@ -1,14 +1,24 @@
 """Writes the 20-factor report (overhaul, Nov 2026).
 
-Two stages. The free preview is one AI request: a short version of all 20
-factors with verdicts, plus the score, pricing line and executive summary.
-The paid report (report_writer_paid, next slice) adds the detail and the
-live market data. This module owns the free stage, the facts each factor is
-allowed to use, and the rules that always hold: exactly 20 factors, the two
-private-data factors forced to "check with your agent", the day sentence
-worked out in code (never by the AI), and street or house names scrubbed
-out. The existing model plumbing (groq_service._report_chat) and the claim
-checks (report_guard) are reused unchanged.
+Two stages. The free preview is one AI request: all 20 factors with a verdict
+and a short write-up, plus the score, pricing line and executive summary.
+The paid report adds the live market data and rewrites every factor in full
+(two requests of ten factors) alongside a third request for the executive
+summary and the three most important actions.
+
+Rev 2 (Nov 2026): the first writer gave the model thin facts (a cut-off
+description, a price, a list of sales) and told it to say "check with your
+agent" when unsure, so the paid report came back as twenty referrals to the
+agent. Now every factor is written from report_analysis (the gaps, scenarios,
+stamp duty, £/sq ft, description coverage, live competition and demand worked
+out in code), with guidance on how an experienced agent would judge it, and
+"check with your agent" is kept for the two factors only the agent can see.
+The figures the analysis computed are stored on the report (_trusted) so the
+claim checks keep the sentences that quote them.
+
+Rules that always hold: exactly 20 factors, the two private-data factors on
+"check with your agent", code-decided verdicts where the facts settle it,
+the day sentence worked out in code, street and house names scrubbed out.
 """
 from __future__ import annotations
 
@@ -17,45 +27,159 @@ import logging
 import re
 from typing import Any
 
-from app.services import groq_service, report_factors as rf
+from app.services import groq_service, report_analysis as ra, report_factors as rf
 
 logger = logging.getLogger(__name__)
 
 REPORT_VERSION = 2
+# Which writer produced a report: 1 = the first 20-factor writer (thin facts),
+# 2 = the analysis-led writer. The rebuild tool upgrades anything below this.
+WRITER_REV = 2
 
-# The tone the whole report is written in (owner-approved, Nov 2026). The
-# examples teach it better than the rules, so a few go in every prompt.
+# The voice (owner-approved, Nov 2026), now asking for substance as well.
 TONE_INSTRUCTION = (
     "Write like an experienced local estate agent talking to a homeowner at their kitchen table. Be straight, "
-    "warm and practical. Every factor must use a real detail from their own listing: a price, a date, a room, a "
-    'figure. Say "your property", never the street or house name.\n'
-    "Rules: short sentences. Everyday words. Use contractions. One idea per sentence. Lead with what you found, "
-    "then why it matters to them, then what to do.\n"
+    "warm and practical, and give them your honest professional opinion. Every factor must use real details "
+    'from their own listing: a price, a figure, a date, a room. Say "your property", never the street or house '
+    "name.\n"
+    "Rules: plain sentences, mostly under 25 words. Everyday words. Use contractions. Lead with what you found, "
+    "then why it matters to them, then exactly what to do. Every sentence adds a fact, a reason or a step; no "
+    "filler.\n"
     "Never use these words or habits: leverage, navigate, crucially, it's worth noting, in today's market, "
     'furthermore, proposition, narrative, optimise. No dashes dropped into sentences. No "not just X but Y". '
-    "No lists of three adjectives. Don't start every paragraph the same way. Don't pad."
+    "Vary how you open each factor."
 )
 
 TONE_EXAMPLES = (
-    "Visibility (a problem): Your asking price is £390,000. Most buyers search in round numbers, and a lot of "
-    "them set £375,000 as their top limit. Because £390,000 sits just above that, anyone searching up to "
-    "£375,000 never sees your home. Move to £375,000 and you land in front of all those buyers who can't find "
-    "you today. The £15,000 matters less than who gets to see the listing.\n\n"
-    "Engagement (check with your agent): We can't see how many people have viewed or enquired about your "
-    "listing, because Rightmove keeps those numbers private. Your agent can, and it's the quickest way to know "
-    "where you stand. Ask them how many views the listing has had, how many enquiries turned into viewings, and "
-    "whether views have dropped off since it went live.\n\n"
-    "Description (working well): Your description does its job. It leads with what buyers care about, the "
-    "extended kitchen and the south-facing garden, and it's specific instead of full of filler. The room sizes "
-    "are there, which saves buyers guessing. Leave it as it is."
+    "Asking price (a problem): Your asking price is £450,000. The three semis recorded as sold nearby went for "
+    "£395,000 to £410,000, so you're £40,000 above the best of them. Yours has the extension and a bigger garden, "
+    "which is worth something, but buyers and their surveyor need a sale that backs the price, and they don't have "
+    "one. You've also been reduced for ten weeks without a sale agreed, which tells you the same thing. Ask your "
+    "agent for the two best sales of extended semis within a mile from the last year. If they can't find any above "
+    "£420,000, plan to move to £425,000.\n\n"
+    "Engagement (check with your agent): We can't see your views or enquiries; Rightmove only shows them to your "
+    "agent. Ask for four numbers: total views since launch, views in the last 14 days, enquiries, and viewings "
+    "booked. If views have fallen since the reduction, buyers aren't finding you, so the price band or the lead "
+    "photo has to change. If views are steady but few people book, the listing isn't convincing them, so fix the "
+    "photos and description first. If people view but nobody comes back, it's the price or something they see in "
+    "person.\n\n"
+    "Floor plan (working well): Your floor plan is there and the room sizes are stated, which is exactly what "
+    "buyers at this level use to decide whether to book. Leave it as it is, but check the plan is the second image, "
+    "not the last, so people see it before they lose interest."
+)
+
+# How an experienced agent judges each factor. The model gets the relevant
+# line with each factor, so it reasons from the evidence instead of hedging.
+FACTOR_GUIDE: dict[str, str] = {
+    "visibility": "Use the search-step figures. On a step: working well; say which searches it appears in and "
+                  "what the next step down would add. Just above a step: a problem; name the step and say buyers "
+                  "searching up to it never see the home.",
+    "engagement": "Always check_with_agent. Give the exact figures to request (total views since launch, views in "
+                  "the last 14 days, enquiries, viewings booked) and how to read them: falling views mean buyers "
+                  "aren't finding it; steady views but few viewings mean the listing isn't convincing; viewings "
+                  "but no second viewings mean price or something seen in person.",
+    "asking_price": "Compare the asking price with the recorded sales: give the range and the gap to the highest "
+                    "in £ and %. If the home is much bigger or better (floor area, bedrooms, plot), say plainly "
+                    "those sales are a weak guide and the price needs evidence from comparable homes, and say what "
+                    "that evidence should be. Weigh the time since the reduction and demand: months with no sale "
+                    "agreed means the price is very likely the main barrier, so say so.",
+    "pricing_range": "Lay out the scenarios given: hold, the next step down and the one below, with the change, "
+                     "the searches each appears in, and the buyer's stamp duty saving. Recommend one with a reason "
+                     "and a trigger, e.g. hold for 14 days with the fixes, then move to the next step if viewings "
+                     "don't pick up. Never invent any other price.",
+    "comparable_sold": "Walk through the recorded sales with dates and types. Say how useful they are as evidence "
+                       "for this home (how old, what type, likely size) and what better comparables would look like.",
+    "active_competition": "Use the live counts: homes for sale now, how many within 15% of the price, new listings "
+                          "in 30 days, reductions nearby. Few or no alternatives: say buyers at this level have "
+                          "little choice, so if they aren't buying it's the price or the home, not competition. "
+                          "Many: say how the home must stand out. If there are no live counts, judge from the price "
+                          "level and the recorded sales without mentioning missing data.",
+    "buyer_demand": "Use sales agreed since listing, sales in the last 12 months and their range. Judge whether "
+                    "buyers are active at this price level and what that means for the seller's timing.",
+    "time_on_market": "Use the days since the reduction (or days advertised) and the local benchmark if given. "
+                      "Explain what a long time does to buyers (they wonder what's wrong and offer low) and set a "
+                      "clear reset point: what to change and by when.",
+    "reduction_history": "If reduced: how long ago, that it hasn't produced a sale, what that signals, and whether "
+                         "another change or a relaunch is due. Flag an out-of-date guide price if one is given. If "
+                         "never reduced, say whether one is due yet.",
+    "photography": "Use the photo review findings and the photo count. Be specific about the lead photo, which "
+                   "rooms are shown or missing, and the order.",
+    "description": "Judge the full description. Does the opening sell the best thing? Are the details buyers "
+                   "filter on there (floor area, EPC, tenure, council tax, parking, transport, schools, garden "
+                   "size)? Name exactly what's missing and suggest the line to add.",
+    "floor_plan": "Floor plan count and whether room sizes and total area are stated. Say what buyers at this "
+                  "level use it for and whether anything should change.",
+    "positioning": "Pick the two or three strongest selling points from the facts (size, garden, transport, "
+                   "period, recent works) and say whether the listing leads with them. Suggest a sharper headline "
+                   "or opening line.",
+    "target_buyer": "Describe the likely buyer from the facts: who can afford it (deposit, income) and what they "
+                    "want (space, schools, commute). Say where and how the agent should reach them.",
+    "buyer_objections": "Name the two or three doubts a buyer is likely to have from the evidence (price against "
+                        "sales, time on the market, an out-of-date guide price, missing tour or details) and how "
+                        "to answer each before they view.",
+    "viewing_conversion": "Always check_with_agent. Give the figures to get (viewings, second viewings, offers, "
+                          "feedback from each viewing) and how to act on them: no second viewings points to price "
+                          "or a fixable objection; repeated feedback tells you what to fix.",
+    "agent_marketing": "Judge the marketing from what's visible: photos, floor plan, virtual tour, the guide price "
+                       "wording. At this price a missing virtual tour or video is a problem. Say exactly what to "
+                       "ask the agent to add and by when.",
+    "condition_readiness": "Use the EPC rating and any works mentioned. List the paperwork a buyer's solicitor will "
+                           "ask for (EPC, building regulations and warranties for the works, boiler service and "
+                           "Gas Safe records, electrical certificate, FENSA for windows) and say to gather it now so "
+                           "a sale doesn't stall.",
+    "affordability": "Use the deposit, loan, income and stamp duty at the asking price and at each scenario. Say "
+                     "how many buyers that limits and how the buyer's total cost changes at the next step down.",
+    "net_proceeds": "Use the fee per 0.5% and the scenario price changes. Explain how to work out what they walk "
+                    "away with and which figures to gather (agent fee %, mortgage redemption, early repayment "
+                    "charges, legal fees), and compare selling lower in weeks with holding for months.",
+}
+
+JUDGEMENT_RULES = (
+    "How to judge:\n"
+    '- Decide every verdict from the evidence. "problem" when it is holding the sale back, "working_well" when '
+    'it is helping or fine. Use "check_with_agent" ONLY for listing engagement and viewing-to-offer, the figures '
+    "only the agent holds. Never use it because you're unsure: judge from what you have and say what would change "
+    "your view.\n"
+    "- Where a verdict is given in brackets, use it.\n"
+    "- Join the dots like a valuer: a price far above every recorded sale, months since the reduction and no "
+    "sale agreed all point the same way. Say so plainly.\n"
+    "- Use the figures given, exactly as given. Never invent a number, a sale, a view count, a viewing or buyer "
+    "feedback.\n"
+    '- Every action is something the seller can do or decide this week, with the number, wording or step. "Ask '
+    'your agent" is only acceptable as a precise request (exactly which figures or documents) followed by what to '
+    "do with the answer.\n"
+    '- Never mention "the full report", "the figures provided", "the data we were given" or how this was worked '
+    "out. You are the expert who has studied their listing.\n"
+    "- The only day counts you may state are the fixed day line, the days since a reduction and the local "
+    "benchmark, where given."
 )
 
 _VALID_VERDICTS = {rf.PROBLEM, rf.WORKING_WELL, rf.CHECK_WITH_AGENT}
-_CHECK_FALLBACK = {
-    "found": "We don't hold the data for this one.",
-    "why": "It still matters to your sale, so it's worth checking.",
-    "action": "Ask your agent about this.",
+
+# When the model gives nothing usable for a factor (or the claim checks empty
+# it): a specific next step for that factor, never a bare "ask your agent".
+_FALLBACK: dict[str, dict[str, str]] = {
+    "engagement": {
+        "found": "Rightmove only shows your views and enquiries to your agent.",
+        "why": "They tell you whether buyers are finding the listing and whether it convinces them.",
+        "action": "Ask for total views since launch, views in the last 14 days, enquiries and viewings booked. "
+                  "Falling views mean the price band or lead photo needs to change; steady views with few viewings "
+                  "mean the photos and description need work."},
+    "viewing_conversion": {
+        "found": "Only your agent knows how many viewings and second viewings you've had.",
+        "why": "Viewings that don't lead to second visits point to the price or something buyers see in person.",
+        "action": "Ask for the number of viewings, second viewings and offers, and the feedback from each viewing. "
+                  "If the same concern comes up twice, fix it before the next viewing."},
 }
+_GENERIC_FALLBACK = {
+    "found": "We couldn't check this one properly from the listing.",
+    "why": "It still affects how buyers see your property.",
+    "action": "Raise it with your agent at your next review and agree one change you'll make this week.",
+}
+
+
+def _fallback(key: str) -> dict[str, str]:
+    return dict(_FALLBACK.get(key) or _GENERIC_FALLBACK)
 
 
 # ── Street / house name scrubbing ─────────────────────────────────────────
@@ -95,7 +219,6 @@ def scrub_place_names(text: str, snapshot: dict[str, Any], *, agent: bool = Fals
     return re.sub(r"\s{2,}", " ", text).strip()
 
 
-# ── Facts for each factor (free preview) ──────────────────────────────────
 def _fmt_sales(sales: list[dict[str, Any]] | None) -> str:
     rows = []
     for s in sales or []:
@@ -106,118 +229,170 @@ def _fmt_sales(sales: list[dict[str, Any]] | None) -> str:
     return "; ".join(rows[:6])
 
 
+# ── Facts for each factor, from the analysis ─────────────────────────────
+def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
+    """What each factor is written from, and the verdicts the facts settle.
+    `forced` verdicts are applied in code whatever the model says."""
+    prop = a.get("property") or {}
+    pos = a.get("price_position") or {}
+    vis = a.get("visibility") or {}
+    scen = a.get("scenarios") or []
+    timing = a.get("timing") or {}
+    guide = a.get("guide_range")
+    desc = a.get("description") or {}
+    media = a.get("media") or {}
+    market = {k: v for k, v in (a.get("market") or {}).items() if v not in (None, "", [], {})}
+    gaps = a.get("marketing_gaps") or []
+    facts: dict[str, dict[str, Any]] = {}
+
+    def put(key: str, data: dict[str, Any], verdict: str | None = None, forced: bool = False) -> None:
+        facts[key] = {"data": {k: v for k, v in data.items() if v not in (None, "", [], {})},
+                      "verdict": verdict, "forced": forced}
+
+    put("visibility", {**vis, "scenarios": scen},
+        vis.get("verdict") if vis.get("known") else None, forced=bool(vis.get("known")))
+    put("engagement", {"asking_price": pos.get("asking_price"), "days_since_reduction": timing.get("days_since_reduction"),
+                       "ask_for": "total views since launch, views in the last 14 days, enquiries, viewings booked"},
+        rf.CHECK_WITH_AGENT, forced=True)
+    put("asking_price", {**pos, "property": prop, "timing": timing, "guide_range": guide,
+                         "market": {k: market.get(k) for k in ("median_asking_for_sale", "your_price_premium_pct",
+                                                               "sold_12m_median", "agreed_since_you_listed")}})
+    put("pricing_range", {"scenarios": scen, "price_position": pos, "visibility": vis, "timing": timing,
+                          "guide_range": guide})
+    put("comparable_sold", {"recorded_sales": pos.get("recorded_sales"), "sales_low": pos.get("sales_low"),
+                            "sales_high": pos.get("sales_high"), "sales_median": pos.get("sales_median"),
+                            "sales_are_weak_guide": pos.get("sales_are_weak_guide"), "property": prop},
+        None if pos.get("sales_known") else rf.CHECK_WITH_AGENT, forced=not pos.get("sales_known"))
+    put("active_competition", {"market": market, "asking_price": pos.get("asking_price"), "property": prop})
+    put("buyer_demand", {"market": market, "recorded_sales": pos.get("recorded_sales"), "timing": timing})
+    time_problem = timing.get("verdict_hint") == rf.PROBLEM
+    put("time_on_market", timing, rf.PROBLEM if time_problem else None, forced=time_problem)
+    reduced_stall = (timing.get("days_since_reduction") or 0) >= ra.REDUCTION_STALL_DAYS
+    put("reduction_history", {"timing": timing, "guide_range": guide, "asking_price": pos.get("asking_price")},
+        rf.PROBLEM if reduced_stall else None, forced=reduced_stall)
+    put("photography", {"photo_count": media.get("photos"), "photo_review": media.get("photo_review"),
+                        "overall": media.get("photo_overall")})
+    put("description", {"description": desc, "full_text": None})
+    put("floor_plan", {"floorplans": media.get("floorplans"), "floor_area_sqft": desc.get("floor_area_sqft"),
+                       "room_sizes_stated": "floor_area" in (desc.get("covers") or [])},
+        rf.PROBLEM if media.get("floorplans") == 0 else None, forced=media.get("floorplans") == 0)
+    put("positioning", {"key_features": desc.get("key_features"), "opening_sentence": desc.get("opening_sentence"),
+                        "property": prop, "works_mentioned": desc.get("works_mentioned")})
+    put("target_buyer", {"property": prop, "affordability": a.get("affordability"),
+                         "schools_mentioned": "schools" in (desc.get("covers") or [])})
+    put("buyer_objections", {"price_position": {k: pos.get(k) for k in ("asking_price", "sales_high", "above_highest_by",
+                                                                         "above_highest_pct", "sales_are_weak_guide")},
+                             "timing": timing, "guide_range": guide, "marketing_gaps": gaps,
+                             "description_missing": desc.get("missing")})
+    put("viewing_conversion", {"ask_for": "viewings, second viewings, offers, feedback from each viewing"},
+        rf.CHECK_WITH_AGENT, forced=True)
+    put("agent_marketing", {"photos": media.get("photos"), "floorplans": media.get("floorplans"),
+                            "virtual_tours": media.get("virtual_tours"), "agent": prop.get("agent"),
+                            "marketing_gaps": gaps, "guide_range": guide})
+    put("condition_readiness", {"epc_rating": desc.get("epc_rating"), "works_mentioned": desc.get("works_mentioned"),
+                                "period_or_style": prop.get("period_or_style")})
+    put("affordability", {**(a.get("affordability") or {}), "scenarios": scen})
+    put("net_proceeds", a.get("net_proceeds") or {})
+    return facts
+
+
 def build_free_facts(
     snapshot: dict[str, Any], *, asking_price: float | None, country: str,
     reduced_days: int | None, advertised_days: int | None,
     sales: list[dict[str, Any]] | None, photo_review: dict[str, Any] | None, agent: bool = False,
+    intel: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """What each factor may be written from, for the free preview. Verdicts the
-    code can decide are set here; the AI decides the rest from these facts."""
-    price = rf.visibility(asking_price)
-    media = snapshot.get("media") if isinstance(snapshot.get("media"), dict) else {}
-    description = str(snapshot.get("description") or "")
-    features = [str(f) for f in snapshot.get("features") or [] if str(f).strip()]
-    sales_line = _fmt_sales(sales)
-    has_room_sizes = bool(re.search(r"\b\d+(\.\d+)?\s?m\b|\bx\s?\d|\bsq\s?(ft|m)\b", description, re.IGNORECASE))
-    afford = rf.affordability(asking_price, country)
-    facts: dict[str, dict[str, Any]] = {}
+    """Each factor's facts (from report_analysis) for the free preview, or the
+    paid report when `intel` (live market data) is given."""
+    a = ra.analyse(snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
+                   advertised_days=advertised_days, sales=sales, photo_review=photo_review, intel=intel)
+    return factor_facts(a, agent=agent)
 
-    def put(key: str, data: dict[str, Any], verdict: str | None = None) -> None:
-        facts[key] = {"data": data, "verdict": verdict}
 
-    put("visibility", price, price.get("verdict") if price.get("known") else rf.CHECK_WITH_AGENT)
-    put("engagement", {"ask_for": "views, enquiries, how many became viewings, trend since launch"}, rf.CHECK_WITH_AGENT)
-    put("asking_price", {"asking_price": price.get("price"), "recorded_sales_nearby": sales_line or None})
-    put("pricing_range", {"asking_price": price.get("price"), "sales": sales_line or None, "visibility": price})
-    put("comparable_sold", {"recorded_sales_nearby": sales_line or None},
-        None if sales_line else rf.CHECK_WITH_AGENT)
-    put("active_competition", {"note": "Live competitor data is in the full report."}, rf.CHECK_WITH_AGENT)
-    put("buyer_demand", {"note": "Live demand data is in the full report."}, rf.CHECK_WITH_AGENT)
-    put("time_on_market", {"reduced_days": reduced_days, "advertised_days": advertised_days})
-    put("reduction_history", {"price_reduced": bool(snapshot.get("price_reduced")), "reduced_days": reduced_days})
-    put("photography", {"photo_count": media.get("photos"),
-                        "photo_review": (photo_review or {}).get("findings") if photo_review else None,
-                        "overall": (photo_review or {}).get("overall") if photo_review else None})
-    put("description", {"description": description[:1500], "features": features, "has_room_sizes": has_room_sizes})
-    put("floor_plan", {"floorplans": media.get("floorplans"), "has_room_sizes": has_room_sizes})
-    put("positioning", {"features": features, "property_type": snapshot.get("property_type"),
-                        "asking_price": price.get("price")})
-    put("target_buyer", {"property_type": snapshot.get("property_type"), "bedrooms": snapshot.get("bedrooms"),
-                         "asking_price": price.get("price")})
-    put("buyer_objections", {"asking_price": price.get("price"), "advertised_days": advertised_days,
-                             "reduced_days": reduced_days, "has_room_sizes": has_room_sizes})
-    put("viewing_conversion", {"ask_for": "viewings, second viewings, buyer feedback"}, rf.CHECK_WITH_AGENT)
-    put("agent_marketing", {"photo_count": media.get("photos"), "floorplans": media.get("floorplans"),
-                            "virtual_tours": media.get("virtual_tours"), "agent": (snapshot.get("agent") or {}).get("brand")})
-    put("condition_readiness", {"description": description[:800], "ask_for": "EPC rating, boiler/service records, any works done"})
-    put("affordability", afford)
-    put("net_proceeds", {"asking_price": price.get("price"),
-                         "ask_for": "agent fee, mortgage redemption, early repayment charges"})
-    return facts
+def _description_text(snapshot: dict[str, Any]) -> str:
+    return str(snapshot.get("description") or "").replace("&amp;", "&")[:4000]
+
+
+def _factor_lines(specs, facts: dict[str, Any], *, extra: dict[str, str] | None = None) -> list[str]:
+    lines = []
+    for f in specs:
+        entry = facts.get(f["key"]) or {}
+        verdict = entry.get("verdict") if entry.get("forced") else None
+        data = entry.get("data") or {}
+        lines.append(
+            f'{f["num"]}. {f["name"]} [key: {f["key"]}]' + (f" [verdict: {verdict}]" if verdict else "")
+            + f'\n   how to judge: {FACTOR_GUIDE.get(f["key"], "")}'
+            + (f'\n   {extra[f["key"]]}' if extra and extra.get(f["key"]) else "")
+            + f'\n   facts: {json.dumps(data, ensure_ascii=False, default=str) if data else "none"}')
+    return lines
 
 
 # ── The free preview writer ───────────────────────────────────────────────
-def _free_prompt(facts: dict[str, Any], *, agent: bool, day_sentence: str | None) -> str:
+def _free_prompt(facts: dict[str, Any], *, agent: bool, day_sentence: str | None,
+                 description: str = "") -> str:
     whose = "this property" if agent else "your property"
     lines = [
-        f"Write a short property assessment for {whose}, as 20 numbered factors. Use ONLY the facts given for "
-        "each factor. Do not invent viewings, enquiries, sold prices or anything not listed.",
+        f"Write the free assessment for {whose}: all 20 numbered factors, each with a verdict, so the seller sees "
+        "exactly what's holding the sale back.",
         "",
-        "Each factor needs a verdict: \"problem\", \"working_well\" or \"check_with_agent\". Where a verdict is "
-        "given below, use it. Where it isn't, decide from the facts; if the facts are empty, use "
-        "\"check_with_agent\".",
+        JUDGEMENT_RULES,
         "",
-        "Never state any number of days on the market. The day line is fixed: "
-        + (f'"{day_sentence}"' if day_sentence else "no day line is available, so don't mention days") + ".",
+        "The fixed day line is: " + (f'"{day_sentence}"' if day_sentence else "none, so don't mention days") + ".",
         "",
-        "The factors and their facts:",
     ]
-    for f in rf.FACTORS:
-        entry = facts.get(f["key"]) or {}
-        verdict = entry.get("verdict")
-        data = {k: v for k, v in (entry.get("data") or {}).items() if v not in (None, "", [], {})}
-        lines.append(f'{f["num"]}. {f["name"]} [key: {f["key"]}]'
-                     + (f' [verdict: {verdict}]' if verdict else "")
-                     + f'\n   facts: {json.dumps(data, ensure_ascii=False) if data else "none"}')
-    lines += [
+    if description:
+        lines += ["The full listing description:", description, ""]
+    lines += ["The factors:"] + _factor_lines(rf.FACTORS, facts) + [
+        "",
+        "Length: found = two sentences with at least one figure from the facts; why = one sentence; action = one or "
+        "two sentences with a specific step.",
+        "Give every problem a severity from 1 (minor) to 5 (the main reason it isn't selling).",
         "",
         "Return JSON only:",
-        '{"overall_score": <0-100>, "pricing_line": "one sentence on the price",',
-        ' "executive_summary": "2-3 sentences; open with the fixed day line if there is one",',
-        ' "factors": [{"key": "visibility", "verdict": "problem", "found": "one short sentence on what we found",'
-        ' "why": "one short sentence on why it matters", "action": "one short sentence on what to do"}, ... all 20]}',
+        '{"overall_score": <0-100, lower when serious problems>, "pricing_line": "one sentence on the price with the '
+        'key figure", "executive_summary": "three sentences: open with the fixed day line if there is one, then the '
+        'main reason it isn\'t selling, then the first thing to do",',
+        ' "factors": [{"key": "visibility", "verdict": "problem", "severity": 4, "found": "...", "why": "...", '
+        '"action": "..."}, ... all 20]}',
         "",
-        "Tone:",
-        TONE_INSTRUCTION,
-        "",
-        "Examples of the voice:",
-        TONE_EXAMPLES,
+        "Tone:", TONE_INSTRUCTION, "", "Examples of the voice:", TONE_EXAMPLES,
     ]
     return "\n".join(lines)
+
+
+def _severity(value: Any) -> int | None:
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return max(1, min(5, n))
 
 
 def normalize_report(
     raw: dict[str, Any], facts: dict[str, Any], snapshot: dict[str, Any], *, agent: bool, day_sentence: str | None,
 ) -> dict[str, Any]:
     """Force the output into exactly 20 valid factors: fill any the AI missed,
-    force the always-check verdicts, scrub place names, keep the fixed day line."""
+    apply the code-decided verdicts, scrub place names, keep the fixed day line."""
     written = {str(f.get("key")): f for f in (raw.get("factors") or []) if isinstance(f, dict)}
     factors = []
     for spec in rf.FACTORS:
         key = spec["key"]
-        forced = (facts.get(key) or {}).get("verdict") if key in rf.ALWAYS_CHECK_KEYS else None
+        entry = facts.get(key) or {}
+        forced = entry.get("verdict") if entry.get("forced") else None
         w = written.get(key) or {}
         verdict = forced or (str(w.get("verdict")) if str(w.get("verdict")) in _VALID_VERDICTS else None)
         found = scrub_place_names(str(w.get("found") or ""), snapshot, agent=agent)
         why = scrub_place_names(str(w.get("why") or ""), snapshot, agent=agent)
         action = scrub_place_names(str(w.get("action") or ""), snapshot, agent=agent)
-        if not found or verdict == rf.CHECK_WITH_AGENT or verdict is None:
-            # Empty or undecided: fall back to a clean "check with your agent".
-            verdict = verdict or rf.CHECK_WITH_AGENT
-            if not found:
-                found, why, action = _CHECK_FALLBACK["found"], _CHECK_FALLBACK["why"], _CHECK_FALLBACK["action"]
-        factors.append({"num": spec["num"], "key": key, "name": spec["name"],
-                        "verdict": verdict, "found": found, "why": why, "action": action})
+        if not found:
+            fb = _fallback(key)
+            found, why, action = fb["found"], fb["why"], fb["action"]
+        verdict = verdict or rf.CHECK_WITH_AGENT
+        item = {"num": spec["num"], "key": key, "name": spec["name"],
+                "verdict": verdict, "found": found, "why": why, "action": action}
+        if verdict == rf.PROBLEM:
+            item["severity"] = _severity(w.get("severity")) or 3
+        factors.append(item)
     summary = scrub_place_names(str(raw.get("executive_summary") or ""), snapshot, agent=agent)
     if day_sentence and day_sentence.lower() not in summary.lower():
         summary = f"{day_sentence} {summary}".strip()
@@ -227,12 +402,19 @@ def normalize_report(
         score = 50
     return {
         "version": REPORT_VERSION,
+        "_writer_rev": WRITER_REV,
         "overall_score": score,
         "pricing_line": scrub_place_names(str(raw.get("pricing_line") or ""), snapshot, agent=agent),
         "executive_summary": summary,
         "day_sentence": day_sentence,
         "factors": factors,
     }
+
+
+def _system(agent: bool) -> str:
+    who = "an estate agency about one of its listings" if agent else "a homeowner whose property hasn't sold"
+    return (f"You are a senior UK estate agent and valuer advising {who}. You give clear, honest, specific advice "
+            "from the evidence. Return only valid JSON. Follow the tone exactly.")
 
 
 async def write_free_report(
@@ -243,36 +425,35 @@ async def write_free_report(
     """The free-preview report: all 20 factors with verdicts, from one AI call."""
     import asyncio
 
-    facts = build_free_facts(
-        snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
-        advertised_days=advertised_days, sales=sales, photo_review=photo_review, agent=agent)
+    analysis = ra.analyse(snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
+                          advertised_days=advertised_days, sales=sales, photo_review=photo_review)
+    facts = factor_facts(analysis, agent=agent)
     day = rf.day_sentence(reduced_days, advertised_days, agent=agent)
-    prompt = _free_prompt(facts, agent=agent, day_sentence=day)
-    system = "You are a senior UK estate agent. Return only valid JSON. Follow the tone exactly."
+    prompt = _free_prompt(facts, agent=agent, day_sentence=day, description=_description_text(snapshot))
 
     def _call() -> str:
         resp = groq_service._report_chat(
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-            max_tokens=4000, temperature=0.4, response_format={"type": "json_object"})
+            messages=[{"role": "system", "content": _system(agent)}, {"role": "user", "content": prompt}],
+            max_tokens=7000, temperature=0.4, response_format={"type": "json_object"})
         return resp.choices[0].message.content or "{}"
 
     try:
         raw = json.loads(await asyncio.to_thread(_call))
-    except Exception:  # noqa: BLE001 -- a bad call must not crash; return all-check report
+    except Exception:  # noqa: BLE001 -- a bad call must not crash; fall back per factor
         logger.exception("Free 20-factor report generation failed")
         raw = {}
     report = normalize_report(raw if isinstance(raw, dict) else {}, facts, snapshot, agent=agent, day_sentence=day)
     _mark_photography_verified(report, photo_review)
-    report["_sales_given"] = bool(_fmt_sales(sales))
+    report["_sales_given"] = bool(_fmt_sales(sales)) or bool((analysis.get("price_position") or {}).get("sales_known"))
     report["_media_given"] = bool((snapshot.get("media") or {}))
+    report["_trusted"] = analysis["trusted"]
     return report
 
 
-# ── Paid report: live market data + a detailed two-call write ─────────────
+# ── Paid report: live market data + a full write of every factor ──────────
 def build_market_facts(intel: dict[str, Any]) -> dict[str, Any]:
-    """The live-market numbers the paid factors use, pulled from
-    agent_report.compute_intel. Anything missing stays absent, and that
-    factor keeps its free verdict."""
+    """The live-market numbers, by the factor that uses them (kept for older
+    callers; the paid writer now reads them through report_analysis)."""
     if not isinstance(intel, dict):
         return {}
     market = intel.get("market") or {}
@@ -302,51 +483,84 @@ def build_market_facts(intel: dict[str, Any]) -> dict[str, Any]:
 
 
 def _paid_prompt(specs: tuple[dict[str, Any], ...], free_by_key: dict[str, Any], facts: dict[str, Any],
-                 *, agent: bool, day_sentence: str | None) -> str:
+                 *, agent: bool, day_sentence: str | None, description: str = "") -> str:
     whose = "this property" if agent else "your property"
+    previews = {s["key"]: f'free verdict: {(free_by_key.get(s["key"]) or {}).get("verdict")}; free preview said: '
+                          f'{(free_by_key.get(s["key"]) or {}).get("found") or ""}' for s in specs}
     lines = [
-        f"Expand these property factors for {whose} into a detailed version. Use ONLY the facts given. Keep each "
-        "factor's verdict exactly as stated. Never state a number of days on the market; the fixed day line is "
-        + (f'"{day_sentence}".' if day_sentence else "not available, so don't mention days."),
+        f"Write the full paid assessment for {whose}, factor by factor. The seller paid for an expert's detailed "
+        "view: make each factor specific, complete and useful.",
+        "",
+        JUDGEMENT_RULES,
+        "",
+        "The fixed day line is: " + (f'"{day_sentence}"' if day_sentence else "none, so don't mention days") + ".",
         "",
     ]
-    for spec in specs:
-        key = spec["key"]
-        free = free_by_key.get(key) or {}
-        data = {k: v for k, v in (facts.get(key, {}).get("data") or {}).items() if v not in (None, "", [], {})}
-        preview = free.get("found") or ""
-        rendered = json.dumps(data, ensure_ascii=False) if data else "none"
-        lines.append(
-            f'{spec["num"]}. {spec["name"]} [key: {key}] [verdict: {free.get("verdict")}]'
-            + f'\n   preview said: {preview}'
-            + f'\n   facts: {rendered}')
-    lines += [
+    if description:
+        lines += ["The full listing description:", description, ""]
+    lines += ["The factors:"] + _factor_lines(specs, facts, extra=previews) + [
         "",
-        'Return JSON: {"factors": [{"key": "...", "found": "2-3 sentences on what we found", '
-        '"why": "1-2 sentences on why it matters", "action": "1-2 sentences on what to do"}, ...]}',
+        "Length for every factor: found = three to five sentences using the specific figures and details; why = two "
+        "or three sentences on how it affects buyers and the sale; action = two to four sentences, each a concrete "
+        "step with the number, wording or deadline.",
+        "",
+        'Return JSON only: {"factors": [{"key": "...", "verdict": "problem|working_well|check_with_agent", '
+        '"found": "...", "why": "...", "action": "..."}, ...]}',
         "", "Tone:", TONE_INSTRUCTION, "", "Examples of the voice:", TONE_EXAMPLES,
     ]
     return "\n".join(lines)
 
 
-async def _paid_half(specs, free_by_key, facts, *, agent, day_sentence) -> dict[str, Any]:
-    import asyncio
+def _summary_prompt(free_report: dict[str, Any], analysis: dict[str, Any], *, agent: bool,
+                    day_sentence: str | None) -> str:
+    whose = "this property" if agent else "your property"
+    verdicts = [{"factor": f.get("name"), "verdict": f.get("verdict"), "found": f.get("found")}
+                for f in free_report.get("factors") or [] if isinstance(f, dict)]
+    key = {k: analysis.get(k) for k in ("property", "price_position", "scenarios", "timing", "guide_range",
+                                         "marketing_gaps", "market")}
+    return "\n".join([
+        f"Write the executive summary and the three most important actions for {whose}'s full assessment.",
+        "",
+        JUDGEMENT_RULES,
+        "",
+        "The fixed day line is: " + (f'"{day_sentence}"' if day_sentence else "none, so don't mention days") + ".",
+        "",
+        f"The factor verdicts: {json.dumps(verdicts, ensure_ascii=False)}",
+        f"The analysis: {json.dumps(key, ensure_ascii=False, default=str)}",
+        "",
+        "executive_summary: four to six sentences. Open with the fixed day line if there is one. Then give the main "
+        "reason it hasn't sold, with the key figure, what is genuinely working, and the move you recommend.",
+        "pricing_line: one sentence on the price with the key figure.",
+        "top_actions: exactly three, most important first. Each has a short title (at most eight words) and a detail "
+        "of two or three sentences with the specific figure, wording or deadline.",
+        "",
+        'Return JSON only: {"executive_summary": "...", "pricing_line": "...", "overall_score": <0-100>, '
+        '"top_actions": [{"title": "...", "detail": "..."}, ...]}',
+        "", "Tone:", TONE_INSTRUCTION,
+    ])
 
-    prompt = _paid_prompt(specs, free_by_key, facts, agent=agent, day_sentence=day_sentence)
-    system = "You are a senior UK estate agent. Return only valid JSON. Follow the tone exactly."
+
+async def _ask(prompt: str, *, agent: bool, max_tokens: int, what: str) -> dict[str, Any]:
+    import asyncio
 
     def _call() -> str:
         resp = groq_service._report_chat(
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
-            max_tokens=3200, temperature=0.4, response_format={"type": "json_object"})
+            messages=[{"role": "system", "content": _system(agent)}, {"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=0.4, response_format={"type": "json_object"})
         return resp.choices[0].message.content or "{}"
 
     try:
         data = json.loads(await asyncio.to_thread(_call))
-        return {str(f.get("key")): f for f in (data.get("factors") or []) if isinstance(f, dict)}
+        return data if isinstance(data, dict) else {}
     except Exception:  # noqa: BLE001
-        logger.exception("Paid 20-factor half failed")
+        logger.exception("Paid 20-factor %s failed", what)
         return {}
+
+
+async def _paid_half(specs, free_by_key, facts, *, agent, day_sentence, description: str = "") -> dict[str, Any]:
+    prompt = _paid_prompt(specs, free_by_key, facts, agent=agent, day_sentence=day_sentence, description=description)
+    data = await _ask(prompt, agent=agent, max_tokens=7000, what="half")
+    return {str(f.get("key")): f for f in (data.get("factors") or []) if isinstance(f, dict)}
 
 
 async def write_paid_report(
@@ -355,34 +569,32 @@ async def write_paid_report(
     advertised_days: int | None = None, sales: list[dict[str, Any]] | None = None,
     photo_review: dict[str, Any] | None = None, agent: bool = False,
 ) -> dict[str, Any]:
-    """The full report: the free verdicts kept, each factor expanded with the
-    live market data. Two AI calls (10 factors each) run together."""
+    """The full report: live market data gathered first, then every factor
+    written in full (two requests) and the summary + top three actions (a
+    third), all at once. The three factors the customer saw on the preview keep
+    their verdicts; the others may firm up now that the live data is in."""
     import asyncio
 
     from app.services import agent_report
 
-    async def _intel() -> dict[str, Any]:
-        try:
-            return await asyncio.wait_for(agent_report.build_intel(prospect), 45)
-        except Exception:  # noqa: BLE001 -- the market search can fail; factors stay on free facts
-            logger.warning("Paid report: live market data unavailable for %s", getattr(prospect, "id", "?"))
-            return {}
-
-    intel = await _intel()
-    market = build_market_facts(intel)
-    facts = build_free_facts(
-        snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
-        advertised_days=advertised_days, sales=sales, photo_review=photo_review, agent=agent)
-    for key, extra in market.items():  # fold live data into the relevant factors
-        facts.setdefault(key, {"data": {}, "verdict": None})
-        facts[key]["data"] = {**(facts[key].get("data") or {}), **extra}
-
-    free_by_key = {f["key"]: f for f in free_report.get("factors") or []}
+    try:
+        intel = await asyncio.wait_for(agent_report.build_intel(prospect), 45)
+    except Exception:  # noqa: BLE001 -- the market search can fail; the factors still have the analysis
+        logger.warning("Paid report: live market data unavailable for %s", getattr(prospect, "id", "?"))
+        intel = {}
+    analysis = ra.analyse(snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
+                          advertised_days=advertised_days, sales=sales, photo_review=photo_review, intel=intel)
+    facts = factor_facts(analysis, agent=agent)
+    free_by_key = {f["key"]: f for f in free_report.get("factors") or [] if isinstance(f, dict)}
+    revealed = {f.get("key") for f in v2_preview(free_report).get("revealed") or []}
     day = free_report.get("day_sentence") or rf.day_sentence(reduced_days, advertised_days, agent=agent)
+    description = _description_text(snapshot)
     half = len(rf.FACTORS) // 2
-    first, second = await asyncio.gather(
-        _paid_half(rf.FACTORS[:half], free_by_key, facts, agent=agent, day_sentence=day),
-        _paid_half(rf.FACTORS[half:], free_by_key, facts, agent=agent, day_sentence=day))
+    first, second, summary = await asyncio.gather(
+        _paid_half(rf.FACTORS[:half], free_by_key, facts, agent=agent, day_sentence=day, description=description),
+        _paid_half(rf.FACTORS[half:], free_by_key, facts, agent=agent, day_sentence=day, description=description),
+        _ask(_summary_prompt(free_report, analysis, agent=agent, day_sentence=day), agent=agent,
+             max_tokens=2000, what="summary"))
     written = {**first, **second}
 
     factors = []
@@ -390,17 +602,59 @@ async def write_paid_report(
         key = spec["key"]
         free = free_by_key.get(key) or {}
         w = written.get(key) or {}
+        entry = facts.get(key) or {}
+        forced = entry.get("verdict") if entry.get("forced") else None
+        paid_verdict = str(w.get("verdict")) if str(w.get("verdict")) in _VALID_VERDICTS else None
+        if key in revealed and free.get("verdict"):
+            verdict = free["verdict"]  # what the customer saw on the preview
+        else:
+            verdict = forced or paid_verdict or free.get("verdict") or rf.CHECK_WITH_AGENT
         found = scrub_place_names(str(w.get("found") or free.get("found") or ""), snapshot, agent=agent)
         why = scrub_place_names(str(w.get("why") or free.get("why") or ""), snapshot, agent=agent)
         action = scrub_place_names(str(w.get("action") or free.get("action") or ""), snapshot, agent=agent)
-        factors.append({"num": spec["num"], "key": key, "name": spec["name"],
-                        "verdict": free.get("verdict") or rf.CHECK_WITH_AGENT,
-                        "found": found, "why": why, "action": action})
+        if not found:
+            fb = _fallback(key)
+            found, why, action = fb["found"], fb["why"], fb["action"]
+        item = {"num": spec["num"], "key": key, "name": spec["name"], "verdict": verdict,
+                "found": found, "why": why, "action": action}
+        if verdict == rf.PROBLEM:
+            item["severity"] = free.get("severity") or 3
+        factors.append(item)
+
     paid = dict(free_report)
     paid["factors"] = factors
+    exec_summary = scrub_place_names(str(summary.get("executive_summary") or ""), snapshot, agent=agent)
+    if exec_summary:
+        if day and day.lower() not in exec_summary.lower():
+            exec_summary = f"{day} {exec_summary}"
+        paid["executive_summary"] = exec_summary
+    pricing_line = scrub_place_names(str(summary.get("pricing_line") or ""), snapshot, agent=agent)
+    if pricing_line:
+        paid["pricing_line"] = pricing_line
+    try:
+        paid["overall_score"] = max(0, min(100, int(summary.get("overall_score"))))
+    except (TypeError, ValueError):
+        pass
+    paid["top_actions"] = [
+        {"title": scrub_place_names(str(t.get("title") or ""), snapshot, agent=agent),
+         "detail": scrub_place_names(str(t.get("detail") or ""), snapshot, agent=agent)}
+        for t in (summary.get("top_actions") or []) if isinstance(t, dict) and t.get("title")
+    ][:3]
     _mark_photography_verified(paid, photo_review)
     paid["_expanded"] = True
-    paid["_market_data"] = bool(market)
+    # Both full-write requests came back empty (the model was down): the report
+    # is marked done so the page doesn't retry every few seconds, but flagged
+    # so the console's upgrade tool rebuilds it properly.
+    if not written:
+        paid["_paid_degraded"] = True
+        logger.error("Paid 20-factor write returned nothing for %s; flagged for rebuild", getattr(prospect, "id", "?"))
+    paid["_market_data"] = bool(intel)
+    paid["_writer_rev"] = WRITER_REV
+    paid["_trusted"] = analysis["trusted"]
+    paid["_sales_given"] = bool((analysis.get("price_position") or {}).get("sales_known")) or paid.get("_sales_given", False)
+    scenarios = analysis.get("scenarios") or []
+    if len(scenarios) > 1:
+        paid["_next_price_step"] = scenarios[1]["price"]  # the dashboard's day-21 decision point
     return paid
 
 
@@ -420,10 +674,13 @@ def report_is_v2(report: Any) -> bool:
 
 def v2_preview(report: dict[str, Any]) -> dict[str, Any]:
     """The free-preview shape for a 20-factor report: the 3 most serious
-    problems revealed in full, the other 17 locked as names and subtext.
-    Gaps in the 3 are filled with check-with-agent factors, never strengths."""
+    problems revealed in full (by severity, then factor order), the other 17
+    locked as names and subtext. Gaps in the 3 are filled with check-with-agent
+    factors, never strengths."""
     factors = [f for f in (report.get("factors") or []) if isinstance(f, dict)]
-    problems = [f for f in factors if f.get("verdict") == rf.PROBLEM]
+    order = {s["key"]: s["num"] for s in rf.FACTORS}
+    problems = sorted((f for f in factors if f.get("verdict") == rf.PROBLEM),
+                      key=lambda f: (-(f.get("severity") or 3), order.get(f.get("key"), 99)))
     checks = [f for f in factors if f.get("verdict") == rf.CHECK_WITH_AGENT]
     revealed = (problems + checks)[:3]
     revealed_keys = {f.get("key") for f in revealed}
@@ -457,4 +714,10 @@ async def finalize_report(report: dict[str, Any], facts: Any, *, agent: bool = F
     report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys)
     report = await report_tone.fix_report_tone(report, agent=agent)
     report = report_guard.clean_factor_report(report, facts, trusted_keys=trusted_keys)
+    if isinstance(report.get("top_actions"), list):
+        report["top_actions"] = [
+            {"title": t.get("title"), "detail": report_guard.clean_text(t.get("detail"), facts)}
+            for t in report["top_actions"] if isinstance(t, dict)
+        ]
+        report["top_actions"] = [t for t in report["top_actions"] if t.get("title") and t.get("detail")]
     return report

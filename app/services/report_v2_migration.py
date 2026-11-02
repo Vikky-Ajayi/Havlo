@@ -95,6 +95,128 @@ def _needs_migration(prospect: StaleListingProspect) -> bool:
     return bool(report) and not report_writer.report_is_v2(report)
 
 
+# ── Upgrade: 20-factor reports written by the first (thin) writer ─────────
+UPGRADE_KEY = "report_v2_upgrade"
+UPGRADE_LIMIT = 300
+
+
+def _needs_upgrade(prospect: StaleListingProspect) -> bool:
+    """A 20-factor report from an earlier writer, paid or not (paid customers
+    get the full write again). Analyst-edited reports are left alone."""
+    if prospect.agent_edited_report_json:
+        return False
+    report = sps._safe_json(prospect.report_json)
+    if not report_writer.report_is_v2(report):
+        return False
+    return int(report.get("_writer_rev") or 1) < report_writer.WRITER_REV or bool(report.get("_paid_degraded"))
+
+
+async def _upgrade_candidates() -> list[StaleListingProspect]:
+    async with AsyncSessionLocal() as db:
+        return list((await db.execute(
+            select(StaleListingProspect).where(
+                StaleListingProspect.agent_edited_report_json.is_(None),
+                StaleListingProspect.country == "UK",
+                StaleListingProspect.report_json.is_not(None),
+            ).order_by(StaleListingProspect.created_at.desc()).limit(UPGRADE_LIMIT)
+        )).scalars().all())
+
+
+async def upgrade_one(prospect_id: Any, model: str | None, saved: dict[str, Any]) -> str:
+    """Rebuild one prospect's 20-factor report with the current writer.
+    Returns "upgraded", "skipped" or "failed"."""
+    async with AsyncSessionLocal() as db:
+        prospect = await db.get(StaleListingProspect, prospect_id)
+        if prospect is None or not _needs_upgrade(prospect):
+            return "skipped"
+        old = {"report_json": prospect.report_json, "preview_json": prospect.preview_json}
+        token = groq_service.REPORT_MODEL.set(("openai", model)) if model else None
+        try:
+            report = await sps.rebuild_v2_report(prospect)
+        except Exception:  # noqa: BLE001 -- keep the old report
+            logger.exception("v2 upgrade failed for %s", prospect.property_code)
+            await db.rollback()
+            return "failed"
+        finally:
+            if token is not None:
+                groq_service.REPORT_MODEL.reset(token)
+        if not report.get("factors"):
+            await db.rollback()
+            return "failed"
+        saved[str(prospect.id)] = old
+        await db.commit()
+    return "upgraded"
+
+
+async def upgrade_status() -> dict[str, Any]:
+    state = await _kv_get(UPGRADE_KEY) or {"upgraded": 0, "skipped": 0, "failed": 0}
+    remaining = sum(1 for p in await _upgrade_candidates() if _needs_upgrade(p))
+    state["remaining"] = remaining
+    state["done"] = remaining == 0
+    return state
+
+
+async def run_upgrade_batch(limit: int = BATCH_SIZE) -> dict[str, Any]:
+    """Rebuild up to `limit` reports from the first writer. Click until done."""
+    if not (os.environ.get("OPENAI_API_KEY") or "").strip():
+        return {"error": "OPENAI_API_KEY isn't set.", "remaining": 0, "done": False}
+    model = await _pick_model()
+    todo = [p for p in await _upgrade_candidates() if _needs_upgrade(p)][:limit]
+    state = await _kv_get(UPGRADE_KEY) or {"upgraded": 0, "skipped": 0, "failed": 0}
+    for k in ("upgraded", "skipped", "failed"):
+        state.setdefault(k, 0)
+    saved: dict[str, Any] = await backup()
+    run = {"upgraded": 0, "skipped": 0, "failed": 0}
+    sem = asyncio.Semaphore(CONCURRENCY)
+    lock = asyncio.Lock()
+
+    async def one(prospect: StaleListingProspect) -> None:
+        async with sem:
+            try:
+                outcome = await upgrade_one(prospect.id, model, saved)
+            except Exception:  # noqa: BLE001
+                logger.exception("v2 upgrade raised for %s", prospect.id)
+                outcome = "failed"
+        async with lock:
+            run[outcome] += 1
+            state[outcome] += 1
+            await _kv_set(V2_MIGRATION_BACKUP_KEY, saved)
+            await _kv_set(UPGRADE_KEY, state)
+
+    await asyncio.gather(*(one(p) for p in todo))
+    remaining = sum(1 for p in await _upgrade_candidates() if _needs_upgrade(p))
+    state["remaining"] = remaining
+    await _kv_set(UPGRADE_KEY, state)
+    return {"run": run, "totals": {k: state[k] for k in ("upgraded", "skipped", "failed")},
+            "remaining": remaining, "done": remaining == 0, "model": model}
+
+
+async def rebuild_one_now(prospect_id: Any) -> dict[str, Any]:
+    """Rebuild a single prospect's report now, whatever writer made it (the
+    console's per-property button). Returns a short summary of the result."""
+    model = await _pick_model()
+    async with AsyncSessionLocal() as db:
+        prospect = await db.get(StaleListingProspect, prospect_id)
+        if prospect is None:
+            return {"error": "not found"}
+        if prospect.agent_edited_report_json:
+            return {"error": "This report was edited by an analyst; it wasn't rebuilt."}
+        saved = await backup()
+        saved[str(prospect.id)] = {"report_json": prospect.report_json, "preview_json": prospect.preview_json}
+        token = groq_service.REPORT_MODEL.set(("openai", model)) if model else None
+        try:
+            report = await sps.rebuild_v2_report(prospect)
+        finally:
+            if token is not None:
+                groq_service.REPORT_MODEL.reset(token)
+        await db.commit()
+        await _kv_set(V2_MIGRATION_BACKUP_KEY, saved)
+    from collections import Counter
+    return {"property_code": prospect.property_code, "expanded": bool(report.get("_expanded")),
+            "verdicts": dict(Counter(f.get("verdict") for f in report.get("factors") or [])),
+            "top_actions": [t.get("title") for t in report.get("top_actions") or []]}
+
+
 async def migrate_one(prospect_id: Any, model: str | None, saved: dict[str, Any]) -> str:
     """Rewrite one prospect's report into the 20-factor structure, written for
     its audience. Returns "migrated", "skipped" or "failed"."""

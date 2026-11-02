@@ -168,6 +168,13 @@ class ReportFacts:
     # Title, description and key features: where quotes must come from.
     source_text: str = ""
     description_cut: bool = False
+    # Figures the 20-factor analysis worked out in code (report_analysis):
+    # price gaps, price-step scenarios, stamp duty, £/sq ft, live market
+    # counts. A sentence quoting one of these isn't an invented market claim.
+    trusted_amounts: list[float] = field(default_factory=list)
+    trusted_percents: list[float] = field(default_factory=list)
+    trusted_days: list[int] = field(default_factory=list)
+    subject_sqft: int | None = None
 
 
 def _norm(text: str) -> str:
@@ -226,7 +233,10 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
     asking = _ASKING.search(sentence)
     if asking and facts.asking_price and not _NEW_PRICE.search(sentence[: asking.start()]):
         first = _MONEY.search(sentence, asking.start())
-        if first and not _close(_money(first), facts.asking_price, 0.01):
+        # Another home's price ("one of them is priced at £X") from the live
+        # market data is fine; this rule is about this property's own price.
+        other_home = bool(first and _MARKET.search(sentence) and any(_close(_money(first), t) for t in facts.trusted_amounts))
+        if first and not other_home and not _close(_money(first), facts.asking_price, 0.01):
             return "asking_price"
     # Bedroom counts of other homes ("comparable three-bedroom houses") are
     # for the market check below, not this property's.
@@ -245,21 +255,44 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
         if amount is None:
             continue
         days = amount * (30.4 if unit.startswith("month") else 7 if unit.startswith("week") else 1)
+        if any(abs(days - t) <= 2 for t in facts.trusted_days):
+            continue  # a day count the code worked out (e.g. the local benchmark)
         if facts.days_min is None or facts.days_max is None:
             return "days_on_market"
         if not (facts.days_min * 0.8 - 7 <= days <= facts.days_max * 1.1 + 14):
             return "days_on_market"
     if _MARKET.search(sentence):
-        if _PER_UNIT.search(sentence):
-            return "market"  # no floor areas or bedrooms for the sales we hold
         amounts = [_money(m) for m in _MONEY.finditer(sentence)]
         percents = [float(m.group(1)) for m in _PERCENT.finditer(sentence)]
+
+        def trusted_amount(a: float) -> bool:
+            return any(_close(a, t) for t in facts.trusted_amounts)
+
+        def trusted_percent(p: float) -> bool:
+            return any(abs(p - t) <= 1 for t in facts.trusted_percents)
+
+        # The figures being compared against (anything but this home's own
+        # asking price) must all be ones the code worked out or real sales.
+        # A sentence whose only figure is the asking price still needs sales
+        # behind its comparison, as before.
+        market_amounts = [a for a in amounts if not (facts.asking_price and _close(a, facts.asking_price, 0.01))]
+        figures_trusted = bool(market_amounts or percents) and all(
+            trusted_amount(a) or any(_close(a, s) for s in facts.sale_prices) for a in market_amounts
+        ) and all(trusted_percent(p) for p in percents)
+        if _PER_UNIT.search(sentence):
+            # Only this property's own £/sq ft or £/bedroom, worked out in code.
+            own = facts.subject_sqft and any(trusted_amount(a) for a in market_amounts)
+            return None if (own and figures_trusted) else "market"
         if not (amounts or percents or (_COMPARE.search(sentence) and _PRICE_WORDS.search(sentence))):
             return None  # a general remark: no figures, or not about price
+        if figures_trusted:
+            return None
         if not facts.sales_given or not facts.sale_prices:
             return "market"
         for amount in amounts:
             if facts.asking_price and _close(amount, facts.asking_price, 0.01):
+                continue
+            if trusted_amount(amount):
                 continue
             if not any(_close(amount, price) for price in facts.sale_prices):
                 return "market"
@@ -268,7 +301,7 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
                 abs(facts.asking_price / statistics.mean(facts.sale_prices) - 1) * 100,
                 abs(facts.asking_price / statistics.median(facts.sale_prices) - 1) * 100,
             ]
-            if not any(any(abs(p - a) <= 3 for a in actual) for p in percents):
+            if not any(any(abs(p - a) <= 3 for a in actual) or trusted_percent(p) for p in percents):
                 return "market"
     return None
 

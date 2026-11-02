@@ -260,11 +260,13 @@ class SmsTests(unittest.TestCase):
         from app.services import twilio_service
 
         body = twilio_service.MONITOR_DASHBOARD_SMS.format(
+            days=30,
             address=lm.short_address("112 Long Street Name Avenue, Somewhere-on-Sea, County"),
             link=lm.dashboard_url("x" * 20),
         )
         self.assertLessEqual(len(body), 306)
         self.assertIn("/m/xxxxxxxxxxxxxxxxxxxx", body)
+        self.assertIn("30-day", body)  # new purchases get the 30-day dashboard, not "90-day"
 
 
 if __name__ == "__main__":

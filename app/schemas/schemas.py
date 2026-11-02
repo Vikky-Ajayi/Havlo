@@ -826,6 +826,8 @@ class StaleProspectReportResponse(BaseModel):
     sold_comparables_attribution: Optional[str] = None
     payment_status: str
     audience: str = "owner"  # "agent": an agency's copy, shown the agent report
+    # False while the full (paid) write is still running in the background.
+    report_expanded: bool = False
 
 
 class StaleProspectSoldComparable(BaseModel):

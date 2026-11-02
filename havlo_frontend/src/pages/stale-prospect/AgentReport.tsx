@@ -46,9 +46,9 @@ const AgentFactorGrid = ({ factors }: { factors: ReportFactor[] }) => {
               </div>
             </div>
             <div className="slw-factor-body">
-              {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={220} /></div> : null}
-              {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={220} /></div> : null}
-              {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={220} /></div> : null}
+              {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={900} /></div> : null}
+              {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={900} /></div> : null}
+              {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={900} /></div> : null}
             </div>
           </div>
         );
@@ -423,7 +423,7 @@ export const AgentFullReport = ({
           <button type="button" className="slw-btn-black agr-head-btn" onClick={downloadPdf} disabled={pdfState.busy}>
             <DownloadIcon /> {pdfState.busy ? 'Preparing PDF…' : 'Download PDF report'}
           </button>
-          <button type="button" className="slw-btn-outline agr-head-btn" onClick={onOpenDashboard}>90-day instruction watch</button>
+          <button type="button" className="slw-btn-outline agr-head-btn" onClick={onOpenDashboard}>{(data.version === 2 || (data.factors || []).length) ? '30' : '90'}-day instruction watch</button>
         </div>
       </div>
       {pdfState.error && <p className="agr-error slw-noprint" role="alert">{pdfState.error}</p>}
@@ -747,7 +747,7 @@ export const AgentFullReport = ({
       <div className="agr-card agr-watch slw-noprint">
         <div>
           <b>Weekly instruction watch</b>
-          <p>Your 90-day dashboard checks this listing daily and the homes around it weekly: new competition, price cuts and homes going under offer.</p>
+          <p>Your {isV2 ? 30 : 90}-day dashboard checks this listing daily and the homes around it weekly: new competition, price cuts and homes going under offer.</p>
         </div>
         <button type="button" className="slw-btn-outline" onClick={onOpenDashboard}>Open the instruction watch</button>
       </div>

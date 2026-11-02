@@ -63,13 +63,18 @@ class WriteTests(unittest.TestCase):
             self.assertIn(f["verdict"], {"problem", "working_well", "check_with_agent"})
             self.assertTrue(f["found"])
 
-    def test_missing_factors_are_filled_with_check_with_agent(self):
-        # AI returns only 3 factors; the rest must be filled.
+    def test_missing_factors_are_filled(self):
+        # AI returns only 1 factor; the rest are filled: a code-decided verdict
+        # where the facts settle it (96 days advertised = too long), otherwise
+        # check-with-agent, each with a specific next step, not a bare referral.
         rep = self.write(ai_report(factors=[
             {"key": "visibility", "verdict": "problem", "found": "Just above £375k.", "why": "x", "action": "y"}]))
         self.assertEqual(len(rep["factors"]), 20)
-        filled = [f for f in rep["factors"] if f["key"] != "visibility"]
-        self.assertTrue(all(f["verdict"] == "check_with_agent" for f in filled))
+        by_key = {f["key"]: f for f in rep["factors"]}
+        self.assertEqual(by_key["time_on_market"]["verdict"], "problem")
+        self.assertEqual(by_key["description"]["verdict"], "check_with_agent")
+        self.assertIn("views in the last 14 days", by_key["engagement"]["action"])
+        self.assertNotEqual(by_key["description"]["action"], "Ask your agent about this.")
 
     def test_private_factors_are_forced_to_check_even_if_ai_says_otherwise(self):
         rep = self.write(ai_report())  # AI said working_well for everything
@@ -88,11 +93,42 @@ class WriteTests(unittest.TestCase):
         for banned in ("Green Tops", "Thorn Close", "DY10 1NB"):
             self.assertNotIn(banned, blob)
 
-    def test_a_failed_call_still_returns_twenty_check_factors(self):
+    def test_a_failed_call_still_returns_twenty_factors(self):
         with mock.patch.object(groq_service, "_report_chat", side_effect=RuntimeError("boom")):
             rep = asyncio.run(rw.write_free_report(SNAPSHOT, asking_price=390_000, advertised_days=96))
         self.assertEqual(len(rep["factors"]), 20)
-        self.assertTrue(all(f["verdict"] == "check_with_agent" for f in rep["factors"]))
+        by_key = {f["key"]: f for f in rep["factors"]}
+        # The code-decided verdicts still hold; the rest fall back to check.
+        self.assertEqual(by_key["visibility"]["verdict"], "problem")
+        self.assertEqual(by_key["time_on_market"]["verdict"], "problem")
+        self.assertEqual(by_key["asking_price"]["verdict"], "check_with_agent")
+
+    def test_the_prompt_gets_the_full_description_and_how_to_judge(self):
+        long_desc = "A lovely home. " * 200 + "EPC Rating: C"
+        seen = {}
+
+        def capture(**body):
+            seen["prompt"] = body["messages"][-1]["content"]
+            return response(ai_report())
+
+        snap = {**SNAPSHOT, "description": long_desc}
+        with mock.patch.object(groq_service, "_report_chat", side_effect=capture):
+            asyncio.run(rw.write_free_report(snap, asking_price=390_000, advertised_days=96))
+        self.assertIn("EPC Rating: C", seen["prompt"])  # not cut at 1,500 characters any more
+        self.assertIn("how to judge:", seen["prompt"])
+        self.assertIn('ONLY for listing engagement and viewing-to-offer', seen["prompt"])
+        self.assertIn("the full report", seen["prompt"])  # named as something never to say
+
+    def test_preview_reveals_the_most_serious_problems_first(self):
+        factors = [{"key": f["key"], "verdict": "working_well", "found": "ok", "why": "w", "action": "a"} for f in rf.FACTORS]
+        for f in factors:
+            if f["key"] == "visibility":
+                f.update(verdict="problem", severity=2)
+            if f["key"] == "agent_marketing":
+                f.update(verdict="problem", severity=5)
+        rep = self.write(ai_report(factors=factors))
+        revealed = [r["key"] for r in rw.v2_preview(rep)["revealed"]]
+        self.assertEqual(revealed[0], "agent_marketing")
 
 
 class FactsTests(unittest.TestCase):

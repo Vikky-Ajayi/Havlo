@@ -149,6 +149,7 @@ export interface ReportFactor {
   found?: string;
   why?: string;
   action?: string;
+  severity?: number;
   _photo_verified?: boolean;
 }
 
@@ -175,6 +176,8 @@ export interface FullReportData {
   factors?: ReportFactor[];
   pricing_line?: string;
   day_sentence?: string | null;
+  top_actions?: { title: string; detail: string }[];
+  _expanded?: boolean;
 }
 
 export interface ProspectReport {
@@ -191,6 +194,8 @@ export interface ProspectReport {
   /** Present whenever report_data.comparable_sales holds Land Registry sales. */
   sold_comparables_attribution?: string | null;
   payment_status: string;
+  /** False while the full (paid) write is still running in the background. */
+  report_expanded?: boolean;
 }
 
 // ── Optional next steps (the add-ons basket) ───────────────────────────────

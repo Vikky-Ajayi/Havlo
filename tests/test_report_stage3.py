@@ -50,9 +50,26 @@ class ToneDetectionTests(unittest.TestCase):
         self.assertEqual(report_tone.tone_issues("Your price is high. Drop it to £375,000."), [])
 
     def test_repeated_openings_across_factors(self):
-        report = {"factors": [factor("a", found="Your price is high."), factor("b", found="Your price is steep.")]}
+        # Two factors opening the same way is normal across 20; four or more
+        # with the same first three words reads as a template. The first is
+        # left alone and the rest get varied.
+        report = {"factors": [factor(k, found=f"Your price is {w}.") for k, w in
+                              (("a", "high"), ("b", "steep"), ("c", "stretched"), ("d", "bold"))]}
         issues = report_tone.report_tone_issues(report)
-        self.assertTrue(any("repeated opening" in i for i in issues.get("a", [])))
+        self.assertNotIn("a", issues)
+        self.assertTrue(all(any("repeated opening" in i for i in issues.get(k, [])) for k in ("b", "c", "d")))
+        two = {"factors": [factor("a", found="Your price is high."), factor("b", found="Your price is steep.")]}
+        self.assertEqual(report_tone.report_tone_issues(two), {})
+
+    def test_a_plain_list_of_three_is_not_three_adjectives(self):
+        self.assertEqual(report_tone.tone_issues("Ask for the views, enquiries, and viewings."), [])
+        self.assertIn("list of three adjectives", report_tone.tone_issues("It's a bright, spacious and modern home."))
+
+    def test_a_rewrite_that_drops_figures_or_content_is_refused(self):
+        before = "Your asking price is £3,250,000, which is £1,175,000 above the highest sale. Ask for comparables."
+        self.assertFalse(report_tone._keeps_substance(before, "Your price is high. Ask for comparables."))
+        self.assertTrue(report_tone._keeps_substance(
+            before, "At £3,250,000, you're £1,175,000 above the highest recorded sale, so ask your agent for comparables."))
 
 
 class ToneFixTests(unittest.TestCase):

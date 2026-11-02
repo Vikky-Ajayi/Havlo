@@ -560,9 +560,10 @@ async def send_dashboard_texts(now: datetime) -> int:
                 continue
             token = issue_token(monitor)
             await db.commit()
+            window = max(1, round((monitor.ends_at - monitor.started_at).total_seconds() / 86400))
             ok = await asyncio.to_thread(
                 twilio_service.send_monitor_dashboard_sms, phone,
-                address=short_address(prospect.property_address), link=dashboard_url(token),
+                address=short_address(prospect.property_address), link=dashboard_url(token), days=window,
             )
             if ok:
                 monitor.sms_status, monitor.sms_sent_at = "sent", now
@@ -730,14 +731,93 @@ def _catalogue_key_for(text: str, taken: set[str]) -> str | None:
     return None
 
 
+# A 20-factor report's problems, as dashboard tasks: a short title, and the
+# listing change that ticks it off on its own (a catalogue key).
+FACTOR_TASKS: dict[str, tuple[str, str | None]] = {
+    "visibility": ("Move to the next search price step", "price"),
+    "asking_price": ("Get evidence for your asking price", "price"),
+    "pricing_range": ("Agree your price plan and its trigger", "price"),
+    "comparable_sold": ("Get sales of homes like yours", None),
+    "active_competition": ("Check your price against what's for sale", None),
+    "buyer_demand": ("Review buyer demand with your agent", None),
+    "time_on_market": ("Reset the listing", None),
+    "reduction_history": ("Decide your next price move", "price"),
+    "photography": ("Fix the photos, starting with the lead image", "photos"),
+    "description": ("Fill the gaps in your description", "description"),
+    "floor_plan": ("Add or improve the floor plan", "floorplan"),
+    "positioning": ("Lead with your best features", "features"),
+    "target_buyer": ("Aim the marketing at the right buyers", "buyer_profiles"),
+    "buyer_objections": ("Answer buyers' doubts before they view", None),
+    "agent_marketing": ("Upgrade the marketing", "virtual_tour"),
+    "condition_readiness": ("Gather your sale paperwork now", None),
+    "affordability": ("Make the price work for buyers' budgets", None),
+    "net_proceeds": ("Work out what you'll walk away with", None),
+}
+_SEVERITY_PRIORITY = {5: "URGENT", 4: "URGENT", 3: "HIGH", 2: "MEDIUM", 1: "MEDIUM"}
+
+
+def _v2_report_items(report: dict[str, Any], baseline: dict[str, Any]) -> list[dict[str, Any]]:
+    """The 20-factor report's own to-do list: its three top actions, then each
+    problem (most serious first) with its steps, then the figures and feedback
+    to get from the agent. Duplicates of the same listing change are merged."""
+    items: list[dict[str, Any]] = []
+    taken: set[str] = set()
+    for i, t in enumerate(report.get("top_actions") or []):
+        if not isinstance(t, dict) or not _text(t.get("title")):
+            continue
+        key = _catalogue_key_for(f"{t.get('title')} {t.get('detail') or ''}", taken)
+        if key:
+            taken.add(key)
+        items.append({"key": key or f"top_{i}", "title": _text(t.get("title")), "detail": _text(t.get("detail")),
+                      "priority": "URGENT", "source": "report",
+                      "detects": list(_BY_KEY[key]["detects"]) if key else []})
+    factors = [f for f in report.get("factors") or [] if isinstance(f, dict)]
+    problems = sorted((f for f in factors if f.get("verdict") == "problem"), key=lambda f: -(f.get("severity") or 3))
+    for f in problems:
+        title, cat = FACTOR_TASKS.get(str(f.get("key")), (str(f.get("name") or ""), None))
+        if cat and (cat in taken or (_BY_KEY.get(cat, {}).get("unless") and (baseline.get(_BY_KEY[cat]["unless"]) or 0) > 0
+                                    and cat != "virtual_tour")):
+            continue
+        if cat:
+            taken.add(cat)
+        items.append({"key": cat or f"factor_{f.get('key')}", "title": title, "detail": _text(f.get("action")),
+                      "priority": _SEVERITY_PRIORITY.get(int(f.get("severity") or 3), "HIGH"), "source": "report",
+                      "detects": list(_BY_KEY[cat]["detects"]) if cat else []})
+    by_key = {f.get("key"): f for f in factors}
+    if by_key.get("engagement"):
+        items.append({"key": "agent_figures", "title": "Get your listing figures from your agent",
+                      "detail": _text(by_key["engagement"].get("action")), "priority": "MEDIUM",
+                      "source": "report", "detects": []})
+    if "viewing_feedback" not in taken:
+        detail = _text((by_key.get("viewing_conversion") or {}).get("action")) or "Ask for written feedback within a day of every viewing."
+        items.append({"key": "viewing_feedback", "title": "Get written feedback after every viewing", "detail": detail,
+                      "priority": "MEDIUM", "source": "report", "detects": []})
+    return items
+
+
 def build_checklist(report: dict[str, Any], baseline: dict[str, Any] | None, events: list[dict[str, Any]],
                     ticks: dict[str, Any]) -> list[dict[str, Any]]:
     """The report's own actions first (by priority), then the rest of the
-    catalogue, each done if seen on the listing or ticked by the customer."""
+    catalogue, each done if seen on the listing or ticked by the customer.
+    A 20-factor report's list is built from its top actions and problems."""
     baseline = baseline or {}
     detected: dict[str, str] = {}
     for event in sorted(events, key=lambda e: e["at"]):
         detected.setdefault(event["kind"], event["at"])
+    if report.get("version") == 2 or report.get("factors"):
+        items = _v2_report_items(report, baseline)
+        for item in items:
+            seen_at = next((detected[k] for k in item["detects"] if k in detected), None)
+            tick = ticks.get(item["key"]) or {}
+            item["auto"] = bool(item["detects"])
+            if seen_at:
+                item.update(done=True, done_by="detected", done_at=seen_at)
+            elif tick.get("done"):
+                item.update(done=True, done_by="you", done_at=tick.get("at"))
+            else:
+                item.update(done=False, done_by=None, done_at=None)
+            del item["detects"]
+        return items
     items: list[dict[str, Any]] = []
     taken: set[str] = set()
     actions = [a for a in (report.get("action_plan") or []) if isinstance(a, dict) and a.get("priority")]
@@ -810,18 +890,15 @@ LATER_WEEKS = (
 )
 
 
-def build_plan_v2(day: int, checklist: list[dict[str, Any]]) -> dict[str, Any]:
-    """The 30-day plan for a 20-factor report: three ten-day boxes. Boxes 1 and
-    2 carry the report's checklist tasks (urgent first); box 3 carries the
-    written take-stock guidance and points to the optional next steps."""
+def build_plan_v2(day: int, checklist: list[dict[str, Any]], report: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The 30-day plan for a 20-factor report: three ten-day boxes. Box 1 is the
+    report's top actions and most serious problems, box 2 the figures and
+    feedback to get from the agent plus the secondary fixes, box 3 the decision
+    point: the written take-stock guidance with the report's own next price
+    step, pointing to the optional next steps."""
     urgent = [c for c in checklist if c.get("priority") in ("URGENT", "HIGH")]
     rest = [c for c in checklist if c not in urgent]
-    tasks = {
-        0: urgent or checklist[:4],
-        1: [c for c in rest if c["key"] in ("viewing_feedback", "neighbourhood", "buyer_profiles", "photos", "staging")]
-           or rest[:4],
-        2: [],
-    }
+    tasks = {0: urgent[:5] or checklist[:4], 1: (urgent[5:] + rest)[:6], 2: []}
     phases = []
     for index, phase in enumerate(PHASES_V2):
         start, end = phase["days"]
@@ -830,14 +907,19 @@ def build_plan_v2(day: int, checklist: list[dict[str, Any]]) -> dict[str, Any]:
             "current": start <= day <= end, "weeks": [],
             "tasks": [{"key": c["key"], "title": c["title"], "done": c["done"]} for c in tasks[index]],
         })
-    phases[2]["notes"] = list(BOX3_NOTES_V2)
+    notes = list(BOX3_NOTES_V2)
+    step = (report or {}).get("_next_price_step")
+    if isinstance(step, (int, float)) and step > 0:
+        notes.insert(2, f"If viewings haven't picked up by now, your report's next price step is {_money(step)}, "
+                        "which puts you in front of buyers searching up to that figure.")
+    phases[2]["notes"] = notes
     return {"current_week": 0, "weeks": [], "phases": phases}
 
 
 def build_plan(report: dict[str, Any], day: int, checklist: list[dict[str, Any]], *,
                window: int = MONITOR_DAYS) -> dict[str, Any]:
     if window <= MONITOR_DAYS_V2:
-        return build_plan_v2(day, checklist)
+        return build_plan_v2(day, checklist, report)
     first_month = {int(w.get("week")): _text(w.get("title")) for w in (report.get("thirty_day_plan") or [])
                    if isinstance(w, dict) and str(w.get("week") or "").isdigit() and _text(w.get("title"))}
     defaults = {1: "Act on the urgent recommendations", 2: "Fix the listing's presentation",
