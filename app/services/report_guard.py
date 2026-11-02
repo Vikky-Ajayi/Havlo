@@ -172,6 +172,9 @@ class ReportFacts:
     # price gaps, price-step scenarios, stamp duty, £/sq ft, live market
     # counts. A sentence quoting one of these isn't an invented market claim.
     trusted_amounts: list[float] = field(default_factory=list)
+    # Of those, the ones that are real sale prices (recorded sales and the
+    # live 12-month sold median/range): the only figures "sold for £X" may use.
+    trusted_sale_amounts: list[float] = field(default_factory=list)
     trusted_percents: list[float] = field(default_factory=list)
     trusted_days: list[int] = field(default_factory=list)
     subject_sqft: int | None = None
@@ -194,6 +197,42 @@ def _money(match: re.Match) -> float:
 
 def _close(value: float, target: float, tolerance: float = 0.015) -> bool:
     return target > 0 and abs(value - target) <= target * tolerance
+
+
+# A figure given loosely: "more than £1.1m" sits just below the real figure,
+# "almost £1.2m" just above it, "about £1.2m" either side of it.
+_HEDGE_BELOW = re.compile(r"\b(over|more than|just over|upwards of)\s+£", re.IGNORECASE)
+_HEDGE_ABOVE = re.compile(r"\b(almost|nearly|just under|close to)\s+£", re.IGNORECASE)
+_HEDGE_ABOUT = re.compile(r"\b(about|around|roughly|approximately|some)\s+£", re.IGNORECASE)
+# "sold for £X", "achieved £X": a claim about a sale price, so it must be a real sale.
+_SOLD_FOR = re.compile(
+    r"\b(sold|went|fetched|achieved|changed hands|completed)\s+(?:for|at)?\s*(?:about |around |over |under |just )?£\s?"
+    r"(\d[\d,]*(?:\.\d+)?)\s?(k|m|million)?\b", re.IGNORECASE)
+
+
+def _hedged_close(sentence: str, match: re.Match, value: float, target: float) -> bool:
+    before = sentence[max(0, match.start() - 16): match.start() + 1]
+    if _HEDGE_BELOW.search(before):
+        return target * 0.9 <= value <= target
+    if _HEDGE_ABOVE.search(before):
+        return target <= value <= target * 1.1
+    if _HEDGE_ABOUT.search(before):
+        return _close(value, target, 0.03)
+    return False
+
+
+def _rounded_from(value: float, target: float) -> bool:
+    """`value` is `target` rounded to 1-3 significant figures (£1,175,000 said
+    as £1.2m or £1.18m)."""
+    if target <= 0 or value <= 0:
+        return False
+    import math
+
+    for sig in (1, 2, 3):
+        step = 10 ** (math.floor(math.log10(target)) - sig + 1)
+        if abs(round(target / step) * step - value) < step * 0.01:
+            return True
+    return False
 
 
 def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str | None:
@@ -261,12 +300,27 @@ def _check(sentence: str, facts: ReportFacts, trust_photos: bool = False) -> str
             return "days_on_market"
         if not (facts.days_min * 0.8 - 7 <= days <= facts.days_max * 1.1 + 14):
             return "days_on_market"
+    # A sale price claim must be a real recorded sale, never some other figure
+    # the code worked out (a scenario price, a gap, a loan).
+    real_sales = list(facts.sale_prices) + list(facts.trusted_sale_amounts)
+    for m in _SOLD_FOR.finditer(sentence):
+        value = float(m.group(2).replace(",", "")) * (
+            1_000 if (m.group(3) or "").lower() == "k" else 1_000_000 if (m.group(3) or "").lower() in ("m", "million") else 1)
+        if not any(_close(value, s) or _rounded_from(value, s) for s in real_sales):
+            return "market"
     if _MARKET.search(sentence):
-        amounts = [_money(m) for m in _MONEY.finditer(sentence)]
+        money_matches = list(_MONEY.finditer(sentence))
+        amounts = [_money(m) for m in money_matches]
         percents = [float(m.group(1)) for m in _PERCENT.finditer(sentence)]
+        hedges = {_money(m): m for m in money_matches}
 
         def trusted_amount(a: float) -> bool:
-            return any(_close(a, t) for t in facts.trusted_amounts)
+            # Exact (1.5%), the computed figure rounded the way people say it
+            # ("£1.2m" for £1,175,000), or given loosely in the right direction
+            # ("more than £1.1m").
+            m = hedges.get(a)
+            return any(_close(a, t) or _rounded_from(a, t) or (m is not None and _hedged_close(sentence, m, a, t))
+                       for t in facts.trusted_amounts)
 
         def trusted_percent(p: float) -> bool:
             return any(abs(p - t) <= 1 for t in facts.trusted_percents)

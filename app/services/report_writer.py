@@ -127,27 +127,38 @@ FACTOR_GUIDE: dict[str, str] = {
                            "ask for (EPC, building regulations and warranties for the works, boiler service and "
                            "Gas Safe records, electrical certificate, FENSA for windows) and say to gather it now so "
                            "a sale doesn't stall.",
-    "affordability": "Use the deposit, loan, income and stamp duty at the asking price and at each scenario. Say "
-                     "how many buyers that limits and how the buyer's total cost changes at the next step down.",
-    "net_proceeds": "Use the fee per 0.5% and the scenario price changes. Explain how to work out what they walk "
-                    "away with and which figures to gather (agent fee %, mortgage redemption, early repayment "
-                    "charges, legal fees), and compare selling lower in weeks with holding for months.",
+    "affordability": "Use the deposit, loan, income and stamp duty at the asking price and at each scenario, and "
+                     "say how the buyer's total cost changes at the next step down. At the top of the market the "
+                     "buyer pool is small by nature: that alone isn't a problem. Mark it a problem only if the "
+                     "purchase costs themselves look out of line for this kind of buyer; don't repeat the price "
+                     "problem here.",
+    "net_proceeds": "Always check_with_agent: the fee and mortgage figures sit with the agent and lender. Use the "
+                    "fee per 0.5% and the scenario price changes. Explain how to work out what they walk away with "
+                    "and which figures to gather (agent fee %, mortgage redemption, early repayment charges, legal "
+                    "fees), and compare selling lower in weeks with holding for months.",
 }
 
 JUDGEMENT_RULES = (
     "How to judge:\n"
-    '- Decide every verdict from the evidence. "problem" when it is holding the sale back, "working_well" when '
-    'it is helping or fine. Use "check_with_agent" ONLY for listing engagement and viewing-to-offer, the figures '
-    "only the agent holds. Never use it because you're unsure: judge from what you have and say what would change "
-    "your view.\n"
+    '- Decide every verdict from the evidence. "problem" only when that factor itself is holding the sale back; '
+    '"working_well" when it is helping or fine. Use "check_with_agent" ONLY for listing engagement, viewing-to-offer '
+    "and seller net proceeds, where the figures sit with the agent or lender. Never use it because you're unsure: "
+    "judge from what you have and say what would change your view.\n"
     "- Where a verdict is given in brackets, use it.\n"
     "- Join the dots like a valuer: a price far above every recorded sale, months since the reduction and no "
-    "sale agreed all point the same way. Say so plainly.\n"
+    "sale agreed all point the same way. Say so plainly, once.\n"
+    "- Don't count the same problem twice. Make the price recommendation (which price, and when to move to it) in "
+    "Recommended Pricing Range only; elsewhere refer to it in a few words at most. A factor that is fine apart "
+    "from the price is working well.\n"
     "- Use the figures given, exactly as given. Never invent a number, a sale, a view count, a viewing or buyer "
     "feedback.\n"
-    '- Every action is something the seller can do or decide this week, with the number, wording or step. "Ask '
-    'your agent" is only acceptable as a precise request (exactly which figures or documents) followed by what to '
-    "do with the answer.\n"
+    '- Every action is something the seller can do or decide, with the number, wording or step. "Ask your agent" '
+    "is only acceptable as a precise request (exactly which figures or documents) followed by what to do with the "
+    'answer. Give a deadline where it matters, but don\'t open every action with "This week".\n'
+    "- Each factor must make sense on its own: never open with \"Those sales\", \"This\" or \"That\" pointing back "
+    "to something not said in that same factor.\n"
+    '- Suggested listing wording is written as the advert would read it ("A refurbished Victorian home offering…"), '
+    'not as "your property".\n'
     '- Never mention "the full report", "the figures provided", "the data we were given" or how this was worked '
     "out. You are the expert who has studied their listing.\n"
     "- The only day counts you may state are the fixed day line, the days since a reduction and the local "
@@ -159,6 +170,11 @@ _VALID_VERDICTS = {rf.PROBLEM, rf.WORKING_WELL, rf.CHECK_WITH_AGENT}
 # When the model gives nothing usable for a factor (or the claim checks empty
 # it): a specific next step for that factor, never a bare "ask your agent".
 _FALLBACK: dict[str, dict[str, str]] = {
+    "net_proceeds": {
+        "found": "What you walk away with depends on your agent's fee, your mortgage and your legal costs.",
+        "why": "A price change needs judging against what you'll actually receive, not the headline figure.",
+        "action": "Get your agent contract (fee and VAT), a mortgage redemption statement with any early repayment "
+                  "charge, and your solicitor's estimate, then work out the figure you'd receive at each price."},
     "engagement": {
         "found": "Rightmove only shows your views and enquiries to your agent.",
         "why": "They tell you whether buyers are finding the listing and whether it convinces them.",
@@ -263,7 +279,12 @@ def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
                             "sales_high": pos.get("sales_high"), "sales_median": pos.get("sales_median"),
                             "sales_are_weak_guide": pos.get("sales_are_weak_guide"), "property": prop},
         None if pos.get("sales_known") else rf.CHECK_WITH_AGENT, forced=not pos.get("sales_known"))
-    put("active_competition", {"market": market, "asking_price": pos.get("asking_price"), "property": prop})
+    # No alternatives near the price in the live data: buyers at this level have
+    # little choice, so competition isn't what's holding the sale back.
+    raw_market = a.get("market") or {}
+    no_rivals = raw_market.get("homes_for_sale_now") is not None and not raw_market.get("within_15pct_of_your_price")
+    put("active_competition", {"market": market, "asking_price": pos.get("asking_price"), "property": prop},
+        rf.WORKING_WELL if no_rivals else None, forced=no_rivals)
     put("buyer_demand", {"market": market, "recorded_sales": pos.get("recorded_sales"), "timing": timing})
     time_problem = timing.get("verdict_hint") == rf.PROBLEM
     put("time_on_market", timing, rf.PROBLEM if time_problem else None, forced=time_problem)
@@ -292,7 +313,7 @@ def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
     put("condition_readiness", {"epc_rating": desc.get("epc_rating"), "works_mentioned": desc.get("works_mentioned"),
                                 "period_or_style": prop.get("period_or_style")})
     put("affordability", {**(a.get("affordability") or {}), "scenarios": scen})
-    put("net_proceeds", a.get("net_proceeds") or {})
+    put("net_proceeds", a.get("net_proceeds") or {}, rf.CHECK_WITH_AGENT, forced=True)
     return facts
 
 
@@ -668,6 +689,11 @@ def _mark_photography_verified(report: dict[str, Any], photo_review: dict[str, A
             f["_photo_verified"] = True
 
 
+# Factors that are all, at heart, about the price.
+PRICE_THEME = {"visibility", "asking_price", "pricing_range", "comparable_sold", "reduction_history",
+               "affordability", "net_proceeds", "buyer_demand"}
+
+
 def report_is_v2(report: Any) -> bool:
     return isinstance(report, dict) and (report.get("version") == REPORT_VERSION or bool(report.get("factors")))
 
@@ -681,8 +707,22 @@ def v2_preview(report: dict[str, Any]) -> dict[str, Any]:
     order = {s["key"]: s["num"] for s in rf.FACTORS}
     problems = sorted((f for f in factors if f.get("verdict") == rf.PROBLEM),
                       key=lambda f: (-(f.get("severity") or 3), order.get(f.get("key"), 99)))
+    # Show the range of what's wrong, not three takes on the price: one price
+    # factor when there are at least two other problems to show, else two.
+    others = sum(f.get("key") not in PRICE_THEME for f in problems)
+    price_cap = 1 if others >= 2 else 2
+    picked: list[dict[str, Any]] = []
+    for f in problems:
+        if len(picked) == 3:
+            break
+        if f.get("key") in PRICE_THEME and sum(p.get("key") in PRICE_THEME for p in picked) >= price_cap:
+            continue
+        picked.append(f)
+    for f in problems:  # top up from the skipped ones if there weren't enough others
+        if len(picked) < 3 and f not in picked:
+            picked.append(f)
     checks = [f for f in factors if f.get("verdict") == rf.CHECK_WITH_AGENT]
-    revealed = (problems + checks)[:3]
+    revealed = (picked + checks)[:3]
     revealed_keys = {f.get("key") for f in revealed}
     locked = [{"num": s["num"], "key": s["key"], "name": s["name"], "subtext": s["locked_subtext"]}
               for s in rf.FACTORS if s["key"] not in revealed_keys]

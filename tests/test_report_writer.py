@@ -116,7 +116,7 @@ class WriteTests(unittest.TestCase):
             asyncio.run(rw.write_free_report(snap, asking_price=390_000, advertised_days=96))
         self.assertIn("EPC Rating: C", seen["prompt"])  # not cut at 1,500 characters any more
         self.assertIn("how to judge:", seen["prompt"])
-        self.assertIn('ONLY for listing engagement and viewing-to-offer', seen["prompt"])
+        self.assertIn('ONLY for listing engagement, viewing-to-offer and seller net proceeds', seen["prompt"])
         self.assertIn("the full report", seen["prompt"])  # named as something never to say
 
     def test_preview_reveals_the_most_serious_problems_first(self):

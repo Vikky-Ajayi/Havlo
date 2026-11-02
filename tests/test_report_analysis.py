@@ -6,6 +6,7 @@ import unittest
 
 from app.services import listing_monitor as lm
 from app.services import report_analysis as ra
+from app.services import report_factors as rf
 
 SNAPSHOT = {
     "title": "Monkhams Avenue, Woodford Green, IG8",
@@ -112,3 +113,56 @@ class DashboardFromReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VerdictAndPreviewTests(unittest.TestCase):
+    def test_no_rivals_near_the_price_means_competition_is_working_well(self):
+        from app.services import report_writer as rw
+        a = ra.analyse(SNAPSHOT, asking_price=3_250_000, reduced_days=118, sales=SALES,
+                       intel={"market": {"for_sale": 0, "alternatives": 0}})
+        facts = rw.factor_facts(a)
+        self.assertEqual((facts["active_competition"]["verdict"], facts["active_competition"]["forced"]),
+                         ("working_well", True))
+        busy = rw.factor_facts(ra.analyse(SNAPSHOT, asking_price=3_250_000, sales=SALES,
+                                          intel={"market": {"for_sale": 9, "alternatives": 4}}))
+        self.assertFalse(busy["active_competition"]["forced"])  # the model judges a crowded field
+
+    def test_net_proceeds_is_always_a_check(self):
+        from app.services import report_writer as rw
+        facts = rw.factor_facts(_a())
+        self.assertEqual(facts["net_proceeds"]["verdict"], "check_with_agent")
+
+    def test_preview_shows_the_range_of_problems_not_three_on_price(self):
+        from app.services import report_writer as rw
+        sev = {"asking_price": 5, "pricing_range": 5, "comparable_sold": 4, "time_on_market": 4,
+               "buyer_objections": 4, "agent_marketing": 3}
+        factors = [{"key": f["key"], "num": f["num"], "name": f["name"],
+                    "verdict": "problem" if f["key"] in sev else "working_well", "severity": sev.get(f["key"])}
+                   for f in rf.FACTORS]
+        revealed = [r["key"] for r in rw.v2_preview({"factors": factors})["revealed"]]
+        self.assertEqual(revealed, ["asking_price", "time_on_market", "buyer_objections"])
+
+
+class GuardFigureTests(unittest.TestCase):
+    def facts(self):
+        from app.services import stale_prospect_service as sps
+        a = ra.analyse(SNAPSHOT, asking_price=3_250_000, reduced_days=118, sales=SALES)
+        return sps.report_facts(SNAPSHOT, {"_trusted": a["trusted"], "_sales_given": True, "_media_given": True},
+                                asking_price=3_250_000, listing_duration_days=118, sales=SALES)
+
+    def test_rounded_and_hedged_computed_figures_are_kept(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        for s in ("At £3.25m, you're about £1.2m above the highest recorded sale nearby.",
+                  "You're more than £1.1m above the highest of the four recorded sales.",
+                  "Moving to £3,000,000 would save a buyer £30,000 in stamp duty compared with similar homes."):
+            self.assertIsNone(rg._check(s, f), s)
+
+    def test_a_sold_for_claim_must_be_a_real_sale(self):
+        from app.services import report_guard as rg
+        f = self.facts()
+        self.assertIsNone(rg._check("The four detached houses sold nearby went for £1,600,000 to £2,075,000.", f))
+        for s in ("Similar homes sold for £3,000,000 last year.",  # a scenario price, not a sale
+                  "Comparable homes nearby sold for around £2.6m.",
+                  "A comparable detached house achieved £2,750,000 in the spring."):
+            self.assertEqual(rg._check(s, f), "market", s)

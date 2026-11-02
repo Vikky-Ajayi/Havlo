@@ -370,5 +370,10 @@ def trusted_figures(a: dict[str, Any]) -> dict[str, list]:
     for k in ("days_since_reduction", "days_advertised", "local_benchmark_days"):
         if isinstance(t.get(k), int):
             days.add(t[k])
-    return {"amounts": sorted(amounts), "percents": sorted(percents), "days": sorted(days),
-            "sqft": (a.get("property") or {}).get("floor_area_sqft")}
+    # Real sale prices only: what a "sold for £X" sentence may quote.
+    sale_amounts = {float(r["price"]) for r in pos.get("recorded_sales") or [] if r.get("price")}
+    for k in ("sold_12m_median", "sold_12m_low", "sold_12m_high"):
+        if isinstance(m.get(k), (int, float)) and m.get(k):
+            sale_amounts.add(float(m[k]))
+    return {"amounts": sorted(amounts), "sale_amounts": sorted(sale_amounts), "percents": sorted(percents),
+            "days": sorted(days), "sqft": (a.get("property") or {}).get("floor_area_sqft")}

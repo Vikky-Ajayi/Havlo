@@ -834,6 +834,7 @@ def report_facts(
     trusted = report.get("_trusted") if isinstance(report.get("_trusted"), dict) else {}
     return report_guard.ReportFacts(
         trusted_amounts=[float(x) for x in trusted.get("amounts") or [] if isinstance(x, (int, float))],
+        trusted_sale_amounts=[float(x) for x in trusted.get("sale_amounts") or [] if isinstance(x, (int, float))],
         trusted_percents=[float(x) for x in trusted.get("percents") or [] if isinstance(x, (int, float))],
         trusted_days=[int(x) for x in trusted.get("days") or [] if isinstance(x, (int, float))],
         subject_sqft=trusted.get("sqft") if isinstance(trusted.get("sqft"), int) else None,
