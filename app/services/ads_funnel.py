@@ -168,6 +168,126 @@ def manual_listing_details(address: str | None, price: Any) -> tuple[str, float]
     return text[:300], float(number)
 
 
+# Zoopla doesn't let its listings be read automatically, but nearly every home
+# on Zoopla is on Rightmove too, which the funnel reads. The typed address and
+# asking price find the same home there: one price-filtered Rightmove search
+# around the postcode (the paid dashboard's nearby search), then the street
+# name. The visitor then gets the full assessment of that listing.
+RIGHTMOVE_MATCH_RADIUS = 0.25  # miles around the typed postcode
+RIGHTMOVE_MATCH_PAGES = 3
+RIGHTMOVE_MATCH_TIMEOUT = 30  # seconds for the whole search
+RIGHTMOVE_PRICE_SLACK = 0.03  # the second search, when the exact price finds nothing
+_STREET_SHORT = {
+    "street": "st", "road": "rd", "avenue": "ave", "lane": "ln", "drive": "dr", "close": "cl",
+    "crescent": "cres", "gardens": "gdns", "place": "pl", "square": "sq", "terrace": "tce", "court": "ct",
+}
+_STREET_TYPES = set(_STREET_SHORT.values()) | {
+    "way", "hill", "park", "view", "walk", "rise", "mews", "row", "green", "vale", "parade", "approach", "croft",
+    "gate", "wharf", "quay", "yard", "meadow", "meadows", "fields", "wood", "chase", "embankment", "grove",
+    "boulevard", "broadway", "end", "path", "orchard", "glade", "heights", "villas", "cottages",
+}
+_UNIT_WORDS = {"flat", "apartment", "apt", "unit", "plot", "no"}
+
+
+def _address_words(text: str | None) -> list[str]:
+    words = re.findall(r"[a-z0-9]+", re.sub(r"['’]", "", (text or "").lower()))
+    return [_STREET_SHORT.get(w, w) for w in words]
+
+
+def street_names(address: str | None) -> list[str]:
+    """The street names in a typed address, normalised for comparing with
+    Rightmove's display address: '12 Thorn Close, Kettering' gives
+    ['thorn cl']. House and flat numbers are dropped; a town on its own (no
+    road word) gives nothing, so it can't match every home in the area."""
+    names: list[str] = []
+    for part in re.split(r"[,\n]", address or ""):
+        words = _address_words(part)
+        for i, word in enumerate(words):
+            if word not in _STREET_TYPES:
+                continue
+            start = max((j + 1 for j in range(i) if re.fullmatch(r"\d+[a-z]?", words[j]) or words[j] in _UNIT_WORDS),
+                        default=0)
+            if i > start:
+                names.append(" ".join(words[start:i + 1]))
+    return names
+
+
+def pick_listing(rows: list[dict[str, Any]], address: str) -> dict[str, Any] | None:
+    """The one search result on the typed street (the longest street name
+    that matches wins, so 'Hill View Road' beats 'Hill View Close'); None
+    when no result, or more than one, is on it."""
+    names = street_names(address)
+    best: dict[str, int] = {}
+    by_id: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        listed = f" {' '.join(_address_words(row.get('address')))} "
+        length = max((len(n) for n in names if f" {n} " in listed), default=0)
+        if length and row.get("id"):
+            by_id[row["id"]] = row
+            best[row["id"]] = max(best.get(row["id"], 0), length)
+    if not best:
+        return None
+    top = max(best.values())
+    winners = [i for i, length in best.items() if length == top]
+    return by_id[winners[0]] if len(winners) == 1 else None
+
+
+async def find_on_rightmove(address: str, price: float) -> str | None:
+    """The Rightmove link for the home at a typed address and asking price,
+    or None when it can't be pinned to exactly one listing (no postcode or
+    street typed, nothing at that price on that street, or a search
+    failure). Never raises."""
+    import httpx
+
+    from app.services import listing_monitor, listing_scraper
+
+    found = _POSTCODE_RE.search(address or "")
+    if not found or not street_names(address):
+        return None
+    postcode = f"{found.group(1).upper()} {found.group(2).upper()}"
+    amount = int(round(price))
+
+    async def search() -> dict[str, Any] | None:
+        rm = "https://www.rightmove.co.uk"
+        async with httpx.AsyncClient(headers=listing_scraper._browser_headers(f"{rm}/")) as client:
+            location = await listing_monitor.resolve_location_id(client, postcode)
+            if not location:
+                return None
+            # Within the postcode's own outcode when only that resolved.
+            radius = RIGHTMOVE_MATCH_RADIUS if location.startswith("POSTCODE") else 0
+
+            async def at(low: int, high: int) -> list[dict[str, Any]]:
+                rows: list[dict[str, Any]] = []
+                for page in range(RIGHTMOVE_MATCH_PAGES):
+                    url = (
+                        f"{rm}/property-for-sale/find.html?searchType=SALE&locationIdentifier={location}"
+                        f"&radius={radius}&minPrice={low}&maxPrice={high}&sortType=6&includeSSTC=true"
+                        f"&index={page * listing_monitor.NEARBY_PAGE_SIZE}"
+                    )
+                    response = await listing_monitor._get(client, url)
+                    response.raise_for_status()
+                    props = listing_monitor._parse_next_data(response.text)
+                    rows += [row for row in map(listing_monitor.nearby_row, props) if row]
+                    if len(props) < listing_monitor.NEARBY_PAGE_SIZE:
+                        break
+                return rows
+
+            # The exact price first; then a little either side, for a price
+            # typed from memory or rounded.
+            row = pick_listing([r for r in await at(amount, amount) if r.get("price") == amount], address)
+            if row is None:
+                low, high = int(amount * (1 - RIGHTMOVE_PRICE_SLACK)), int(amount * (1 + RIGHTMOVE_PRICE_SLACK))
+                row = pick_listing(await at(low, high), address)
+            return row
+
+    try:
+        row = await asyncio.wait_for(search(), RIGHTMOVE_MATCH_TIMEOUT)
+    except Exception as exc:  # noqa: BLE001 -- no match just means the typed-details report
+        logger.warning("Ads funnel: Rightmove match failed for %s: %s", postcode, exc)
+        return None
+    return f"https://www.rightmove.co.uk/properties/{row['id']}" if row else None
+
+
 def _city_from_address(address: str) -> str | None:
     parts = [p.strip() for p in (address or "").split(",") if p.strip()]
     if len(parts) < 2:
@@ -192,7 +312,8 @@ async def _owner_prospect(db: AsyncSession, url: str) -> StaleListingProspect | 
 
 
 async def _create_owner_prospect(
-    db: AsyncSession, url: str, lead_source: str, manual: tuple[str, float] | None = None
+    db: AsyncSession, url: str, lead_source: str, manual: tuple[str, float] | None = None,
+    zoopla_url: str | None = None,
 ) -> StaleListingProspect:
     """Read the listing and make its prospect, report and preview. No price,
     age or property-type gate: the visitor chose to have this listing looked
@@ -214,6 +335,8 @@ async def _create_owner_prospect(
     snapshot["rightmove_id"] = sps.rightmove_listing_id(url)
     if zoopla:
         snapshot["platform"] = "Zoopla"
+    if zoopla_url:  # found on Rightmove from a Zoopla link's typed details
+        snapshot["zoopla_url"] = zoopla_url
     address = (snapshot.get("address") or "").strip()
     price = sps.extract_price(snapshot.get("price"))
     if scraped.get("blocked") or not address or not price:
@@ -224,8 +347,8 @@ async def _create_owner_prospect(
             )
         if manual is None:
             raise ManualDetailsNeeded(
-                "We couldn't read that Zoopla listing automatically. Enter the property's address and asking "
-                "price below and we'll run the assessment from those."
+                "Zoopla doesn't let us read its listings automatically. Enter the property's address, with its "
+                "postcode, and the asking price as listed, and we'll find it and run the assessment."
             )
         # Whatever the reader did get is kept; the visitor fills the rest.
         address = address or manual[0]
@@ -361,24 +484,19 @@ async def start_from_listing(
     channel = _channel(channel)
     url = clean_listing_url(listing_url)
     manual = manual_listing_details(manual_address, manual_price)
-    owner = await _owner_prospect(db, url)
-    if audience == "owner":
-        if owner is None:
-            target = await _create_owner_prospect(db, url, seller_source(channel), manual)
-        elif not owner.contact_email and owner.payment_status != "completed":
-            # Found by discovery (or made for an agent's link) but nobody
-            # has started its funnel: the ads visitor is the one doing so.
-            owner.lead_source = seller_source(channel)
-            target = owner
-        else:
-            # Someone has already given their details on this listing, or
-            # paid for its report. Anyone can paste a Rightmove link, so the
-            # visitor gets a funnel of their own rather than that one.
-            target = await _seller_copy(db, owner, seller_source(channel))
-    else:
-        if owner is None:
-            owner = await _create_owner_prospect(db, url, agent_listing_source(channel), manual)
-        target = await _agent_copy(db, owner, agent_source(channel))
+    target = None
+    if manual and zoopla_listing_id(url) and not sps.rightmove_listing_id(url):
+        # The Zoopla page couldn't be read: the same home on Rightmove gives
+        # the full assessment. Only typed details are left when it isn't
+        # found there, or its page can't be read either.
+        matched = await find_on_rightmove(*manual)
+        if matched:
+            try:
+                target = await _funnel_prospect(db, matched, audience, channel, None, zoopla_url=url)
+            except ListingLinkError as exc:
+                logger.info("Ads funnel: Rightmove match %s for %s unreadable: %s", matched, url, exc)
+    if target is None:
+        target = await _funnel_prospect(db, url, audience, channel, manual)
     if target.code_looked_up_at is None:
         target.code_looked_up_at = datetime.now(timezone.utc)
     token = _grant_access(target)
@@ -395,6 +513,34 @@ async def start_from_listing(
         "token": token, "audience": target.audience, "property_code": target.property_code, "prefill": prefill,
         "prospect_id": target.id,
     }
+
+
+async def _funnel_prospect(
+    db: AsyncSession, url: str, audience: str, channel: str, manual: tuple[str, float] | None,
+    zoopla_url: str | None = None,
+) -> StaleListingProspect:
+    """The prospect this visitor's funnel runs on, made if need be. Raises
+    ListingLinkError (before writing anything) when a new listing can't be
+    read."""
+    owner = await _owner_prospect(db, url)
+    if audience == "owner":
+        if owner is None:
+            target = await _create_owner_prospect(db, url, seller_source(channel), manual, zoopla_url)
+        elif not owner.contact_email and owner.payment_status != "completed":
+            # Found by discovery (or made for an agent's link) but nobody
+            # has started its funnel: the ads visitor is the one doing so.
+            owner.lead_source = seller_source(channel)
+            target = owner
+        else:
+            # Someone has already given their details on this listing, or
+            # paid for its report. Anyone can paste a Rightmove link, so the
+            # visitor gets a funnel of their own rather than that one.
+            target = await _seller_copy(db, owner, seller_source(channel))
+    else:
+        if owner is None:
+            owner = await _create_owner_prospect(db, url, agent_listing_source(channel), manual, zoopla_url)
+        target = await _agent_copy(db, owner, agent_source(channel))
+    return target
 
 
 def sheet_row(prospect: StaleListingProspect) -> dict[str, str]:

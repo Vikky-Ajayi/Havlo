@@ -270,8 +270,15 @@ def analyse(
     intel: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Everything the 20 factors are written from, plus the figures to trust."""
+    # Only an address and asking price typed in (a Zoopla link we couldn't
+    # read): no dates, text or media were seen, so none may be judged absent.
+    seen = not snapshot.get("manual_details")
+    if not seen:
+        reduced_days = advertised_days = None
     media = snapshot.get("media") if isinstance(snapshot.get("media"), dict) else {}
     desc = description_review(snapshot)
+    if not seen:
+        desc["missing"] = []
     position = price_position(asking_price, sales, desc["floor_area_sqft"], snapshot.get("bedrooms"))
     scenarios = pricing_scenarios(asking_price, country)
     vis = rf.visibility(asking_price)
@@ -324,6 +331,7 @@ def analyse(
                          "agent_fee_per_half_percent": fee_half_pct,
                          "scenario_changes": [{"price": s["price"], "change": s["change_from_asking"]} for s in scenarios[1:]]},
     }
+    out["listing_seen"] = seen
     out["trusted"] = trusted_figures(out)
     return out
 

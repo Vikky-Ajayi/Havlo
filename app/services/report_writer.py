@@ -271,6 +271,19 @@ def _fmt_sales(sales: list[dict[str, Any]] | None) -> str:
 
 
 # ── Facts for each factor, from the analysis ─────────────────────────────
+# A listing nobody could read (a Zoopla link, with only the address and asking
+# price typed in): the factors about the listing itself can't be judged, so each
+# says what to check on it rather than inventing what it shows.
+UNSEEN_FACTORS = ("time_on_market", "reduction_history", "photography", "description", "floor_plan",
+                  "positioning", "agent_marketing", "condition_readiness")
+LISTING_NOT_READ = (
+    "Only the address and asking price were typed in: nobody has seen this listing's photos, text, floor plan, "
+    "dates or price history. Don't describe, count or judge any of them, and don't say they are missing. Say "
+    "exactly what to check on the listing for this factor, what good looks like at this price, and what to change "
+    "if it falls short."
+)
+
+
 def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
     """What each factor is written from, and the verdicts the facts settle.
     `forced` verdicts are applied in code whatever the model says."""
@@ -342,6 +355,9 @@ def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
                                 "period_or_style": prop.get("period_or_style")})
     put("affordability", {**(a.get("affordability") or {}), "scenarios": scen})
     put("net_proceeds", a.get("net_proceeds") or {}, rf.CHECK_WITH_AGENT, forced=True)
+    if a.get("listing_seen") is False:
+        for key in UNSEEN_FACTORS:
+            put(key, {"listing_not_read": LISTING_NOT_READ}, rf.CHECK_WITH_AGENT, forced=True)
     return facts
 
 
@@ -487,6 +503,8 @@ async def write_free_report(
     """The free-preview report: all 20 factors with verdicts, from one AI call."""
     import asyncio
 
+    if snapshot.get("manual_details"):  # typed in: no date was seen, so no day line
+        reduced_days = advertised_days = None
     analysis = ra.analyse(snapshot, asking_price=asking_price, country=country, reduced_days=reduced_days,
                           advertised_days=advertised_days, sales=sales, photo_review=photo_review)
     facts = factor_facts(analysis, agent=agent)
@@ -649,6 +667,8 @@ async def write_paid_report(
 
     from app.services import agent_report
 
+    if snapshot.get("manual_details"):
+        reduced_days = advertised_days = None
     try:
         intel = await asyncio.wait_for(agent_report.build_intel(prospect), 45)
     except Exception:  # noqa: BLE001 -- the market search can fail; the factors still have the analysis
