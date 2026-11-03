@@ -28,6 +28,7 @@ from app.models.models import (
     StaleListingProspect,
     StaleProspectAbandonmentEmail,
     StaleProspectAbandonmentSms,
+    StaleProspectAddonOrder,
     StaleProspectPostPurchaseEmail,
 )
 from app.routers import stale_listings
@@ -49,6 +50,7 @@ TABLES = [
     StaleProspectPostPurchaseEmail,
     StaleListingMonitor,
     StaleListingMonitorEvent,
+    StaleProspectAddonOrder,  # the Follow Up list shows paid add-ons
 ]
 BASE = "/api/v1/stale-listings/prospects-console"
 
@@ -111,6 +113,32 @@ class ConsoleProspectDeleteTest(unittest.TestCase):
         self.assertEqual(by_code["A7Q2"]["agent_code"], "54321")
         self.assertIsNone(by_code["4821"]["agent_code"])
         self.assertEqual([item["property_code"] for item in self._follow_up("54321")], ["A7Q2"])
+
+    def test_paid_add_ons_show_on_the_follow_up_list(self) -> None:
+        async def order(status: str) -> None:
+            async with self.Session() as db:
+                db.add(StaleProspectAddonOrder(
+                    prospect_id=uuid.UUID(self.owner_id), status=status, amount=498.0, payment_method="card",
+                    items_json=json.dumps([{"key": "listing_rewrite", "name": "Listing Rewrite", "price": 199.0},
+                                           {"key": "relaunch_strategy", "name": "Relaunch Strategy", "price": 299.0}]),
+                    paid_at=datetime.now(timezone.utc) if status == "completed" else None,
+                ))
+                await db.commit()
+
+        asyncio.run(order("pending"))  # started a checkout, never paid: not an add-on purchase
+        body = self.client.get(f"{BASE}/abandoned").json()
+        self.assertEqual(body["addons_paid"], 0)
+        self.assertTrue(all(item["addon_orders"] == [] for item in body["items"]))
+
+        asyncio.run(order("completed"))
+        body = self.client.get(f"{BASE}/abandoned").json()
+        self.assertEqual(body["addons_paid"], 1)
+        owner = next(item for item in body["items"] if item["property_code"] == "4821")
+        self.assertEqual(len(owner["addon_orders"]), 1)
+        self.assertEqual(owner["addon_orders"][0]["items"], ["Listing Rewrite", "Relaunch Strategy"])
+        self.assertEqual(owner["addon_orders"][0]["amount"], 498.0)
+        only = self.client.get(f"{BASE}/abandoned", params={"addons_paid": "true"}).json()
+        self.assertEqual([item["property_code"] for item in only["items"]], ["4821"])
 
     def test_wrong_code_is_refused(self) -> None:
         self.assertEqual(self._delete(self.owner_id, "1111").status_code, 403)

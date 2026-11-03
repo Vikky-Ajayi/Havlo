@@ -955,6 +955,20 @@ class StaleProspectAbandonedItem(BaseModel):
     analyst_review_due_at: Optional[str] = None
     report_released_at: Optional[str] = None
     report_ready_emailed_at: Optional[str] = None
+    # Paid orders for the optional services after the report (Listing
+    # Rewrite, Relaunch Strategy): what, how much, when, and whether the team
+    # was emailed to do the work. Empty when they haven't bought one.
+    addon_orders: list["StaleProspectAddonOrderSummary"] = Field(default_factory=list)
+
+
+class StaleProspectAddonOrderSummary(BaseModel):
+    items: list[str] = Field(default_factory=list)
+    amount: float = 0
+    currency: str = "GBP"
+    payment_method: Optional[str] = None  # card | promo
+    reference: Optional[str] = None
+    paid_at: Optional[str] = None
+    team_emailed_at: Optional[str] = None
 
 
 class StaleProspectAbandonedResponse(BaseModel):
@@ -964,6 +978,8 @@ class StaleProspectAbandonedResponse(BaseModel):
     # Paid analyst-review reports still held for the analyst, under the
     # same search / funnel filters (for the "Awaiting analyst review" filter).
     awaiting_review: int = 0
+    # People who've paid for an add-on, under the same filters.
+    addons_paid: int = 0
 
 
 class StaleProspectReleaseReportResponse(BaseModel):

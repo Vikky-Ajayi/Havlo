@@ -248,6 +248,9 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   const [audienceFilter, setAudienceFilterRaw] = useState<'' | 'owner' | 'agent'>('');
   const [awaitingReviewOnly, setAwaitingReviewOnlyRaw] = useState(false);
   const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
+  // Only people who've paid for an optional service after their report.
+  const [addonsOnly, setAddonsOnlyRaw] = useState(false);
+  const [addonsPaidCount, setAddonsPaidCount] = useState(0);
   const [releasingId, setReleasingId] = useState<string | null>(null);
   const [abandonedPage, setAbandonedPage] = useState(0);
   const abandonedSearch = abandonedSearchRaw;
@@ -259,6 +262,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   const setSourceFilter = (v: FunnelSource) => { setSourceFilterRaw(v); setAbandonedPage(0); };
   const setAudienceFilter = (v: '' | 'owner' | 'agent') => { setAudienceFilterRaw(v); setAbandonedPage(0); };
   const setAwaitingReviewOnly = (v: boolean) => { setAwaitingReviewOnlyRaw(v); if (v) setStageFilterRaw(''); setAbandonedPage(0); };
+  const setAddonsOnly = (v: boolean) => { setAddonsOnlyRaw(v); setAbandonedPage(0); };
 
   const loadAbandoned = useCallback(async () => {
     setAbandonedLoading(true);
@@ -270,6 +274,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         source: sourceFilter || undefined,
         audience: audienceFilter || undefined,
         awaitingReview: awaitingReviewOnly,
+        addonsPaid: addonsOnly,
         q: abandonedSearch.trim() || undefined,
         country,
         limit: PAGE_SIZE,
@@ -279,12 +284,13 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
       setAbandonedTotal(res.total);
       setStageCounts(res.stage_counts || {});
       setAwaitingReviewCount(res.awaiting_review || 0);
+      setAddonsPaidCount(res.addons_paid || 0);
     } catch (e) {
       setAbandonedError(e instanceof Error ? e.message : 'Could not load follow-up list.');
     } finally {
       setAbandonedLoading(false);
     }
-  }, [includeUnsubscribed, stageFilter, sourceFilter, audienceFilter, awaitingReviewOnly, abandonedSearch, abandonedPage, country]);
+  }, [includeUnsubscribed, stageFilter, sourceFilter, audienceFilter, awaitingReviewOnly, addonsOnly, abandonedSearch, abandonedPage, country]);
 
   // "Release now" for an analyst-review report held for the analyst.
   const releaseReport = async (item: StaleProspectAbandonedItem) => {
@@ -1149,6 +1155,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               <div className="spc-stat"><b>{abandonedTotal}</b><span>{awaitingReviewOnly ? 'Awaiting analyst review' : STAGE_LABELS[stageFilter] || 'in the funnel'}</span></div>
               <div className="spc-stat"><b>{stageCounts.reached_checkout ?? 0}</b><span>Reached checkout, not paid</span></div>
               <div className="spc-stat"><b>{awaitingReviewCount}</b><span>Awaiting analyst review</span></div>
+              <div className="spc-stat"><b style={{ color: addonsPaidCount ? '#15803D' : undefined }}>{addonsPaidCount}</b><span>Paid for add-ons</span></div>
             </div>
             <div className="spc-filters" style={{ flexWrap: 'wrap' }}>
               <input className="spc-input" placeholder="Search address, property or agency code, contact name or email, Rightmove link..." value={abandonedSearch} onChange={e => setAbandonedSearch(e.target.value)} />
@@ -1182,6 +1189,18 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                   }}
                 >
                   Awaiting analyst review · {awaitingReviewCount}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddonsOnly(!addonsOnly)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    border: addonsOnly ? '1px solid #15803D' : '1px solid #E5E7EB',
+                    background: addonsOnly ? '#15803D' : '#fff',
+                    color: addonsOnly ? '#fff' : '#15803D',
+                  }}
+                >
+                  Add-ons paid · {addonsPaidCount}
                 </button>
               </div>
               <select className="spc-select" value={sourceFilter} onChange={e => setSourceFilter(e.target.value as FunnelSource)} aria-label="Funnel">
@@ -1256,6 +1275,13 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                           <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, ...STAGE_COLORS[item.status] }}>
                             {STAGE_LABELS[item.status]}
                           </span>
+                          {(item.addon_orders || []).length > 0 && (
+                            <div style={{ marginTop: 6 }}>
+                              <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#15803D', color: '#fff' }}>
+                                Add-on paid
+                              </span>
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.code_looked_up_at)}</td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(item.contact_details_submitted_at)}</td>
@@ -1268,6 +1294,19 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           <div>{item.payment_status}{item.unlocked_at ? ` · ${fmtDate(item.unlocked_at)}` : ''}</div>
+                          {(item.addon_orders || []).map((order, i) => (
+                            <div key={order.reference || i} style={{ marginTop: 6, padding: '6px 8px', borderRadius: 8, background: '#F0FDF4', border: '1px solid #BBF7D0', whiteSpace: 'normal', minWidth: 190 }}>
+                              <div style={{ color: '#15803D', fontWeight: 700, fontSize: 12 }}>
+                                Add-on paid: {order.items.join(' + ') || 'optional service'}
+                              </div>
+                              <div style={{ color: '#555', fontSize: 12 }}>
+                                {money(order.amount)}{order.payment_method === 'promo' ? ' (promo code)' : ''}{order.paid_at ? ` · ${fmtDateTime(order.paid_at)}` : ''}
+                              </div>
+                              <div style={{ color: order.team_emailed_at ? '#555' : '#92400E', fontSize: 12 }}>
+                                {order.team_emailed_at ? `Team emailed ${fmtDateTime(order.team_emailed_at)}` : 'Team email not sent yet'}
+                              </div>
+                            </div>
+                          ))}
                           {item.analyst_review_due_at && !item.report_released_at && (
                             <div style={{ marginTop: 4 }}>
                               <div style={{ color: '#A409D2', fontWeight: 700, fontSize: 12 }}>In analyst review · due {fmtDateTime(item.analyst_review_due_at)}</div>

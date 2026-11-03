@@ -144,6 +144,19 @@ export interface StaleProspectAbandonedItem {
   analyst_review_due_at?: string | null;
   report_released_at?: string | null;
   report_ready_emailed_at?: string | null;
+  /** Paid orders for the optional services after the report (Listing Rewrite, Relaunch Strategy). */
+  addon_orders?: StaleProspectAddonOrderSummary[];
+}
+
+export interface StaleProspectAddonOrderSummary {
+  items: string[];
+  amount: number;
+  currency?: string;
+  payment_method?: string | null; // card | promo
+  reference?: string | null;
+  paid_at?: string | null;
+  /** When the team was emailed to do the work; empty if that email hasn't gone. */
+  team_emailed_at?: string | null;
 }
 
 export interface ModelComparisonModels {
@@ -251,6 +264,8 @@ export interface StaleProspectAbandonedResponse {
   stage_counts?: Record<string, number>;
   /** Paid analyst-review reports still with the analyst, under the same filters. */
   awaiting_review?: number;
+  /** People who've paid for an add-on, under the same filters. */
+  addons_paid?: number;
 }
 
 /** Build a WebSocket URL for a messaging endpoint (handles http→ws / https→wss). */
@@ -1336,9 +1351,10 @@ export const api = {
   staleProspectsConsoleListAbandoned: (params: {
     includeUnsubscribed?: boolean;
     stage?: string;
-    source?: 'letter' | 'meta' | 'google' | 'review' | 'sell';
+    source?: 'letter' | 'meta' | 'google' | 'review' | 'sell' | 'rm';
     audience?: 'owner' | 'agent';
     awaitingReview?: boolean;
+    addonsPaid?: boolean;
     q?: string;
     country?: 'UK' | 'US';
     limit?: number;
@@ -1350,6 +1366,7 @@ export const api = {
     if (params.source) queryParams.source = params.source;
     if (params.audience) queryParams.audience = params.audience;
     if (params.awaitingReview) queryParams.awaiting_review = 'true';
+    if (params.addonsPaid) queryParams.addons_paid = 'true';
     if (params.country) queryParams.country = params.country;
     if (params.q) queryParams.q = params.q;
     if (params.limit !== undefined) queryParams.limit = String(params.limit);

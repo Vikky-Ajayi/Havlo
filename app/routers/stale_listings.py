@@ -1804,6 +1804,45 @@ def _awaiting_review_filter():
     )
 
 
+def _addons_paid_filter():
+    """Bought at least one optional service (Listing Rewrite, Relaunch
+    Strategy) after their report: a paid add-on order."""
+    from app.models.models import StaleProspectAddonOrder
+
+    return StaleListingProspect.id.in_(
+        select(StaleProspectAddonOrder.prospect_id).where(StaleProspectAddonOrder.status == "completed")
+    )
+
+
+async def _paid_addon_orders(db: AsyncSession, prospect_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[dict[str, Any]]]:
+    """The paid add-on orders of the prospects on a console page, oldest first."""
+    from app.models.models import StaleProspectAddonOrder
+
+    if not prospect_ids:
+        return {}
+    rows = (await db.execute(
+        select(StaleProspectAddonOrder)
+        .where(StaleProspectAddonOrder.prospect_id.in_(prospect_ids), StaleProspectAddonOrder.status == "completed")
+        .order_by(StaleProspectAddonOrder.paid_at.asc().nulls_last(), StaleProspectAddonOrder.created_at.asc())
+    )).scalars().all()
+    out: dict[uuid.UUID, list[dict[str, Any]]] = {}
+    for order in rows:
+        try:
+            items = json.loads(order.items_json or "[]")
+        except ValueError:
+            items = []
+        out.setdefault(order.prospect_id, []).append({
+            "items": [str(i.get("name") or i.get("key")) for i in items if isinstance(i, dict) and (i.get("name") or i.get("key"))],
+            "amount": order.amount,
+            "currency": order.currency,
+            "payment_method": order.payment_method,
+            "reference": order.reference,
+            "paid_at": _iso(order.paid_at or order.created_at),
+            "team_emailed_at": _iso(order.team_emailed_at),
+        })
+    return out
+
+
 def _iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
@@ -2027,6 +2066,9 @@ async def list_abandoned_prospects(
     awaiting_review: bool = Query(
         default=False, description="Only paid analyst-review reports still held for the analyst."
     ),
+    addons_paid: bool = Query(
+        default=False, description="Only people who've paid for an optional service (Listing Rewrite, Relaunch Strategy)."
+    ),
     q: str | None = Query(default=None, description="Search property address, property code, contact name, or contact email"),
     country: str = Query(default="UK", pattern="^(UK|US)$"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -2076,11 +2118,17 @@ async def list_abandoned_prospects(
         select(func.count()).select_from(StaleListingProspect).where(*filters, _awaiting_review_filter())
     )
     awaiting_count = int(awaiting_result.scalar() or 0)
+    addons_result = await db.execute(
+        select(func.count()).select_from(StaleListingProspect).where(*filters, _addons_paid_filter())
+    )
+    addons_count = int(addons_result.scalar() or 0)
 
     if stage:
         filters.append(_FUNNEL_STATUS_FILTERS[stage]())
     if awaiting_review:
         filters.append(_awaiting_review_filter())
+    if addons_paid:
+        filters.append(_addons_paid_filter())
     count_result = await db.execute(
         select(func.count()).select_from(StaleListingProspect).where(*filters)
     )
@@ -2127,6 +2175,7 @@ async def list_abandoned_prospects(
             select(StaleAgentAccount.id, StaleAgentAccount.agent_code).where(StaleAgentAccount.id.in_(account_ids))
         )
         agent_codes = {account_id: code for account_id, code in code_rows.all()}
+    addon_orders = await _paid_addon_orders(db, [p.id for p, _, _ in rows])
     items = [
         StaleProspectAbandonedItem(
             prospect_id=str(p.id),
@@ -2160,11 +2209,12 @@ async def list_abandoned_prospects(
             analyst_review_due_at=_iso(p.analyst_review_due_at),
             report_released_at=_iso(p.report_released_at),
             report_ready_emailed_at=_iso(p.report_ready_emailed_at),
+            addon_orders=addon_orders.get(p.id, []),
         )
         for p, emails_sent, sms_sent in rows
     ]
     return StaleProspectAbandonedResponse(
-        items=items, total=total, stage_counts=stage_counts, awaiting_review=awaiting_count
+        items=items, total=total, stage_counts=stage_counts, awaiting_review=awaiting_count, addons_paid=addons_count,
     )
 
 
