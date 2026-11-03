@@ -1,6 +1,7 @@
-// Google Tag Manager events for the seller page (/sell), whose container
-// (GTM-537H8B3L) index.html loads on that page only. Each event goes on the
-// dataLayer once per browser session and key, so reloads don't repeat it.
+// Google Tag Manager events for the seller page (/sell) and the Rightmove
+// pages (/rm/seller, /rm/agent), whose containers index.html loads on those
+// pages only. Each event goes on the dataLayer once per browser session and
+// key, so reloads don't repeat it.
 
 declare global {
   interface Window {
@@ -9,6 +10,8 @@ declare global {
 }
 
 export const SELL_GTM_ID = 'GTM-537H8B3L';
+export const RM_SELLER_GTM_ID = 'GTM-KDC3P22M';
+export const RM_AGENT_GTM_ID = 'GTM-MF4FWMML';
 export const BUY_ABROAD_LISTINGS_GTM_ID = 'GTM-WS22MXCM';
 
 /** Loads a Tag Manager container once. index.html already loads a page's

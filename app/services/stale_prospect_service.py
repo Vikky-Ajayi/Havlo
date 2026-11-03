@@ -1308,9 +1308,13 @@ async def rebuild_v2_report(prospect: StaleListingProspect) -> dict[str, Any]:
     Mutates the prospect; the caller commits."""
     from app.services import report_writer
 
+    from app.services import report_owner_figures
+
     snapshot = _safe_json(prospect.listing_snapshot_json)
     agent = (getattr(prospect, "audience", None) == "agent")
     sales = cached_sold_comparables(prospect) if getattr(prospect, "sold_comparables_at", None) else None
+    # Factors the customer has rewritten from their agent's figures stay.
+    before = _safe_json(prospect.report_json)
     free = await generate_v2_report(
         prospect.property_address, prospect.rightmove_url, snapshot,
         asking_price=prospect.asking_price, listing_duration_days=prospect.listing_duration_days,
@@ -1318,7 +1322,9 @@ async def rebuild_v2_report(prospect: StaleListingProspect) -> dict[str, Any]:
     prospect.report_json = json.dumps(free, ensure_ascii=False)
     prospect.preview_json = json.dumps(report_writer.v2_preview(free), ensure_ascii=False)
     if prospect.payment_status == "completed":
-        return await ensure_expanded_v2_report(prospect, free)
+        paid = report_owner_figures.carry_over(before, await ensure_expanded_v2_report(prospect, free))
+        prospect.report_json = json.dumps(paid, ensure_ascii=False)
+        return paid
     return free
 
 

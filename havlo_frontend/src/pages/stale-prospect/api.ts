@@ -336,7 +336,36 @@ export async function downloadAgentReportPdf(access: { token?: string; code?: st
   if (access.token) query.set('token', access.token);
   else if (access.code) query.set('code', access.code);
   query.set('fee', String(fee));
-  const response = await fetch(`${API_BASE}/stale-listings/prospects/agent-report.pdf?${query.toString()}`);
+  await downloadPdf(`${API_BASE}/stale-listings/prospects/agent-report.pdf?${query.toString()}`, 'Havlo-agent-report.pdf');
+}
+
+/** The paid report as a PDF generated on the server (laid out for A4), not a
+ * print of the page. */
+export async function downloadReportPdf(access: { token?: string; code?: string }): Promise<void> {
+  const query = new URLSearchParams();
+  if (access.token) query.set('token', access.token);
+  else if (access.code) query.set('code', access.code);
+  await downloadPdf(`${API_BASE}/stale-listings/prospects/report.pdf?${query.toString()}`, 'Havlo-property-assessment.pdf');
+}
+
+/** The agent's figures for Listing Engagement or Viewing-to-Offer: that
+ * section is rewritten from them and the updated report comes back. */
+export async function addReportFigures(payload: {
+  token?: string;
+  property_code?: string;
+  factor: 'engagement' | 'viewing_conversion';
+  figures: Record<string, number | string>;
+}): Promise<ProspectReport> {
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/report/figures`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonOrThrow(response);
+}
+
+async function downloadPdf(url: string, fallbackName: string): Promise<void> {
+  const response = await fetch(url);
   if (!response.ok) {
     let detail = '';
     try {
@@ -347,15 +376,15 @@ export async function downloadAgentReportPdf(access: { token?: string; code?: st
     throw new Error(typeof detail === 'string' && detail ? detail : 'We could not create the PDF just now. Please try again.');
   }
   const blob = await response.blob();
-  const name = /filename="?([^";]+)"?/.exec(response.headers.get('content-disposition') || '')?.[1] || 'Havlo-agent-report.pdf';
-  const url = URL.createObjectURL(blob);
+  const name = /filename="?([^";]+)"?/.exec(response.headers.get('content-disposition') || '')?.[1] || fallbackName;
+  const href = URL.createObjectURL(blob);
   const link = document.createElement('a');
-  link.href = url;
+  link.href = href;
   link.download = name;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  window.setTimeout(() => URL.revokeObjectURL(href), 60000);
 }
 
 export async function getAgentIntel(access: { token?: string; code?: string }): Promise<AgentIntelResponse> {

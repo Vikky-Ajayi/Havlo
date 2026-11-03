@@ -82,7 +82,7 @@ def channel_of(lead_source: str | None) -> str:
 
 
 CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review", "sell": "Seller page",
-                  "rm": "RM page"}
+                  "rm": "Rightmove page"}
 
 
 LEAD_SELLER = seller_source("meta")

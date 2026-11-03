@@ -151,9 +151,14 @@ export interface ReportFactor {
   action?: string;
   severity?: number;
   _photo_verified?: boolean;
+  // Set once the customer has added their agent's figures and the factor was
+  // rewritten from them (FactorFigures.tsx).
+  owner_figures?: { updated_at?: string };
 }
 
 export interface FullReportData {
+  // The figures already given, per factor, to pre-fill the forms.
+  _owner_figures?: Record<string, { figures?: Record<string, number | string> }>;
   overall_score?: number;
   days_on_market?: number | null;
   scores?: {

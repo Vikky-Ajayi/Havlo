@@ -54,6 +54,7 @@ from app.schemas.schemas import (
     MonitorTokenRequest,
     ProspectMonitorLinkRequest,
     ProspectNextStepsCheckoutRequest,
+    ProspectReportFiguresRequest,
     AgentOpenPropertyResponse,
     AgentPortfolioProperty,
     AgentPortfolioResponse,
@@ -100,7 +101,7 @@ from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services import agent_campaign, agent_report, agent_report_pdf, listing_monitor, land_registry
-from app.services import ads_funnel, ads_nurture, analyst_review
+from app.services import ads_funnel, ads_nurture, analyst_review, report_owner_figures, report_v2_pdf
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -807,7 +808,7 @@ async def record_stale_prospect_checkout_visit(
 # listing and writing its report, or sending an email), so one connection
 # gets a handful an hour. Per worker, which is plenty for a real visitor.
 _ADS_LIMIT_WINDOW_SECONDS = 3600
-_ADS_LIMITS = {"start": 12, "reminder": 5}
+_ADS_LIMITS = {"start": 12, "reminder": 5, "figures": 12}
 _ads_attempts: dict[tuple[str, str], list[float]] = {}
 
 
@@ -1130,6 +1131,31 @@ async def get_stale_prospect_report(
         background_tasks.add_task(expand_report_in_background, str(prospect.id))
     elif cached_sold_comparables(prospect) is None:
         background_tasks.add_task(refresh_sold_comparables_in_background, str(prospect.id))
+    return StaleProspectReportResponse(**serialize_report(prospect))
+
+
+@public_router.post("/prospects/report/figures", response_model=StaleProspectReportResponse)
+async def add_report_figures(
+    payload: ProspectReportFiguresRequest, request: Request, db: AsyncSession = Depends(get_db),
+) -> StaleProspectReportResponse:
+    """The customer's agent figures for Listing Engagement or Viewing-to-Offer
+    Conversion: that factor is written again from them (one AI call and the
+    claim checks, 10-20 seconds) and the updated report comes back."""
+    _ads_rate_limit(request, "figures")
+    prospect = await _get_prospect_by_access(db, token=payload.token, property_code=payload.property_code)
+    if prospect.payment_status != "completed":
+        raise HTTPException(status_code=402, detail="This full report is locked until payment is complete.")
+    if analyst_review.report_on_hold(prospect):
+        raise HTTPException(status_code=423, detail="Your report is with your analyst and will be ready soon.")
+    if not is_report_expanded(prospect):
+        raise HTTPException(status_code=409, detail="Your full report is still being written. Please try again in a minute.")
+    try:
+        await report_owner_figures.apply_owner_figures(prospect, payload.factor, payload.figures)
+    except report_owner_figures.TooManyRuns as exc:
+        raise HTTPException(status_code=429, detail=str(exc)) from exc
+    except report_owner_figures.FiguresError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.commit()
     return StaleProspectReportResponse(**serialize_report(prospect))
 
 
@@ -3751,6 +3777,39 @@ async def download_agent_report_pdf(
         path,
         media_type="application/pdf",
         filename=f"Havlo-agent-report-{prospect.property_code}.pdf",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
+    )
+
+
+@public_router.get("/prospects/report.pdf")
+async def download_report_pdf(
+    token: str | None = Query(default=None, max_length=200),
+    code: str | None = Query(default=None, max_length=12),
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """The paid report as a generated A4 PDF (report_v2_pdf.py for the
+    20-factor report; the older report's own layout otherwise), rather than the
+    browser printing the page."""
+    prospect = await _get_prospect_by_access(db, token=token, property_code=code)
+    if prospect.payment_status != "completed":
+        raise HTTPException(status_code=402, detail="This full report is locked until payment is complete.")
+    if analyst_review.report_on_hold(prospect):
+        raise HTTPException(status_code=423, detail="Your report is with your analyst and will be ready soon.")
+    if not is_report_expanded(prospect):
+        raise HTTPException(status_code=409, detail="Your full report is still being written. Please try again in a minute.")
+    from app.services import report_writer
+
+    v2 = report_writer.report_is_v2(json.loads(current_report_json(prospect) or "{}"))
+    build = report_v2_pdf.generate_v2_report_pdf if v2 else generate_full_report_pdf
+    try:
+        path = await asyncio.wait_for(asyncio.to_thread(build, prospect), timeout=60.0)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Report PDF generation failed for %s: %s", prospect.id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Could not create the PDF just now. Please try again.") from exc
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=f"Havlo-property-assessment-{prospect.property_code}.pdf",
         headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
     )
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { downloadAgentReportPdf, getAgentIntel } from './api';
+import { FactorFigures } from './FactorFigures';
 import {
   ExpandableText,
   RecommendationContent,
@@ -29,7 +30,12 @@ const AGR_VERDICT: Record<string, { label: string; className: string }> = {
   check_with_agent: { label: 'Check with the agent', className: 'slw-tag-check' },
 };
 
-const AgentFactorGrid = ({ factors }: { factors: ReportFactor[] }) => {
+const AgentFactorGrid = ({ factors, report, access, onReportChange }: {
+  factors: ReportFactor[];
+  report: ProspectReport;
+  access: Access;
+  onReportChange: (report: ProspectReport) => void;
+}) => {
   // The cards run 1 to 20; problems stand out by their tag and border.
   const ordered = [...factors].sort((a, b) => (a.num ?? 0) - (b.num ?? 0));
   return (
@@ -49,6 +55,7 @@ const AgentFactorGrid = ({ factors }: { factors: ReportFactor[] }) => {
               {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={900} /></div> : null}
               {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={900} /></div> : null}
               {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={900} /></div> : null}
+              <FactorFigures factor={f} report={report} access={access} agent onUpdated={onReportChange} />
             </div>
           </div>
         );
@@ -355,11 +362,13 @@ const DownloadIcon = () => (
 export const AgentFullReport = ({
   access,
   report,
+  onReportChange,
   onOpenRecommendation,
   onOpenDashboard,
 }: {
   access: Access;
   report: ProspectReport;
+  onReportChange: (report: ProspectReport) => void;
   onOpenRecommendation: () => void;
   onOpenDashboard: () => void;
 }) => {
@@ -674,7 +683,7 @@ export const AgentFullReport = ({
         v2Factors.length > 0 && (
           <section className="agr-section">
             <SectionHead kicker="Havlo's assessment" title={`All ${v2Factors.length} factors`} />
-            <AgentFactorGrid factors={v2Factors} />
+            <AgentFactorGrid factors={v2Factors} report={report} access={access} onReportChange={onReportChange} />
           </section>
         )
       ) : (

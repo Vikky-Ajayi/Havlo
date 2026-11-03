@@ -69,18 +69,21 @@ function parseReport(data: Record<string, unknown>): ReportEdit {
   };
 }
 
-// Leads from the ads, analyst-review and seller (/sell) landing pages, by
-// lead_source ('meta_seller', 'google_agent', 'review_seller', 'sell_seller', ...).
+// Leads from the ads, analyst-review, seller (/sell) and Rightmove (/rm)
+// landing pages, by lead_source ('meta_seller', 'google_agent', 'review_seller',
+// 'sell_seller', 'rm_seller', ...).
 function adLeadLabel(leadSource: string) {
   const who = leadSource.endsWith('_seller') ? 'vendor' : 'agent';
   if (leadSource.startsWith('review_')) return `Analyst review ${who}`;
   if (leadSource.startsWith('sell_')) return `Seller page ${who}`;
+  if (leadSource.startsWith('rm_')) return `Rightmove page ${who}`;
   return `${leadSource.startsWith('google_') ? 'Google' : 'Meta'} ads ${who}`;
 }
 const adLeadColor = (leadSource: string) =>
   leadSource.startsWith('review_') ? '#A409D2'
     : leadSource.startsWith('google_') ? '#34A853'
     : leadSource.startsWith('sell_') ? '#E8710A'
+    : leadSource.startsWith('rm_') ? '#00897B'
     : '#1877F2';
 
 function emptyManualForm() {
@@ -107,7 +110,7 @@ type FunnelSource = '' | 'letter' | 'meta' | 'google' | 'review' | 'sell' | 'rm'
 // Which funnel a Follow Up row came through (the backend's `source` filter).
 const SOURCE_LABELS: Record<string, string> = {
   '': 'All funnels', letter: 'Letters (/check)', meta: 'Meta ads (/assess)', google: 'Google ads (/g)',
-  review: 'Analyst review (/review)', sell: 'Seller page (/sell)', rm: 'RM pages (/rm)',
+  review: 'Analyst review (/review)', sell: 'Seller page (/sell)', rm: 'Rightmove pages (/rm)',
 };
 const fmtDateTime = (v?: string | null) =>
   v ? new Date(v).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';

@@ -495,12 +495,17 @@ def generate_agent_report_pdf(prospect: Any, intel: dict[str, Any] | None = None
             story.append(Spacer(1, 4))
 
     # ── Havlo's assessment ───────────────────────────────────────────────
-    if report.get("executive_summary") or report.get("scores"):
+    from app.services import report_v2_pdf, report_writer
+
+    v2 = report_writer.report_is_v2(report)
+    factors = [f for f in report.get("factors") or [] if isinstance(f, dict) and f.get("name")] if v2 else []
+    if report.get("executive_summary") or report.get("scores") or factors:
         _section(story, st, "Havlo's assessment of the listing", "Saleability", space=200)
         if report.get("executive_summary"):
             story += sps._report_multi_para(report["executive_summary"], st["body"])
             story.append(Spacer(1, 8))
-        scores = report.get("scores") or {}
+        # The 20-factor report's bars come from its verdicts, as on the page.
+        scores = report.get("scores") or report_v2_pdf.scores_from_factors(factors)
         labels = {"pricing": "Pricing", "listing_presentation": "Listing presentation", "market_positioning": "Market positioning",
                   "competition": "Competition", "buyer_appeal": "Buyer appeal"}
         bars = []
@@ -511,7 +516,7 @@ def generate_agent_report_pdf(prospect: Any, intel: dict[str, Any] | None = None
                 bars += [sps._ReportScoreBar(label, round(scores[key]), w=bars_w), Spacer(1, 6)]
         if bars and has_gauge:
             gauge = [sps._ReportScoreGauge(report["overall_score"], w=110, radius=42), Spacer(1, 4),
-                     Paragraph(f'<font size="17"><b>{_esc(report.get("overall_score", "—"))}</b></font>/100', st["score_num"]),
+                     Paragraph(f'<b>{_esc(report.get("overall_score", "—"))}</b><font size="12">/100</font>', st["score_num"]),
                      Paragraph("SALEABILITY SCORE", st["score_lbl"])]
             row = Table([[gauge, bars]], colWidths=[40 * mm, W - 24 - 40 * mm])
             row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
@@ -531,6 +536,10 @@ def generate_agent_report_pdf(prospect: Any, intel: dict[str, Any] | None = None
                     flow.append(Paragraph(_esc(f["description"]), st["body_left"]))
                 story.append(KeepTogether(_card(flow, W, pad=10)))
                 story.append(Spacer(1, 6))
+
+    if factors:
+        _section(story, st, f"All {len(factors)} factors", "Havlo's assessment, factor by factor", space=170)
+        report_v2_pdf.factor_cards(story, report_v2_pdf._styles(), factors, agent=True)
 
     # ── Branch ───────────────────────────────────────────────────────────
     branch = intel.get("branch") or {}

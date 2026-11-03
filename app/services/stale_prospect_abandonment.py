@@ -37,12 +37,16 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectAbandonmentEmail, StaleProspectAbandonmentSms
-from app.services import analyst_review, email_service, twilio_service
+from app.services import ads_funnel, analyst_review, email_service, twilio_service
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_service import unsubscribe_token
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# The homeowners ads_nurture.py emails instead (every ads channel's sellers but
+# the analyst review's), so nobody gets both flows.
+_ADS_NURTURED_SELLERS = tuple(s for s in ads_funnel.SELLER_SOURCES if s != "review_seller")
 
 # (stage, delay-since-contact_details_submitted_at). Stage numbers are
 # stored in StaleProspectAbandonmentEmail.stage and must never be reused
@@ -99,12 +103,12 @@ async def run_abandonment_email_cycle() -> dict:
                 StaleListingProspect.contact_email.is_not(None),
                 # Left "send me occasional tips" unticked (the analyst-review funnel).
                 StaleListingProspect.marketing_opt_in.is_not(False),
-                # Meta and Google ads and /sell homeowners get their own flow
-                # (app/services/ads_nurture.py); the analyst-review funnel's
-                # homeowners (review_seller) get this one.
+                # Homeowners from the ads, /sell and Rightmove (/rm) pages get
+                # their own flow (app/services/ads_nurture.py); the
+                # analyst-review funnel's homeowners (review_seller) get this one.
                 or_(
                     StaleListingProspect.lead_source.is_(None),
-                    StaleListingProspect.lead_source.notin_(("meta_seller", "google_seller", "sell_seller")),
+                    StaleListingProspect.lead_source.notin_(_ADS_NURTURED_SELLERS),
                 ),
             )
             .order_by(StaleListingProspect.contact_details_submitted_at.asc())

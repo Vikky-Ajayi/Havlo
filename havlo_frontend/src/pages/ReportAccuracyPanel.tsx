@@ -113,7 +113,7 @@ const RULES: Record<string, string> = {
 };
 
 const FUNNELS: Record<string, string> = {
-  letter: 'Letters', meta: 'Meta ads', google: 'Google ads', review: 'Analyst review', sell: 'Seller page', rm: 'RM pages',
+  letter: 'Letters', meta: 'Meta ads', google: 'Google ads', review: 'Analyst review', sell: 'Seller page', rm: 'Rightmove pages',
 };
 
 const rate = (g: ReportAccuracyGroup) => (g.previews ? `${Math.round((g.paid / g.previews) * 1000) / 10}%` : '—');

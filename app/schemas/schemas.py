@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, EmailStr, Field, StringConstraints, field_validator
 
@@ -719,6 +719,17 @@ class ProspectNextStepsCheckoutRequest(BaseModel):
     property_code: Optional[str] = Field(None, min_length=4, max_length=12)
     items: list[str] = Field(..., min_length=1, max_length=10)
     redirect_url: Optional[str] = Field(None, max_length=2000)
+
+
+class ProspectReportFiguresRequest(BaseModel):
+    """The figures only the agent can see (views, enquiries, viewings,
+    offers, feedback), typed into the report's Listing Engagement or
+    Viewing-to-Offer card: that factor is rewritten from them
+    (report_owner_figures.py)."""
+    token: Optional[str] = Field(None, max_length=200)
+    property_code: Optional[str] = Field(None, min_length=4, max_length=12)
+    factor: Literal["engagement", "viewing_conversion"]
+    figures: dict[str, Union[int, float, str, None]] = Field(default_factory=dict, max_length=10)
 
 
 class AgentOpenPropertyRequest(BaseModel):

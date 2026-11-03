@@ -45,6 +45,22 @@
         // dataLayer above; a second one would count the page view twice.
       }
     </script>
+    <!-- Google Tag Manager for the Rightmove pages: GTM-KDC3P22M on
+         /rm/seller, GTM-MF4FWMML on /rm/agent (/rm/complete loads the right
+         one from the page once it knows which; src/lib/gtm.ts). No Meta
+         Pixel on any /rm/ page, as on /sell. -->
+    <script>
+      window.havloRmPage = /^\/rm\//.test(location.pathname);
+      (function(){
+        var id = /^\/rm\/seller\/?$/.test(location.pathname) ? 'GTM-KDC3P22M'
+          : /^\/rm\/agent\/?$/.test(location.pathname) ? 'GTM-MF4FWMML' : null;
+        if (!id) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
+        document.head.appendChild(s);
+      })();
+    </script>
     <!-- Google Tag Manager for the Buy Abroad listings page
          (/buyabroad/listings) only: GTM-WS22MXCM. The page also loads it
          itself when reached from elsewhere on the site (src/lib/gtm.ts). -->
@@ -58,9 +74,9 @@
         })();
       }
     </script>
-    <!-- Meta Pixel Code (every page but /sell) -->
+    <!-- Meta Pixel Code (every page but /sell and /rm/...) -->
     <script>
-      if (!window.havloSellPage)
+      if (!window.havloSellPage && !window.havloRmPage)
       !function(f,b,e,v,n,t,s)
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};

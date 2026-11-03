@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
-import { pushGtmEventOnce } from '../../lib/gtm';
+import { pushGtmEventOnce, RM_AGENT_GTM_ID, RM_SELLER_GTM_ID, loadGtmContainer } from '../../lib/gtm';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
 import {
@@ -17,9 +17,11 @@ import {
   splitIntoThree,
 } from './reportParts';
 import { readAgencyToken } from './agentSession';
+import { FactorFigures } from './FactorFigures';
 import {
   createProspectCheckout,
   downloadAgentReportPdf,
+  downloadReportPdf,
   getAgencyPortfolioToken,
   getProspectComparables,
   getProspectDashboardLink,
@@ -991,12 +993,14 @@ const SuccessStep = ({
   onDownloadPdf,
   onOpenDashboard,
   error,
+  pdfBusy = false,
 }: {
   prospect: ProspectPreview;
   onViewReport: () => void;
   onDownloadPdf: () => void;
   onOpenDashboard: () => void;
   error?: string;
+  pdfBusy?: boolean;
 }) => (
   <section className="slw-success">
     <svg className="slw-success-check" width="80" height="80" viewBox="0 0 80 80" fill="none">
@@ -1028,7 +1032,9 @@ const SuccessStep = ({
           : 'Your report’s actions as a 30-day to-do list. We check your listing every day and the homes around it every week, and tick things off as you change them.'}
       </p>
     )}
-    <button type="button" className="slw-btn-outline" onClick={onDownloadPdf}>Download PDF Report</button>
+    <button type="button" className="slw-btn-outline" onClick={onDownloadPdf} disabled={pdfBusy}>
+      {pdfBusy ? 'Preparing your PDF…' : 'Download PDF Report'}
+    </button>
     {error && <p className="slw-error">{error}</p>}
   </section>
 );
@@ -1126,14 +1132,20 @@ const PriceComparison = ({
 
 const FullReportStep = ({
   report,
+  access,
+  onReportChange,
   onOpenRecommendation,
   onDownloadPdf,
   onOpenDashboard,
+  pdfState = { busy: false, error: '' },
 }: {
   report: ProspectReport;
+  access: { token?: string; code?: string };
+  onReportChange: (report: ProspectReport) => void;
   onOpenRecommendation: () => void;
   onDownloadPdf: () => void;
   onOpenDashboard: () => void;
+  pdfState?: { busy: boolean; error: string };
 }) => {
   const data: FullReportData = report.report_data || {};
   const snapshot = report.listing_snapshot || {};
@@ -1203,7 +1215,9 @@ const FullReportStep = ({
     const topActions = (data.top_actions || []).filter((t) => t && t.title);
     const problemFactors = bySeverity.filter((f) => f.verdict === 'problem');
     const box1 = topActions.length ? topActions.map((t) => t.title) : problemFactors.slice(0, 3).map((f) => PLAN_TASK[f.key || ''] || f.name || '');
-    const box2 = ['Get your listing figures from your agent', 'Get written feedback after every viewing',
+    // Once the agent's figures are in (FactorFigures), getting them isn't a task.
+    const haveFigures = factors.some((f) => f.key === 'engagement' && f.owner_figures);
+    const box2 = [...(haveFigures ? [] : ['Get your listing figures from your agent']), 'Get written feedback after every viewing',
       // The three most serious problems are what the top actions (box 1) cover.
       ...problemFactors.slice(3).map((f) => PLAN_TASK[f.key || ''] || f.name || '')]
       .filter((t, i, all) => t && all.indexOf(t) === i && !box1.includes(t)).slice(0, 5);
@@ -1217,9 +1231,12 @@ const FullReportStep = ({
           <h1>Full Property Assessment</h1>
           <div className="slw-report-head-actions">
             <button type="button" className="slw-btn-black slw-pdf-btn" onClick={onOpenDashboard}>30-Day Dashboard</button>
-            <button type="button" className="slw-btn-outline slw-pdf-btn" onClick={onDownloadPdf}>Download PDF Report</button>
+            <button type="button" className="slw-btn-outline slw-pdf-btn" onClick={onDownloadPdf} disabled={pdfState.busy}>
+              {pdfState.busy ? 'Preparing PDF…' : 'Download PDF Report'}
+            </button>
           </div>
         </div>
+        {pdfState.error && <p className="slw-error slw-pdf-error">{pdfState.error}</p>}
 
         <div className="slw-report-summary-row">
           <div className="slw-report-property-card" ref={propertyCardRef}>
@@ -1326,6 +1343,7 @@ const FullReportStep = ({
                   {f.found ? <div><span className="slw-factor-label">What we found</span><ExpandableText text={f.found} maxChars={900} /></div> : null}
                   {f.why ? <div><span className="slw-factor-label">Why it matters</span><ExpandableText text={f.why} maxChars={900} /></div> : null}
                   {f.action ? <div className="slw-factor-action"><span className="slw-factor-label">What to do</span><ExpandableText text={f.action} maxChars={900} /></div> : null}
+                  <FactorFigures factor={f} report={report} access={access} onUpdated={onReportChange} />
                 </div>
               </div>
             );
@@ -1349,6 +1367,10 @@ const FullReportStep = ({
           <div className="slw-print-nextsteps-item">
             <b>30-Day Monitoring &mdash; Included</b>
             <p>Your dashboard tracks your listing, the changes you make and the homes around you for 30 days &mdash; free with every report.</p>
+          </div>
+          <div className="slw-print-nextsteps-item slw-print-share">
+            <b>Sharing this report with your agent</b>
+            <p>You&rsquo;re welcome to share this report with your estate agent, in full or in part, so they can put its recommendations into practice. Forward this PDF or send them the link to your online report, and go through the actions together at your next review.</p>
           </div>
         </div>
 
@@ -1627,21 +1649,22 @@ function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience)
   }
 }
 
-// The seller page (/sell) reports to its Google Tag Manager container
-// instead of Meta: "generate_lead" when a property is found, "purchase" when
-// "Your full assessment is ready" shows after a card payment (?paid=card,
-// never a promo-code unlock). Each once per property.
-function pushSellLeadEvent(data: ProspectPreview) {
-  pushGtmEventOnce(`sell_lead_${data.property_code}`, 'generate_lead', {
+// The seller page (/sell) and the Rightmove pages (/rm/...) report to their
+// own Google Tag Manager containers instead of Meta: "generate_lead" when a
+// property is found, "purchase" when "Your full assessment is ready" shows
+// after a card payment (?paid=card, never a promo-code unlock). Each once per
+// property. `page` keeps the two funnels' once-keys apart.
+function pushTagManagerLeadEvent(data: ProspectPreview, page: string) {
+  pushGtmEventOnce(`${page}_lead_${data.property_code}`, 'generate_lead', {
     value: prospectPrice(data),
     currency: 'GBP',
     property_code: data.property_code,
   });
 }
 
-function pushSellPurchaseEvent(data: ProspectPreview) {
+function pushTagManagerPurchaseEvent(data: ProspectPreview, page: string) {
   const value = prospectPrice(data);
-  pushGtmEventOnce(`sell_purchase_${data.property_code}`, 'purchase', {
+  pushGtmEventOnce(`${page}_purchase_${data.property_code}`, 'purchase', {
     ecommerce: {
       transaction_id: `sl_prospect_purchase_${data.property_code}`,
       value,
@@ -1695,7 +1718,7 @@ export const StaleProspectWizard = ({
   const [bootLoading, setBootLoading] = useState(true);
   const [bankDetails, setBankDetails] = useState<{ reference: string; accountName: string; accountNumber: string; bankName: string } | null>(null);
   const [showRecommendation, setShowRecommendation] = useState(false);
-  const [pendingPrint, setPendingPrint] = useState(false);
+  const [pdfState, setPdfState] = useState<{ busy: boolean; error: string }>({ busy: false, error: '' });
   const [pollHandle, setPollHandle] = useState<number | null>(null);
   const [prefill, setPrefill] = useState<{ first_name?: string; email?: string }>({});
   const [welcomeName, setWelcomeName] = useState('');
@@ -1704,21 +1727,31 @@ export const StaleProspectWizard = ({
   // The analyst-review funnel starts owners and agents on its Initial scan.
   const [showDetailsForm, setShowDetailsForm] = useState(review ? false : ads !== 'owner');
   const leadPixelName = ads
-    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : channel === 'rm' ? 'RM Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
+    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : channel === 'rm' ? 'Rightmove Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
   // No Meta Pixel 'Lead' event on the Meta ads pages (/assess/...): the ads
   // agency sets up those events itself. The base pixel (PageView, in
   // index.html) still loads there as on every page. Nor on the seller page
   // (/sell), which has no Meta Pixel at all: it tells Tag Manager instead.
   const sellPage = !!ads && channel === 'sell';
-  // The /rm/ pages copy the Meta pages here too: no Lead event from the page.
-  const firesLeadPixel = !(ads && (channel === 'meta' || channel === 'rm' || sellPage));
+  // The Rightmove pages (/rm/...) have no Meta Pixel either, and their own
+  // Tag Manager containers: one for sellers, one for agents.
+  const rmPage = !!ads && channel === 'rm';
+  const tagManagerPage = sellPage ? 'sell' : rmPage ? 'rm' : null;
+  const firesLeadPixel = !(ads && (channel === 'meta' || rmPage || sellPage));
   // Where payment ends on the Meta pages and their /rm/ copies.
   const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : ads && channel === 'rm' ? '/rm/complete' : null;
   const fireLeadEvents = (data: ProspectPreview) => {
     if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
-    if (sellPage) pushSellLeadEvent(data);
+    if (tagManagerPage) pushTagManagerLeadEvent(data, tagManagerPage);
   };
+
+  // The Rightmove page's container when the visit didn't start on it
+  // (index.html loads it on /rm/seller and /rm/agent): /rm/complete after
+  // payment, or arriving from elsewhere on the site.
+  useEffect(() => {
+    if (rmPage) loadGtmContainer(ads === 'agent' ? RM_AGENT_GTM_ID : RM_SELLER_GTM_ID);
+  }, [rmPage, ads]);
 
   useEffect(() => {
     // slw-prospect-active also drives an overflow-x:hidden rule (see the
@@ -1742,11 +1775,11 @@ export const StaleProspectWizard = ({
     fireProspectPurchasePixel(prospect, ads);
   }, [step, prospect, params, ads, channel]);
 
-  // The same on the seller page, for Tag Manager.
+  // The same on the seller and Rightmove pages, for Tag Manager.
   useEffect(() => {
-    if (step !== 'success' || !prospect || !sellPage || params.get('paid') !== 'card') return;
-    pushSellPurchaseEvent(prospect);
-  }, [step, prospect, params, sellPage]);
+    if (step !== 'success' || !prospect || !tagManagerPage || params.get('paid') !== 'card') return;
+    pushTagManagerPurchaseEvent(prospect, tagManagerPage);
+  }, [step, prospect, params, tagManagerPage]);
 
   const query = useMemo(() => {
     const token = params.get('token') || undefined;
@@ -2210,21 +2243,18 @@ export const StaleProspectWizard = ({
       }
       return;
     }
-    if (step !== 'report') {
-      setPendingPrint(true);
-      await handleViewReport();
-      return;
+    // The homeowner's report too: generated on the server (report_v2_pdf.py),
+    // from the success step or the report, without opening the report first.
+    setPdfState({ busy: true, error: '' });
+    try {
+      await downloadReportPdf(access);
+      setPdfState({ busy: false, error: '' });
+    } catch (err) {
+      const message = (err as Error).message || 'We could not create the PDF just now. Please try again.';
+      setPdfState({ busy: false, error: message });
+      if (step === 'success') setError(message);
     }
-    window.print();
   };
-
-  useEffect(() => {
-    if (pendingPrint && step === 'report' && report) {
-      setPendingPrint(false);
-      const t = window.setTimeout(() => window.print(), 200);
-      return () => window.clearTimeout(t);
-    }
-  }, [pendingPrint, step, report]);
 
   if (bootLoading) {
     return (
@@ -2328,18 +2358,19 @@ export const StaleProspectWizard = ({
             />
           )}
           {step === 'success' && prospect && !(review && prospect.report_on_hold) && (
-            <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} error={error} />
+            <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} error={error} pdfBusy={pdfState.busy} />
           )}
           {step === 'report' && report && report.audience === 'agent' && (
             <AgentFullReport
               access={access}
               report={report}
+              onReportChange={setReport}
               onOpenRecommendation={() => setShowRecommendation(true)}
               onOpenDashboard={handleOpenDashboard}
             />
           )}
           {step === 'report' && report && report.audience !== 'agent' && (
-            <FullReportStep report={report} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} />
+            <FullReportStep report={report} access={access} onReportChange={setReport} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} pdfState={pdfState} />
           )}
         </main>
       </div>
@@ -2565,6 +2596,24 @@ export const WizardStyles = () => (
     .slw-factor-label{display:block;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#9097a1;margin-bottom:3px}
     .slw-factor-body p{margin:0;font-size:14.5px;line-height:1.5;color:#353a42}
     .slw-factor-action{background:#f7f8fa;border-radius:10px;padding:11px 13px}
+    /* The agent's figures form on Listing Engagement / Viewing-to-Offer (FactorFigures.tsx). */
+    .slw-figs-open{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:left;background:#f6f0fb;border:1px dashed #c9a6e3;border-radius:10px;padding:11px 13px;font:inherit;font-weight:700;font-size:14px;color:#5b2a86;cursor:pointer}
+    .slw-figs-open span{font-weight:400;font-size:13px;color:#6b5a7a}
+    .slw-figs-open:hover{background:#efe4f8}
+    .slw-figs .slw-figs-done{margin:0 0 8px;font-size:12.5px;color:#0e7d4c;font-weight:600}
+    .slw-figs-form{background:#faf7fd;border:1px solid #eadcf3;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .slw-figs .slw-figs-intro{margin:0;font-size:13.5px;color:#475569;line-height:1.45}
+    .slw-figs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .slw-figs-grid label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;line-height:1.3;color:#334155;font-weight:600}
+    .slw-figs-grid input,.slw-figs-grid textarea{border:1px solid #d9dde3;border-radius:9px;padding:10px 12px;font:inherit;font-size:15px;font-weight:400;background:#fff;color:#1f1f1e;min-width:0;box-sizing:border-box;width:100%}
+    .slw-figs-grid textarea{resize:vertical}
+    .slw-figs-wide{grid-column:1 / -1}
+    .slw-figs-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .slw-figs-actions .slw-btn-black{width:auto;padding:11px 18px;margin:0}
+    .slw-figs-cancel{background:none;border:0;font:inherit;font-size:14px;color:#64748b;cursor:pointer;padding:8px}
+    .slw-figs .slw-figs-wait{margin:0;font-size:12.5px;color:#64748b}
+    .slw-pdf-error{margin:-12px 0 16px;text-align:right}
+    @media (max-width:640px){.slw-figs-grid{grid-template-columns:1fr}}
     @media (max-width:760px){.slw-factor-grid{grid-template-columns:1fr}.slw-factor-card{padding:16px 16px}}
     .slw-report-preparing{text-align:center;padding:90px 16px 120px;max-width:620px;margin:0 auto}
     .slw-report-preparing .slw-spinner{margin:0 auto 22px}
@@ -2654,7 +2703,9 @@ export const WizardStyles = () => (
     @media (max-width:900px){
       .slw-assessment .slw-price-box{padding:0 10px}
       .slw-gauge-pay{width:100%;font-size:15px;padding:15px 16px}
-      .slw-locked-cta{opacity:1;top:auto;bottom:12px;right:12px}
+      /* In the card's flow, not pinned over the text: a long description
+         (Seller Net Proceeds) ran underneath it. */
+      .slw-locked-cta{position:static;opacity:1;align-self:flex-end;margin-top:auto;font-size:13px}
       .slw-page:has(.slw-paybar){padding-bottom:84px}
       .slw-paybar{padding:0 12px 12px}
       .slw-paybar-inner{padding:8px;border-radius:14px}
