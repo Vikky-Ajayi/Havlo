@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -183,5 +183,51 @@ async def email_team(order: StaleProspectAddonOrder, prospect: StaleListingProsp
         f"New paid add-on order for {prospect.property_code}: {fields['Services']}.",
         fields, source_label="StaleListings next steps",
         property_url=prospect.rightmove_url or "")
-    order.team_emailed_at = datetime.now(timezone.utc)
+    if sent:  # a failed send is retried by reconcile_orders
+        order.team_emailed_at = datetime.now(timezone.utc)
     return sent
+
+
+# A paid order is otherwise only confirmed when the customer's own tab comes
+# back from SumUp to the Next Steps page (it remembers the order in that tab):
+# close the tab after paying, or come back in another, and it stayed pending,
+# never showed as paid in the console and the team was never told.
+RECONCILE_WINDOW = timedelta(days=7)  # how far back pending checkouts are checked
+RECONCILE_BATCH = 50
+
+
+async def reconcile_orders() -> dict[str, int]:
+    """Background (every few minutes): ask SumUp about recent pending orders
+    and mark the paid ones completed, then email the team about any paid
+    order it hasn't been told about yet."""
+    from app.db.database import AsyncSessionLocal
+
+    stats = {"checked": 0, "confirmed": 0, "team_emailed": 0}
+    cutoff = datetime.now(timezone.utc) - RECONCILE_WINDOW
+    async with AsyncSessionLocal() as db:
+        pending = (await db.execute(
+            select(StaleProspectAddonOrder)
+            .where(StaleProspectAddonOrder.status == "pending",
+                   StaleProspectAddonOrder.sumup_checkout_id.is_not(None),
+                   StaleProspectAddonOrder.created_at >= cutoff)
+            .order_by(StaleProspectAddonOrder.created_at.desc())
+            .limit(RECONCILE_BATCH)
+        )).scalars().all()
+        for order in pending:
+            stats["checked"] += 1
+            await confirm_order(db, order)
+            if order.status == "completed":
+                stats["confirmed"] += 1
+        await db.commit()
+
+        unemailed = (await db.execute(
+            select(StaleProspectAddonOrder)
+            .where(StaleProspectAddonOrder.status == "completed", StaleProspectAddonOrder.team_emailed_at.is_(None))
+            .limit(RECONCILE_BATCH)
+        )).scalars().all()
+        for order in unemailed:
+            prospect = await db.get(StaleListingProspect, order.prospect_id)
+            if prospect is not None and await email_team(order, prospect):
+                stats["team_emailed"] += 1
+            await db.commit()
+    return stats

@@ -753,6 +753,21 @@ async def startup() -> None:
 
         app.state.scraper_tasks.append(asyncio.create_task(start_after_delay(90)))
 
+    # ── Add-on orders paid without coming back to the page ───────────────
+    # Asks SumUp about pending add-on orders (Listing Rewrite, Relaunch
+    # Strategy) from the last week, marks paid ones and emails the team
+    # (stale_prospect_addons.reconcile_orders). Every 5 minutes.
+    if HAS_DATABASE and _env_enabled("ENABLE_ADDON_ORDER_CHECK", True):
+        from app.services.scraper_base import run_scraper_loop
+        from app.services.stale_prospect_addons import reconcile_orders
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Add-on order payments", reconcile_orders, 5 / 60, initial_delay_seconds=150)
+        ))
+        logger.info("Add-on order payment check scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Add-on order payment check disabled by ENABLE_ADDON_ORDER_CHECK.")
+
     # ── 4-digit property codes running out ────────────────────────────────
     # Emails ADMIN_NOTIFY_EMAIL once when 90% of the owner property codes
     # are in use (see property_code_capacity). Every 6 hours.
