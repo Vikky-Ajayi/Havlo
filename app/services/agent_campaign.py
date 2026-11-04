@@ -279,6 +279,9 @@ async def open_agent_copy(
             audience="agent",
             agent_account_id=account.id,
             parent_prospect_id=owner.id,
+            # The agency's price: £49 for agencies already written to before
+            # the rise to £99, today's price (None) otherwise.
+            unlock_price=account.unlock_price,
             source_status="active",
             # Not the owner's: letter-stage statuses would make the letter
             # email retry loop pick the copy up.

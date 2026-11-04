@@ -686,7 +686,8 @@ class StaleProspectPreviewResponse(BaseModel):
     # "agent" for an agency's own copy opened from /check/agent (see
     # app/services/agent_campaign.py), so the funnel can word things for agents.
     audience: str = "owner"
-    # The full report's price (prospect_unlock_price): a flat £49.
+    # This lead's full-report price (unlock_price_for): £99, or the £49 kept
+    # for leads already in the funnel when the price rose (Nov 2026).
     unlock_price: Optional[float] = None
     # Analyst-review funnel (/review/...) purchases: paid (is_unlocked) but the analyst
     # review isn't finished, so the report opens at analyst_review_due_at at

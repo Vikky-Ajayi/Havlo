@@ -39,7 +39,7 @@ from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectAbandonmentEmail, StaleProspectAbandonmentSms
 from app.services import ads_funnel, analyst_review, email_service, twilio_service
 from app.services.scraper_base import run_scraper_loop
-from app.services.stale_prospect_service import unsubscribe_token
+from app.services.stale_prospect_service import unlock_price_for, unsubscribe_token
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -151,6 +151,7 @@ async def run_abandonment_email_cycle() -> dict:
                 first_name=(prospect.contact_name or "").split(" ")[0] or "there",
                 stage=stage,
                 asking_price=prospect.asking_price,
+                price=unlock_price_for(prospect),
                 property_code=prospect.property_code,
                 unsubscribe_url=build_unsubscribe_url(prospect.id),
                 audience=prospect.audience,

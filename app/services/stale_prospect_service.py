@@ -185,21 +185,35 @@ def verify_sms_unsubscribe_short_token(property_code: str, token: str) -> bool:
     return hmac.compare_digest(expected, (token or "").strip())
 
 
-UNLOCK_PRICE = 49.0  # GBP, the same for every property (Oct 2026)
+UNLOCK_PRICE = 99.0  # GBP, the same for every property (Nov 2026; £49 before)
 
 
 def prospect_unlock_price(asking_price: float | None = None, audience: str | None = None) -> float:
-    """Full-report price: a flat GBP 49 for every property, owners and
-    estate agencies alike. Until Oct 2026 it was 0.025% of the asking price
-    (GBP 99 to GBP 498); the arguments are kept so the price can follow the
-    listing or the audience again without touching the callers.
+    """Today's full-report price for a new lead: a flat GBP 99 for every
+    property, owners and estate agencies alike. It was a flat GBP 49 from
+    Oct 2026, and 0.025% of the asking price (GBP 99 to GBP 498) before
+    that; the arguments are kept so the price can follow the listing or the
+    audience again without touching the callers.
 
-    The checkout route (_stale_prospect_checkout_amount) and the email
-    drips call this; the frontend's unlockPrice() in
-    havlo_frontend/src/pages/stale-prospect/types.ts mirrors it because the
-    page needs the figure before checkout resolves. Keep the two in sync.
+    What a particular lead pays is unlock_price_for(), which keeps the £49
+    for leads already in the funnel when the price rose. The frontend's
+    unlockPrice() in havlo_frontend/src/pages/stale-prospect/types.ts
+    mirrors this one for pages shown before there's a lead (the backend
+    sends each lead's own price as unlock_price). Keep the two in sync.
     """
     return UNLOCK_PRICE
+
+
+def unlock_price_for(row: Any) -> float:
+    """What this lead (a StaleListingProspect) or agency (a StaleAgentAccount)
+    pays for a full report: the price locked in on it (unlock_price: £49 for
+    everyone already in the funnel when the price rose to £99, Nov 2026),
+    otherwise today's price. The checkout, the page and the emails all use
+    this, so a lead is always charged what it was shown."""
+    locked = getattr(row, "unlock_price", None)
+    if locked is not None:
+        return float(locked)
+    return prospect_unlock_price(getattr(row, "asking_price", None), getattr(row, "audience", None))
 
 
 def normalize_property_code(code: str) -> str:
@@ -765,7 +779,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "has_contact_details": bool(prospect.contact_email),
         "checkout_started": bool(prospect.sumup_checkout_id or prospect.bank_transfer_reference),
         "audience": prospect.audience or "owner",
-        "unlock_price": prospect_unlock_price(prospect.asking_price, prospect.audience),
+        "unlock_price": unlock_price_for(prospect),
         # Analyst-review funnel (/review/...) purchases: paid, but the review isn't
         # finished, so the report isn't open yet (app/services/analyst_review.py).
         "report_on_hold": analyst_review.report_on_hold(prospect),

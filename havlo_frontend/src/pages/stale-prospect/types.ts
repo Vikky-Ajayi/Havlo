@@ -284,11 +284,14 @@ export function stepperIndexFor(step: WizardStep): number {
   }
 }
 
-// Mirrors prospect_unlock_price in app/services/stale_prospect_service.py
-// (what the checkout route charges): a flat £49 for every property, owners
-// and estate agencies alike. The arguments are kept so the price can follow
-// the listing again without touching the callers.
-export const UNLOCK_PRICE = 49;
+// Mirrors prospect_unlock_price in app/services/stale_prospect_service.py:
+// today's price for a new lead, a flat £99 for every property, owners and
+// estate agencies alike (£49 until Nov 2026). Leads already in the funnel
+// then keep £49: the backend sends each lead's own price as unlock_price,
+// which prospectPrice() prefers. This figure is for pages shown before
+// there's a lead. The arguments are kept so the price can follow the
+// listing again without touching the callers.
+export const UNLOCK_PRICE = 99;
 
 export function unlockPrice(_askingPrice?: number | null, _audience?: 'owner' | 'agent'): number {
   return UNLOCK_PRICE;

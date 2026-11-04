@@ -2421,9 +2421,12 @@ def send_stale_prospect_abandonment_email_sync(
     frontend_base_url: str | None = None,
     audience: str | None = None,
     landing_path: str = "/stale-listings/prospect",
+    price: float | None = None,
 ) -> bool:
     """Send one stage of the pre-purchase / cart-abandonment drip.
     landing_path is the funnel page the button opens (analyst_review.funnel_path).
+    price is the lead's own report price (unlock_price_for); today's price if
+    not given.
 
     Called by app/services/stale_prospect_abandonment.py's send loop — never
     call this directly from a request handler for a stage a prospect may
@@ -2432,7 +2435,8 @@ def send_stale_prospect_abandonment_email_sync(
     """
     from app.services.stale_prospect_service import prospect_unlock_price
 
-    price = prospect_unlock_price(asking_price, audience)
+    if price is None:
+        price = prospect_unlock_price(asking_price, audience)
     price_text = _stale_abandonment_format_price(price)
     price_html = f'<strong style="color:#111111;">{price_text}</strong>'
     config = _stale_abandonment_stage_content(stage, price_html=price_html, price_text=price_text)
@@ -2832,8 +2836,10 @@ def send_stale_prospect_post_purchase_email_sync(
     frontend_base_url: str | None = None,
     audience: str | None = None,
     report_path: str = "/stale-listings/prospect/report",
+    price: float | None = None,
 ) -> bool:
-    """Send one stage of the post-purchase nurture / upsell drip.
+    """Send one stage of the post-purchase nurture / upsell drip. price is
+    the lead's own report price (unlock_price_for); today's if not given.
 
     Called by app/services/stale_prospect_post_purchase.py's send loop —
     never call this directly for a stage a prospect may already have
@@ -2842,7 +2848,8 @@ def send_stale_prospect_post_purchase_email_sync(
     """
     from app.services.stale_prospect_service import prospect_unlock_price
 
-    price = prospect_unlock_price(asking_price, audience)
+    if price is None:
+        price = prospect_unlock_price(asking_price, audience)
     price_text = _stale_abandonment_format_price(price)
     price_html = f'<strong style="color:#111111;">{price_text}</strong>'
     config = _stale_post_purchase_stage_content(stage, price_html=price_html, price_text=price_text)
@@ -3064,13 +3071,15 @@ def send_stale_agent_followup_email_sync(
     portfolio_url: str,
     unsubscribe_url: str,
     frontend_base_url: str | None = None,
+    price: float | None = None,
 ) -> bool:
     """One stage of the agency follow-up sequence. Only the send loop in
     app/services/agent_followups.py should call this: it records each
-    (agency, stage) so nothing is sent twice."""
+    (agency, stage) so nothing is sent twice. price is the agency's own
+    per-property price (unlock_price_for); today's if not given."""
     from app.services.stale_prospect_service import UNLOCK_PRICE
 
-    price_text = _stale_abandonment_format_price(UNLOCK_PRICE)
+    price_text = _stale_abandonment_format_price(UNLOCK_PRICE if price is None else price)
     config = _stale_agent_followup_content(
         stage, brand=brand, count=listing_count, price_text=price_text, agent_code=agent_code
     )

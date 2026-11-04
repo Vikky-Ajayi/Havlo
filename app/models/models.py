@@ -652,6 +652,11 @@ class StaleListingProspect(Base):
     # email flows (app/services/ads_nurture.py) instead of the letter
     # funnel's abandonment emails.
     lead_source: Mapped[Optional[str]] = mapped_column(String(30), nullable=True, index=True)
+    # The full-report price locked in for this lead (GBP). The price rose
+    # from £49 to £99 in Nov 2026 and every lead already in the funnel keeps
+    # £49 (migration 20261104_0038 wrote it here). NULL = today's price,
+    # stale_prospect_service.UNLOCK_PRICE. Read it via unlock_price_for().
+    unlock_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     # First time the Payment step was shown; anchors the ads flows'
     # checkout-recovery emails.
     checkout_visited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1142,6 +1147,11 @@ class StaleAgentAccount(Base):
     contact_details_submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     sms_unsubscribed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The per-property price this agency was offered: £49 for agencies
+    # already written to before the rise to £99 (Nov 2026), NULL = today's
+    # price. Its follow-ups quote it and the copies it opens inherit it
+    # (agent_campaign.open_agent_copy).
+    unlock_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

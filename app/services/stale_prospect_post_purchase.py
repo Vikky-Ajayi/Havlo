@@ -37,6 +37,7 @@ from app.models.models import StaleListingProspect, StaleProspectPostPurchaseEma
 from app.services import analyst_review, email_service, funnel_paths
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_abandonment import build_unsubscribe_url
+from app.services.stale_prospect_service import unlock_price_for
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ async def run_post_purchase_email_cycle() -> dict:
                 first_name=(prospect.contact_name or "").split(" ")[0] or "there",
                 stage=stage,
                 asking_price=prospect.asking_price,
+                price=unlock_price_for(prospect),
                 property_code=prospect.property_code,
                 unsubscribe_url=build_unsubscribe_url(prospect.id),
                 audience=prospect.audience,

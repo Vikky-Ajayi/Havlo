@@ -31,7 +31,7 @@ from app.db.database import AsyncSessionLocal
 from app.models.models import StaleAgentAccount, StaleAgentFollowup, StaleListingProspect
 from app.services import agent_campaign, email_service, twilio_service
 from app.services.stale_prospect_abandonment import _within_sms_send_window
-from app.services.stale_prospect_service import unsubscribe_token
+from app.services.stale_prospect_service import unlock_price_for, unsubscribe_token
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +197,7 @@ async def run_agent_followup_cycle() -> dict:
                     stage=stage,
                     brand=brand,
                     listing_count=listing_count,
+                    price=unlock_price_for(account),
                     agent_code=account.agent_code,
                     portfolio_url=link,
                     unsubscribe_url=build_email_unsubscribe_url(account.id),

@@ -1,4 +1,4 @@
-"""Report pricing (a flat £49), the Google-ads
+"""Report pricing (a flat £99; £49 kept for leads already in the funnel), the Google-ads
 analyst-review funnel's 48-hour hold, and the Follow Up console's funnel stages."""
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from app.routers.stale_listings import _prospect_funnel_status
 from app.services import analyst_review, email_service
-from app.services.stale_prospect_service import prospect_unlock_price, serialize_preview
+from app.services.stale_prospect_service import prospect_unlock_price, serialize_preview, unlock_price_for
 
 T0 = datetime(2026, 10, 10, 9, 0, tzinfo=timezone.utc)
 
@@ -25,13 +25,22 @@ def prospect(**fields):
 
 
 class PricingTests(unittest.TestCase):
-    def test_flat_49_whatever_the_asking_price(self):
+    def test_flat_99_whatever_the_asking_price(self):
         for value in (None, 0, -5, float("nan"), "not a price", 195_000, 396_000, 600_000, 1_992_000, 25_000_000):
-            self.assertEqual(prospect_unlock_price(value), 49.0, value)
+            self.assertEqual(prospect_unlock_price(value), 99.0, value)
 
     def test_same_for_agents(self):
-        self.assertEqual(prospect_unlock_price(800_000, "agent"), 49.0)
-        self.assertEqual(prospect_unlock_price(800_000, "owner"), 49.0)
+        self.assertEqual(prospect_unlock_price(800_000, "agent"), 99.0)
+        self.assertEqual(prospect_unlock_price(800_000, "owner"), 99.0)
+
+    def test_leads_already_in_the_funnel_keep_49(self):
+        # The migration wrote 49 on every lead and agency there before the rise.
+        self.assertEqual(unlock_price_for(prospect(asking_price=800_000, unlock_price=49.0)), 49.0)
+        self.assertEqual(unlock_price_for(SimpleNamespace(unlock_price=49.0)), 49.0)  # an agency account
+        # New ones (NULL) pay today's price.
+        self.assertEqual(unlock_price_for(prospect(asking_price=800_000, unlock_price=None)), 99.0)
+        self.assertEqual(unlock_price_for(SimpleNamespace(unlock_price=None)), 99.0)
+        self.assertEqual(unlock_price_for(prospect(asking_price=800_000)), 99.0)
 
     def test_email_price_format(self):
         self.assertEqual(email_service._stale_abandonment_format_price(49.0), "£49")
@@ -106,7 +115,10 @@ class AnalystReviewTests(unittest.TestCase):
         data = serialize_preview(p)
         self.assertTrue(data["is_unlocked"])
         self.assertTrue(data["report_on_hold"])
-        self.assertEqual(data["unlock_price"], 49.0)
+        self.assertEqual(data["unlock_price"], 99.0)
+        # A lead already in the funnel when the price rose is shown its £49.
+        p.unlock_price = 49.0
+        self.assertEqual(serialize_preview(p)["unlock_price"], 49.0)
         self.assertEqual(data["analyst_review_due_at"], (T0 + timedelta(hours=48)).isoformat())
 
 
