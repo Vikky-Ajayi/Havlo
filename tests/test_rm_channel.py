@@ -33,6 +33,35 @@ class RmChannelTests(unittest.TestCase):
         self.assertNotIn("review_seller", stale_prospect_abandonment._ADS_NURTURED_SELLERS)
 
 
+class AgencyFollowupsTests(unittest.TestCase):
+    """Agents from the ads pages (/rm/agent included) get the ads emails only,
+    not also the letter campaign's agency follow-ups, which link to /check/agent."""
+
+    def _remember(self, lead_source):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock
+        from uuid import uuid4
+
+        from app.services import agent_campaign
+
+        account = SimpleNamespace(contact_email=None, contact_name=None, contact_phone=None,
+                                  contact_details_submitted_at=None)
+        db = SimpleNamespace(get=AsyncMock(return_value=account))
+        copy = SimpleNamespace(audience="agent", agent_account_id=uuid4(), lead_source=lead_source,
+                               contact_name="Sam Agent", contact_email="sam@agency.co.uk", contact_phone="07700900000")
+        asyncio.run(agent_campaign.remember_agency_contact(db, copy))
+        return account
+
+    def test_ads_agents_do_not_start_the_agency_followups(self):
+        for source in ads_funnel.AGENT_SOURCES:  # rm_agent among them
+            with self.subTest(source=source):
+                self.assertIsNone(self._remember(source).contact_email)
+
+    def test_letter_campaign_agents_still_do(self):
+        self.assertEqual(self._remember(None).contact_email, "sam@agency.co.uk")
+
+
 class RmJourneyPathsTests(unittest.TestCase):
     """Every page after the /rm/ landing pages keeps an /rm/ address, so
     Rightmove's Tag Manager containers cover the whole journey."""

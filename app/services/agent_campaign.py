@@ -317,7 +317,10 @@ async def remember_agency_contact(db: AsyncSession, copy: StaleListingProspect) 
     The caller commits."""
     if copy.audience != "agent" or not copy.agent_account_id:
         return
-    if copy.lead_source in ("meta_agent", "google_agent", "review_agent", "sell_agent"):
+    # Every ads channel's agent source (ads_funnel.AGENT_SOURCES; not imported
+    # here, ads_funnel imports this module). tests/test_rm_channel.py checks
+    # the two stay in step.
+    if copy.lead_source in ("meta_agent", "google_agent", "review_agent", "sell_agent", "rm_agent"):
         # Came in through an ads landing page: the ads emails cover them, so
         # the agency doesn't also start the letter campaign's follow-ups.
         return
