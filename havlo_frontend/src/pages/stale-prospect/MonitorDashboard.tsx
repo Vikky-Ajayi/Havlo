@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { loadGtmContainer, rmGtmId } from '../../lib/gtm';
 import {
   getMonitorDashboard,
   getMonitorReportLink,
@@ -237,10 +238,17 @@ const SECTIONS = [
   ['nearby', 'Nearby'],
 ] as const;
 
-export const MonitorDashboard = () => {
+// /rm/dashboard/:token (`rm`) is the same dashboard in Rightmove's journey:
+// it loads Rightmove's Tag Manager container. Its links (the report, the
+// share link) come back from the API with /rm/ addresses too.
+export const MonitorDashboard = ({ rm = false }: { rm?: boolean } = {}) => {
   const { token = '' } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<MonitorDashboardData | null>(null);
+  const audience = data?.audience;
+  useEffect(() => {
+    if (rm && audience) loadGtmContainer(rmGtmId(audience));
+  }, [rm, audience]);
   const [error, setError] = useState('');
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState('');

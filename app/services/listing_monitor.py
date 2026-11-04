@@ -44,7 +44,7 @@ from app.models.models import (
     StaleListingMonitorEvent,
     StaleListingProspect,
 )
-from app.services import analyst_review, listing_scraper, twilio_service
+from app.services import analyst_review, funnel_paths, listing_scraper, twilio_service
 from app.services.rightmove_scraper import _parse_next_data, build_proxied_request
 from app.services.stale_prospect_abandonment import _within_sms_send_window
 from app.services.stale_prospect_service import current_report_json, hash_access_token
@@ -114,8 +114,9 @@ def public_base() -> str:
     return "https://www.heyhavlo.com" if "localhost" in base or "127.0.0.1" in base else base
 
 
-def dashboard_url(token: str) -> str:
-    return f"{public_base()}/m/{token}"
+def dashboard_url(token: str, lead_source: str | None = None) -> str:
+    """/m/<token>, or /rm/dashboard/<token> for Rightmove's leads (funnel_paths)."""
+    return f"{public_base()}{funnel_paths.dashboard_path(lead_source, token)}"
 
 
 # ── Reading the listing ───────────────────────────────────────────────────
@@ -563,7 +564,8 @@ async def send_dashboard_texts(now: datetime) -> int:
             window = max(1, round((monitor.ends_at - monitor.started_at).total_seconds() / 86400))
             ok = await asyncio.to_thread(
                 twilio_service.send_monitor_dashboard_sms, phone,
-                address=short_address(prospect.property_address), link=dashboard_url(token), days=window,
+                address=short_address(prospect.property_address), link=dashboard_url(token, prospect.lead_source),
+                days=window,
             )
             if ok:
                 monitor.sms_status, monitor.sms_sent_at = "sent", now

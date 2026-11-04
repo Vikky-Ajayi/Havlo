@@ -101,7 +101,7 @@ from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services import agent_campaign, agent_report, agent_report_pdf, listing_monitor, land_registry
-from app.services import ads_funnel, ads_nurture, analyst_review, report_owner_figures, report_v2_pdf
+from app.services import ads_funnel, ads_nurture, analyst_review, funnel_paths, report_owner_figures, report_v2_pdf
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -977,7 +977,7 @@ async def create_stale_prospect_checkout(
     currency = str(package["currency"])
     frontend = _frontend_base_url()
     access_key = f"token={payload.token.strip()}" if payload.token else f"code={prospect.property_code}"
-    redirect_url = (payload.redirect_url or f"{frontend}/stale-listings/prospect/complete").rstrip("/")
+    redirect_url = (payload.redirect_url or f"{frontend}{funnel_paths.complete_path(prospect.lead_source)}").rstrip("/")
     sep = "&" if "?" in redirect_url else "?"
     redirect_url = f"{redirect_url}{sep}{access_key}"
 
@@ -3327,9 +3327,10 @@ async def update_monitor_checklist(payload: MonitorChecklistRequest, db: AsyncSe
 async def share_monitor_dashboard(payload: MonitorTokenRequest, db: AsyncSession = Depends(get_db)) -> dict[str, str]:
     """A view-only link to pass on to an agent (or, for agents, a vendor)."""
     monitor, _ = await _monitor_for(db, payload.token, writable=True)
+    prospect = await db.get(StaleListingProspect, monitor.prospect_id)
     token = listing_monitor.issue_token(monitor, share=True)
     await db.commit()
-    return {"url": listing_monitor.dashboard_url(token)}
+    return {"url": listing_monitor.dashboard_url(token, prospect.lead_source if prospect else None)}
 
 
 @public_router.post("/monitor/report-link")
@@ -3340,7 +3341,7 @@ async def monitor_report_link(payload: MonitorTokenRequest, db: AsyncSession = D
     token = create_access_token()
     record_qr_token(prospect, token)
     await db.commit()
-    return {"url": f"/stale-listings/prospect/report?token={token}"}
+    return {"url": f"{funnel_paths.report_path(prospect.lead_source)}?token={token}"}
 
 
 @public_router.post("/prospects/monitor-link")
@@ -3357,7 +3358,7 @@ async def prospect_monitor_link(payload: ProspectMonitorLinkRequest, db: AsyncSe
     monitor = await listing_monitor.get_or_create_monitor(db, prospect)
     token = listing_monitor.issue_token(monitor)
     await db.commit()
-    return {"url": f"/m/{token}"}
+    return {"url": funnel_paths.dashboard_path(prospect.lead_source, token)}
 
 
 # ── Optional next steps (the add-ons basket) ─────────────────────────────
@@ -3383,6 +3384,8 @@ async def get_prospect_next_steps(
     return {
         "property_code": prospect.property_code,
         "property_address": prospect.property_address,
+        # Which of Rightmove's Tag Manager containers /rm/next-steps loads.
+        "audience": prospect.audience or "owner",
         "currency": addons.CURRENCY,
         "services": addons.catalog(orders),
         "orders": [addons.serialize_order(o) for o in orders],
@@ -3400,7 +3403,7 @@ async def create_prospect_next_steps_checkout(
     prospect = await _addon_prospect(db, payload.token, payload.property_code)
     frontend = _frontend_base_url()
     access_key = f"token={payload.token.strip()}" if payload.token else f"code={prospect.property_code}"
-    redirect_url = (payload.redirect_url or f"{frontend}/stale-listings/prospect/next-steps").rstrip("/")
+    redirect_url = (payload.redirect_url or f"{frontend}{funnel_paths.next_steps_path(prospect.lead_source)}").rstrip("/")
     sep = "&" if "?" in redirect_url else "?"
     redirect_url = f"{redirect_url}{sep}{access_key}"
     try:

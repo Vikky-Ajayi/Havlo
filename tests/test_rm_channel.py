@@ -33,5 +33,51 @@ class RmChannelTests(unittest.TestCase):
         self.assertNotIn("review_seller", stale_prospect_abandonment._ADS_NURTURED_SELLERS)
 
 
+class RmJourneyPathsTests(unittest.TestCase):
+    """Every page after the /rm/ landing pages keeps an /rm/ address, so
+    Rightmove's Tag Manager containers cover the whole journey."""
+
+    def test_rightmove_leads_stay_under_rm(self):
+        from app.services import funnel_paths
+
+        for source in ("rm_seller", "rm_agent", "rm_agent_listing"):
+            self.assertTrue(funnel_paths.is_rm_lead(source))
+            self.assertEqual(funnel_paths.complete_path(source), "/rm/complete")
+            self.assertEqual(funnel_paths.report_path(source), "/rm/report")
+            self.assertEqual(funnel_paths.next_steps_path(source), "/rm/next-steps")
+            self.assertEqual(funnel_paths.dashboard_path(source, "abc"), "/rm/dashboard/abc")
+
+    def test_everyone_else_keeps_the_default_addresses(self):
+        from app.services import funnel_paths
+
+        for source in (None, "", "meta_seller", "google_agent", "sell_seller", "review_seller", "letter"):
+            self.assertFalse(funnel_paths.is_rm_lead(source))
+            self.assertEqual(funnel_paths.complete_path(source), "/stale-listings/prospect/complete")
+            self.assertEqual(funnel_paths.report_path(source), "/stale-listings/prospect/report")
+            self.assertEqual(funnel_paths.next_steps_path(source), "/stale-listings/prospect/next-steps")
+            self.assertEqual(funnel_paths.dashboard_path(source, "abc"), "/m/abc")
+
+    def test_dashboard_texts_link_to_the_rm_dashboard(self):
+        from app.services import listing_monitor
+
+        self.assertTrue(listing_monitor.dashboard_url("abc", "rm_seller").endswith("/rm/dashboard/abc"))
+        self.assertTrue(listing_monitor.dashboard_url("abc", "meta_seller").endswith("/m/abc"))
+        self.assertTrue(listing_monitor.dashboard_url("abc").endswith("/m/abc"))
+
+    def test_short_links_and_reminders_go_back_to_the_rm_landing_page(self):
+        from types import SimpleNamespace
+
+        from app.services import analyst_review
+
+        def path(lead_source, audience="owner"):
+            return analyst_review.funnel_path(SimpleNamespace(lead_source=lead_source, audience=audience))
+
+        self.assertEqual(path("rm_seller"), "/rm/seller")
+        self.assertEqual(path("rm_agent", "agent"), "/rm/agent")
+        self.assertEqual(path("review_seller"), "/review/seller")
+        self.assertEqual(path("meta_seller"), "/stale-listings/prospect")
+        self.assertEqual(path(None), "/stale-listings/prospect")
+
+
 if __name__ == "__main__":
     unittest.main()

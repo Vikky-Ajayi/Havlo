@@ -1,17 +1,32 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { loadGtmContainer, pushGtmEventOnce, rmGtmId } from '../../lib/gtm';
 import { createNextStepsCheckout, getNextSteps, getNextStepsOrderStatus } from './api';
-import { formatGbp, type NextStepsData } from './types';
+import { formatGbp, type NextStepsData, type NextStepsOrder } from './types';
 import { Footer, Header, Spinner, WizardStyles, useHideChatWidget } from './StaleProspectWizard';
 
 // /stale-listings/prospect/next-steps?code=XXXX (or ?token=YYYY) — the optional
 // services offered after a 20-factor report. One SumUp payment covers the
 // basket; 30-Day Monitoring is shown as already included. Reached from the
 // report's "Explore Next Steps" bar and the dashboard CTA.
+// /rm/next-steps (`rm`) is the same page in Rightmove's journey: it loads
+// Rightmove's Tag Manager container and tells it about add-on payments.
 
 const PENDING_KEY = 'havlo_nextsteps_pending'; // sessionStorage: the order being paid
 
-export const ProspectNextSteps = () => {
+// A paid add-on order, for Rightmove's container: once per order.
+function pushRmAddonPurchaseEvent(order: NextStepsOrder) {
+  pushGtmEventOnce(`rm_addon_purchase_${order.order_id}`, 'purchase', {
+    ecommerce: {
+      transaction_id: `sl_addon_${order.order_id}`,
+      value: order.amount,
+      currency: order.currency || 'GBP',
+      items: order.items.map((i) => ({ item_id: i.key, item_name: i.name, price: i.price, quantity: 1 })),
+    },
+  });
+}
+
+export const ProspectNextSteps = ({ rm = false }: { rm?: boolean } = {}) => {
   const [params] = useSearchParams();
   const token = params.get('token') || undefined;
   const code = params.get('code') || undefined;
@@ -55,6 +70,7 @@ export const ProspectNextSteps = () => {
       const { order } = await getNextStepsOrderStatus(access, pending.orderId);
       if (order.status === 'completed') {
         try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+        if (rm) pushRmAddonPurchaseEvent(order);
         setConfirming(false);
         setJustPaid(order.items.map((i) => i.name));
         await load();
@@ -65,11 +81,17 @@ export const ProspectNextSteps = () => {
     } catch {
       setConfirming(false);
     }
-  }, [access, accessKey, load]);
+  }, [access, accessKey, load, rm]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Rightmove's seller or agent container, once we know whose report this is.
+  const audience = data?.audience;
+  useEffect(() => {
+    if (rm && audience) loadGtmContainer(rmGtmId(audience));
+  }, [rm, audience]);
 
   useEffect(() => {
     void pollPendingOrder();

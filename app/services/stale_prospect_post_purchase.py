@@ -34,7 +34,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect, StaleProspectPostPurchaseEmail
-from app.services import analyst_review, email_service
+from app.services import analyst_review, email_service, funnel_paths
 from app.services.scraper_base import run_scraper_loop
 from app.services.stale_prospect_abandonment import build_unsubscribe_url
 
@@ -131,7 +131,8 @@ async def run_post_purchase_email_cycle() -> dict:
                 unsubscribe_url=build_unsubscribe_url(prospect.id),
                 audience=prospect.audience,
                 report_path=(
-                    "/review/seller" if prospect.lead_source == "review_seller" else "/stale-listings/prospect/report"
+                    "/review/seller" if prospect.lead_source == "review_seller"
+                    else funnel_paths.report_path(prospect.lead_source)
                 ),
             )
         except Exception:

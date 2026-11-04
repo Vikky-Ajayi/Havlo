@@ -33,6 +33,10 @@ export const AdsAgentLanding = ({ channel = 'meta' }: { channel?: AdsChannel }) 
 // property whose token is in the address.
 // The /rm/ pages (rm/seller, rm/agent, rm/complete) are the same funnel with
 // their own channel, so their leads are tagged rm_... and emails link back to /rm/.
+// They also have /rm/report: the full report opened later (from the
+// dashboard or an email), which /stale-listings/prospect/report is for
+// everyone else. The rest of their journey is /rm/next-steps and
+// /rm/dashboard/<token> (App.tsx).
 export const MetaAdsFunnel = () => <AdsFunnel channel="meta" base="/assess" />;
 export const RmAdsFunnel = () => <AdsFunnel channel="rm" base="/rm" />;
 
@@ -42,10 +46,12 @@ const AdsFunnel = ({ channel, base }: { channel: AdsChannel; base: string }) => 
   const [audience, setAudience] = useState<AdsAudience | null>(
     page === 'agent' ? 'agent' : page === 'seller' ? 'owner' : null,
   );
-  const known = page === 'seller' || page === 'agent' || page === 'complete';
+  // Pages for a property already found, whose audience comes from its token.
+  const forProperty = page === 'complete' || (channel === 'rm' && page === 'report');
+  const known = page === 'seller' || page === 'agent' || forProperty;
 
   useEffect(() => {
-    if (audience || page !== 'complete') return undefined;
+    if (audience || !forProperty) return undefined;
     let cancelled = false;
     const token = params.get('token') || undefined;
     const code = params.get('code') || undefined;

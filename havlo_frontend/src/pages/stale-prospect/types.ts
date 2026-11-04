@@ -235,6 +235,8 @@ export interface NextStepsOrder {
 export interface NextStepsData {
   property_code: string;
   property_address: string;
+  /** Picks Rightmove's seller or agent container on /rm/next-steps. */
+  audience?: 'owner' | 'agent';
   currency: string;
   services: NextStepsService[];
   orders: NextStepsOrder[];

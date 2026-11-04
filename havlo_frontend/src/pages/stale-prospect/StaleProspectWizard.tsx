@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
-import { pushGtmEventOnce, RM_AGENT_GTM_ID, RM_SELLER_GTM_ID, loadGtmContainer } from '../../lib/gtm';
+import { pushGtmEventOnce, loadGtmContainer, rmGtmId } from '../../lib/gtm';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
 import {
@@ -1138,6 +1138,7 @@ const FullReportStep = ({
   onDownloadPdf,
   onOpenDashboard,
   pdfState = { busy: false, error: '' },
+  nextStepsPath = '/stale-listings/prospect/next-steps',
 }: {
   report: ProspectReport;
   access: { token?: string; code?: string };
@@ -1146,6 +1147,8 @@ const FullReportStep = ({
   onDownloadPdf: () => void;
   onOpenDashboard: () => void;
   pdfState?: { busy: boolean; error: string };
+  /** /rm/next-steps on the Rightmove pages. */
+  nextStepsPath?: string;
 }) => {
   const data: FullReportData = report.report_data || {};
   const snapshot = report.listing_snapshot || {};
@@ -1375,7 +1378,7 @@ const FullReportStep = ({
         </div>
 
         {/* Screen only: the floating bar to the optional-services basket. */}
-        <a className="slw-nextsteps-bar slw-noprint" href={`/stale-listings/prospect/next-steps?code=${encodeURIComponent(report.property_code)}`}>
+        <a className="slw-nextsteps-bar slw-noprint" href={`${nextStepsPath}?code=${encodeURIComponent(report.property_code)}`}>
           <span className="slw-nextsteps-bar-text">
             <b>Want us to act on this report?</b>
             <span>Listing Rewrite, Relaunch Strategy &amp; more &mdash; one payment.</span>
@@ -1743,14 +1746,16 @@ export const StaleProspectWizard = ({
   const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : ads && channel === 'rm' ? '/rm/complete' : null;
   const fireLeadEvents = (data: ProspectPreview) => {
     if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
-    if (tagManagerPage) pushTagManagerLeadEvent(data, tagManagerPage);
+    // Not for a report already paid for: /rm/report and /rm/complete reopened
+    // later (from the dashboard or an email) would count the lead again.
+    if (tagManagerPage && !data.is_unlocked) pushTagManagerLeadEvent(data, tagManagerPage);
   };
 
   // The Rightmove page's container when the visit didn't start on it
   // (index.html loads it on /rm/seller and /rm/agent): /rm/complete after
-  // payment, or arriving from elsewhere on the site.
+  // payment, /rm/report, or arriving from elsewhere on the site.
   useEffect(() => {
-    if (rmPage) loadGtmContainer(ads === 'agent' ? RM_AGENT_GTM_ID : RM_SELLER_GTM_ID);
+    if (rmPage) loadGtmContainer(rmGtmId(ads));
   }, [rmPage, ads]);
 
   useEffect(() => {
@@ -2370,7 +2375,7 @@ export const StaleProspectWizard = ({
             />
           )}
           {step === 'report' && report && report.audience !== 'agent' && (
-            <FullReportStep report={report} access={access} onReportChange={setReport} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} pdfState={pdfState} />
+            <FullReportStep report={report} access={access} onReportChange={setReport} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} pdfState={pdfState} nextStepsPath={rmPage ? '/rm/next-steps' : undefined} />
           )}
         </main>
       </div>

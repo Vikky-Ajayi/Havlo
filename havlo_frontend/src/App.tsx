@@ -281,6 +281,10 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/assess/seller',
   '/assess/agent',
   '/assess/complete',
+  '/rm/seller',
+  '/rm/agent',
+  '/rm/complete',
+  '/rm/report',
   '/g/seller',
   '/g/agent',
   '/review/seller',
@@ -306,7 +310,7 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/custom-offers',
 ]);
 const hasEmbeddedCountryBadge = (pathname: string) =>
-  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/listings/') || pathname.startsWith('/m/');
+  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/listings/') || pathname.startsWith('/m/') || pathname.startsWith('/rm/dashboard/');
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname: rawPathname } = useLocation();
@@ -456,8 +460,12 @@ export default function App() {
               {/* Meta-ads landing pages: /check with a listing-link box. */}
               {/* /assess/seller, /assess/agent and /assess/complete (where payment ends, the same address for both) share this route. */}
               <Route path="/assess/:page" element={<MetaAdsFunnel />} />
-              {/* Copies of the Meta pages: /rm/seller, /rm/agent and /rm/complete; leads tagged "rm_". */}
+              {/* Copies of the Meta pages: /rm/seller, /rm/agent and /rm/complete, plus
+                  /rm/report; leads tagged "rm_". The rest of Rightmove's journey keeps
+                  /rm/ addresses too, for its Tag Manager containers (app/services/funnel_paths.py). */}
               <Route path="/rm/:page" element={<RmAdsFunnel />} />
+              <Route path="/rm/next-steps" element={<ProspectNextSteps rm />} />
+              <Route path="/rm/dashboard/:token" element={<MonitorDashboard rm />} />
               {/* The same pages for Google Ads; leads are tagged "Google ad". */}
               <Route path="/g/seller" element={<GoogleAdsSellerLanding />} />
               <Route path="/g/agent" element={<GoogleAdsAgentLanding />} />

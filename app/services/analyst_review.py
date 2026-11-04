@@ -29,6 +29,7 @@ from sqlalchemy import select
 from app.config import get_settings
 from app.db.database import AsyncSessionLocal
 from app.models.models import StaleListingProspect
+from app.services import funnel_paths
 from app.services.scraper_base import run_scraper_loop
 
 logger = logging.getLogger(__name__)
@@ -95,8 +96,11 @@ def release(prospect: StaleListingProspect, now: datetime | None = None) -> bool
 
 def funnel_path(prospect: StaleListingProspect) -> str:
     """The page a homeowner's Stale Listings emails and texts link back to:
-    the analyst-review page for its sellers, the letter funnel otherwise."""
-    return "/review/seller" if prospect.lead_source == "review_seller" else "/stale-listings/prospect"
+    the analyst-review page for its sellers, the /rm/ page for Rightmove's
+    leads (funnel_paths), the letter funnel otherwise."""
+    if prospect.lead_source == "review_seller":
+        return "/review/seller"
+    return funnel_paths.landing_path(prospect.lead_source, prospect.audience) or "/stale-listings/prospect"
 
 
 def report_access_token(prospect_id: Any) -> str:
