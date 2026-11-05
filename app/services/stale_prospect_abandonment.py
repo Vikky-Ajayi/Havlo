@@ -128,22 +128,27 @@ async def run_abandonment_email_cycle() -> dict:
         for prospect_id, stage in sent_result.all():
             sent_map.setdefault(prospect_id, set()).add(stage)
 
-    due: list[tuple[StaleListingProspect, int, int]] = []
+    due: list[tuple[StaleListingProspect, int]] = []
     for prospect in candidates:
         if len(due) >= _MAX_SENDS_PER_CYCLE:
             break
         elapsed = now - prospect.contact_details_submitted_at
         already_sent = sent_map.get(prospect.id, set())
-        # Only the earliest due-but-unsent stage — self-healing catch-up
-        # instead of a burst if the loop was down for a while.
-        for stage, delay in ABANDONMENT_STAGES:
-            if stage in already_sent:
-                continue
-            if elapsed >= delay:
-                due.append((prospect, stage))
-            break  # stop at the first not-yet-sent stage either way
+        # The latest stage that's due after the last one sent. Stages whose
+        # time passed while the loop was down are skipped, never sent: once
+        # one stage went per 5-minute cycle until caught up, so a lead could
+        # get 8 emails in an hour. In normal running only one stage falls
+        # due at a time, so this is just the next one.
+        last_sent = max(already_sent, default=0)
+        due_stages = [stage for stage, delay in ABANDONMENT_STAGES if stage > last_sent and elapsed >= delay]
+        if due_stages:
+            due.append((prospect, due_stages[-1]))
 
-    for prospect, stage, message in due:
+    # (prospect, stage) pairs. The SMS cycle below carries a third value;
+    # unpacking three here crashed every cycle with an email due from
+    # 19 Oct to 5 Nov 2026, so no drip email went out in that time (the
+    # leads waiting then get only their latest due stage, above).
+    for prospect, stage in due:
         try:
             delivered = await asyncio.to_thread(
                 email_service.send_stale_prospect_abandonment_email_sync,
