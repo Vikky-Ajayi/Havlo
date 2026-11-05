@@ -736,7 +736,7 @@ class StaleProspectAbandonmentSms(Base):
     StaleListingProspect. Same one-row-per-(prospect, stage) idempotency
     shape as StaleProspectAbandonmentEmail, kept as its own table since the
     two drips have independent, non-overlapping stage numbers (this one
-    uses the day number itself as the stage -- 0, 3, 6, ... 90 -- rather
+    uses the day number itself as the stage -- 0, 4, 8, ... 120 -- rather
     than a sequential 1-12 counter, since the cadence is simpler and the
     day number is self-documenting)."""
 
@@ -748,7 +748,7 @@ class StaleProspectAbandonmentSms(Base):
     prospect_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    # The day number itself (0, 3, 6, ... 90) -- see class docstring.
+    # The day number itself (0, 4, 8, ... 120; twilio_service.next_abandonment_sms).
     stage: Mapped[int] = mapped_column(Integer, nullable=False)
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

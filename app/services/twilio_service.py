@@ -1,6 +1,7 @@
 """Twilio SMS service for new message notifications."""
 import logging
 import re
+from datetime import datetime, timedelta
 from functools import lru_cache
 
 import phonenumbers
@@ -219,15 +220,17 @@ def send_test_sms(to_phone: str) -> SmsResult:
 
 # ── Stale-prospect abandonment SMS ladder ───────────────────────────────────
 # 31 texts, in this order: the first as soon as their details are in (day 0),
-# then one every 2 days up to day 60 -- see
-# stale_prospect_abandonment.run_abandonment_sms_cycle for the scheduling
-# (business-hours gating, per-stage idempotency). The stage recorded in
+# then one every 4 days, each 4 days after the one before (day 4, 8, ... 120)
+# -- see next_abandonment_sms, and
+# stale_prospect_abandonment.run_abandonment_sms_cycle for the business-hours
+# gating and per-stage idempotency. The stage recorded in
 # StaleProspectAbandonmentSms.stage is the day number.
 #
-# Until Oct 2026 the texts went every 3 days (day 1 or 0, then 4, 7, ... 91);
-# prospects already part-way through that series finish it on those days --
-# see LEGACY_SMS_ABANDONMENT_STAGE_DAYS. Copy approved verbatim; only the
-# {link} substitution and the unsubscribe line are added on top of it.
+# Earlier series: every 3 days (day 1 or 0, then 4, 7, ... 91) until Oct
+# 2026, then every 2 days (0, 2, 4, ... 60) until Nov 2026. Anyone part-way
+# through either moved to every 4 days from their next text, carrying on
+# from the text they were up to. Copy approved verbatim; only the {link}
+# substitution and the unsubscribe line are added on top of it.
 SMS_ABANDONMENT_MESSAGES: tuple[str, ...] = (
     "Your property assessment is ready. We’ve taken a closer look at what could be standing between your property and its next buyer. See what we found: {link}",
     "What if the reason your property hasn’t sold isn’t what you think? We’ve identified some possibilities in your property assessment: {link}",
@@ -262,23 +265,38 @@ SMS_ABANDONMENT_MESSAGES: tuple[str, ...] = (
     "This is our final message about your property assessment. If you’re still looking for answers about why your property hasn’t sold, your assessment is here: {link}",
 )
 
-SMS_ABANDONMENT_INTERVAL_DAYS = 2
+SMS_ABANDONMENT_INTERVAL_DAYS = 4
+# The days a new prospect is texted on: 0, 4, 8, ... 120.
 SMS_ABANDONMENT_STAGE_DAYS: tuple[int, ...] = tuple(
     i * SMS_ABANDONMENT_INTERVAL_DAYS for i in range(len(SMS_ABANDONMENT_MESSAGES))
 )
-# The old every-3-days series (its first text was day 1, later day 0).
-LEGACY_SMS_ABANDONMENT_STAGE_DAYS: tuple[int, ...] = (0,) + tuple(range(4, 92, 3))
 
 
-def sms_abandonment_schedule(already_sent: set[int]) -> tuple[int, ...]:
-    """The stage days this prospect is on. Anyone who started on the old
-    every-3-days series (had the day-1 text, or got past the first text
-    without a day-2 one) finishes on it; everyone else is on every 2 days.
-    Texts go out strictly in order, so the stages sent are always the start
-    of one schedule or the other."""
-    if 1 in already_sent or (already_sent - {0} and 2 not in already_sent):
-        return LEGACY_SMS_ABANDONMENT_STAGE_DAYS
-    return SMS_ABANDONMENT_STAGE_DAYS
+def next_abandonment_sms(
+    sent_stages: set[int], last_sent_at: datetime | None, now: datetime
+) -> tuple[int, int] | None:
+    """The prospect's next abandonment text, as (stage, message), if it's due
+    now; None if not (or the series is finished). `message` is its position
+    in SMS_ABANDONMENT_MESSAGES.
+
+    Texts go strictly in order, so the next message is the number already
+    sent. The first goes straight away; each later one 4 days after the last
+    one actually sent, so a gap in sending (the loop down, overnight hours)
+    never turns into a burst. The stage is the day number: 0, 4, 8, ... on
+    this series, and the last stage + 4 for anyone who started on an earlier
+    one (the every-3 and every-2-days series above), so stages stay unique.
+    """
+    sent = set(sent_stages)
+    if 1 in sent:  # the every-3-days series' first text was day 1, not 0
+        sent = (sent - {1}) | {0}
+    message = len(sent)
+    if message >= len(SMS_ABANDONMENT_MESSAGES):
+        return None
+    if not sent:
+        return 0, 0
+    if last_sent_at is not None and now - last_sent_at < timedelta(days=SMS_ABANDONMENT_INTERVAL_DAYS):
+        return None
+    return max(sent_stages) + SMS_ABANDONMENT_INTERVAL_DAYS, message
 
 
 def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url: str, unsubscribe_url: str) -> SmsResult:

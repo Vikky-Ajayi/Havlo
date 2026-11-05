@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import types
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 from app.services import email_service, twilio_service
@@ -36,30 +37,43 @@ class ListUnsubscribeHeaderTests(unittest.TestCase):
 
 
 class AbandonmentSmsTimingTests(unittest.TestCase):
-    def test_first_text_is_immediate_then_every_two_days(self):
+    NOW = datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)
+
+    def next_text(self, sent, days_since_last=None):
+        last = None if days_since_last is None else self.NOW - timedelta(days=days_since_last)
+        return twilio_service.next_abandonment_sms(set(sent), last, self.NOW)
+
+    def test_new_prospects_are_texted_on_day_0_then_every_four_days(self):
         days = twilio_service.SMS_ABANDONMENT_STAGE_DAYS
-        self.assertEqual(days[0], 0)
-        self.assertEqual(list(days[:4]), [0, 2, 4, 6])
-        self.assertEqual(days[-1], 60)
+        self.assertEqual(list(days[:4]), [0, 4, 8, 12])
+        self.assertEqual(days[-1], 120)
         self.assertEqual(len(days), len(twilio_service.SMS_ABANDONMENT_MESSAGES))
         self.assertEqual(len(days), 31)
+        self.assertEqual(self.next_text(set()), (0, 0))           # straight away
+        self.assertIsNone(self.next_text({0}, days_since_last=3.9))
+        self.assertEqual(self.next_text({0}, days_since_last=4), (4, 1))
+        self.assertEqual(self.next_text({0, 4}, days_since_last=4), (8, 2))
 
-    def test_new_prospects_are_on_the_two_day_series(self):
-        schedule = twilio_service.sms_abandonment_schedule
-        self.assertEqual(schedule(set()), twilio_service.SMS_ABANDONMENT_STAGE_DAYS)
-        self.assertEqual(schedule({0}), twilio_service.SMS_ABANDONMENT_STAGE_DAYS)
-        self.assertEqual(schedule({0, 2, 4}), twilio_service.SMS_ABANDONMENT_STAGE_DAYS)
+    def test_a_gap_in_sending_never_bursts(self):
+        # The loop was down for 3 weeks: one text now, the next 4 days later.
+        self.assertEqual(self.next_text({0, 4}, days_since_last=21), (8, 2))
+        self.assertIsNone(self.next_text({0, 4, 8}, days_since_last=0))
 
-    def test_prospects_part_way_through_the_old_series_finish_it(self):
-        schedule = twilio_service.sms_abandonment_schedule
-        legacy = twilio_service.LEGACY_SMS_ABANDONMENT_STAGE_DAYS
-        self.assertEqual(list(legacy[:4]), [0, 4, 7, 10])
-        self.assertEqual(legacy[-1], 91)
-        self.assertEqual(len(legacy), 31)
-        self.assertEqual(schedule({1}), legacy)
-        self.assertEqual(schedule({0, 1, 4}), legacy)
-        self.assertEqual(schedule({0, 4}), legacy)
-        self.assertEqual(schedule({0, 4, 7, 10}), legacy)
+    def test_prospects_part_way_through_the_two_day_series_move_to_every_four(self):
+        # Had texts 1-4 on days 0, 2, 4, 6: text 5 comes 4 days after the last.
+        self.assertIsNone(self.next_text({0, 2, 4, 6}, days_since_last=2))
+        self.assertEqual(self.next_text({0, 2, 4, 6}, days_since_last=4), (10, 4))
+
+    def test_prospects_part_way_through_the_three_day_series_move_too(self):
+        self.assertEqual(self.next_text({0, 4, 7, 10}, days_since_last=4), (14, 4))
+        # Its first text was day 1 then: counted as the first message, not resent.
+        self.assertEqual(self.next_text({1}, days_since_last=4), (5, 1))
+        self.assertEqual(self.next_text({1, 4}, days_since_last=4), (8, 2))
+
+    def test_the_series_ends_after_31_texts(self):
+        all_sent = set(twilio_service.SMS_ABANDONMENT_STAGE_DAYS)
+        self.assertIsNone(self.next_text(all_sent, days_since_last=30))
+        self.assertEqual(self.next_text(all_sent - {120}, days_since_last=4), (120, 30))
 
     def test_message_is_picked_by_position(self):
         sent = {}

@@ -19,8 +19,8 @@ Per product decision, this only applies to prospects whose contact_details_
 submitted_at is set after this feature shipped — no backfill of prospects
 who already had contact details before then.
 
-Alongside the email ladder, a separate SMS ladder runs Day 0 -> Day 91 every
-3 days (see run_abandonment_sms_cycle below) — its own table
+Alongside the email ladder, a separate SMS ladder runs Day 0 -> Day 120 every
+4 days (see run_abandonment_sms_cycle below) — its own table
 (StaleProspectAbandonmentSms), its own opt-out (sms_unsubscribed_at, not
 unsubscribed_at), and a business-hours (8am-7pm Europe/London) send window.
 """
@@ -209,7 +209,7 @@ async def start_abandonment_email_loop() -> None:
     )
 
 
-# Day 0 -> Day 60 SMS ladder, every 2 days (31 stages) — separate from the
+# Day 0 -> Day 120 SMS ladder, every 4 days (31 stages) — separate from the
 # 12-stage email ladder above: own table (StaleProspectAbandonmentSms), own
 # opt-out (sms_unsubscribed_at rather than unsubscribed_at), own channel.
 # Links via ?code={property_code} rather than a token — the same param the
@@ -220,9 +220,9 @@ async def start_abandonment_email_loop() -> None:
 # carries no less exposure than a reissued token would (both are already
 # shown/printed to the prospect).
 #
-# Stage numbers ARE the day number (0, 2, 4, ... 60; prospects who started
-# before Oct 2026 finish the old 0/1, 4, 7, ... 91 series) — see
-# twilio_service.sms_abandonment_schedule, the single source of truth for
+# Stage numbers ARE the day number (0, 4, 8, ... 120; prospects who started
+# on the every-3 or every-2-days series carry on from their last stage + 4)
+# — see twilio_service.next_abandonment_sms, the single source of truth for
 # the cadence, and SMS_ABANDONMENT_MESSAGES for the copy.
 _SMS_POLL_LIMIT = 500
 _MAX_SMS_SENDS_PER_CYCLE = 100
@@ -292,33 +292,31 @@ async def run_abandonment_sms_cycle() -> dict:
 
         candidate_ids = [c.id for c in candidates]
         sent_result = await db.execute(
-            select(StaleProspectAbandonmentSms.prospect_id, StaleProspectAbandonmentSms.stage).where(
-                StaleProspectAbandonmentSms.prospect_id.in_(candidate_ids)
-            )
+            select(
+                StaleProspectAbandonmentSms.prospect_id,
+                StaleProspectAbandonmentSms.stage,
+                StaleProspectAbandonmentSms.sent_at,
+            ).where(StaleProspectAbandonmentSms.prospect_id.in_(candidate_ids))
         )
         sent_map: dict[UUID, set[int]] = {}
-        for prospect_id, stage in sent_result.all():
+        last_sent: dict[UUID, datetime] = {}
+        for prospect_id, stage, sent_at in sent_result.all():
             sent_map.setdefault(prospect_id, set()).add(stage)
+            if sent_at is not None and (prospect_id not in last_sent or sent_at > last_sent[prospect_id]):
+                last_sent[prospect_id] = sent_at
 
     due: list[tuple[StaleListingProspect, int, int]] = []
     for prospect in candidates:
         if len(due) >= _MAX_SMS_SENDS_PER_CYCLE:
             break
-        elapsed = now - prospect.contact_details_submitted_at
-        already_sent = sent_map.get(prospect.id, set())
-        # The first text was stage 1 (day 1) before it moved to stage 0 (straight
-        # away): whoever already had it isn't sent it again.
-        if 1 in already_sent:
-            already_sent = already_sent | {0}
-        # Only the earliest due-but-unsent stage — self-healing catch-up
-        # instead of a burst if the loop was down (or outside send hours)
-        # for a while, same pattern as the email ladder.
-        for message, day in enumerate(twilio_service.sms_abandonment_schedule(already_sent)):
-            if day in already_sent:
-                continue
-            if elapsed >= timedelta(days=day):
-                due.append((prospect, day, message))
-            break
+        # The first text straight away, then each 4 days after the last one
+        # sent, in order (twilio_service.next_abandonment_sms). Counting from
+        # the last send means a gap (the loop down, overnight) never bursts.
+        planned = twilio_service.next_abandonment_sms(
+            sent_map.get(prospect.id, set()), last_sent.get(prospect.id), now
+        )
+        if planned:
+            due.append((prospect, *planned))
 
     stopped = 0
     for prospect, stage, message in due:
