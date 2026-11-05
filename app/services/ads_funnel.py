@@ -2,9 +2,12 @@
 (/g/seller, /g/agent).
 
 A visitor pastes their Rightmove listing link instead of entering the
-property code from a letter. The listing is read, the prospect, report and
-preview are made exactly as discovery makes them, and the visitor carries
-on through the normal /check funnel by access token.
+property code from a letter. The listing is read and its prospect made
+straight away, so the visitor sees their property at once; its report and
+preview are written in the background (finish_report) while they confirm
+the property and give their details, and the preview step waits for it
+only if it isn't in by then. The visitor carries on through the normal
+/check funnel by access token.
 
 Tags below are for Meta; Google leads get the same with "google_" in
 place of "meta_", and the other channels likewise (seller_source() etc.).
@@ -22,8 +25,9 @@ place of "meta_", and the other channels likewise (seller_source() etc.).
 Visitors without their link to hand leave a first name and email instead
 (AdsUrlReminderLead); app/services/ads_nurture.py emails them a link back.
 Prospects made here skip the letter PDF and stay at processing_status
-"report_ready", never a letter status, so the letter email loop leaves
-them alone.
+"report_pending" until their report is in ("report_failed" if writing it
+failed), then "report_ready" -- never a letter status, so the letter email
+loop leaves them alone.
 """
 from __future__ import annotations
 
@@ -315,7 +319,8 @@ async def _create_owner_prospect(
     db: AsyncSession, url: str, lead_source: str, manual: tuple[str, float] | None = None,
     zoopla_url: str | None = None,
 ) -> StaleListingProspect:
-    """Read the listing and make its prospect, report and preview. No price,
+    """Read the listing and make its prospect; its report and preview follow
+    in the background (finish_report). No price,
     age or property-type gate: the visitor chose to have this listing looked
     at, unlike discovery picking listings to write to.
 
@@ -372,6 +377,9 @@ async def _create_owner_prospect(
         listed_date=listed_date,
         city=_city_from_address(address),
         make_letter=False,
+        # Written in the background (finish_report): the visitor sees the
+        # property now instead of waiting up to a minute for the report.
+        write_report=False,
     )
     prospect.lead_source = lead_source
     return prospect
@@ -412,7 +420,8 @@ async def _agent_copy(db: AsyncSession, owner: StaleListingProspect, lead_source
         parent_prospect_id=owner.id,
         lead_source=lead_source,
         source_status="active",
-        processing_status="report_ready",
+        # Shares its owner's report: still to come if the owner's isn't in.
+        processing_status=_copy_status(owner),
         discovered_at=now,
         processed_at=now,
         payment_status="pending",
@@ -450,7 +459,8 @@ async def _seller_copy(db: AsyncSession, owner: StaleListingProspect, lead_sourc
         parent_prospect_id=owner.id,
         lead_source=lead_source,
         source_status="active",
-        processing_status="report_ready",
+        # Shares its owner's report: still to come if the owner's isn't in.
+        processing_status=_copy_status(owner),
         discovered_at=now,
         processed_at=now,
         payment_status="pending",
@@ -459,6 +469,135 @@ async def _seller_copy(db: AsyncSession, owner: StaleListingProspect, lead_sourc
     db.add(copy)
     await db.flush()
     return copy
+
+
+def _copy_status(owner: StaleListingProspect) -> str:
+    return "report_ready" if sps.report_status(owner) == "ready" else sps.REPORT_PENDING
+
+
+# ── The report, written in the background ─────────────────────────────────
+# A new listing's prospect is made without its report (write_report=False)
+# so the visitor can carry on at once. finish_report writes it: started by
+# the /ads/start request, again by the pages' polls if it isn't in (a worker
+# restart loses a running one), and by the ads email loop for any left
+# pending. A per-listing advisory lock means only one writes it at a time,
+# whichever worker the start and the polls land on.
+_RUNNING_REPORTS: dict[Any, asyncio.Task] = {}
+REPORT_RETRY_DELAY_SECONDS = 5
+
+
+def start_report(prospect_id: Any) -> None:
+    """Start finish_report for this prospect in this worker, unless it's
+    already running here. Returns at once."""
+    task = _RUNNING_REPORTS.get(prospect_id)
+    if task is not None and not task.done():
+        return
+    task = asyncio.create_task(finish_report(prospect_id))
+    _RUNNING_REPORTS[prospect_id] = task
+    task.add_done_callback(lambda _t, key=prospect_id: _RUNNING_REPORTS.pop(key, None))
+
+
+async def finish_report(prospect_id: Any) -> str:
+    """Write the report of a listing made without one, and hand it to that
+    listing's copies (an agent's, or a second homeowner's) still waiting for
+    it. Returns the prospect's report status afterwards ("ready", "failed",
+    or "pending" when another worker is writing it). Never raises."""
+    from app.db.database import AsyncSessionLocal
+    from app.services.scraper_base import run_once_with_advisory_lock
+
+    try:
+        async with AsyncSessionLocal() as db:
+            prospect = await db.get(StaleListingProspect, prospect_id)
+            if prospect is None:
+                return "ready"
+            if sps.report_status(prospect) == "ready":
+                return "ready"
+            # A copy waits for its owner's report: that's the one to write.
+            owner_id = prospect.parent_prospect_id or prospect.id
+        result = await run_once_with_advisory_lock(
+            f"ads-report:{owner_id}", lambda: _write_owner_report(owner_id)
+        )
+        if isinstance(result, dict) and result.get("skipped"):
+            return "pending"  # another worker has it
+        return result
+    except Exception:  # noqa: BLE001
+        logger.exception("Ads funnel: finishing the report for %s failed", prospect_id)
+        return "failed"
+
+
+async def _write_owner_report(owner_id: Any) -> str:
+    from app.db.database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        owner = await db.get(StaleListingProspect, owner_id)
+        if owner is None:
+            return "ready"
+        written = None
+        if not owner.report_json:
+            inputs = sps.listing_report_inputs(owner)
+            code = owner.property_code
+        else:
+            written = (_loads(owner.report_json), _loads(owner.preview_json), None)
+    if written is None:
+        # Outside any session: the write takes up to a minute or two.
+        error = None
+        for attempt in (1, 2):
+            try:
+                written = await sps.write_listing_report(**inputs)
+                break
+            except Exception as exc:  # noqa: BLE001
+                error = exc
+                logger.warning("Ads funnel: report for %s failed (attempt %s): %s", code, attempt, exc)
+                if attempt == 1:
+                    await asyncio.sleep(REPORT_RETRY_DELAY_SECONDS)
+        if written is None:
+            async with AsyncSessionLocal() as db:
+                for row in await _waiting_on(db, owner_id):
+                    row.processing_status = sps.REPORT_FAILED
+                    row.last_error = f"Report not written: {error}"[:2000]
+                await db.commit()
+            return "failed"
+    report, preview, sales = written
+    async with AsyncSessionLocal() as db:
+        for row in await _waiting_on(db, owner_id):
+            sps.apply_listing_report(row, report, preview, sales)
+        await db.commit()
+    logger.info("Ads funnel: report written for %s", owner_id)
+    return "ready"
+
+
+async def _waiting_on(db: AsyncSession, owner_id: Any) -> list[StaleListingProspect]:
+    """The owner and its copies whose report isn't in yet."""
+    rows = (await db.execute(
+        select(StaleListingProspect).where(
+            (StaleListingProspect.id == owner_id) | (StaleListingProspect.parent_prospect_id == owner_id),
+        )
+    )).scalars().all()
+    return [r for r in rows if not r.report_json]
+
+
+async def resume_pending_reports(older_than_seconds: int = 180) -> int:
+    """Restart reports left pending (a worker restarted mid-write, or the
+    visitor left before any page asked again). Called from the ads email
+    loop. Returns how many were started."""
+    from app.db.database import AsyncSessionLocal
+
+    cutoff = datetime.now(timezone.utc).timestamp() - older_than_seconds
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(StaleListingProspect.id, StaleListingProspect.created_at).where(
+                StaleListingProspect.processing_status == sps.REPORT_PENDING,
+                StaleListingProspect.report_json.is_(None),
+                StaleListingProspect.parent_prospect_id.is_(None),
+            ).limit(50)
+        )).all()
+    started = 0
+    for prospect_id, created_at in rows:
+        if created_at is not None and created_at.timestamp() > cutoff:
+            continue  # its own start is probably still on it
+        start_report(prospect_id)
+        started += 1
+    return started
 
 
 def _grant_access(prospect: StaleListingProspect) -> str:
@@ -767,6 +906,9 @@ def assessment_summary(prospect: StaleListingProspect) -> dict[str, Any]:
             "fallback": score_status(scores.get("competition")),
         },
         "finding": finding,
+        # Buyer appeal, pricing and presentation come from the report: the
+        # page shows them once this is "ready" (asking again till then).
+        "report_status": sps.report_status(prospect),
     }
 
 

@@ -442,12 +442,104 @@ async def create_prospect_from_listing_snapshot(
     is_manual: bool = False,
     country: str = "UK",
     make_letter: bool = True,
+    write_report: bool = True,
 ) -> tuple[StaleListingProspect, str, str]:
     """Create a fully processed prospect, report, preview and letter PDF.
     make_letter=False (the ads funnel, where nobody is written to) skips the
-    letter, which is otherwise made on first download from the console."""
+    letter, which is otherwise made on first download from the console.
+    write_report=False (the ads funnel, with make_letter=False) creates the
+    prospect straight away with its report still to write
+    (processing_status REPORT_PENDING), and its report is written in
+    the background while the visitor carries on (ads_funnel.finish_report)."""
+    if make_letter and not write_report:
+        raise ValueError("A letter needs the report: write_report=False is for the ads funnel only.")
     token = create_access_token()
     property_code = await make_property_code(db)
+    if write_report:
+        report, preview, sold_comparables = await write_listing_report(
+            property_address=property_address, rightmove_url=rightmove_url, listing_snapshot=listing_snapshot,
+            asking_price=asking_price, listing_duration_days=listing_duration_days, listed_date=listed_date,
+            expand_report=expand_report, country=country, interactive=not make_letter,
+        )
+    else:
+        report = preview = sold_comparables = None
+    now = datetime.now(timezone.utc)
+    prospect = StaleListingProspect(
+        country=country,
+        property_code=property_code,
+        qr_token_hash=hash_access_token(token),
+        qr_token_hashes=[hash_access_token(token)],
+        property_address=property_address,
+        postcode=listing_snapshot.get("postcode") or None,
+        city=city or listing_snapshot.get("city") or None,
+        is_manual=is_manual,
+        rightmove_url=rightmove_url,
+        rightmove_id=listing_snapshot.get("rightmove_id") or rightmove_listing_id(rightmove_url),
+        asking_price=float(asking_price),
+        listing_duration_days=int(listing_duration_days),
+        listed_date=listed_date,
+        property_type=listing_snapshot.get("property_type") or None,
+        bedrooms=int(listing_snapshot["bedrooms"]) if str(listing_snapshot.get("bedrooms") or "").isdigit() else None,
+        bathrooms=int(listing_snapshot["bathrooms"]) if str(listing_snapshot.get("bathrooms") or "").isdigit() else None,
+        listing_snapshot_json=json.dumps(listing_snapshot, ensure_ascii=False),
+        report_json=json.dumps(report, ensure_ascii=False) if write_report else None,
+        preview_json=json.dumps(preview, ensure_ascii=False) if write_report else None,
+        discovery_run_id=discovery_run_id,
+        source_status="active",
+        discovered_at=now,
+        processed_at=now if write_report else None,
+        processing_status="report_ready" if write_report else REPORT_PENDING,
+        payment_status="pending",
+        sold_comparables_json=json.dumps(sold_comparables) if sold_comparables is not None else None,
+        sold_comparables_at=now if sold_comparables is not None else None,
+    )
+    if isinstance(listing_snapshot.get("agent"), dict):
+        apply_agent_details(prospect, listing_snapshot["agent"])
+    db.add(prospect)
+    await db.flush()
+    if not make_letter:
+        return prospect, token, ""
+    letter_path = generate_letter_pdf(prospect, token, get_settings().FRONTEND_URL or "https://www.heyhavlo.com")
+    prospect.letter_pdf_path = letter_path
+    prospect.processing_status = "letter_ready"
+    return prospect, token, letter_path
+
+
+# processing_status while the ads funnel's report is still being written
+# (create_prospect_from_listing_snapshot(write_report=False)), and if
+# writing it failed; "report_ready" once it's in.
+REPORT_PENDING = "report_pending"
+REPORT_FAILED = "report_failed"
+
+
+def report_status(prospect: StaleListingProspect) -> str:
+    """"pending", "failed" or "ready": whether this prospect's report (and so
+    its preview, summary and checkout) is there yet."""
+    if getattr(prospect, "report_json", None):
+        return "ready"
+    if getattr(prospect, "processing_status", None) == REPORT_FAILED:
+        return "failed"
+    if getattr(prospect, "processing_status", None) == REPORT_PENDING:
+        return "pending"
+    return "ready"
+
+
+async def write_listing_report(
+    *,
+    property_address: str,
+    rightmove_url: str,
+    listing_snapshot: dict[str, Any],
+    asking_price: float,
+    listing_duration_days: int,
+    listed_date: datetime | None,
+    expand_report: bool = True,
+    country: str = "UK",
+    interactive: bool = False,
+) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]] | None]:
+    """A listing's report, its free preview and the recorded sales it was
+    given. `interactive` (the ads funnels and manual adds, not bulk
+    discovery) adds the photo review and, with REPORT_V2, the 20-factor
+    report."""
     # Recorded sales are looked up first and handed to the report, so any
     # sale it cites is a real one. They used to run side by side, and the
     # free report compared the price with "recent sales nearby" it had never
@@ -464,7 +556,7 @@ async def create_prospect_from_listing_snapshot(
         # misses this is filled in by backfill_sold_comparables.
         timeout=20,
     )
-    if report_v2_enabled() and not make_letter:
+    if report_v2_enabled() and interactive:
         # The 20-factor report (overhaul). Already accuracy- and tone-checked.
         # This is the owner's copy; the agent's is derived and written later.
         from app.services import report_writer
@@ -487,7 +579,7 @@ async def create_prospect_from_listing_snapshot(
         # What this report was given, so its claims are checked against it.
         report["_sales_given"] = bool(report_snapshot["recorded_sales_nearby"])
         report["_media_given"] = media_known(listing_snapshot.get("media"))
-        if not make_letter:  # interactive funnels only, not bulk discovery
+        if interactive:  # interactive funnels only, not bulk discovery
             report = await add_photo_review(report, listing_snapshot, property_address)
         check_new_report(
             report,
@@ -498,47 +590,39 @@ async def create_prospect_from_listing_snapshot(
             property_address,
         )
         preview = build_preview(report, listing_snapshot, property_address)
-    now = datetime.now(timezone.utc)
-    prospect = StaleListingProspect(
-        country=country,
-        property_code=property_code,
-        qr_token_hash=hash_access_token(token),
-        qr_token_hashes=[hash_access_token(token)],
-        property_address=property_address,
-        postcode=listing_snapshot.get("postcode") or None,
-        city=city or listing_snapshot.get("city") or None,
-        is_manual=is_manual,
-        rightmove_url=rightmove_url,
-        rightmove_id=listing_snapshot.get("rightmove_id") or rightmove_listing_id(rightmove_url),
-        asking_price=float(asking_price),
-        listing_duration_days=int(listing_duration_days),
-        listed_date=listed_date,
-        property_type=listing_snapshot.get("property_type") or None,
-        bedrooms=int(listing_snapshot["bedrooms"]) if str(listing_snapshot.get("bedrooms") or "").isdigit() else None,
-        bathrooms=int(listing_snapshot["bathrooms"]) if str(listing_snapshot.get("bathrooms") or "").isdigit() else None,
-        listing_snapshot_json=json.dumps(listing_snapshot, ensure_ascii=False),
-        report_json=json.dumps(report, ensure_ascii=False),
-        preview_json=json.dumps(preview, ensure_ascii=False),
-        discovery_run_id=discovery_run_id,
-        source_status="active",
-        discovered_at=now,
-        processed_at=now,
-        processing_status="report_ready",
-        payment_status="pending",
-        sold_comparables_json=json.dumps(sold_comparables) if sold_comparables is not None else None,
-        sold_comparables_at=now if sold_comparables is not None else None,
-    )
-    if isinstance(listing_snapshot.get("agent"), dict):
-        apply_agent_details(prospect, listing_snapshot["agent"])
-    db.add(prospect)
-    await db.flush()
-    if not make_letter:
-        return prospect, token, ""
-    letter_path = generate_letter_pdf(prospect, token, get_settings().FRONTEND_URL or "https://www.heyhavlo.com")
-    prospect.letter_pdf_path = letter_path
-    prospect.processing_status = "letter_ready"
-    return prospect, token, letter_path
+    return report, preview, sold_comparables
 
+
+def listing_report_inputs(prospect: StaleListingProspect) -> dict[str, Any]:
+    """write_listing_report's arguments for a prospect made with
+    write_report=False, read up front so the slow write needs no open
+    database session."""
+    return dict(
+        property_address=prospect.property_address, rightmove_url=prospect.rightmove_url,
+        listing_snapshot=_safe_json(prospect.listing_snapshot_json), asking_price=float(prospect.asking_price or 0),
+        listing_duration_days=int(prospect.listing_duration_days or 0), listed_date=prospect.listed_date,
+        country=prospect_country(prospect), interactive=True,
+    )
+
+
+def apply_listing_report(
+    prospect: StaleListingProspect,
+    report: dict[str, Any],
+    preview: dict[str, Any],
+    sold_comparables: list[dict[str, Any]] | None,
+) -> None:
+    """Store a report written by write_listing_report on the prospect (or on
+    a copy of the listing, which shares its owner's report). The caller
+    commits."""
+    now = datetime.now(timezone.utc)
+    prospect.report_json = json.dumps(report, ensure_ascii=False)
+    prospect.preview_json = json.dumps(preview, ensure_ascii=False)
+    if sold_comparables is not None:
+        prospect.sold_comparables_json = json.dumps(sold_comparables)
+        prospect.sold_comparables_at = now
+    prospect.processing_status = "report_ready"
+    prospect.processed_at = now
+    prospect.last_error = None
 
 async def send_prospect_letter_to_admin(
     prospect_id: str,
@@ -780,6 +864,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "checkout_started": bool(prospect.sumup_checkout_id or prospect.bank_transfer_reference),
         "audience": prospect.audience or "owner",
         "unlock_price": unlock_price_for(prospect),
+        "report_status": report_status(prospect),
         # Analyst-review funnel (/review/...) purchases: paid, but the review isn't
         # finished, so the report isn't open yet (app/services/analyst_review.py).
         "report_on_hold": analyst_review.report_on_hold(prospect),

@@ -1,5 +1,5 @@
 import { API_BASE } from '../../lib/api';
-import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, NextStepsData, NextStepsOrder, ProspectPreview, ProspectReport, SoldComparable } from './types';
+import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, NextStepsData, NextStepsOrder, ProspectPreview, ProspectReport, ReportStatus, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
   if (!response.ok) {
@@ -88,6 +88,9 @@ export interface AdsSummary {
   presentation: { count: number; status: string | null };
   competition: { status: 'pending' | 'ready' | 'unavailable'; count?: number | null; basis?: string | null; area?: string | null; fallback?: string | null };
   finding: string | null;
+  /** Buyer appeal, pricing and presentation come from the report: blank
+   * until this is "ready". */
+  report_status?: ReportStatus;
 }
 
 /** The ads homeowner's Confirm Property summary, all from their report. */
@@ -117,6 +120,17 @@ export async function getProspectPreview(params: { token?: string; code?: string
   if (params.token) query.set('token', params.token);
   if (params.code) query.set('code', params.code);
   const response = await fetch(`${API_BASE}/stale-listings/prospects/preview?${query.toString()}`);
+  return parseJsonOrThrow(response);
+}
+
+/** "Try again" when writing the report failed: starts it again and returns
+ * the preview (report_status "pending" while it's written). */
+export async function retryProspectReport(access: { token?: string; code?: string }): Promise<ProspectPreview> {
+  const response = await fetch(`${API_BASE}/stale-listings/prospects/report-retry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(access.token ? { token: access.token } : { property_code: access.code }),
+  });
   return parseJsonOrThrow(response);
 }
 

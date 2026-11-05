@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsChannel, type AdsSummary, type ManualListingDetails } from './api';
-import { formatGbp, type ProspectPreview } from './types';
+import { formatGbp, reportReady, type ProspectPreview } from './types';
 
 // Ads landing pages, Meta (/assess/seller, /assess/agent) and Google
 // (/g/seller, /g/agent): the /check
@@ -339,8 +339,11 @@ export const AdsSellerSummary = ({
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
 
-  // The competing-listings count can still be on its way: ask again until
-  // it's in, giving up after about three minutes.
+  // The competing-listings count, and the rows from the report (written in
+  // the background after the listing link), can still be on their way: ask
+  // again until they're in, giving up after about three minutes. The wizard
+  // refreshes `prospect` when the report lands, which asks once more.
+  const reportPending = !reportReady(prospect);
   useEffect(() => {
     let cancelled = false;
     let tries = 0;
@@ -350,7 +353,8 @@ export const AdsSellerSummary = ({
         const data = await getAdsSummary(access);
         if (cancelled) return;
         setSummary(data);
-        if (data.competition.status === 'pending' && tries++ < 45) handle = window.setTimeout(load, 4000);
+        const waiting = data.competition.status === 'pending' || data.report_status === 'pending';
+        if (waiting && tries++ < 45) handle = window.setTimeout(load, 4000);
       } catch {
         if (!cancelled && tries++ < 3) handle = window.setTimeout(load, 4000);
       }
@@ -360,7 +364,7 @@ export const AdsSellerSummary = ({
       cancelled = true;
       if (handle) window.clearTimeout(handle);
     };
-  }, [access.token, access.code]);
+  }, [access.token, access.code, reportPending]);
 
   const facts = [
     prospect.asking_price ? formatGbp(prospect.asking_price) : null,
@@ -369,7 +373,12 @@ export const AdsSellerSummary = ({
   ].filter(Boolean);
 
   const rows: { label: string; text: ReactNode }[] = [];
-  if (summary) {
+  const analysing = <span className="slw-ads-pending">Analysing your listing…</span>;
+  if (summary && (reportPending || (summary.report_status && summary.report_status !== 'ready'))) {
+    rows.push({ label: 'Buyer Appeal', text: analysing });
+    rows.push({ label: 'Pricing Position', text: analysing });
+    rows.push({ label: 'Listing Presentation', text: analysing });
+  } else if (summary) {
     if (summary.buyer_appeal) rows.push({ label: 'Buyer Appeal', text: summary.buyer_appeal });
     if (summary.pricing) rows.push({ label: 'Pricing Position', text: summary.pricing });
     if (summary.presentation.count > 0) {
@@ -377,6 +386,8 @@ export const AdsSellerSummary = ({
     } else if (summary.presentation.status) {
       rows.push({ label: 'Listing Presentation', text: summary.presentation.status });
     }
+  }
+  if (summary) {
     const competition = summary.competition;
     if (competition.status === 'ready' && competition.count) {
       rows.push({
@@ -407,7 +418,9 @@ export const AdsSellerSummary = ({
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <path d="M12 9v4M12 17h.01" />
               </svg>
-              <span>We found <b>{totalFactors} factors</b> that may be affecting your sale</span>
+              {reportPending
+                ? <span>We&rsquo;re checking the factors that may be affecting your sale</span>
+                : <span>We found <b>{totalFactors} factors</b> that may be affecting your sale</span>}
             </div>
           </div>
           {summary === null ? (
@@ -416,7 +429,9 @@ export const AdsSellerSummary = ({
             <>
               {rows.length > 0 && (
                 <>
-                  <p className="slw-ads-summary-intro">Your assessment identified potential issues across:</p>
+                  <p className="slw-ads-summary-intro">
+                    {reportPending ? 'Your assessment is checking:' : 'Your assessment identified potential issues across:'}
+                  </p>
                   <ul className="slw-ads-summary-list">
                     {rows.map((row) => (
                       <li key={row.label}><b>{row.label}</b> &mdash; {row.text}</li>
@@ -434,7 +449,7 @@ export const AdsSellerSummary = ({
             </p>
           </div>
           <button type="button" className="slw-btn-black slw-ads-see-all" onClick={onContinue}>
-            See All {totalFactors} Findings &amp; Recommendations &rarr;
+            {reportPending ? 'See All Findings & Recommendations' : `See All ${totalFactors} Findings & Recommendations`} &rarr;
           </button>
         </div>
       </div>

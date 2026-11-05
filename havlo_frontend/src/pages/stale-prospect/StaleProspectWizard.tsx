@@ -27,6 +27,7 @@ import {
   getProspectDashboardLink,
   getProspectPaymentStatus,
   getProspectPreview,
+  retryProspectReport,
   getProspectReport,
   getUrlReminder,
   lookupProspect,
@@ -52,6 +53,7 @@ import {
   formatReducedDate,
   stepperIndexFor,
   prospectPrice,
+  reportReady,
   STEPPER_ITEMS,
   type ActiveCompetitor,
   type ComparableSale,
@@ -460,7 +462,9 @@ const ConfirmStep = ({
                 <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <path d="M12 9v4M12 17h.01" />
               </svg>
-              <span>We found <b>{totalFactors} factors</b> that might be delaying the sale</span>
+              {reportReady(prospect)
+                ? <span>We found <b>{totalFactors} factors</b> that might be delaying the sale</span>
+                : <span>We&rsquo;re checking the factors that might be delaying the sale</span>}
             </div>
             {prospect.reduced_date != null ? (
               <div>
@@ -555,6 +559,39 @@ function deriveThirtyDayPlanFromActions(actions?: ReportAction[]): ThirtyDayPlan
   }
   return weeks;
 }
+
+// ── Step: the report still being written ───────────────────────────────────
+// The ads funnels write the report in the background after the listing link,
+// while the visitor confirms the property and gives their details. A step
+// that needs it (the preview, the review scan, payment) shows this until
+// it's in, or a "Try again" if writing it failed.
+const ReportPendingStep = ({
+  failed,
+  retrying,
+  onRetry,
+}: {
+  failed: boolean;
+  retrying: boolean;
+  onRetry: () => void;
+}) => (
+  <section className="slw-finding slw-report-pending" aria-live="polite">
+    {failed ? (
+      <>
+        <p><b>We couldn&rsquo;t finish your assessment just now.</b></p>
+        <p>Something went wrong while we were preparing it. Please try again.</p>
+        <button type="button" className="slw-btn-black" onClick={onRetry} disabled={retrying}>
+          {retrying ? 'Trying again…' : 'Try again'}
+        </button>
+      </>
+    ) : (
+      <>
+        <div className="slw-spinner" />
+        <p>Finishing your assessment…</p>
+        <small>It&rsquo;ll appear here by itself in a moment.</small>
+      </>
+    )}
+  </section>
+);
 
 // ── Step: Assessment (locked preview) ──────────────────────────────────────
 
@@ -1725,6 +1762,11 @@ export const StaleProspectWizard = ({
   const [pollHandle, setPollHandle] = useState<number | null>(null);
   const [prefill, setPrefill] = useState<{ first_name?: string; email?: string }>({});
   const [welcomeName, setWelcomeName] = useState('');
+  // The ads funnels' report, written in the background (ReportPendingStep):
+  // asked about every few seconds until it's in; "timed out" after about
+  // five minutes, when the step offers "Try again" instead of waiting on.
+  const [reportTimedOut, setReportTimedOut] = useState(false);
+  const [retryingReport, setRetryingReport] = useState(false);
   // Ads homeowners see a summary of the findings on Confirm Property first;
   // "See all findings" brings up the details form.
   // The analyst-review funnel starts owners and agents on its Initial scan.
@@ -1898,6 +1940,58 @@ export const StaleProspectWizard = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // While the report is being written, check on it every few seconds and take
+  // the fresh preview (its findings, factor count, price) once it's in. The
+  // screens before the preview don't need it; those that do wait on this.
+  const reportStatus = prospect?.report_status;
+  useEffect(() => {
+    if (reportStatus !== 'pending' || reportTimedOut || !(access.token || access.code)) return undefined;
+    let cancelled = false;
+    let tries = 0;
+    let handle: number | undefined;
+    const check = async () => {
+      try {
+        const fresh = await getProspectPreview({ token: access.token, code: access.code });
+        if (cancelled) return;
+        if (fresh.report_status !== 'pending') {
+          setProspect(fresh);
+          return;
+        }
+      } catch {
+        // A passing error: ask again.
+      }
+      if (cancelled) return;
+      if (tries++ < 100) handle = window.setTimeout(check, 3000);
+      else setReportTimedOut(true);
+    };
+    handle = window.setTimeout(check, 3000);
+    return () => {
+      cancelled = true;
+      if (handle) window.clearTimeout(handle);
+    };
+  }, [reportStatus, reportTimedOut, access.token, access.code]);
+
+  const handleRetryReport = async () => {
+    setRetryingReport(true);
+    try {
+      const fresh = await retryProspectReport({ token: access.token, code: access.code });
+      setReportTimedOut(false);
+      setProspect(fresh);
+    } catch {
+      // Still failed: the button stays for another go.
+    } finally {
+      setRetryingReport(false);
+    }
+  };
+  const waitingForReport = !!prospect && !reportReady(prospect);
+  const reportPendingStep = (
+    <ReportPendingStep
+      failed={prospect?.report_status === 'failed' || reportTimedOut}
+      retrying={retryingReport}
+      onRetry={handleRetryReport}
+    />
+  );
+
   // Keep the URL's token/code in sync with access as the user progresses
   // through the wizard, so refreshing on any step (confirm, assessment,
   // payment...) has something for the resume-on-reload effect above to key
@@ -2045,7 +2139,8 @@ export const StaleProspectWizard = ({
     setError('');
     try {
       await submitProspectDetails({ ...fields, token: access.token, property_code: access.code });
-      if (prospect) setProspect({ ...prospect, has_contact_details: true });
+      // Functional, so a report that landed in the meantime (the poll above) isn't undone.
+      setProspect((p) => (p ? { ...p, has_contact_details: true } : p));
       setStep(review ? 'payment' : 'assessment');
     } catch (e: any) {
       setError('We could not save your details. Please check them and try again.');
@@ -2305,7 +2400,8 @@ export const StaleProspectWizard = ({
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
           {step === 'not_found' && <NotFoundStep onTryAgain={() => setStep('landing')} />}
-          {review && step === 'confirm' && prospect && !showDetailsForm && (
+          {review && step === 'confirm' && prospect && !showDetailsForm && waitingForReport && reportPendingStep}
+          {review && step === 'confirm' && prospect && !showDetailsForm && !waitingForReport && (
             <ReviewScanStep
               prospect={prospect}
               access={access}
@@ -2324,7 +2420,8 @@ export const StaleProspectWizard = ({
               initial={prefill}
             />
           )}
-          {review && step === 'payment' && prospect && (
+          {review && step === 'payment' && prospect && waitingForReport && reportPendingStep}
+          {review && step === 'payment' && prospect && !waitingForReport && (
             <ReviewPreviewPayStep
               prospect={prospect}
               totalFactors={totalFactorsFor(prospect)}
@@ -2348,10 +2445,11 @@ export const StaleProspectWizard = ({
           {!review && step === 'confirm' && prospect && showDetailsForm && (
             <ConfirmStep prospect={prospect} onSubmit={handleDetailsSubmit} loading={loading} error={error} initial={prefill} />
           )}
-          {!review && step === 'assessment' && prospect && (
+          {!review && (step === 'assessment' || step === 'payment') && prospect && waitingForReport && reportPendingStep}
+          {!review && step === 'assessment' && prospect && !waitingForReport && (
             <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} />
           )}
-          {!review && step === 'payment' && prospect && (
+          {!review && step === 'payment' && prospect && !waitingForReport && (
             <PaymentStep
               prospect={prospect}
               onPayCard={handlePayCard}
@@ -2505,6 +2603,11 @@ export const WizardStyles = () => (
     .slw-value-grid p{color:#111;font-size:18px;line-height:1.45;margin:0}
 
     .slw-finding{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:120px 0;color:#555;font-size:16px}
+    .slw-report-pending{gap:12px;text-align:center}
+    .slw-report-pending p{margin:0;max-width:420px}
+    .slw-report-pending b{color:#111}
+    .slw-report-pending small{color:#777}
+    .slw-report-pending .slw-btn-black{margin-top:8px;width:auto;min-width:220px;padding-left:40px;padding-right:40px}
     .slw-spinner{width:40px;height:40px;border-radius:50%;border:3px solid #eee;border-top-color:#A409D2;animation:slw-spin 0.8s linear infinite}
     @keyframes slw-spin{to{transform:rotate(360deg)}}
 

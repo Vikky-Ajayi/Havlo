@@ -87,7 +87,17 @@ export interface ProspectPreview {
    * (is_unlocked) but the report opens at analyst_review_due_at at the latest. */
   report_on_hold?: boolean;
   analyst_review_due_at?: string | null;
+  /** The ads funnel writes the report in the background after the listing
+   * link: "pending" until it's in (preview empty), "failed" if writing it
+   * failed (retryProspectReport starts it again). */
+  report_status?: ReportStatus;
 }
+
+export type ReportStatus = 'pending' | 'failed' | 'ready';
+
+/** The report (and so the preview and its factor count) is in. */
+export const reportReady = (prospect: { report_status?: ReportStatus } | null | undefined): boolean =>
+  !prospect || !prospect.report_status || prospect.report_status === 'ready';
 
 export interface ReportFinding {
   title?: string;

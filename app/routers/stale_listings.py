@@ -125,6 +125,8 @@ from app.services.stale_prospect_service import (
     send_prospect_letter_to_admin,
     snapshot_from_scrape,
     verify_sms_unsubscribe_short_token,
+    REPORT_PENDING,
+    report_status,
     unlock_price_for,
     verify_unsubscribe_token,
 )
@@ -700,9 +702,18 @@ async def _get_prospect_by_access(
 
 def _prefetch_sold_comparables(prospect: StaleListingProspect, background_tasks: BackgroundTasks) -> None:
     """Start the Land Registry lookup as soon as the owner arrives (it takes
-    seconds), so it's usually saved by the time the Assessment asks for it."""
-    if cached_sold_comparables(prospect) is None:
+    seconds), so it's usually saved by the time the Assessment asks for it.
+    Not while the report is being written: that looks them up itself."""
+    if cached_sold_comparables(prospect) is None and report_status(prospect) == "ready":
         background_tasks.add_task(refresh_sold_comparables_in_background, str(prospect.id))
+
+
+def _resume_report(prospect: StaleListingProspect) -> None:
+    """A page asking about a prospect whose report is still to come: make sure
+    it's being written (a worker restart loses a running one). A no-op when
+    it's running already, here or on another worker (ads_funnel.start_report)."""
+    if report_status(prospect) == "pending":
+        ads_funnel.start_report(prospect.id)
 
 
 @public_router.post("/prospects/lookup", response_model=StaleProspectPreviewResponse)
@@ -725,6 +736,34 @@ async def get_stale_prospect_preview(
 ) -> StaleProspectPreviewResponse:
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
     _prefetch_sold_comparables(prospect, background_tasks)
+    _resume_report(prospect)
+    return StaleProspectPreviewResponse(**serialize_preview(prospect))
+
+
+async def _retry_report(db: AsyncSession, prospect: StaleListingProspect) -> None:
+    """Put a failed report (and its owner's, for a copy) back to pending."""
+    ids = {prospect.id}
+    if prospect.parent_prospect_id:
+        ids.add(prospect.parent_prospect_id)
+    for row_id in ids:
+        row = await db.get(StaleListingProspect, row_id)
+        if row is not None and report_status(row) == "failed":
+            row.processing_status = REPORT_PENDING
+    await db.commit()
+
+
+@public_router.post("/prospects/report-retry", response_model=StaleProspectPreviewResponse)
+async def retry_stale_prospect_report(
+    payload: StaleProspectConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+) -> StaleProspectPreviewResponse:
+    """"Try again" on the preview step, when writing the report failed."""
+    prospect = await _get_prospect_by_access(db, token=payload.token, property_code=payload.property_code)
+    if report_status(prospect) == "failed":
+        await _retry_report(db, prospect)
+        await db.refresh(prospect)
+    if report_status(prospect) == "pending":
+        ads_funnel.start_report(prospect.id)
     return StaleProspectPreviewResponse(**serialize_preview(prospect))
 
 
@@ -831,8 +870,9 @@ async def start_ads_assessment(
     db: AsyncSession = Depends(get_db),
 ) -> AdsStartResponse:
     """Ads landing pages: the visitor's Rightmove link in, an access token
-    for the normal funnel out. Reading a listing that discovery hasn't found
-    yet and writing its report takes a little while (up to a minute)."""
+    for the normal funnel out. A listing discovery hasn't found yet is read
+    now (a few seconds); its report is written in the background, and the
+    preview's report_status says when it's in."""
     _ads_rate_limit(request, "start")
     try:
         result = await ads_funnel.start_from_listing(
@@ -857,6 +897,12 @@ async def start_ads_assessment(
         # listings nearby; start that now so it's usually there in time.
         if await ads_funnel.mark_competition_pending(db, prospect):
             background_tasks.add_task(ads_funnel.refresh_competition, prospect_id)
+    if prospect is not None and report_status(prospect) != "ready":
+        # A new listing's report: written while the visitor confirms the
+        # property and gives their details (ads_funnel.finish_report).
+        if report_status(prospect) == "failed":
+            await _retry_report(db, prospect)
+        ads_funnel.start_report(prospect_id)
     return AdsStartResponse(**result)
 
 
@@ -869,10 +915,12 @@ async def get_ads_assessment_summary(
 ) -> dict:
     """The ads homeowner's Confirm Property summary (ads_funnel.
     assessment_summary). competition.status is "pending" while the nearby
-    search runs; the page asks again until it isn't."""
+    search runs, and report_status while the report is written; the page
+    asks again until neither is."""
     prospect = await _get_prospect_by_access(db, token=token, property_code=code)
     if await ads_funnel.mark_competition_pending(db, prospect):
         background_tasks.add_task(ads_funnel.refresh_competition, prospect.id)
+    _resume_report(prospect)
     return ads_funnel.assessment_summary(prospect)
 
 
@@ -981,6 +1029,12 @@ async def create_stale_prospect_checkout(
     redirect_url = (payload.redirect_url or f"{frontend}{funnel_paths.complete_path(prospect.lead_source)}").rstrip("/")
     sep = "&" if "?" in redirect_url else "?"
     redirect_url = f"{redirect_url}{sep}{access_key}"
+
+    if prospect.payment_status != "completed" and report_status(prospect) != "ready":
+        # The ads funnel's report is written in the background; the page
+        # waits for it before Payment, so this is only a stale or early click.
+        _resume_report(prospect)
+        raise HTTPException(status_code=409, detail="Your assessment is still being prepared. Please try again in a moment.")
 
     if prospect.payment_status == "completed":
         # Covers a stale "Unlock" button click after the prospect was already

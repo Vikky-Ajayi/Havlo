@@ -469,9 +469,11 @@ async def run_url_reminder_cycle(only_lead_id: UUID | None = None) -> dict:
 
 
 async def run_ads_email_cycle() -> dict:
-    from app.services.ads_funnel import log_listings_to_sheet
+    from app.services.ads_funnel import log_listings_to_sheet, resume_pending_reports
 
     return {
+        # Reports left half-written (a worker restart, or nobody asking since).
+        "reports_resumed": await resume_pending_reports(),
         "reminders": await run_url_reminder_cycle(),
         "nurture": await run_ads_nurture_cycle(),
         # Ads leads still missing from the Google Sheet (see the function).

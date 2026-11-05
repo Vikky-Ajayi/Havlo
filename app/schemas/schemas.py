@@ -694,6 +694,10 @@ class StaleProspectPreviewResponse(BaseModel):
     # the latest. See app/services/analyst_review.py.
     report_on_hold: bool = False
     analyst_review_due_at: Optional[str] = None
+    # The ads funnel writes the report in the background after the listing
+    # link: "pending" until it's in (preview empty), "failed" if writing it
+    # failed (POST /prospects/report-retry starts it again), else "ready".
+    report_status: str = "ready"
 
 
 class AgentLookupRequest(BaseModel):
