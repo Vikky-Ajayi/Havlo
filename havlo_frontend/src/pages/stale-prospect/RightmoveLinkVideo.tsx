@@ -3,8 +3,8 @@ import { createPortal, flushSync } from 'react-dom';
 
 // "▶ Watch how to find your Rightmove link · 15 sec", under the listing-link
 // box on the pages where visitors paste their link: the ads pages
-// (/assess, /g, /rm, /review; sellers and agents, AdsLanding.tsx) and /sell
-// (StaleListingsLanding.tsx). It opens a player with the 15-second demo:
+// (/assess, /g, /rm, /review; sellers and agents, AdsLanding.tsx), and /sell
+// and /stale-listings/seller (StaleListingsLanding.tsx). It opens a player with the 15-second demo:
 // a dialog beside the steps on a computer, the whole screen on a phone.
 // "Got it, paste my link" closes it and puts the visitor in the box.
 

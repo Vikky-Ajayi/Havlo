@@ -1368,10 +1368,8 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
                 </button>
               </div>
 
-              {/* /sell only: the 15-second video on finding a Rightmove link. */}
-              {sell && (
-                <WatchRightmoveLinkVideo align="start" style={{ marginTop:-8 }} onPasteLink={() => heroInputRef.current?.focus()} />
-              )}
+              {/* The 15-second video on finding a Rightmove link (/sell and /stale-listings/seller). */}
+              <WatchRightmoveLinkVideo align="start" style={{ marginTop:-8 }} onPasteLink={() => heroInputRef.current?.focus()} />
 
               {shownInputError && (
                 <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{shownInputError}</p>
