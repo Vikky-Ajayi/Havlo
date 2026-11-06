@@ -87,7 +87,7 @@ export const ProspectNextSteps = ({ rm = false }: { rm?: boolean } = {}) => {
     void load();
   }, [load]);
 
-  // Rightmove's seller or agent container, once we know whose report this is.
+  // Rightmove's container (index.html loads it too; this covers arriving from elsewhere).
   const audience = data?.audience;
   useEffect(() => {
     if (rm && audience) loadGtmContainer(rmGtmId(audience));

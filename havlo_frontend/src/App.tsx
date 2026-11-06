@@ -462,7 +462,7 @@ export default function App() {
               <Route path="/assess/:page" element={<MetaAdsFunnel />} />
               {/* Copies of the Meta pages: /rm/seller, /rm/agent and /rm/complete, plus
                   /rm/report; leads tagged "rm_". The rest of Rightmove's journey keeps
-                  /rm/ addresses too, for its Tag Manager containers (app/services/funnel_paths.py). */}
+                  /rm/ addresses too, for its Tag Manager container (app/services/funnel_paths.py). */}
               <Route path="/rm/:page" element={<RmAdsFunnel />} />
               <Route path="/rm/next-steps" element={<ProspectNextSteps rm />} />
               <Route path="/rm/dashboard/:token" element={<MonitorDashboard rm />} />

@@ -1780,7 +1780,7 @@ export const StaleProspectWizard = ({
   // (/sell), which has no Meta Pixel at all: it tells Tag Manager instead.
   const sellPage = !!ads && channel === 'sell';
   // The Rightmove pages (/rm/...) have no Meta Pixel either, and their own
-  // Tag Manager containers: one for sellers, one for agents.
+  // Tag Manager container (GTM-PF7GK3B9), the same for sellers and agents.
   const rmPage = !!ads && channel === 'rm';
   const tagManagerPage = sellPage ? 'sell' : rmPage ? 'rm' : null;
   const firesLeadPixel = !(ads && (channel === 'meta' || rmPage || sellPage));

@@ -3441,7 +3441,7 @@ async def get_prospect_next_steps(
     return {
         "property_code": prospect.property_code,
         "property_address": prospect.property_address,
-        # Which of Rightmove's Tag Manager containers /rm/next-steps loads.
+        # Who the report is for (owner or agent) on /rm/next-steps.
         "audience": prospect.audience or "owner",
         "currency": addons.CURRENCY,
         "services": addons.catalog(orders),

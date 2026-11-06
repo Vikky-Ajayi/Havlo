@@ -2,9 +2,10 @@
 // pages (/rm/...), whose containers index.html loads on those pages only.
 // Every page of the Rightmove journey has an /rm/ address (/rm/complete,
 // /rm/report, /rm/next-steps, /rm/dashboard/<token>;
-// app/services/funnel_paths.py) and loads the seller or agent container
-// itself once it knows which. Each event goes on the dataLayer once per
-// browser session and key, so reloads don't repeat it.
+// app/services/funnel_paths.py); index.html loads the Rightmove container on
+// all of them, and the pages load it too when reached from elsewhere on the
+// site. Each event goes on the dataLayer once per browser session and key,
+// so reloads don't repeat it.
 
 declare global {
   interface Window {
@@ -13,13 +14,14 @@ declare global {
 }
 
 export const SELL_GTM_ID = 'GTM-537H8B3L';
-export const RM_SELLER_GTM_ID = 'GTM-KDC3P22M';
-export const RM_AGENT_GTM_ID = 'GTM-MF4FWMML';
+// One container for the Rightmove pages, sellers and agents alike (Nov 2026;
+// it replaced GTM-KDC3P22M for sellers and GTM-MF4FWMML for agents).
+export const RM_GTM_ID = 'GTM-PF7GK3B9';
 export const BUY_ABROAD_LISTINGS_GTM_ID = 'GTM-WS22MXCM';
 
-/** The Rightmove pages' container for whoever the property's report is for. */
-export const rmGtmId = (audience?: string | null): string =>
-  audience === 'agent' ? RM_AGENT_GTM_ID : RM_SELLER_GTM_ID;
+/** The Rightmove pages' container. Takes the audience so the callers needn't
+ * change if sellers and agents are ever split again. */
+export const rmGtmId = (_audience?: string | null): string => RM_GTM_ID;
 
 /** Loads a Tag Manager container once. index.html already loads a page's
  * container when the visit starts there; this covers arriving on the page

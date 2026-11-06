@@ -45,22 +45,24 @@
         // dataLayer above; a second one would count the page view twice.
       }
     </script>
-    <!-- Google Tag Manager for the Rightmove pages: GTM-KDC3P22M on
-         /rm/seller, GTM-MF4FWMML on /rm/agent (/rm/complete, /rm/report,
-         /rm/next-steps and /rm/dashboard/... load the right one from the
-         page once they know which; src/lib/gtm.ts). No Meta Pixel on any
+    <!-- Google Tag Manager for the Rightmove pages: GTM-PF7GK3B9 on every
+         /rm/ page, seller and agent alike (/rm/seller, /rm/agent,
+         /rm/complete, /rm/report, /rm/next-steps, /rm/dashboard/...; the
+         pages also load it themselves when reached from elsewhere on the
+         site, src/lib/gtm.ts). Like the containers above, it starts from the
+         gtag('js', ...) already on the dataLayer at the top of this head; a
+         second one would count the page view twice. No Meta Pixel on any
          /rm/ page, as on /sell. -->
     <script>
       window.havloRmPage = /^\/rm\//.test(location.pathname);
-      (function(){
-        var id = /^\/rm\/seller\/?$/.test(location.pathname) ? 'GTM-KDC3P22M'
-          : /^\/rm\/agent\/?$/.test(location.pathname) ? 'GTM-MF4FWMML' : null;
-        if (!id) return;
-        var s = document.createElement('script');
-        s.async = true;
-        s.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
-        document.head.appendChild(s);
-      })();
+      if (window.havloRmPage) {
+        (function(){
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-PF7GK3B9';
+          document.head.appendChild(s);
+        })();
+      }
     </script>
     <!-- Google Tag Manager for the Buy Abroad listings page
          (/buyabroad/listings) only: GTM-WS22MXCM. The page also loads it
