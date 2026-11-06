@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { getAdsSummary, requestUrlReminder, type AdsAudience, type AdsChannel, type AdsSummary, type ManualListingDetails } from './api';
 import { formatGbp, reportReady, type ProspectPreview } from './types';
+import { WatchRightmoveLinkVideo } from './RightmoveLinkVideo';
 
 // Ads landing pages, Meta (/assess/seller, /assess/agent) and Google
 // (/g/seller, /g/agent): the /check
@@ -231,9 +232,9 @@ export const AdsListingForm = ({
           {loading ? 'Assessing…' : text.button}
         </button>
       </form>
-      <p className="slw-id-hint slw-ads-hint">
-        <span className="slw-info-dot">i</span> Your property URL is the link to your property listing on Rightmove or Zoopla.
-      </p>
+      {/* In place of the "Your property URL is the link to…" hint: the 15-second
+          video shows where to find it (RightmoveLinkVideo.tsx). */}
+      <WatchRightmoveLinkVideo onPasteLink={() => inputRef.current?.focus()} />
       {error && <p className="slw-error">{error}</p>}
       {manual && url.trim() === manual.url && (
         <ManualDetailsFields message={manual.message} loading={loading} onSubmit={(details) => onSubmit(url.trim(), details)} />

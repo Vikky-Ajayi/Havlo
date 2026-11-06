@@ -8,6 +8,7 @@ import { CountryBadge } from '../components/shared/CountryBadge';
 import { ProductAccessModal } from '../components/product-access/ProductAccessModal';
 import { parsePropertyInput } from '../lib/propertyInput';
 import { ManualDetailsFields } from './stale-prospect/AdsLanding';
+import { WatchRightmoveLinkVideo } from './stale-prospect/RightmoveLinkVideo';
 import type { ManualListingDetails } from './stale-prospect/api';
 import { clearProductAccessSession, readProductAccessSession } from '../lib/productAccess';
 
@@ -1366,6 +1367,11 @@ export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {})
                   Assess my home
                 </button>
               </div>
+
+              {/* /sell only: the 15-second video on finding a Rightmove link. */}
+              {sell && (
+                <WatchRightmoveLinkVideo align="start" style={{ marginTop:-8 }} onPasteLink={() => heroInputRef.current?.focus()} />
+              )}
 
               {shownInputError && (
                 <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{shownInputError}</p>
