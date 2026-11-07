@@ -615,7 +615,7 @@ class AdsStartRequest(BaseModel):
     audience: Literal["owner", "agent"] = "owner"
     # Which landing page: "meta" (/assess/...), "google" (/g/...),
     # "review" (/review/..., the analyst-review funnel) or "sell" (/sell).
-    channel: Literal["meta", "google", "review", "sell", "rm"] = "meta"
+    channel: Literal["meta", "google", "review", "sell", "rm", "meta2"] = "meta"
     # From a reminder email's link, when the visitor came back through one.
     reminder_token: Optional[str] = Field(None, max_length=100)
     # A Zoopla listing we couldn't read: the address and asking price the
@@ -635,7 +635,7 @@ class AdsReminderRequest(BaseModel):
     first_name: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     audience: Literal["owner", "agent"] = "owner"
-    channel: Literal["meta", "google", "review", "sell", "rm"] = "meta"
+    channel: Literal["meta", "google", "review", "sell", "rm", "meta2"] = "meta"
 
 
 class AdsReminderLeadResponse(BaseModel):
@@ -689,6 +689,9 @@ class StaleProspectPreviewResponse(BaseModel):
     # This lead's full-report price (unlock_price_for): £99, or the £49 kept
     # for leads already in the funnel when the price rose (Nov 2026).
     unlock_price: Optional[float] = None
+    # The usual £99, shown crossed out beside a limited-time offer price
+    # (the /offer page's £59). None otherwise.
+    offer_was_price: Optional[float] = None
     # Analyst-review funnel (/review/...) purchases: paid (is_unlocked) but the analyst
     # review isn't finished, so the report opens at analyst_review_due_at at
     # the latest. See app/services/analyst_review.py.

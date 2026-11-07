@@ -77,6 +77,7 @@ function adLeadLabel(leadSource: string) {
   if (leadSource.startsWith('review_')) return `Analyst review ${who}`;
   if (leadSource.startsWith('sell_')) return `Seller page ${who}`;
   if (leadSource.startsWith('rm_')) return `Rightmove page ${who}`;
+  if (leadSource.startsWith('meta2_')) return `Meta2 ${who}`;
   return `${leadSource.startsWith('google_') ? 'Google' : 'Meta'} ads ${who}`;
 }
 const adLeadColor = (leadSource: string) =>
@@ -84,6 +85,7 @@ const adLeadColor = (leadSource: string) =>
     : leadSource.startsWith('google_') ? '#34A853'
     : leadSource.startsWith('sell_') ? '#E8710A'
     : leadSource.startsWith('rm_') ? '#00897B'
+    : leadSource.startsWith('meta2_') ? '#0B3D91'
     : '#1877F2';
 
 function emptyManualForm() {
@@ -106,11 +108,11 @@ const STAGE_COLORS: Record<string, { background: string; color: string }> = {
   paid: { background: '#DCFCE7', color: '#15803D' },
 };
 type FunnelStage = '' | 'looked_up' | 'details_submitted' | 'reached_checkout' | 'paid';
-type FunnelSource = '' | 'letter' | 'meta' | 'google' | 'review' | 'sell' | 'rm';
+type FunnelSource = '' | 'letter' | 'meta' | 'google' | 'review' | 'sell' | 'rm' | 'meta2';
 // Which funnel a Follow Up row came through (the backend's `source` filter).
 const SOURCE_LABELS: Record<string, string> = {
   '': 'All funnels', letter: 'Letters (/check)', meta: 'Meta ads (/assess)', google: 'Google ads (/g)',
-  review: 'Analyst review (/review)', sell: 'Seller page (/sell)', rm: 'Rightmove pages (/rm)',
+  review: 'Analyst review (/review)', sell: 'Seller page (/sell)', rm: 'Rightmove pages (/rm)', meta2: 'Meta2 offer (/offer)',
 };
 const fmtDateTime = (v?: string | null) =>
   v ? new Date(v).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';

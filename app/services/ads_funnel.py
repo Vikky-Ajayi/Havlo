@@ -61,7 +61,12 @@ logger = logging.getLogger(__name__)
 # lead_source tag, where links back point and (for "review") what happens
 # after payment.
 # "rm": copies of the Meta pages at /rm/seller and /rm/agent (Nov 2026).
-CHANNELS = ("meta", "google", "review", "sell", "rm")
+# "meta2" is the /offer/seller campaign page: the /sell page with a
+# limited-time £59 price (OFFER_PRICES) instead of £99.
+CHANNELS = ("meta", "google", "review", "sell", "rm", "meta2")
+# Channels whose leads pay a lower, limited-time price, locked onto the lead
+# (unlock_price) so every later step, email and checkout charges it.
+OFFER_PRICES = {"meta2": 59.0}
 
 
 def seller_source(channel: str) -> str:
@@ -86,7 +91,7 @@ def channel_of(lead_source: str | None) -> str:
 
 
 CHANNEL_LABELS = {"meta": "Meta ad", "google": "Google ad", "review": "Analyst review", "sell": "Seller page",
-                  "rm": "Rightmove page"}
+                  "rm": "Rightmove page", "meta2": "Meta2 offer page"}
 
 
 LEAD_SELLER = seller_source("meta")
@@ -636,6 +641,11 @@ async def start_from_listing(
                 logger.info("Ads funnel: Rightmove match %s for %s unreadable: %s", matched, url, exc)
     if target is None:
         target = await _funnel_prospect(db, url, audience, channel, manual)
+    offer = OFFER_PRICES.get(channel)
+    if offer is not None and target.payment_status != "completed":
+        # Coming through the offer page gets the offer, even on a listing
+        # first seen at £99; a lower price already locked in is kept.
+        target.unlock_price = min(offer, sps.unlock_price_for(target))
     if target.code_looked_up_at is None:
         target.code_looked_up_at = datetime.now(timezone.utc)
     token = _grant_access(target)

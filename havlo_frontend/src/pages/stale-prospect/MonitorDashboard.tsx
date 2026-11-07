@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { loadGtmContainer, rmGtmId } from '../../lib/gtm';
+import { journeyGtmId, loadGtmContainer, type Journey } from '../../lib/gtm';
 import {
   getMonitorDashboard,
   getMonitorReportLink,
@@ -238,17 +238,17 @@ const SECTIONS = [
   ['nearby', 'Nearby'],
 ] as const;
 
-// /rm/dashboard/:token (`rm`) is the same dashboard in Rightmove's journey:
-// it loads Rightmove's Tag Manager container. Its links (the report, the
-// share link) come back from the API with /rm/ addresses too.
-export const MonitorDashboard = ({ rm = false }: { rm?: boolean } = {}) => {
+// /rm/dashboard/:token and /offer/dashboard/:token (`journey`) are the same
+// dashboard in the Rightmove and offer-page journeys: it loads that
+// campaign's Tag Manager container. Its links (the report, the share link)
+// come back from the API with the journey's addresses too.
+export const MonitorDashboard = ({ journey }: { journey?: Journey } = {}) => {
   const { token = '' } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<MonitorDashboardData | null>(null);
-  const audience = data?.audience;
   useEffect(() => {
-    if (rm && audience) loadGtmContainer(rmGtmId(audience));
-  }, [rm, audience]);
+    if (journey) loadGtmContainer(journeyGtmId(journey));
+  }, [journey]);
   const [error, setError] = useState('');
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState('');

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { getProspectPreview, type AdsAudience, type AdsChannel } from './api';
+import { StaleListingsLanding } from '../StaleListingsLanding';
 import { Footer, Header, Spinner, StaleProspectWizard, WizardStyles } from './StaleProspectWizard';
 
 // Ads landing pages. See AdsLanding.tsx for what differs from /check. The
@@ -78,6 +79,20 @@ const AdsFunnel = ({ channel, base }: { channel: AdsChannel; base: string }) => 
     );
   }
   return audience === 'agent' ? <AdsAgentLanding channel={channel} /> : <AdsSellerLanding channel={channel} />;
+};
+
+// The Meta2 campaign page, /offer/seller: the /sell page (the Stale Listings
+// landing page with its link box starting the funnel) at a limited-time £59
+// instead of £99, leads tagged meta2_seller ("Meta2" in the console). Sellers
+// only. Its whole journey stays under /offer/: /offer/complete after payment
+// and /offer/report (both here, opened from the property's token), plus
+// /offer/next-steps and /offer/dashboard/<token> (App.tsx;
+// app/services/funnel_paths.py), with its own Tag Manager container and no
+// Meta Pixel (index.html).
+export const OfferFunnel = () => {
+  const { page } = useParams();
+  if (page !== 'seller' && page !== 'complete' && page !== 'report') return <Navigate to="/offer/seller" replace />;
+  return <StaleProspectWizard ads="owner" channel="meta2" landing={(start) => <StaleListingsLanding sell={start} offer />} />;
 };
 
 export const GoogleAdsSellerLanding = () => <AdsSellerLanding channel="google" />;

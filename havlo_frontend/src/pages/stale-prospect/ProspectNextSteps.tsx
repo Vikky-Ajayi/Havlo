@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { loadGtmContainer, pushGtmEventOnce, rmGtmId } from '../../lib/gtm';
+import { journeyGtmId, loadGtmContainer, pushGtmEventOnce, type Journey } from '../../lib/gtm';
 import { createNextStepsCheckout, getNextSteps, getNextStepsOrderStatus } from './api';
 import { formatGbp, type NextStepsData, type NextStepsOrder } from './types';
 import { Footer, Header, Spinner, WizardStyles, useHideChatWidget } from './StaleProspectWizard';
@@ -9,14 +9,15 @@ import { Footer, Header, Spinner, WizardStyles, useHideChatWidget } from './Stal
 // services offered after a 20-factor report. One SumUp payment covers the
 // basket; 30-Day Monitoring is shown as already included. Reached from the
 // report's "Explore Next Steps" bar and the dashboard CTA.
-// /rm/next-steps (`rm`) is the same page in Rightmove's journey: it loads
-// Rightmove's Tag Manager container and tells it about add-on payments.
+// /rm/next-steps and /offer/next-steps (`journey`) are the same page in the
+// Rightmove and offer-page journeys: it loads that campaign's Tag Manager
+// container and tells it about add-on payments.
 
 const PENDING_KEY = 'havlo_nextsteps_pending'; // sessionStorage: the order being paid
 
-// A paid add-on order, for Rightmove's container: once per order.
-function pushRmAddonPurchaseEvent(order: NextStepsOrder) {
-  pushGtmEventOnce(`rm_addon_purchase_${order.order_id}`, 'purchase', {
+// A paid add-on order, for the campaign's container: once per order.
+function pushAddonPurchaseEvent(order: NextStepsOrder, journey: Journey) {
+  pushGtmEventOnce(`${journey}_addon_purchase_${order.order_id}`, 'purchase', {
     ecommerce: {
       transaction_id: `sl_addon_${order.order_id}`,
       value: order.amount,
@@ -26,7 +27,7 @@ function pushRmAddonPurchaseEvent(order: NextStepsOrder) {
   });
 }
 
-export const ProspectNextSteps = ({ rm = false }: { rm?: boolean } = {}) => {
+export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
   const [params] = useSearchParams();
   const token = params.get('token') || undefined;
   const code = params.get('code') || undefined;
@@ -70,7 +71,7 @@ export const ProspectNextSteps = ({ rm = false }: { rm?: boolean } = {}) => {
       const { order } = await getNextStepsOrderStatus(access, pending.orderId);
       if (order.status === 'completed') {
         try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
-        if (rm) pushRmAddonPurchaseEvent(order);
+        if (journey) pushAddonPurchaseEvent(order, journey);
         setConfirming(false);
         setJustPaid(order.items.map((i) => i.name));
         await load();
@@ -81,17 +82,16 @@ export const ProspectNextSteps = ({ rm = false }: { rm?: boolean } = {}) => {
     } catch {
       setConfirming(false);
     }
-  }, [access, accessKey, load, rm]);
+  }, [access, accessKey, load, journey]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Rightmove's container (index.html loads it too; this covers arriving from elsewhere).
-  const audience = data?.audience;
+  // The campaign's container (index.html loads it too; this covers arriving from elsewhere).
   useEffect(() => {
-    if (rm && audience) loadGtmContainer(rmGtmId(audience));
-  }, [rm, audience]);
+    if (journey) loadGtmContainer(journeyGtmId(journey));
+  }, [journey]);
 
   useEffect(() => {
     void pollPendingOrder();

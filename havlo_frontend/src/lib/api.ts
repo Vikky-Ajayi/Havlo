@@ -1351,7 +1351,7 @@ export const api = {
   staleProspectsConsoleListAbandoned: (params: {
     includeUnsubscribed?: boolean;
     stage?: string;
-    source?: 'letter' | 'meta' | 'google' | 'review' | 'sell' | 'rm';
+    source?: 'letter' | 'meta' | 'google' | 'review' | 'sell' | 'rm' | 'meta2';
     audience?: 'owner' | 'agent';
     awaitingReview?: boolean;
     addonsPaid?: boolean;

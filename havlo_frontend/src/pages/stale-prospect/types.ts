@@ -83,6 +83,8 @@ export interface ProspectPreview {
   checkout_started?: boolean;
   /** The full report's price from the backend (prospect_unlock_price). */
   unlock_price?: number | null;
+  /** The usual price, crossed out beside a limited-time offer (the /offer page's £59). */
+  offer_was_price?: number | null;
   /** Analyst-review funnel (/review/...) purchase whose review isn't finished: paid
    * (is_unlocked) but the report opens at analyst_review_due_at at the latest. */
   report_on_hold?: boolean;

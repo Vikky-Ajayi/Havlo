@@ -204,6 +204,17 @@ def prospect_unlock_price(asking_price: float | None = None, audience: str | Non
     return UNLOCK_PRICE
 
 
+def offer_was_price(prospect: Any) -> float | None:
+    """The usual price to show crossed out next to a limited-time offer
+    (the /offer page's £59: ads_funnel.OFFER_PRICES), or None."""
+    from app.services import ads_funnel
+
+    channel = ads_funnel.channel_of(getattr(prospect, "lead_source", None))
+    if channel in ads_funnel.OFFER_PRICES and unlock_price_for(prospect) < UNLOCK_PRICE:
+        return UNLOCK_PRICE
+    return None
+
+
 def unlock_price_for(row: Any) -> float:
     """What this lead (a StaleListingProspect) or agency (a StaleAgentAccount)
     pays for a full report: the price locked in on it (unlock_price: £49 for
@@ -864,6 +875,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "checkout_started": bool(prospect.sumup_checkout_id or prospect.bank_transfer_reference),
         "audience": prospect.audience or "owner",
         "unlock_price": unlock_price_for(prospect),
+        "offer_was_price": offer_was_price(prospect),
         "report_status": report_status(prospect),
         # Analyst-review funnel (/review/...) purchases: paid, but the review isn't
         # finished, so the report isn't open yet (app/services/analyst_review.py).

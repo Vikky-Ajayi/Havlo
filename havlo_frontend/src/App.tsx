@@ -58,6 +58,7 @@ const StaleListingsPartnerships = React.lazy(() => import('./pages/StaleListings
 const StaleProspectWizard = React.lazy(() => import('./pages/stale-prospect/StaleProspectWizard').then(m => ({ default: m.StaleProspectWizard })));
 const MetaAdsFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.MetaAdsFunnel })));
 const RmAdsFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.RmAdsFunnel })));
+const OfferFunnel = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.OfferFunnel })));
 const GoogleAdsSellerLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsSellerLanding })));
 const GoogleAdsAgentLanding = React.lazy(() => import('./pages/stale-prospect/AdsPages').then(m => ({ default: m.GoogleAdsAgentLanding })));
 const SellLanding = React.lazy(() => import('./pages/stale-prospect/SellLanding').then(m => ({ default: m.SellLanding })));
@@ -285,6 +286,9 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/rm/agent',
   '/rm/complete',
   '/rm/report',
+  '/offer/seller',
+  '/offer/complete',
+  '/offer/report',
   '/g/seller',
   '/g/agent',
   '/review/seller',
@@ -310,7 +314,7 @@ const EMBEDDED_COUNTRY_BADGE_PATHS = new Set([
   '/custom-offers',
 ]);
 const hasEmbeddedCountryBadge = (pathname: string) =>
-  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/listings/') || pathname.startsWith('/m/') || pathname.startsWith('/rm/dashboard/');
+  EMBEDDED_COUNTRY_BADGE_PATHS.has(pathname) || pathname.startsWith('/buyabroad/listings/') || pathname.startsWith('/m/') || pathname.startsWith('/rm/dashboard/') || pathname.startsWith('/offer/dashboard/');
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { pathname: rawPathname } = useLocation();
@@ -337,7 +341,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   // /property-assessment/...), the analyst-review pages (/review/...) and the
   // seller page (/sell)
   // are the same wizard, so they get the same treatment.
-  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/rm/') || pathname.startsWith('/g/') || pathname.startsWith('/review/') || pathname === '/sell' || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
+  const isStaleListings = pathname.startsWith('/stale-listings') || pathname === '/check' || pathname === '/check/agent' || pathname.startsWith('/assess/') || pathname.startsWith('/rm/') || pathname === '/offer' || pathname.startsWith('/offer/') || pathname.startsWith('/g/') || pathname.startsWith('/review/') || pathname === '/sell' || pathname.startsWith('/property-assessment/') || pathname.startsWith('/m/');
   const isCustomOffers = pathname.startsWith('/custom-offers');
   const isBuyAbroadUk = pathname.startsWith('/buyabroad/');
   // The country badge belongs on every public/product page (it's how
@@ -464,8 +468,15 @@ export default function App() {
                   /rm/report; leads tagged "rm_". The rest of Rightmove's journey keeps
                   /rm/ addresses too, for its Tag Manager container (app/services/funnel_paths.py). */}
               <Route path="/rm/:page" element={<RmAdsFunnel />} />
-              <Route path="/rm/next-steps" element={<ProspectNextSteps rm />} />
-              <Route path="/rm/dashboard/:token" element={<MonitorDashboard rm />} />
+              <Route path="/rm/next-steps" element={<ProspectNextSteps journey="rm" />} />
+              <Route path="/rm/dashboard/:token" element={<MonitorDashboard journey="rm" />} />
+              {/* The Meta2 campaign page: /sell at a limited-time £59, leads tagged "meta2_".
+                  /offer/seller, /offer/complete and /offer/report, with the rest of its
+                  journey under /offer/ too (app/services/funnel_paths.py). */}
+              <Route path="/offer" element={<Navigate to="/offer/seller" replace />} />
+              <Route path="/offer/:page" element={<OfferFunnel />} />
+              <Route path="/offer/next-steps" element={<ProspectNextSteps journey="offer" />} />
+              <Route path="/offer/dashboard/:token" element={<MonitorDashboard journey="offer" />} />
               {/* The same pages for Google Ads; leads are tagged "Google ad". */}
               <Route path="/g/seller" element={<GoogleAdsSellerLanding />} />
               <Route path="/g/agent" element={<GoogleAdsAgentLanding />} />

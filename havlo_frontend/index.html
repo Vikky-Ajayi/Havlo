@@ -64,6 +64,22 @@
         })();
       }
     </script>
+    <!-- Google Tag Manager for the Meta2 offer page: its own container on every
+         /offer/ page (/offer/seller, /offer/complete, /offer/report,
+         /offer/next-steps, /offer/dashboard/...). The same ID is in
+         src/lib/gtm.ts (OFFER_GTM_ID). No Meta
+         Pixel on any /offer/ page, as on /sell and /rm/. -->
+    <script>
+      window.havloOfferPage = /^\/offer(\/|$)/.test(location.pathname);
+      (function(){
+        var id = 'GTM-MF4FWMML';
+        if (!window.havloOfferPage || !id) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
+        document.head.appendChild(s);
+      })();
+    </script>
     <!-- Google Tag Manager for the Buy Abroad listings page
          (/buyabroad/listings) only: GTM-WS22MXCM. The page also loads it
          itself when reached from elsewhere on the site (src/lib/gtm.ts). -->
@@ -77,9 +93,9 @@
         })();
       }
     </script>
-    <!-- Meta Pixel Code (every page but /sell and /rm/...) -->
+    <!-- Meta Pixel Code (every page but /sell, /rm/... and /offer/...) -->
     <script>
-      if (!window.havloSellPage && !window.havloRmPage)
+      if (!window.havloSellPage && !window.havloRmPage && !window.havloOfferPage)
       !function(f,b,e,v,n,t,s)
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};

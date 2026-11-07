@@ -77,6 +77,8 @@ LANDING_PATHS = {
     ("sell", "agent"): "/sell",  # no agent page of its own
     ("rm", "owner"): "/rm/seller",
     ("rm", "agent"): "/rm/agent",
+    ("meta2", "owner"): "/offer/seller",
+    ("meta2", "agent"): "/offer/seller",  # sellers only
 }
 
 

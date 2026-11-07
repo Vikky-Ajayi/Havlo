@@ -39,7 +39,7 @@ export async function lookupProspect(propertyCode: string): Promise<ProspectPrev
 export type AdsAudience = 'owner' | 'agent';
 // Which landing page: Meta (/assess/...), Google (/g/...), or the
 // analyst-review funnel (/review/..., ReviewFunnel.tsx).
-export type AdsChannel = 'meta' | 'google' | 'review' | 'sell' | 'rm';
+export type AdsChannel = 'meta' | 'google' | 'review' | 'sell' | 'rm' | 'meta2';
 
 /** Reads the pasted Rightmove or Zoopla listing and returns an access token
  * for the normal funnel. Can take up to a minute for a listing we haven't

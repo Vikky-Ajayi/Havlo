@@ -1,18 +1,28 @@
 """Where Stale Listings links send a prospect after the landing page.
 
-Rightmove's campaign pages (/rm/seller, /rm/agent) keep the whole journey
-under /rm/: the return from payment (/rm/complete), the full report
-(/rm/report), the optional next steps (/rm/next-steps) and the 30-day
-dashboard (/rm/dashboard/<token>). Those pages load Rightmove's own Tag
-Manager containers and no Meta Pixel (havlo_frontend/index.html,
-src/lib/gtm.ts), so Rightmove can track the journey end to end. Every other
-lead keeps the default addresses.
+Two campaign funnels keep their whole journey under their own directory:
+Rightmove's pages (/rm/seller, /rm/agent; leads tagged rm_...) and the Meta2
+offer page (/offer/seller; leads tagged meta2_...). For each, the return from
+payment (/<dir>/complete), the full report (/<dir>/report), the optional next
+steps (/<dir>/next-steps) and the 30-day dashboard (/<dir>/dashboard/<token>)
+stay under it. Those pages load the campaign's own Tag Manager container and
+no Meta Pixel (havlo_frontend/index.html, src/lib/gtm.ts), so it can track the
+journey end to end. Every other lead keeps the default addresses.
 
 Kept free of app imports so the link builders (listing_monitor,
 analyst_review, the post-purchase drip, the stale-listings router) can all
 use it without import cycles.
 """
 from __future__ import annotations
+
+# lead_source prefix -> the journey's directory.
+JOURNEYS = {"rm_": "/rm", "meta2_": "/offer"}
+
+
+def journey_dir(lead_source: str | None) -> str | None:
+    """"/rm" or "/offer" for a campaign lead with its own directory, else None."""
+    source = lead_source or ""
+    return next((d for prefix, d in JOURNEYS.items() if source.startswith(prefix)), None)
 
 
 def is_rm_lead(lead_source: str | None) -> bool:
@@ -22,23 +32,29 @@ def is_rm_lead(lead_source: str | None) -> bool:
 
 
 def landing_path(lead_source: str | None, audience: str | None) -> str | None:
-    """The /rm/ landing page for a Rightmove lead, None for anyone else."""
-    if not is_rm_lead(lead_source):
+    """The campaign landing page for a lead with its own directory, None for anyone
+    else. The offer page has no agent version."""
+    base = journey_dir(lead_source)
+    if base is None:
         return None
-    return "/rm/agent" if audience == "agent" else "/rm/seller"
+    return f"{base}/agent" if audience == "agent" and base == "/rm" else f"{base}/seller"
 
 
 def complete_path(lead_source: str | None) -> str:
-    return "/rm/complete" if is_rm_lead(lead_source) else "/stale-listings/prospect/complete"
+    base = journey_dir(lead_source)
+    return f"{base}/complete" if base else "/stale-listings/prospect/complete"
 
 
 def report_path(lead_source: str | None) -> str:
-    return "/rm/report" if is_rm_lead(lead_source) else "/stale-listings/prospect/report"
+    base = journey_dir(lead_source)
+    return f"{base}/report" if base else "/stale-listings/prospect/report"
 
 
 def next_steps_path(lead_source: str | None) -> str:
-    return "/rm/next-steps" if is_rm_lead(lead_source) else "/stale-listings/prospect/next-steps"
+    base = journey_dir(lead_source)
+    return f"{base}/next-steps" if base else "/stale-listings/prospect/next-steps"
 
 
 def dashboard_path(lead_source: str | None, token: str) -> str:
-    return f"{'/rm/dashboard' if is_rm_lead(lead_source) else '/m'}/{token}"
+    base = journey_dir(lead_source)
+    return f"{base + '/dashboard' if base else '/m'}/{token}"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
-import { pushGtmEventOnce, loadGtmContainer, rmGtmId } from '../../lib/gtm';
+import { journeyGtmId, loadGtmContainer, pushGtmEventOnce, type Journey } from '../../lib/gtm';
 import { trackMetaPixelEvent } from '../../lib/metaPixel';
 import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
 import {
@@ -711,17 +711,49 @@ export function useHideChatWidget() {
 
 // Pinned to the bottom of the screen for the whole assessment step, so the
 // way to pay is always one tap away however far down they've read.
-const StickyPayBar = ({ price, locked, address, onUnlock }: { price: string; locked: number; address: string; onUnlock: () => void }) => (
+// A limited-time offer price (the /offer page's £59): the usual price
+// crossed out before it, and an offer badge. Plain price for everyone else.
+const offerWasPrice = (prospect: ProspectPreview): number | null => {
+  const was = prospect.offer_was_price;
+  return was && was > prospectPrice(prospect) ? was : null;
+};
+
+const OfferPrice = ({ prospect }: { prospect: ProspectPreview }) => {
+  const was = offerWasPrice(prospect);
+  return (
+    <>
+      {was ? <><s className="slw-was-price">{formatGbp(was)}</s>{' '}</> : null}
+      {formatGbp(prospectPrice(prospect))}
+    </>
+  );
+};
+
+const OfferPill = ({ prospect, save = false }: { prospect: ProspectPreview; save?: boolean }) => {
+  const was = offerWasPrice(prospect);
+  if (!was) return null;
+  return (
+    <span className="slw-offer-pill">
+      Limited-time offer{save ? <> &middot; save {formatGbp(was - prospectPrice(prospect))}</> : null}
+    </span>
+  );
+};
+
+const StickyPayBar = ({ price, offer, locked, address, onUnlock }: {
+  price: ReactNode; offer?: ReactNode; locked: number; address: string; onUnlock: () => void;
+}) => (
   <div className="slw-paybar">
     <div className="slw-paybar-inner">
       <div className="slw-paybar-copy">
         <LockIcon />
         <span><b>{locked} findings locked</b><span className="slw-paybar-address"> &middot; {address}</span></span>
       </div>
-      <button type="button" className="slw-btn-pay" onClick={onUnlock}>
-        <span className="slw-paybar-long">View Full Assessment &ndash; {price}</span>
-        <span className="slw-paybar-short">Unlock full report &ndash; {price}</span>
-      </button>
+      <div className="slw-paybar-cta">
+        {offer}
+        <button type="button" className="slw-btn-pay" onClick={onUnlock}>
+          <span className="slw-paybar-long">View Full Assessment &ndash; {price}</span>
+          <span className="slw-paybar-short">Unlock full report &ndash; {price}</span>
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -749,7 +781,7 @@ const AssessmentStep = ({
     ? (preview.locked || []).map((f) => ({ title: f.name || '', description: f.subtext || '' }))
     : LOCKED_FINDINGS;
   const totalFactors = totalFactorsFor(prospect);
-  const price = formatGbp(prospectPrice(prospect));
+  const price = <OfferPrice prospect={prospect} />;
   useHideChatWidget();
 
   return (
@@ -774,6 +806,7 @@ const AssessmentStep = ({
           <SaleabilityGauge score={preview.overall_score ?? 50} />
           <b>Property Saleability Score</b>
           <p>Our assessment identified several factors that may be affecting your property&rsquo;s ability to attract and convert buyers.</p>
+          <OfferPill prospect={prospect} />
           <button type="button" className="slw-btn-pay slw-gauge-pay" onClick={onUnlock}>See all {totalFactors} factors &ndash; {price}</button>
         </div>
       </div>
@@ -806,7 +839,10 @@ const AssessmentStep = ({
         <div>
           <div className="slw-locked-head">
             <h3>{lockedList.length} findings locked</h3>
-            <button type="button" className="slw-locked-unlock" onClick={onUnlock}>Unlock all &ndash; {price} &rarr;</button>
+            <span className="slw-locked-unlock-wrap">
+              <OfferPill prospect={prospect} />
+              <button type="button" className="slw-locked-unlock" onClick={onUnlock}>Unlock all &ndash; {price} &rarr;</button>
+            </span>
           </div>
           <div className="slw-locked-grid">
             {lockedList.map((finding) => (
@@ -868,6 +904,7 @@ const AssessmentStep = ({
           <h2>Unlock the complete assessment for your property</h2>
           <p>You&rsquo;ve seen <b className="slw-hl">{revealed.length}</b> of the <b className="slw-hl">{totalFactors}</b> potential factors we&rsquo;ve identified. Unlock the remaining findings, recommendations and your step-by-step action plan.</p>
           <div className="slw-price-box">
+            <OfferPill prospect={prospect} save />
             <button type="button" className="slw-btn-pay slw-btn-pay-lg" onClick={onUnlock}>
               View Full Assessment &ndash; {price}
             </button>
@@ -898,7 +935,7 @@ const AssessmentStep = ({
         </div>
       </div>
 
-      <StickyPayBar price={price} locked={lockedList.length} address={prospect.property_address} onUnlock={onUnlock} />
+      <StickyPayBar price={price} offer={<OfferPill prospect={prospect} save />} locked={lockedList.length} address={prospect.property_address} onUnlock={onUnlock} />
     </section>
   );
 };
@@ -983,7 +1020,8 @@ const PaymentStep = ({
           <div className="slw-payment-image" style={image ? { backgroundImage: `url(${image})` } : undefined} />
           <h2>{prospect.property_address}</h2>
           <div className="slw-payment-breakdown">
-            <div><span>Havlo Property Assessment</span><b>{formatGbp(price)}</b></div>
+            <OfferPill prospect={prospect} save />
+            <div><span>Havlo Property Assessment</span><b><OfferPrice prospect={prospect} /></b></div>
             <div className="slw-payment-total"><span>Total due today</span><b>{formatGbp(price)}</b></div>
           </div>
         </div>
@@ -1772,20 +1810,21 @@ export const StaleProspectWizard = ({
   // The analyst-review funnel starts owners and agents on its Initial scan.
   const [showDetailsForm, setShowDetailsForm] = useState(review ? false : ads !== 'owner');
   const leadPixelName = ads
-    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : channel === 'rm' ? 'Rightmove Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
+    ? `${channel === 'review' ? 'Analyst Review' : channel === 'google' ? 'Google Ads' : channel === 'sell' ? 'Seller Page' : channel === 'rm' ? 'Rightmove Page' : channel === 'meta2' ? 'Meta2 Offer Page' : 'Meta Ads'} ${ads === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`
     : undefined;
   // No Meta Pixel 'Lead' event on the Meta ads pages (/assess/...): the ads
   // agency sets up those events itself. The base pixel (PageView, in
   // index.html) still loads there as on every page. Nor on the seller page
   // (/sell), which has no Meta Pixel at all: it tells Tag Manager instead.
   const sellPage = !!ads && channel === 'sell';
-  // The Rightmove pages (/rm/...) have no Meta Pixel either, and their own
-  // Tag Manager container (GTM-PF7GK3B9), the same for sellers and agents.
-  const rmPage = !!ads && channel === 'rm';
-  const tagManagerPage = sellPage ? 'sell' : rmPage ? 'rm' : null;
-  const firesLeadPixel = !(ads && (channel === 'meta' || rmPage || sellPage));
-  // Where payment ends on the Meta pages and their /rm/ copies.
-  const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : ads && channel === 'rm' ? '/rm/complete' : null;
+  // The Rightmove pages (/rm/...) and the Meta2 offer page (/offer/...) have
+  // no Meta Pixel either, and keep their whole journey under their own
+  // directory with their own Tag Manager container (lib/gtm.ts).
+  const journey: Journey | null = !ads ? null : channel === 'rm' ? 'rm' : channel === 'meta2' ? 'offer' : null;
+  const tagManagerPage = sellPage ? 'sell' : journey;
+  const firesLeadPixel = !(ads && (channel === 'meta' || journey || sellPage));
+  // Where payment ends on the Meta pages and the campaign journeys.
+  const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : journey ? `/${journey}/complete` : null;
   const fireLeadEvents = (data: ProspectPreview) => {
     if (firesLeadPixel) fireProspectLeadPixel(data, leadPixelName);
     // Not for a report already paid for: /rm/report and /rm/complete reopened
@@ -1797,8 +1836,8 @@ export const StaleProspectWizard = ({
   // (index.html loads it on /rm/seller and /rm/agent): /rm/complete after
   // payment, /rm/report, or arriving from elsewhere on the site.
   useEffect(() => {
-    if (rmPage) loadGtmContainer(rmGtmId(ads));
-  }, [rmPage, ads]);
+    if (journey) loadGtmContainer(journeyGtmId(journey));
+  }, [journey]);
 
   useEffect(() => {
     // slw-prospect-active also drives an overflow-x:hidden rule (see the
@@ -2473,7 +2512,7 @@ export const StaleProspectWizard = ({
             />
           )}
           {step === 'report' && report && report.audience !== 'agent' && (
-            <FullReportStep report={report} access={access} onReportChange={setReport} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} pdfState={pdfState} nextStepsPath={rmPage ? '/rm/next-steps' : undefined} />
+            <FullReportStep report={report} access={access} onReportChange={setReport} onOpenRecommendation={() => setShowRecommendation(true)} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} pdfState={pdfState} nextStepsPath={journey ? `/${journey}/next-steps` : undefined} />
           )}
         </main>
       </div>
@@ -2793,12 +2832,21 @@ export const WizardStyles = () => (
     .slw-gauge-pay{margin-top:18px;padding:13px 16px;font-size:14px}
     .slw-locked-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
     .slw-locked-unlock{background:none;border:none;padding:0;color:#A409D2;font:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
+    /* Limited-time offer (the /offer page's £59): the usual price crossed out, and a badge. */
+    .slw-was-price{text-decoration:line-through;text-decoration-thickness:2px;opacity:.7;font-weight:500}
+    .slw-offer-pill{display:inline-block;align-self:center;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.2;padding:5px 10px;border-radius:999px;background:#F3E6FB;color:#6B0890;white-space:nowrap}
+    .slw-paybar-cta{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .slw-locked-unlock-wrap{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+    .slw-assess-gauge-card .slw-offer-pill{margin:4px 0 -4px}
+    .slw-price-box .slw-offer-pill{margin-bottom:10px;font-size:11px;color:#6B0890}
+    .slw-payment-breakdown .slw-offer-pill{margin-bottom:12px}
     .slw-locked-unlock:hover{text-decoration:underline}
     .slw-locked-card-btn{font:inherit;text-align:left;border:1px solid transparent;cursor:pointer;position:relative;transition:border-color .15s,background .15s}
     .slw-locked-card-btn:hover{border-color:#d9b8ec;background:#faf5fd}
     .slw-locked-cta{position:absolute;right:12px;top:14px;font-size:12px;font-weight:700;color:#A409D2;opacity:0;transition:opacity .15s}
     .slw-locked-card-btn:hover .slw-locked-cta,.slw-locked-card-btn:focus-visible .slw-locked-cta{opacity:1}
     .slw-page:has(.slw-paybar){padding-bottom:96px}
+    .slw-page:has(.slw-paybar .slw-offer-pill){padding-bottom:124px}
     .slw-paybar{position:fixed;left:0;right:0;bottom:0;z-index:60;padding:0 24px 16px;pointer-events:none;animation:slw-paybar-in .35s ease both}
     @keyframes slw-paybar-in{from{transform:translateY(120%)}to{transform:none}}
     .slw-paybar-inner{max-width:1060px;margin:0 auto;background:#fff;border:1px solid #ece4f3;border-radius:16px;box-shadow:0 12px 40px rgba(31,32,36,.16);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 12px 12px 22px;pointer-events:auto}
@@ -2819,6 +2867,8 @@ export const WizardStyles = () => (
       .slw-paybar-inner{padding:8px;border-radius:14px}
       .slw-paybar-copy{display:none}
       .slw-paybar .slw-btn-pay{width:100%;padding:14px 12px;font-size:15px}
+      .slw-paybar-cta{width:100%;align-items:stretch}
+      .slw-page:has(.slw-paybar .slw-offer-pill){padding-bottom:112px}
       .slw-paybar-long{display:none}
       .slw-paybar-short{display:inline}
     }
