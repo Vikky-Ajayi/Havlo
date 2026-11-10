@@ -193,8 +193,13 @@ async def run_upgrade_batch(limit: int = BATCH_SIZE) -> dict[str, Any]:
 
 async def rebuild_one_now(prospect_id: Any) -> dict[str, Any]:
     """Rebuild a single prospect's report now, whatever writer made it (the
-    console's per-property button). Returns a short summary of the result."""
-    model = await _pick_model()
+    console's per-property button). Returns a short summary of the result,
+    with the model that wrote it and any model errors.
+
+    It writes exactly as a new lead's report is written: the live model, with
+    its Groq fallback. It used to force a model of its own with no fallback,
+    so when OpenAI refused calls every factor came back as the stock
+    "check with your agent" text (Nov 2026)."""
     async with AsyncSessionLocal() as db:
         prospect = await db.get(StaleListingProspect, prospect_id)
         if prospect is None:
@@ -203,18 +208,29 @@ async def rebuild_one_now(prospect_id: Any) -> dict[str, Any]:
             return {"error": "This report was edited by an analyst; it wasn't rebuilt."}
         saved = await backup()
         saved[str(prospect.id)] = {"report_json": prospect.report_json, "preview_json": prospect.preview_json}
-        token = groq_service.REPORT_MODEL.set(("openai", model)) if model else None
+        calls: list[dict[str, Any]] = []
+        token = groq_service.REPORT_CALLS.set(calls)
         try:
             report = await sps.rebuild_v2_report(prospect)
         finally:
-            if token is not None:
-                groq_service.REPORT_MODEL.reset(token)
+            groq_service.REPORT_CALLS.reset(token)
+        failed = sum(1 for f in report.get("factors") or [] if str(f.get("found") or "").startswith(
+            "We couldn't check this one properly"))
+        if failed >= 10:
+            # The write failed: keep the report it had rather than the stock text.
+            prior = saved[str(prospect.id)]
+            prospect.report_json, prospect.preview_json = prior["report_json"], prior["preview_json"]
+            await db.commit()
+            return {"property_code": prospect.property_code, "error": "The AI write failed; the old report was kept.",
+                    "model_errors": list(dict.fromkeys(c["error"] for c in calls if "error" in c))[:3]}
         await db.commit()
         await _kv_set(V2_MIGRATION_BACKUP_KEY, saved)
     from collections import Counter
     return {"property_code": prospect.property_code, "expanded": bool(report.get("_expanded")),
             "verdicts": dict(Counter(f.get("verdict") for f in report.get("factors") or [])),
-            "top_actions": [t.get("title") for t in report.get("top_actions") or []]}
+            "top_actions": [t.get("title") for t in report.get("top_actions") or []],
+            "model": report.get("_model"), "model_fallback": bool(report.get("_model_fallback")),
+            "model_errors": list(dict.fromkeys(c["error"] for c in calls if "error" in c))[:3]}
 
 
 async def migrate_one(prospect_id: Any, model: str | None, saved: dict[str, Any]) -> str:

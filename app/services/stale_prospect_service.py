@@ -994,7 +994,39 @@ async def generate_v2_report(
     sold_comparables: list[dict[str, Any]] | None, agent: bool = False,
 ) -> dict[str, Any]:
     """A finished 20-factor report: the free write, the photo review folded into
-    factor 10, then the accuracy and tone passes (report_writer.finalize_report)."""
+    factor 10, then the accuracy and tone passes (report_writer.finalize_report).
+    Stamped with the model that wrote it (_model; _model_fallback when OpenAI
+    failed and Groq stood in) and the first errors (_model_errors), so a report
+    written by the fallback, or by nothing, can be seen in the data."""
+    from app.services import groq_service
+
+    own_calls = groq_service.REPORT_CALLS.get() is None
+    calls: list[dict[str, Any]] = groq_service.REPORT_CALLS.get() if not own_calls else []
+    token = groq_service.REPORT_CALLS.set(calls) if own_calls else None
+    try:
+        report = await _generate_v2_report(
+            property_address, rightmove_url, listing_snapshot, asking_price=asking_price,
+            listing_duration_days=listing_duration_days, country=country, sold_comparables=sold_comparables,
+            agent=agent)
+    finally:
+        if token is not None:
+            groq_service.REPORT_CALLS.reset(token)
+    ok = [c for c in calls if "error" not in c]
+    errors = list(dict.fromkeys(c["error"] for c in calls if "error" in c))
+    if ok:
+        report["_model"] = f"{ok[-1]['provider']}:{ok[-1]['model']}"
+    if errors:
+        report["_model_errors"] = [e[:300] for e in errors[:3]]
+        if ok:
+            report["_model_fallback"] = True
+    return report
+
+
+async def _generate_v2_report(
+    property_address: str, rightmove_url: str, listing_snapshot: dict[str, Any], *,
+    asking_price: float | None, listing_duration_days: int | None, country: str,
+    sold_comparables: list[dict[str, Any]] | None, agent: bool = False,
+) -> dict[str, Any]:
     from app.services import groq_service, photo_review, report_writer
 
     reduced = bool(listing_snapshot.get("price_reduced"))
