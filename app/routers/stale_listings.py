@@ -110,6 +110,7 @@ from app.services.stale_prospect_service import (
     create_access_token,
     create_prospect_from_listing_snapshot,
     current_report_json,
+    PAID_READY_KEY,
     expand_report_in_background,
     extract_price,
     generate_full_report_pdf,
@@ -2023,6 +2024,23 @@ async def rebuild_console_prospect_report(prospect_id: str) -> dict[str, Any]:
     return result
 
 
+@public_router.post("/prospects-console/prospects/{prospect_id}/write-full-report")
+async def write_console_locked_paid_report(prospect_id: str) -> dict[str, Any]:
+    """Write an unpaid property's full paid report now, kept locked until they
+    pay (it opens at once when they do). Read it with full-report.pdf. Billed
+    AI calls."""
+    from app.services import report_v2_migration
+
+    try:
+        pid = uuid.UUID(prospect_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Prospect not found.") from exc
+    result = await report_v2_migration.write_locked_paid_report(pid)
+    if result.get("error") == "not found":
+        raise HTTPException(status_code=404, detail="Prospect not found.")
+    return result
+
+
 @public_router.get("/prospects-console/report-accuracy")
 async def report_accuracy(
     db: AsyncSession = Depends(get_db),
@@ -2600,9 +2618,19 @@ async def download_console_full_report_pdf(prospect_id: str, db: AsyncSession = 
     if not prospect:
         raise HTTPException(status_code=404, detail="Prospect not found.")
 
+    from app.services import report_writer
+
     intel = agent_report.stored_intel(prospect) if prospect.audience == "agent" else None
+    current = json.loads(current_report_json(prospect) or "{}")
+    # A 20-factor report: its own layout, and the full paid version written
+    # ahead of payment if there is one (write-full-report).
+    v2_report = current.get(PAID_READY_KEY) if isinstance(current.get(PAID_READY_KEY), dict) else current
     try:
-        if agent_report.is_current(intel):
+        if report_writer.report_is_v2(current) and not agent_report.is_current(intel):
+            path = await asyncio.wait_for(
+                asyncio.to_thread(report_v2_pdf.generate_v2_report_pdf, prospect, v2_report), timeout=60.0,
+            )
+        elif agent_report.is_current(intel):
             # An agency's copy: its agent report, which includes the assessment.
             path = await asyncio.wait_for(
                 asyncio.to_thread(agent_report_pdf.generate_agent_report_pdf, prospect, intel, None), timeout=45.0,

@@ -1471,14 +1471,28 @@ async def rebuild_v2_report(prospect: StaleListingProspect) -> dict[str, Any]:
     return free
 
 
+# The full paid report written ahead of payment, kept inside the free report
+# (whose factors still drive the free preview) until they pay.
+PAID_READY_KEY = "_paid_ready"
+
+
 async def ensure_expanded_v2_report(
     prospect: StaleListingProspect, free_report: dict[str, Any]
 ) -> dict[str, Any]:
     """The paid pass for a 20-factor report: keep the free verdicts, expand
     every factor with live market data (report_writer.write_paid_report —
     two parallel AI calls), then re-run the accuracy and tone checks. Mutates
-    prospect.report_json in place; the caller commits."""
+    prospect.report_json in place; the caller commits.
+
+    A paid write already made from the console before payment (PAID_READY_KEY,
+    report_v2_migration.write_locked_paid_report) is used as it is, so the
+    full report opens the moment they pay."""
     from app.services import report_writer
+
+    ready = free_report.get(PAID_READY_KEY)
+    if isinstance(ready, dict) and report_writer.report_is_v2(ready) and ready.get("_expanded"):
+        prospect.report_json = json.dumps(ready, ensure_ascii=False)
+        return ready
 
     snapshot = _safe_json(prospect.listing_snapshot_json)
     recorded = await refresh_sold_comparables(prospect)

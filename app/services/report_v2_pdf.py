@@ -364,11 +364,12 @@ def _price_comparison(story: list, st: dict, asking: float | None, sales: list[d
         story.append(_table(st, ["Home", "Listed", "Price", "Against your price"], rows, [0.42, 0.13, 0.15, 0.30]))
 
 
-def generate_v2_report_pdf(prospect: Any) -> str:
-    """The prospect's 20-factor report as a PDF file; returns its path."""
+def generate_v2_report_pdf(prospect: Any, report: dict[str, Any] | None = None) -> str:
+    """The prospect's 20-factor report as a PDF file; returns its path.
+    `report` overrides the stored one (the console's locked paid report)."""
     if sps._PDF_LIBS_IMPORT_ERROR:
         raise RuntimeError("Install reportlab to generate the report PDF.") from sps._PDF_LIBS_IMPORT_ERROR
-    report = sps._safe_json(sps.current_report_json(prospect))
+    report = report if report is not None else sps._safe_json(sps.current_report_json(prospect))
     snapshot = sps._safe_json(prospect.listing_snapshot_json)
     agent = getattr(prospect, "audience", None) == "agent"
     whose = "this property" if agent else "your property"

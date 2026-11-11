@@ -233,6 +233,48 @@ async def rebuild_one_now(prospect_id: Any) -> dict[str, Any]:
             "model_errors": list(dict.fromkeys(c["error"] for c in calls if "error" in c))[:3]}
 
 
+async def write_locked_paid_report(prospect_id: Any) -> dict[str, Any]:
+    """Write an unpaid prospect's full paid report now and keep it locked: it
+    is stored with the free report (sps.PAID_READY_KEY), the free preview
+    and emails carry on from the free one, and paying opens it at once. The
+    console's full-report PDF shows it. Billed AI calls."""
+    async with AsyncSessionLocal() as db:
+        prospect = await db.get(StaleListingProspect, prospect_id)
+        if prospect is None:
+            return {"error": "not found"}
+        if prospect.payment_status == "completed":
+            return {"error": "Already paid: the full report is written when they pay. Use Rebuild instead."}
+        if prospect.agent_edited_report_json:
+            return {"error": "This report was edited by an analyst; it wasn't changed."}
+        free = sps._safe_json(prospect.report_json)
+        if not report_writer.report_is_v2(free):
+            return {"error": "Rebuild this report first: it isn't a 20-factor report."}
+        free.pop(sps.PAID_READY_KEY, None)
+        before = prospect.report_json
+        calls: list[dict[str, Any]] = []
+        token = groq_service.REPORT_CALLS.set(calls)
+        try:
+            paid = await sps.ensure_expanded_v2_report(prospect, free)
+        finally:
+            groq_service.REPORT_CALLS.reset(token)
+        errors = list(dict.fromkeys(c["error"] for c in calls if "error" in c))[:3]
+        ok = [c for c in calls if "error" not in c]
+        written = sum(1 for f in paid.get("factors") or [] if len(str(f.get("found") or "")) > 120)
+        if paid.get("_paid_degraded") or written < 10:
+            prospect.report_json = before
+            await db.commit()
+            return {"property_code": prospect.property_code, "error": "The paid write didn't come out in full; nothing was saved.",
+                    "model_errors": errors}
+        free[sps.PAID_READY_KEY] = paid
+        prospect.report_json = json.dumps(free, ensure_ascii=False)
+        await db.commit()
+    from collections import Counter
+    return {"property_code": prospect.property_code, "locked": True,
+            "verdicts": dict(Counter(f.get("verdict") for f in paid.get("factors") or [])),
+            "top_actions": [t.get("title") for t in paid.get("top_actions") or []],
+            "model": f"{ok[-1]['provider']}:{ok[-1]['model']}" if ok else None, "model_errors": errors}
+
+
 async def migrate_one(prospect_id: Any, model: str | None, saved: dict[str, Any]) -> str:
     """Rewrite one prospect's report into the 20-factor structure, written for
     its audience. Returns "migrated", "skipped" or "failed"."""
