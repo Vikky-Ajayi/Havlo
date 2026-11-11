@@ -3,6 +3,7 @@ import { api, API_BASE } from '../lib/api';
 import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
 import { ReportAccuracyPanel } from './ReportAccuracyPanel';
 import { ModelComparisonPanel } from './ModelComparisonPanel';
+import { DatasetPanel } from './DatasetPanel';
 
 interface AgentConsoleItem {
   account_id: string;
@@ -237,7 +238,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   // ── Tab: "Prospects" (above) vs "Follow-up" (everyone a customer
   // actually interacted with by code/token — from just looking the code
   // up, through confirmed, details-submitted, to paid) ──────────────────
-  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents' | 'accuracy' | 'models'>('prospects');
+  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents' | 'accuracy' | 'models' | 'dataset'>('prospects');
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
@@ -1062,10 +1063,19 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               Compare models
             </button>
           )}
+          {!isUS && (
+            <button
+              onClick={() => setTab('dataset')}
+              style={{ padding: '10px 4px', marginLeft: 20, background: 'none', border: 'none', borderBottom: tab === 'dataset' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'dataset' ? '#111111' : '#888', cursor: 'pointer' }}
+            >
+              Dataset
+            </button>
+          )}
         </div>
 
         {tab === 'accuracy' && <ReportAccuracyPanel country={country} />}
         {tab === 'models' && <ModelComparisonPanel />}
+        {tab === 'dataset' && <DatasetPanel />}
 
         {tab === 'prospects' && (
         <div className="spc-stats">

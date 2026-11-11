@@ -753,6 +753,21 @@ async def startup() -> None:
 
         app.state.scraper_tasks.append(asyncio.create_task(start_after_delay(90)))
 
+    # ── The in-house assessment dataset ──────────────────────────────────
+    # One anonymous row per assessment (assessment_dataset.py): new reports,
+    # changed ones, watch outcomes and add-on payments, every 10 minutes; the
+    # first runs backfill every report made before it existed.
+    if HAS_DATABASE and _env_enabled("ENABLE_ASSESSMENT_DATASET", True):
+        from app.services.assessment_dataset import run_sync as run_dataset_sync
+        from app.services.scraper_base import run_scraper_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Assessment dataset", run_dataset_sync, 10 / 60, initial_delay_seconds=200)
+        ))
+        logger.info("Assessment dataset sync scheduled.")
+    elif HAS_DATABASE:
+        logger.info("Assessment dataset sync disabled by ENABLE_ASSESSMENT_DATASET.")
+
     # ── Add-on orders paid without coming back to the page ───────────────
     # Asks SumUp about pending add-on orders (Listing Rewrite, Relaunch
     # Strategy) from the last week, marks paid ones and emails the team

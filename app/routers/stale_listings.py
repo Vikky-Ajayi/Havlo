@@ -2041,6 +2041,78 @@ async def write_console_locked_paid_report(prospect_id: str) -> dict[str, Any]:
     return result
 
 
+def _dataset_filters(
+    date_from: str | None, date_to: str | None, channel: str | None, region: str | None, district: str | None,
+    property_type: str | None, price_band: str | None, audience: str | None, report_format: str | None,
+    funnel: str | None, include_copies: bool, country: str,
+) -> dict[str, Any]:
+    def day(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value[:10]).replace(tzinfo=timezone.utc)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Dates are YYYY-MM-DD.") from exc
+
+    return {"date_from": day(date_from), "date_to": day(date_to), "channel": channel, "region": region,
+            "district": district, "property_type": property_type, "price_band": price_band, "audience": audience,
+            "report_format": report_format, "funnel": funnel, "include_copies": include_copies, "country": country}
+
+
+@admin_router.get("/prospects-console/dataset/stats")
+async def dataset_stats(
+    date_from: str | None = Query(default=None), date_to: str | None = Query(default=None),
+    channel: str | None = Query(default=None), region: str | None = Query(default=None),
+    district: str | None = Query(default=None, max_length=8), property_type: str | None = Query(default=None),
+    price_band: str | None = Query(default=None), audience: str | None = Query(default=None, pattern="^(owner|agent)$"),
+    report_format: str | None = Query(default=None, pattern="^(v1|v2|none)$"),
+    funnel: str | None = Query(default=None, pattern="^(all|engaged|paid)$"),
+    include_copies: bool = Query(default=False), country: str = Query(default="UK", pattern="^(UK|US)$"),
+    db: AsyncSession = Depends(get_db), _admin=Depends(require_admin),
+) -> dict[str, Any]:
+    """The in-house assessment dataset's statistics (assessment_dataset.py):
+    what the reports found, across every assessment, filtered."""
+    from app.services import assessment_dataset
+
+    filters = _dataset_filters(date_from, date_to, channel, region, district, property_type, price_band, audience,
+                               report_format, funnel, include_copies, country)
+    return await assessment_dataset.stats(db, filters)
+
+
+@admin_router.get("/prospects-console/dataset/export.csv")
+async def dataset_export(
+    date_from: str | None = Query(default=None), date_to: str | None = Query(default=None),
+    channel: str | None = Query(default=None), region: str | None = Query(default=None),
+    district: str | None = Query(default=None, max_length=8), property_type: str | None = Query(default=None),
+    price_band: str | None = Query(default=None), audience: str | None = Query(default=None, pattern="^(owner|agent)$"),
+    report_format: str | None = Query(default=None, pattern="^(v1|v2|none)$"),
+    funnel: str | None = Query(default=None, pattern="^(all|engaged|paid)$"),
+    include_copies: bool = Query(default=False), country: str = Query(default="UK", pattern="^(UK|US)$"),
+    db: AsyncSession = Depends(get_db), _admin=Depends(require_admin),
+) -> Response:
+    """The filtered dataset as CSV, one row per assessment (no personal details)."""
+    from app.services import assessment_dataset
+
+    filters = _dataset_filters(date_from, date_to, channel, region, district, property_type, price_band, audience,
+                               report_format, funnel, include_copies, country)
+    rows = await assessment_dataset.load_rows(db, filters)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(
+        content=assessment_dataset.export_csv(rows), media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="havlo-assessments-{stamp}.csv"',
+                 "Cache-Control": "no-store"},
+    )
+
+
+@admin_router.post("/prospects-console/dataset/sync")
+async def dataset_sync(_admin=Depends(require_admin)) -> dict[str, Any]:
+    """Pull new and changed assessments into the dataset now (it also runs by
+    itself every few minutes)."""
+    from app.services import assessment_dataset
+
+    return await assessment_dataset.run_sync()
+
+
 @public_router.get("/prospects-console/report-accuracy")
 async def report_accuracy(
     db: AsyncSession = Depends(get_db),

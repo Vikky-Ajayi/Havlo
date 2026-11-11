@@ -1252,3 +1252,62 @@ class StaleProspectAddonOrder(Base):
     team_emailed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AssessmentRecord(Base):
+    """The in-house dataset: one anonymous row per assessment, pulled from its
+    report, the listing it was written from, what the person did in the
+    funnel, and what happened to the listing afterwards (the 30-day watch).
+    No names, emails, phone numbers or full address: the area is the postcode
+    district. Filled and kept up to date by app/services/assessment_dataset.py
+    (a background sync), and read by the console's Dataset tab.
+
+    Typed columns are the ones the stats filter and group on; `flags`,
+    `metrics`, `factors` and `changes` (JSON text) hold everything else, so a
+    new statistic needs no schema change."""
+    __tablename__ = "assessment_records"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prospect_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("stale_listing_prospects.id", ondelete="CASCADE"), nullable=False, unique=True,
+        index=True,
+    )
+    # A stable, non-reversible id for the listing (several assessments can be of
+    # one listing: a homeowner's and an agency's copy).
+    listing_key: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    is_copy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    assessed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    report_format: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # v2 | v1 | none
+    report_model: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    channel: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)  # letter | meta | google ...
+    audience: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)
+    region: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    postcode_district: Mapped[Optional[str]] = mapped_column(String(8), nullable=True, index=True)
+    property_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    asking_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    price_band: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    days_on_market: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    reduced: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    agency: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    agency_branch_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    overall_score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # The funnel: how far the person got.
+    looked_up: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    gave_details: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    reached_checkout: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    addon_paid: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # What happened to the listing (30-day watch, paid reports only for now).
+    outcome: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)  # on_market | under_offer | sold_stc | removed
+    outcome_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    flags_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # {flag: true/false}
+    metrics_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # {metric: number}
+    factors_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # {factor key: {verdict, severity}}
+    details_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # missing details, photo review lists
+    changes_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # {listing change kind: count} after the report
+    schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
