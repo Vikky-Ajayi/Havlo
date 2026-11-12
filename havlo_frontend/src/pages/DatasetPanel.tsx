@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext';
 
 // The in-house assessment dataset (app/services/assessment_dataset.py): one
 // anonymous row per assessment, and what the reports found across all of
-// them. Admin sign-in only (it's the company's data asset): the stats, the
-// CSV export and "Sync now" all need it.
+// them. Shown as the console's Stats tab, open to anyone with the console
+// link (no personal details in it); only "Sync now" needs admin sign-in.
 
 type Share = { label: string; count: number; pct: number | null };
 type Flag = {
@@ -89,7 +89,7 @@ export const DatasetPanel = () => {
 
   const call = useCallback(async (path: string, init?: RequestInit) => {
     const res = await fetch(`${API_BASE}/stale-listings/prospects-console/dataset/${path}`, {
-      ...init, headers: { Authorization: `Bearer ${token}`, ...(init?.headers || {}) },
+      ...init, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(init?.headers || {}) },
     });
     if (!res.ok) {
       let detail = `HTTP ${res.status}`;
@@ -100,12 +100,11 @@ export const DatasetPanel = () => {
   }, [token]);
 
   const load = useCallback(async () => {
-    if (!token) return;
     setLoading(true); setError('');
     try {
       setStats(await (await call(`stats?${query()}`)).json());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load the dataset.');
+      setError(e instanceof Error ? e.message : 'Could not load the stats.');
     } finally {
       setLoading(false);
     }
@@ -138,10 +137,6 @@ export const DatasetPanel = () => {
     }
   };
 
-  if (!token) {
-    return <p style={{ color: '#92400E' }}>Sign in to heyhavlo.com with your admin account to see the assessment dataset.</p>;
-  }
-
   const set = (k: keyof typeof filters, v: string | boolean) => setFilters((f) => ({ ...f, [k]: v }));
   const select = (k: keyof typeof filters, options: string[], blank: string) => (
     <select className="spc-select" value={String(filters[k])} onChange={(e) => set(k, e.target.value)}>
@@ -172,16 +167,16 @@ export const DatasetPanel = () => {
           Include copies (agency and second-homeowner copies of a listing)
         </label>
         <button type="button" className="spc-btn spc-btn-primary" onClick={exportCsv}>Export CSV</button>
-        <button type="button" className="spc-btn spc-btn-ghost" onClick={syncNow}>Sync now</button>
+        {token && <button type="button" className="spc-btn spc-btn-ghost" onClick={syncNow}>Sync now</button>}
       </div>
       {error && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{error}</p>}
       {notice && <p style={{ color: '#15803D', fontWeight: 700, fontSize: 13 }}>{notice}</p>}
-      {loading && !stats && <div className="spc-loading">Loading the dataset…</div>}
+      {loading && !stats && <div className="spc-loading">Loading the stats…</div>}
 
       {stats && (
         <>
           {stats.records_in_dataset === 0 && (
-            <p style={{ color: '#92400E', fontSize: 13 }}>The dataset is still filling: the first sync runs a few minutes after a deploy (or press Sync now).</p>
+            <p style={{ color: '#92400E', fontSize: 13 }}>The stats are still filling: the first sync runs a few minutes after a deploy.</p>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 14 }}>
             {[
@@ -237,7 +232,7 @@ export const DatasetPanel = () => {
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
-            <Section title="What listings leave out" note="Details buyers look for that the description doesn't mention.">
+            <Section title="What listings leave out" note="Details buyers look for that the whole listing (description, Rightmove's own panels, EPC chart and floor plan) doesn't give. Only listings read in full, from Nov 2026.">
               <div style={card}>{stats.missing_details.map((m) => (
                 <div key={m.label} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 8, alignItems: 'center', margin: '4px 0' }}>
                   <span style={{ fontSize: 13, textTransform: 'capitalize' }}>{m.label}</span><Bar value={m.pct} />

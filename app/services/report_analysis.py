@@ -75,13 +75,49 @@ def floor_area_sqft(text: str) -> int | None:
 
 
 def listing_text(snapshot: dict[str, Any]) -> str:
+    """The words a buyer reads: title, key features, description, and the
+    room-by-room details Rightmove prints under the description."""
     features = " ".join(str(f) for f in snapshot.get("features") or [])
-    return " ".join([str(snapshot.get("title") or ""), features, str(snapshot.get("description") or "")]).replace("&amp;", "&")
+    details = snapshot.get("details") if isinstance(snapshot.get("details"), dict) else {}
+    rooms = " ".join(" ".join(str(r.get(k) or "") for k in ("name", "size", "note"))
+                     for r in details.get("rooms") or [] if isinstance(r, dict))
+    return " ".join([str(snapshot.get("title") or ""), features, str(snapshot.get("description") or ""),
+                     rooms]).replace("&amp;", "&")
 
 
-def description_review(snapshot: dict[str, Any]) -> dict[str, Any]:
-    """What the description and key features cover, and what a buyer at this
-    level will look for and not find."""
+# Image links in the listing's sections: for the vision step, not the writer.
+_DETAIL_LINKS = ("epc_urls", "floorplan_urls")
+
+
+def listing_details(snapshot: dict[str, Any], photo_review: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The listing page's own sections (snapshot["details"], read by
+    listing_scraper._rm_listing_details: tenure, council tax, size, rooms,
+    EPC, floor plans, stations, utilities, risks ...), plus what the vision
+    step read off the EPC chart and floor plan (photo_review["documents"]).
+    Empty for a listing read before these were kept, or not on Rightmove."""
+    raw = snapshot.get("details") if isinstance(snapshot.get("details"), dict) else {}
+    details = {k: v for k, v in raw.items() if k not in _DETAIL_LINKS}
+    docs = (photo_review or {}).get("documents") if isinstance((photo_review or {}).get("documents"), dict) else {}
+    for key in ("epc_current", "epc_current_score", "epc_potential", "epc_potential_score"):
+        if docs.get(key):
+            details[key.replace("epc_current", "epc_rating")] = docs[key]
+    if docs.get("floor_area_sqft"):
+        details["floor_plan_area_sqft"] = docs["floor_area_sqft"]
+    for key in ("floors", "layout_notes", "rooms_labelled"):
+        if docs.get(key):
+            details[f"floor_plan_{key}"] = docs[key]
+    return details
+
+
+def description_review(snapshot: dict[str, Any], details: dict[str, Any] | None = None) -> dict[str, Any]:
+    """What the listing covers, and what a buyer at this level will look for
+    and not find. The description and key features are read for every
+    listing; with `details` (listing_details) the page's own sections count
+    too: Rightmove shows tenure, council tax, size, the EPC chart, stations
+    and parking in panels of their own, so a buyer sees them even when the
+    description doesn't repeat them. `in_description` keeps what the text
+    alone covers."""
+    details = details or {}
     description = str(snapshot.get("description") or "").replace("&amp;", "&")
     features = [str(f).replace("&amp;", "&") for f in snapshot.get("features") or [] if str(f).strip()]
     text = listing_text(snapshot)
@@ -90,9 +126,9 @@ def description_review(snapshot: dict[str, Any]) -> dict[str, Any]:
     council = _COUNCIL.search(text)
     station = _STATION.search(text)
     garden = _GARDEN_FT.search(text)
-    sqft = floor_area_sqft(text)
-    covered = {
-        "floor_area": bool(sqft),
+    text_sqft = floor_area_sqft(text)
+    in_text = {
+        "floor_area": bool(text_sqft),
         "epc_rating": bool(epc),
         "tenure": bool(tenure),
         "council_tax_band": bool(council),
@@ -101,24 +137,41 @@ def description_review(snapshot: dict[str, Any]) -> dict[str, Any]:
         "schools": bool(_SCHOOLS.search(text)),
         "garden_size": bool(garden),
     }
+    in_sections = {
+        "floor_area": bool(details.get("size_sqft") or details.get("floor_plan_area_sqft")),
+        "epc_rating": bool(details.get("epc_rating") or details.get("epc_shown")),
+        "tenure": bool(details.get("tenure")),
+        "council_tax_band": bool(details.get("council_tax_band") or details.get("council_tax_exempt")),
+        "parking": bool(details.get("parking")),
+        "transport": bool(details.get("stations")),
+        "schools": False,
+        "garden_size": False,
+    }
+    covered = {k: in_text[k] or in_sections[k] for k in in_text}
     missing = [k for k, v in covered.items() if not v]
     first = re.split(r"(?<=[.!?])\s+", description.strip())[0] if description.strip() else ""
+    stations = details.get("stations") or []
     return {
         "description_words": len(_WORD.findall(description)),
         "description_complete": not snapshot.get("description_truncated"),
         "opening_sentence": first[:300],
         "key_features": features[:12],
         "key_features_count": len(features),
-        "floor_area_sqft": sqft,
-        "epc_rating": epc.group(1).upper() if epc else None,
-        "tenure": tenure.group(1).lower() if tenure else None,
-        "council_tax_band": council.group(1).upper() if council else None,
-        "station_miles": float(station.group(1)) if station else None,
+        # The listing's stated size (Rightmove's size panel, else the text,
+        # else the total printed on the floor plan).
+        "floor_area_sqft": details.get("size_sqft") or text_sqft or details.get("floor_plan_area_sqft"),
+        "epc_rating": (epc.group(1).upper() if epc else None) or details.get("epc_rating"),
+        "tenure": (tenure.group(1).lower() if tenure else None) or details.get("tenure"),
+        "council_tax_band": (council.group(1).upper() if council else None) or details.get("council_tax_band"),
+        "station_miles": float(station.group(1)) if station else (stations[0].get("miles") if stations else None),
         "garden_length_ft": _int(garden.group(1)) if garden else None,
         "period_or_style": (_PERIOD.search(text).group(1) if _PERIOD.search(text) else None),
         "works_mentioned": sorted({m.group(1).lower() for m in _REFURB.finditer(text)})[:5],
         "covers": [k for k, v in covered.items() if v],
         "missing": missing,
+        "in_description": [k for k, v in in_text.items() if v],
+        "shown_in_listing_sections": [k for k, v in in_sections.items() if v and not in_text[k]],
+        "sections_read": bool(details),
     }
 
 
@@ -276,7 +329,8 @@ def analyse(
     if not seen:
         reduced_days = advertised_days = None
     media = snapshot.get("media") if isinstance(snapshot.get("media"), dict) else {}
-    desc = description_review(snapshot)
+    details = listing_details(snapshot, photo_review) if seen else {}
+    desc = description_review(snapshot, details)
     if not seen:
         desc["missing"] = []
     position = price_position(asking_price, sales, desc["floor_area_sqft"], snapshot.get("bedrooms"))
@@ -300,6 +354,8 @@ def analyse(
         marketing_gaps.append("no floor plan")
     if guide and guide["top_above_asking"]:
         marketing_gaps.append("an out-of-date guide price range in the key features")
+    if details and not details.get("epc_shown") and "epc_rating" not in desc["covers"]:
+        marketing_gaps.append("no EPC on the listing")
 
     out = {
         "property": {
@@ -326,6 +382,8 @@ def analyse(
                   "weak_photos": (photo_review or {}).get("weak_photos") if photo_review else None,
                   "photo_actions": (photo_review or {}).get("actions") if photo_review else None},
         "marketing_gaps": marketing_gaps,
+        # Every other section of the listing page (empty when not read).
+        "listing": details,
         "market": market,
         "net_proceeds": {"asking_price": int(asking_price) if asking_price else None,
                          "agent_fee_per_half_percent": fee_half_pct,
@@ -347,6 +405,10 @@ def trusted_figures(a: dict[str, Any]) -> dict[str, list]:
         if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 1_000:
             amounts.add(float(abs(value)))
 
+    listing = a.get("listing") or {}
+    for k in ("service_charge_per_year", "ground_rent_per_year"):
+        if isinstance(listing.get(k), (int, float)):
+            amounts.add(float(listing[k]))
     pos = a.get("price_position") or {}
     for k in ("asking_price", "sales_low", "sales_high", "sales_median", "above_highest_by", "above_median_by",
               "asking_price_per_bedroom"):

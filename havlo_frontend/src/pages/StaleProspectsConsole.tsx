@@ -4,6 +4,7 @@ import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProsp
 import { ReportAccuracyPanel } from './ReportAccuracyPanel';
 import { ModelComparisonPanel } from './ModelComparisonPanel';
 import { DatasetPanel } from './DatasetPanel';
+import { AgentRecordsPanel } from './AgentRecordsPanel';
 
 interface AgentConsoleItem {
   account_id: string;
@@ -238,7 +239,16 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
   // ── Tab: "Prospects" (above) vs "Follow-up" (everyone a customer
   // actually interacted with by code/token — from just looking the code
   // up, through confirmed, details-submitted, to paid) ──────────────────
-  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents' | 'accuracy' | 'models' | 'dataset'>('prospects');
+  // ?tab=stats opens the Stats tab directly (a link to share).
+  const [tab, setTab] = useState<'prospects' | 'abandoned' | 'letters' | 'agents' | 'accuracy' | 'models' | 'dataset' | 'agent_records'>(
+    () => (new URLSearchParams(window.location.search).get('tab') === 'stats' ? 'dataset' : 'prospects'),
+  );
+  useEffect(() => {
+    // Keep the address bar's link pointing at the open Stats tab.
+    const url = new URL(window.location.href);
+    if (tab === 'dataset') url.searchParams.set('tab', 'stats'); else url.searchParams.delete('tab');
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
+  }, [tab]);
   const [abandonedItems, setAbandonedItems] = useState<StaleProspectAbandonedItem[]>([]);
   const [abandonedTotal, setAbandonedTotal] = useState(0);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
@@ -1068,7 +1078,15 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
               onClick={() => setTab('dataset')}
               style={{ padding: '10px 4px', marginLeft: 20, background: 'none', border: 'none', borderBottom: tab === 'dataset' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'dataset' ? '#111111' : '#888', cursor: 'pointer' }}
             >
-              Dataset
+              Stats
+            </button>
+          )}
+          {!isUS && (
+            <button
+              onClick={() => setTab('agent_records')}
+              style={{ padding: '10px 4px', marginLeft: 20, background: 'none', border: 'none', borderBottom: tab === 'agent_records' ? '2px solid #111111' : '2px solid transparent', fontWeight: 700, fontSize: 14, color: tab === 'agent_records' ? '#111111' : '#888', cursor: 'pointer' }}
+            >
+              Agent track records
             </button>
           )}
         </div>
@@ -1076,6 +1094,7 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
         {tab === 'accuracy' && <ReportAccuracyPanel country={country} />}
         {tab === 'models' && <ModelComparisonPanel />}
         {tab === 'dataset' && <DatasetPanel />}
+        {tab === 'agent_records' && <AgentRecordsPanel />}
 
         {tab === 'prospects' && (
         <div className="spc-stats">

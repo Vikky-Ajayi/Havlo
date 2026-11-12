@@ -2059,7 +2059,7 @@ def _dataset_filters(
             "report_format": report_format, "funnel": funnel, "include_copies": include_copies, "country": country}
 
 
-@admin_router.get("/prospects-console/dataset/stats")
+@public_router.get("/prospects-console/dataset/stats")
 async def dataset_stats(
     date_from: str | None = Query(default=None), date_to: str | None = Query(default=None),
     channel: str | None = Query(default=None), region: str | None = Query(default=None),
@@ -2068,10 +2068,11 @@ async def dataset_stats(
     report_format: str | None = Query(default=None, pattern="^(v1|v2|none)$"),
     funnel: str | None = Query(default=None, pattern="^(all|engaged|paid)$"),
     include_copies: bool = Query(default=False), country: str = Query(default="UK", pattern="^(UK|US)$"),
-    db: AsyncSession = Depends(get_db), _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """The in-house assessment dataset's statistics (assessment_dataset.py):
-    what the reports found, across every assessment, filtered."""
+    what the reports found, across every assessment, filtered. Open to anyone
+    with the console link, like the console itself: it holds no personal details."""
     from app.services import assessment_dataset
 
     filters = _dataset_filters(date_from, date_to, channel, region, district, property_type, price_band, audience,
@@ -2079,7 +2080,7 @@ async def dataset_stats(
     return await assessment_dataset.stats(db, filters)
 
 
-@admin_router.get("/prospects-console/dataset/export.csv")
+@public_router.get("/prospects-console/dataset/export.csv")
 async def dataset_export(
     date_from: str | None = Query(default=None), date_to: str | None = Query(default=None),
     channel: str | None = Query(default=None), region: str | None = Query(default=None),
@@ -2088,7 +2089,7 @@ async def dataset_export(
     report_format: str | None = Query(default=None, pattern="^(v1|v2|none)$"),
     funnel: str | None = Query(default=None, pattern="^(all|engaged|paid)$"),
     include_copies: bool = Query(default=False), country: str = Query(default="UK", pattern="^(UK|US)$"),
-    db: AsyncSession = Depends(get_db), _admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """The filtered dataset as CSV, one row per assessment (no personal details)."""
     from app.services import assessment_dataset
@@ -2111,6 +2112,23 @@ async def dataset_sync(_admin=Depends(require_admin)) -> dict[str, Any]:
     from app.services import assessment_dataset
 
     return await assessment_dataset.run_sync()
+
+
+@admin_router.get("/prospects-console/market-listings/track-records")
+async def market_track_records(
+    area: str = Query(default="", max_length=8), property_type: str = Query(default="", max_length=20),
+    min_price: int | None = Query(default=None, ge=0), max_price: int | None = Query(default=None, ge=0),
+    bedrooms: int | None = Query(default=None, ge=1, le=10), months: int = Query(default=12, ge=1, le=60),
+    db: AsyncSession = Depends(get_db), _admin=Depends(require_admin),
+) -> dict[str, Any]:
+    """Every Rightmove listing and agent the platform has seen
+    (listing_records.py), and each branch's track record: how many of its
+    listings agreed a sale within 180 days. For the agent referral service."""
+    from app.services import listing_records
+
+    return await listing_records.track_records(
+        db, area=area, months=months, property_type=property_type, min_price=min_price, max_price=max_price,
+        bedrooms=bedrooms)
 
 
 @public_router.get("/prospects-console/report-accuracy")

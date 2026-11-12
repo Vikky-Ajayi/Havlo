@@ -45,7 +45,7 @@ from app.models.models import (
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 1  # bump to re-pull every row after changing what's extracted
+SCHEMA_VERSION = 2  # bump to re-pull every row after changing what's extracted
 SYNC_BATCH = 300
 
 PRICE_BANDS = ((200_000, "under £200k"), (350_000, "£200k–350k"), (500_000, "£350k–500k"),
@@ -68,9 +68,11 @@ FLAG_LABELS = {
     "above_highest_sale": "Priced above every recorded sale nearby",
     "just_above_search_step": "Just above a search price step",
     "description_issue": "Description flagged as a problem",
-    "missing_key_details": "Description misses 2+ of floor area, EPC, tenure, council tax",
-    "no_epc_in_listing": "EPC rating not in the description",
-    "no_floor_area": "Floor area not in the description",
+    "missing_key_details": "Listing misses 2+ of floor area, EPC, tenure, council tax",
+    "details_not_in_description": "Description misses 2+ of floor area, EPC, tenure, council tax",
+    "no_epc_in_listing": "No EPC on the listing",
+    "no_floor_area": "Floor area not given anywhere on the listing",
+    "short_lease": "Leasehold with under 90 years left",
     "marketing_issue": "Agent marketing flagged as a problem",
     "positioning_issue": "Positioning flagged as a problem",
     "condition_issue": "Condition / sale readiness flagged",
@@ -209,6 +211,13 @@ def extract(prospect: Any, *, monitor: Any = None, events: list[Any] | None = No
         return value < 45 if isinstance(value, (int, float)) else None
 
     missing = list(desc.get("missing") or []) if seen else []
+    # The whole listing (its description plus Rightmove's own panels, EPC
+    # chart and floor plan) can only be judged when those sections were read;
+    # listings read before Nov 2026 kept the description alone.
+    sections = bool(desc.get("sections_read")) and seen
+    listing = analysis.get("listing") or {}
+    not_in_text = CORE_DETAILS - set(desc.get("in_description") or [])
+    lease = listing.get("lease_years_remaining")
     weak = (photo_review or {}).get("weak_photos") or []
     missing_shots = (photo_review or {}).get("missing_shots") or []
     flags: dict[str, bool | None] = {
@@ -223,9 +232,11 @@ def extract(prospect: Any, *, monitor: Any = None, events: list[Any] | None = No
         "above_highest_sale": (position.get("above_highest_pct", 0) > 0) if position.get("sales_known") else None,
         "just_above_search_step": bool(visibility.get("just_above_step")) if visibility.get("known") else None,
         "description_issue": verdict("description") if v2 else _v1_finding_flag(report, _DESC_WORDS),
-        "missing_key_details": (len(set(missing) & CORE_DETAILS) >= 2) if seen and snapshot.get("description") else None,
-        "no_epc_in_listing": (desc.get("epc_rating") is None) if seen and snapshot.get("description") else None,
-        "no_floor_area": (desc.get("floor_area_sqft") is None) if seen and snapshot.get("description") else None,
+        "missing_key_details": (len(set(missing) & CORE_DETAILS) >= 2) if sections else None,
+        "details_not_in_description": (len(not_in_text) >= 2) if seen and snapshot.get("description") else None,
+        "no_epc_in_listing": ("epc_rating" not in (desc.get("covers") or [])) if sections else None,
+        "no_floor_area": (desc.get("floor_area_sqft") is None) if sections else None,
+        "short_lease": (lease < 90 if isinstance(lease, int) else False) if sections and listing.get("tenure") else None,
         "marketing_issue": verdict("agent_marketing"),
         "positioning_issue": verdict("positioning"),
         "condition_issue": verdict("condition_readiness"),
@@ -243,7 +254,12 @@ def extract(prospect: Any, *, monitor: Any = None, events: list[Any] | None = No
         "weak_photos": len(weak) if photo_review else None,
         "description_words": desc.get("description_words") if seen else None,
         "key_features": desc.get("key_features_count") if seen else None,
-        "missing_details": len(missing) if seen and snapshot.get("description") else None,
+        "missing_details": len(missing) if sections else None,
+        "lease_years_remaining": lease if isinstance(lease, int) else None,
+        "service_charge_per_year": listing.get("service_charge_per_year"),
+        "rooms_with_sizes": listing.get("rooms_with_sizes"),
+        "brochures": listing.get("brochure_count"),
+        "station_miles": desc.get("station_miles"),
         "floor_area_sqft": sqft,
         "price_per_sqft": round(asking / sqft) if asking and sqft else None,
         "recorded_sales": position.get("sales_count"),
@@ -255,11 +271,14 @@ def extract(prospect: Any, *, monitor: Any = None, events: list[Any] | None = No
         "score_presentation": scores.get("listing_presentation") if not v2 else None,
     }
     details = {
-        "missing_details": missing,
+        "missing_details": missing if sections else [],
         "missing_shots": [str(s)[:80] for s in missing_shots][:12],
         "rooms_shown": [str(s)[:40] for s in (photo_review or {}).get("rooms_shown") or []][:20],
         "epc_rating": desc.get("epc_rating"),
+        "epc_potential": listing.get("epc_potential"),
         "tenure": desc.get("tenure"),
+        "council_tax_band": desc.get("council_tax_band"),
+        "sections_read": sections,
     }
 
     outcome, outcome_at, changes = None, None, {}

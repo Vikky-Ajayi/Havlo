@@ -363,6 +363,10 @@ def snapshot_from_scrape(scraped: dict[str, Any], url: str) -> dict[str, Any]:
         "media": scraped.get("media") if isinstance(scraped.get("media"), dict) else {},
         # Set by the scraper: True when even its copy of the description is cut.
         "description_truncated": scraped.get("description_truncated"),
+        # The listing's other sections (listing_scraper._rm_listing_details):
+        # tenure, council tax, size, rooms, EPC, floor plans, stations ...
+        "details": scraped.get("details") if isinstance(scraped.get("details"), dict) else {},
+        "floor_area": scraped.get("floor_area") or "",
     }
 
 
@@ -963,6 +967,9 @@ def report_facts(
         source_text=" ".join([
             str(snapshot.get("title") or ""), str(snapshot.get("address") or ""), description,
             " ".join(str(f) for f in snapshot.get("features") or []),
+            # The room-by-room details under the description (listing_scraper).
+            " ".join(" ".join(str(r.get(k) or "") for k in ("name", "size", "note"))
+                     for r in ((snapshot.get("details") or {}).get("rooms") or []) if isinstance(r, dict)),
         ]),
         description_cut=cut,
     )
@@ -1040,7 +1047,9 @@ async def _generate_v2_report(
             pr = await photo_review.review_photos(
                 listing_snapshot.get("images"), address=property_address,
                 property_type=listing_snapshot.get("property_type"),
-                photo_count=(listing_snapshot.get("media") or {}).get("photos"), model=model)
+                photo_count=(listing_snapshot.get("media") or {}).get("photos"), model=model,
+                # The EPC chart and floor plan are read alongside the photos.
+                details=listing_snapshot.get("details"))
         except Exception:  # noqa: BLE001
             pr = None
 

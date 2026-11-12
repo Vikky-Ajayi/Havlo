@@ -44,7 +44,7 @@ from app.models.models import (
     StaleListingMonitorEvent,
     StaleListingProspect,
 )
-from app.services import analyst_review, funnel_paths, listing_scraper, twilio_service
+from app.services import analyst_review, funnel_paths, listing_records, listing_scraper, twilio_service
 from app.services.rightmove_scraper import _parse_next_data, build_proxied_request
 from app.services.stale_prospect_abandonment import _within_sms_send_window
 from app.services.stale_prospect_service import current_report_json, hash_access_token
@@ -380,6 +380,8 @@ async def fetch_nearby(client: httpx.AsyncClient, location_id: str, radius: floa
         response = await _get(client, url)
         response.raise_for_status()
         props = _parse_next_data(response.text)
+        # Every listing and its agent, for agent track records.
+        listing_records.observe(props, includes_agreed=True)
         for prop in props:
             row = nearby_row(prop)
             if row:

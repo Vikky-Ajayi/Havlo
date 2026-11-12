@@ -1311,3 +1311,63 @@ class AssessmentRecord(Base):
     changes_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # {listing change kind: count} after the report
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
     synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MarketListing(Base):
+    """Every Rightmove listing the platform sees in a search (the discovery
+    and inventory scans, the 30-day watch's nearby checks, the agent report's
+    local searches, the Zoopla-to-Rightmove matching), with its estate agent
+    and what happened to it: first listed, price cuts, and when it was first
+    seen under offer or sold STC. From these, app/services/listing_records.py
+    works out each agent branch's track record (how many of its listings
+    agree a sale, and how fast) for the agent referral service. No owner
+    details: Rightmove search results have none."""
+    __tablename__ = "market_listings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    rightmove_id: Mapped[str] = mapped_column(String(20), nullable=False, unique=True, index=True)
+    branch_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    agency: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
+    branch_name: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    outcode: Mapped[Optional[str]] = mapped_column(String(8), nullable=True, index=True)  # "DY10"
+    area: Mapped[Optional[str]] = mapped_column(String(4), nullable=True, index=True)  # "DY"
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    property_type: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    tenure: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    size_sqft: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    auction: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    new_home: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Rightmove's own first-listed date (firstVisibleDate).
+    first_listed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    first_price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    lowest_price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    price_qualifier: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    reductions: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    photos: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    floorplans: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    virtual_tours: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    premium: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # on_market | under_offer | sold_stc, as last seen.
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="on_market", index=True)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(),
+                                                   index=True)
+    last_on_market_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Last seen for sale in a search that also shows agreed sales, so would
+    # have seen it agreed (the track record judges from these only).
+    tracked_on_market_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    under_offer_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    sold_stc_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # First seen under offer or sold STC, whichever came first.
+    agreed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    # Back on the market after being under offer / sold STC.
+    fell_through: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    times_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    # The completed sale, matched from HM Land Registry later.
+    completed_price: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completed_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

@@ -1018,6 +1018,182 @@ def _rm_agent_details(customer: Any, contact: Any, resolve: Any = lambda value: 
     }
 
 
+def _rm_resolve_all(data: list, index: Any, depth: int = 0) -> Any:
+    """One value from the compressed PAGE_MODEL, resolved all the way down
+    (every dict value and list item is an index into `data`)."""
+    value = data[index] if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(data) else index
+    if depth > 12:
+        return None
+    if isinstance(value, dict):
+        return {k: _rm_resolve_all(data, v, depth + 1) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_rm_resolve_all(data, v, depth + 1) for v in value]
+    return value
+
+
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool) or value in (None, ""):
+        return None
+    try:
+        n = float(str(value).replace(",", "").replace("£", "").strip())
+    except ValueError:
+        return None
+    return n if n > 0 else None
+
+
+def _display_texts(items: Any) -> list[str]:
+    """["Mains supply", "Gas central"] from Rightmove's [{alias, displayText}] lists."""
+    out = []
+    for item in items or []:
+        text = _clean(item.get("displayText") if isinstance(item, dict) else item, 80)
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
+# Agents' small print, which some put in the room list.
+_NOT_A_ROOM = re.compile(r"disclaim|agent'?s? note|important notice|money laundering|particulars|\bnotice\b",
+                         re.IGNORECASE)
+_IMAGE_URL = re.compile(r"\.(?:png|jpe?g|gif|webp)(?:\?|$)", re.IGNORECASE)
+
+
+def _rm_listing_details(prop: dict) -> dict:
+    """Every section of a Rightmove listing page beyond the photos, text and
+    price: tenure and lease, council tax and running costs, size, room sizes,
+    floor plans, EPC, brochures, tours, stations, utilities, parking, garden,
+    flood risk, legal obligations and shared ownership. From the fully
+    resolved propertyData. Only what the page states; anything it doesn't
+    say is left out (never guessed)."""
+    if not isinstance(prop, dict):
+        return {}
+    details: dict[str, Any] = {}
+
+    tenure = prop.get("tenure") or {}
+    if isinstance(tenure, dict) and tenure.get("tenureType"):
+        details["tenure"] = str(tenure["tenureType"]).replace("_", " ").lower()
+        years = _number(tenure.get("yearsRemainingOnLease"))
+        if years and "lease" in details["tenure"]:
+            details["lease_years_remaining"] = int(years)
+        if tenure.get("message"):
+            details["tenure_note"] = _clean(tenure["message"], 300)
+
+    costs = prop.get("livingCosts") or {}
+    if isinstance(costs, dict):
+        band = _clean(costs.get("councilTaxBand"), 10).upper()
+        if re.fullmatch(r"[A-I]", band):
+            details["council_tax_band"] = band
+        elif band:
+            details["council_tax_band_note"] = band  # "TBC", "ASK AGENT"
+        if costs.get("councilTaxExempt"):
+            details["council_tax_exempt"] = True
+        if costs.get("councilTaxIncluded"):
+            details["council_tax_included"] = True
+        for key, name in (("annualGroundRent", "ground_rent_per_year"), ("annualServiceCharge", "service_charge_per_year"),
+                          ("groundRentReviewPeriodInYears", "ground_rent_review_years"),
+                          ("groundRentPercentageIncrease", "ground_rent_increase_pct"), ("domesticRates", "domestic_rates")):
+            n = _number(costs.get(key))
+            if n:
+                details[name] = round(n, 2)
+
+    sizes = {str(s.get("unit") or "").lower(): s for s in prop.get("sizings") or [] if isinstance(s, dict)}
+    sqft = _number((sizes.get("sqft") or {}).get("maximumSize") or (sizes.get("sqft") or {}).get("minimumSize"))
+    sqm = _number((sizes.get("sqm") or {}).get("maximumSize") or (sizes.get("sqm") or {}).get("minimumSize"))
+    if sqft or sqm:
+        details["size_sqft"] = int(round(sqft or sqm * 10.764))
+        details["size_sqm"] = round(sqm or sqft / 10.764, 1)
+    acres = _number((sizes.get("ac") or {}).get("maximumSize"))
+    if acres:
+        details["plot_acres"] = acres
+
+    rooms = []
+    for room in prop.get("rooms") or []:
+        if not isinstance(room, dict) or not room.get("name") or _NOT_A_ROOM.search(str(room["name"])):
+            continue
+        size = _clean(room.get("dimension"), 60)
+        if not size and room.get("width") and room.get("length"):
+            size = f'{room["width"]} x {room["length"]} {room.get("unit") or ""}'.strip()
+        rooms.append({k: v for k, v in (("name", _clean(room["name"], 80)), ("size", size),
+                                         ("note", _clean(room.get("description"), 200))) if v})
+    if rooms:
+        details["rooms"] = rooms[:30]
+        details["rooms_with_sizes"] = len([r for r in rooms if r.get("size")])
+
+    floorplans = [f.get("url") for f in prop.get("floorplans") or [] if isinstance(f, dict) and f.get("url")]
+    details["floorplan_count"] = len(floorplans)
+    if floorplans:
+        details["floorplan_urls"] = [u for u in floorplans if _IMAGE_URL.search(u)][:3]
+    epcs = [e.get("url") for e in prop.get("epcGraphs") or [] if isinstance(e, dict) and e.get("url")]
+    details["epc_shown"] = bool(epcs)
+    if epcs:
+        details["epc_urls"] = [u for u in epcs if _IMAGE_URL.search(u)][:2]
+    brochures = [b for b in prop.get("brochures") or [] if isinstance(b, dict) and b.get("url")]
+    details["brochure_count"] = len(brochures)
+    tours = [t for t in prop.get("virtualTours") or [] if isinstance(t, dict) and t.get("url")]
+    details["tour_count"] = len(tours)
+    if tours:
+        details["tour_types"] = sorted({str(t.get("provider") or "other").lower() for t in tours})
+
+    stations = []
+    for s in prop.get("nearestStations") or []:
+        if isinstance(s, dict) and s.get("name") and isinstance(s.get("distance"), (int, float)):
+            stations.append({"name": _clean(s["name"], 80), "miles": round(float(s["distance"]), 1)})
+    if stations:
+        details["stations"] = stations[:3]
+
+    features = prop.get("features") or {}
+    if isinstance(features, dict):
+        for key in ("electricity", "water", "sewerage", "heating", "broadband", "accessibility", "parking", "garden"):
+            texts = _display_texts(features.get(key))
+            if texts:
+                details[key] = texts
+        risks = features.get("risks") or {}
+        if isinstance(risks, dict):
+            flood = {k: v for k, v in (("flooded_last_5_years", risks.get("floodedInLastFiveYears")),
+                                       ("flood_defences", risks.get("floodDefences")),
+                                       ("flood_sources", _display_texts(risks.get("floodSources")))) if v not in (None, [], "")}
+            if flood:
+                details["flood_risk"] = flood
+        obligations = features.get("obligations") or {}
+        if isinstance(obligations, dict):
+            legal = {k: v for k, v in (("listed_building", obligations.get("listed")),
+                                       ("restrictions", obligations.get("restrictions")),
+                                       ("required_access", obligations.get("requiredAccess")),
+                                       ("rights_of_way", obligations.get("rightsOfWay"))) if v is not None}
+            if legal:
+                details["obligations"] = legal
+
+    shared = prop.get("sharedOwnership") or {}
+    if isinstance(shared, dict) and shared.get("sharedOwnershipFlag"):
+        details["shared_ownership"] = {k: v for k, v in (("share_pct", _number(shared.get("ownershipPercentage"))),
+                                                         ("rent", _number(shared.get("rentPrice")))) if v}
+    prices = prop.get("prices") or {}
+    if isinstance(prices, dict):
+        if _clean(prices.get("displayPriceQualifier"), 60):
+            details["price_qualifier"] = _clean(prices["displayPriceQualifier"], 60)
+        if _clean(prices.get("pricePerSqFt"), 60):
+            details["price_per_sqft"] = _clean(prices["pricePerSqFt"], 60)
+    update = (prop.get("listingHistory") or {}).get("listingUpdateReason") if isinstance(prop.get("listingHistory"), dict) else None
+    if update:
+        details["listing_update"] = _clean(update, 80)
+    tags = [str(t) for t in prop.get("tags") or [] if t]
+    if tags:
+        details["tags"] = tags[:5]
+    if prop.get("entranceFloor"):
+        details["entrance_floor"] = _clean(prop["entranceFloor"], 40)
+    if prop.get("affordableBuyingScheme"):
+        details["affordable_scheme"] = True
+    mis = prop.get("misInfo") or {}
+    if isinstance(mis, dict):
+        details["featured"] = bool(mis.get("featuredProperty"))
+        details["premium_display"] = bool(mis.get("premiumDisplay"))
+    captions = [_clean(i.get("caption"), 60) for i in prop.get("images") or [] if isinstance(i, dict)]
+    # "Picture No. 05" says nothing; real captions ("Kitchen") say which room.
+    named = [c for c in captions if c and not re.fullmatch(r"(picture|photo|image|img)[\s.no]*\d+", c, re.IGNORECASE)]
+    if named:
+        details["photo_captions"] = named[:40]
+    return details
+
+
 def _rm_decode_page_model_v2(data: list) -> dict | None:
     """
     Decode Rightmove's compressed flat-index PAGE_MODEL format (encoding='on').
@@ -1136,6 +1312,7 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
                     price_reduced = True
                     break
 
+        details = _rm_listing_details(_rm_resolve_all(data, top_schema["propertyData"]))
         return {
             "title": addr_str,
             "address": addr_str,
@@ -1151,9 +1328,12 @@ def _rm_decode_page_model_v2(data: list) -> dict | None:
             "listed_date": listed_date,
             "price_reduced": price_reduced,
             "features": features,
-            "floor_area": "",
+            "floor_area": f'{details["size_sqft"]:,} sq ft' if details.get("size_sqft") else "",
             "platform": "rightmove",
             "agent": _rm_agent_details(prop_schema.get("customer"), prop_schema.get("contactInfo"), r),
+            # Every other section of the page (tenure, council tax, size,
+            # rooms, EPC, floor plans, stations, utilities, risks ...).
+            "details": details,
             "description_truncated": description_truncated,
             # Counted from the page, for the report (it never sees the media).
             "media": {
@@ -1225,6 +1405,7 @@ async def scrape_single_listing(url: str) -> dict:
                     for k in ("addedOrReduced", "listingUpdateReason")
                 )
                 if addr_str or price_str or images:
+                    details = _rm_listing_details(prop)
                     description, description_truncated = _description(
                         (prop.get("text") or {}).get("description") or prop.get("summary") or "")
                     result = {
@@ -1248,9 +1429,10 @@ async def scrape_single_listing(url: str) -> dict:
                         "listed_date": _parse_iso_date(raw_date) if raw_date else "",
                         "price_reduced": price_reduced,
                         "features": [_clean(f) for f in (prop.get("keyFeatures") or []) if f][:10],
-                        "floor_area": "",
+                        "floor_area": f'{details["size_sqft"]:,} sq ft' if details.get("size_sqft") else "",
                         "platform": "rightmove",
                         "agent": _rm_agent_details(prop.get("customer"), prop.get("contactInfo")),
+                        "details": details,
                     }
 
     elif platform == "zoopla":

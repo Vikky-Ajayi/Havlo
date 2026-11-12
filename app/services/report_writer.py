@@ -120,11 +120,14 @@ FACTOR_GUIDE: dict[str, str] = {
                    "few images whether to open the listing at all.",
     "description": "Judge the full description. Does the opening sell the best thing in the first line, which is "
                    "all most buyers read? Are the details buyers filter and ask about there (floor area, EPC, tenure, "
-                   "council tax, parking, transport, schools, garden size)? Name exactly what's missing and write "
-                   "the line to add.",
-    "floor_plan": "Floor plan count and whether room sizes and total area are stated. Say what buyers at this level "
-                  "use it for (judging space before travelling to view) and whether its position or content should "
-                  "change.",
+                   "council tax, parking, transport, schools, garden size)? Rightmove shows some in panels of their own "
+                   "(shown_in_listing_sections): those count as given, though the most important can still be "
+                   "repeated in the text. Name exactly what's missing from the whole listing and write the line to "
+                   "add.",
+    "floor_plan": "Floor plan count and whether room sizes and total area are stated (in the text, Rightmove's size "
+                  "panel, the room list or printed on the plan itself). Use the layout notes read from the plan. Say "
+                  "what buyers at this level use it for (judging space before travelling to view) and whether its "
+                  "position or content should change.",
     "positioning": "Pick the two or three strongest selling points from the facts (size, garden, transport, period, "
                    "recent works) and say whether the listing leads with them. Write a sharper headline or opening "
                    "line in advert voice.",
@@ -133,7 +136,9 @@ FACTOR_GUIDE: dict[str, str] = {
                     "must sell, so say why proceedable buyers matter and where and how the agent should reach them.",
     "buyer_objections": "Name the two or three doubts a buyer is likely to have from the evidence (price against "
                         "sales, time on the market, an out-of-date guide price, a missing tour or details) and give "
-                        "a specific answer to each that the agent can use before and during viewings.",
+                        "a specific answer to each that the agent can use before and during viewings. A short lease "
+                        "(under 90 years), a high service charge or rising ground rent, a flood history or legal "
+                        "restrictions are doubts too when the listing states them.",
     "viewing_conversion": "Always check_with_agent. Give the figures to get (viewings, second viewings, offers, "
                           "feedback from each viewing) and how to act on them: no second viewings points to price "
                           "or a fixable objection; repeated feedback tells you what to fix before the next viewing.",
@@ -142,7 +147,9 @@ FACTOR_GUIDE: dict[str, str] = {
                        "campaign at this level includes (a filmed tour, a featured or premium portal placement, a "
                        "printed brochure, the agent's own buyer list) and exactly what to ask the agent to add and "
                        "by when.",
-    "condition_readiness": "Use the EPC rating and any works mentioned. List the paperwork a buyer's solicitor will ask "
+    "condition_readiness": "Use the EPC rating (and its potential rating, read from the listing's EPC chart), the "
+                           "heating and utilities, any flood risk or legal restrictions the listing states, and any "
+                           "works mentioned. List the paperwork a buyer's solicitor will ask "
                            "for (EPC, building regulations and warranties for the works, boiler service and Gas Safe "
                            "records, electrical certificate, FENSA for windows) and say to gather it now: missing "
                            "paperwork is a common reason agreed sales stall or fall through.",
@@ -298,6 +305,11 @@ def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
     market = {k: v for k, v in (a.get("market") or {}).items() if v not in (None, "", [], {})}
     gaps = a.get("marketing_gaps") or []
     facts: dict[str, dict[str, Any]] = {}
+    sections = a.get("listing") or {}
+
+    def section(*keys: str) -> dict[str, Any]:
+        """These sections of the listing page, as they appear on it."""
+        return {k: sections[k] for k in keys if sections.get(k) not in (None, "", [], {})}
 
     def put(key: str, data: dict[str, Any], verdict: str | None = None, forced: bool = False) -> None:
         facts[key] = {"data": {k: v for k, v in data.items() if v not in (None, "", [], {})},
@@ -336,24 +348,42 @@ def factor_facts(a: dict[str, Any], *, agent: bool = False) -> dict[str, Any]:
                         "suggested_fixes": media.get("photo_actions")})
     put("description", {"description": desc, "full_text": None})
     put("floor_plan", {"floorplans": media.get("floorplans"), "floor_area_sqft": desc.get("floor_area_sqft"),
-                       "room_sizes_stated": "floor_area" in (desc.get("covers") or [])},
+                       "room_sizes_stated": "floor_area" in (desc.get("covers") or [])
+                       or bool(sections.get("rooms_with_sizes")),
+                       "rooms": [{k: r[k] for k in ("name", "size") if r.get(k)}
+                                 for r in sections.get("rooms") or []][:20] or None,
+                       **section("size_sqft", "rooms_with_sizes", "floor_plan_area_sqft", "floor_plan_floors",
+                                 "floor_plan_layout_notes", "floor_plan_rooms_labelled")},
         rf.PROBLEM if media.get("floorplans") == 0 else None, forced=media.get("floorplans") == 0)
     put("positioning", {"key_features": desc.get("key_features"), "opening_sentence": desc.get("opening_sentence"),
                         "property": prop, "works_mentioned": desc.get("works_mentioned")})
     put("target_buyer", {"property": prop, "affordability": a.get("affordability"),
-                         "schools_mentioned": "schools" in (desc.get("covers") or [])})
+                         "schools_mentioned": "schools" in (desc.get("covers") or []),
+                         **section("stations", "parking", "garden", "accessibility", "council_tax_band",
+                                   "tenure", "shared_ownership")})
     put("buyer_objections", {"price_position": {k: pos.get(k) for k in ("asking_price", "sales_high", "above_highest_by",
                                                                          "above_highest_pct", "sales_are_weak_guide")},
                              "timing": timing, "guide_range": guide, "marketing_gaps": gaps,
-                             "description_missing": desc.get("missing")})
+                             "description_missing": desc.get("missing"),
+                             **section("tenure", "lease_years_remaining", "service_charge_per_year",
+                                       "ground_rent_per_year", "ground_rent_review_years", "ground_rent_increase_pct",
+                                       "flood_risk", "obligations", "shared_ownership", "council_tax_band_note")})
     put("viewing_conversion", {"ask_for": "viewings, second viewings, offers, feedback from each viewing"},
         rf.CHECK_WITH_AGENT, forced=True)
     put("agent_marketing", {"photos": media.get("photos"), "floorplans": media.get("floorplans"),
                             "virtual_tours": media.get("virtual_tours"), "agent": prop.get("agent"),
+                            **section("tour_types", "brochure_count", "featured", "premium_display", "epc_shown",
+                                      "price_qualifier"),
+                            "photos_with_room_captions": len(sections.get("photo_captions") or []) or None,
                             "marketing_gaps": gaps, "guide_range": guide})
     put("condition_readiness", {"epc_rating": desc.get("epc_rating"), "works_mentioned": desc.get("works_mentioned"),
-                                "period_or_style": prop.get("period_or_style")})
-    put("affordability", {**(a.get("affordability") or {}), "scenarios": scen})
+                                "period_or_style": prop.get("period_or_style"),
+                                **section("epc_rating_score", "epc_potential", "epc_potential_score", "heating",
+                                          "electricity", "water", "sewerage", "broadband", "flood_risk",
+                                          "obligations")})
+    put("affordability", {**(a.get("affordability") or {}), "scenarios": scen,
+                          **section("council_tax_band", "service_charge_per_year", "ground_rent_per_year",
+                                    "shared_ownership")})
     put("net_proceeds", a.get("net_proceeds") or {}, rf.CHECK_WITH_AGENT, forced=True)
     if a.get("listing_seen") is False:
         for key in UNSEEN_FACTORS:
@@ -782,8 +812,8 @@ def competition_table(intel: dict[str, Any] | None) -> dict[str, Any] | None:
 def _mark_photography_verified(report: dict[str, Any], photo_review: dict[str, Any] | None) -> None:
     """Flag the photography factor as photo-verified when the vision step ran,
     so the accuracy checks keep its photo descriptions."""
-    if not photo_review:
-        return
+    if not photo_review or not photo_review.get("photos_seen"):
+        return  # no review, or only the EPC chart and floor plan were read
     for f in report.get("factors") or []:
         if isinstance(f, dict) and f.get("key") == "photography":
             f["_photo_verified"] = True

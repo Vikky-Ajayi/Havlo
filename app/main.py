@@ -813,6 +813,16 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Sold-comparables backfill disabled by ENABLE_SOLD_COMPARABLES_BACKFILL.")
 
+    # ── Market listings: every Rightmove listing and agent seen in a search ──
+    # The searches only buffer what they see; this writes each worker's own
+    # buffer every minute (app/services/listing_records.py). No advisory lock:
+    # every worker's searches need writing.
+    if HAS_DATABASE:
+        from app.services.listing_records import flush_forever
+
+        app.state.scraper_tasks.append(asyncio.create_task(flush_forever()))
+        logger.info("Market listing records flush scheduled.")
+
 
 @app.on_event("shutdown")
 async def shutdown() -> None:
@@ -830,6 +840,12 @@ async def shutdown() -> None:
             await task
         except (asyncio.CancelledError, Exception):
             pass
+    try:  # what this worker's searches saw since the last flush
+        from app.services import listing_records
+
+        await asyncio.wait_for(listing_records.flush(), 15)
+    except Exception:  # noqa: BLE001
+        pass
     await engine.dispose()
     logger.info("Database connections closed.")
 

@@ -24,7 +24,7 @@ from app.config import get_settings
 from app.db.database import AsyncSessionLocal, AsyncSessionLocalBulkWrite
 from app.models.models import StaleListingDiscoveryRun, StaleListingProspect
 from app.services import email_service
-from app.services import google_sheets
+from app.services import google_sheets, listing_records
 from app.services.listing_scraper import scrape_single_listing
 from app.services.rightmove_scraper import (
     KNOWN_LOCATIONS,
@@ -895,6 +895,8 @@ async def _fetch_search_page(
         raise RuntimeError("Rightmove returned HTTP 429 rate limit")
     response.raise_for_status()
     props = _parse_next_data(response.text)
+    # Every listing and its agent, for agent track records (no sold STC here).
+    listing_records.observe(props, includes_agreed=False)
     candidates = [
         candidate
         for prop in props

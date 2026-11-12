@@ -42,6 +42,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.database import AsyncSessionLocal
 from app.models.models import RightmoveListing
+from app.services import listing_records
 from app.services.scraper_base import normalize_listing_text, run_once_with_advisory_lock
 
 logger = logging.getLogger(__name__)
@@ -620,6 +621,8 @@ async def _scrape_work_item(
                 break
 
             props = _parse_next_data(resp.text)
+            # Every listing and its agent, for agent track records (no sold STC here).
+            listing_records.observe(props, includes_agreed=False)
             if not props:
                 consecutive_empty += 1
                 if consecutive_empty >= 2:

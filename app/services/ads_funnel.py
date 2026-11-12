@@ -47,7 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.models import AdsUrlReminderLead, StaleAgentAccount, StaleListingProspect
-from app.services import agent_campaign, google_sheets
+from app.services import agent_campaign, google_sheets, listing_records
 from app.services import stale_prospect_service as sps
 from app.services.listing_scraper import scrape_single_listing
 
@@ -276,6 +276,7 @@ async def find_on_rightmove(address: str, price: float) -> str | None:
                     response = await listing_monitor._get(client, url)
                     response.raise_for_status()
                     props = listing_monitor._parse_next_data(response.text)
+                    listing_records.observe(props, includes_agreed=True)  # agent track records
                     rows += [row for row in map(listing_monitor.nearby_row, props) if row]
                     if len(props) < listing_monitor.NEARBY_PAGE_SIZE:
                         break

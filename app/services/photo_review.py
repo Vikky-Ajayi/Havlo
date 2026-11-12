@@ -95,15 +95,123 @@ async def _ask(urls: list[str], total: int, *, address: str, property_type: str 
     return json.loads(resp.choices[0].message.content or "{}")
 
 
+# ── The EPC chart and floor plans ─────────────────────────────────────────
+# Rightmove shows the EPC rating only as a chart image, and the total floor
+# area is often printed only on the floor plan, so the text never has them.
+# A second, small vision call (run alongside the photo review) reads both.
+DOCUMENT_DETAIL = "high"  # the small print on a floor plan needs full detail
+DOCUMENT_TIMEOUT_SECONDS = 60
+_EPC_LETTERS = set("ABCDEFG")
+
+_DOCUMENT_SYSTEM = (
+    "You read UK property documents: Energy Performance Certificate (EPC) charts and floor plans. Report only "
+    "what is printed and clearly legible. If a value can't be read with certainty, use null. Never estimate."
+)
+
+
+def _document_prompt(epc: int, plans: int) -> str:
+    return (
+        f"Below are {epc} EPC chart image(s) and {plans} floor plan image(s) from one property listing, each "
+        "labelled. Return JSON:\n"
+        '{"epc_current": "the current energy rating letter A-G, or null", "epc_current_score": <current score '
+        'number or null>, "epc_potential": "the potential rating letter A-G, or null", "epc_potential_score": '
+        '<potential score number or null>,\n'
+        ' "floor_area_sqft": <total internal floor area in square feet as printed on the floor plan, or null>, '
+        '"floor_area_sqm": <the same in square metres as printed, or null>, "floors": <number of floor levels '
+        'drawn, or null>,\n'
+        ' "rooms_labelled": ["each room named on the plan"], "layout_notes": "one or two sentences on the layout a '
+        'buyer would notice (flow, room sizes, storage, anything odd), from the plan only, or empty"}'
+    )
+
+
+def _int_or_none(value: Any, low: float, high: float) -> int | None:
+    try:
+        n = float(str(value).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+    return int(round(n)) if low <= n <= high else None
+
+
+async def read_documents(epc_urls: Any, floorplan_urls: Any, *, model: str) -> dict[str, Any] | None:
+    """The EPC rating and the floor plan's total area, floors and layout, read
+    from the listing's images. None when there are none or the read fails."""
+    epc = [u for u in (epc_urls or []) if isinstance(u, str) and u.startswith("http")][:2]
+    plans = [u for u in (floorplan_urls or []) if isinstance(u, str) and u.startswith("http")][:3]
+    if not (epc or plans):
+        return None
+    content: list[dict[str, Any]] = [{"type": "text", "text": _document_prompt(len(epc), len(plans))}]
+    for label, urls in (("EPC chart", epc), ("Floor plan", plans)):
+        for i, u in enumerate(urls, start=1):
+            content.append({"type": "text", "text": f"{label} {i}"})
+            content.append({"type": "image_url", "image_url": {"url": u, "detail": DOCUMENT_DETAIL}})
+    body = {
+        "messages": [{"role": "system", "content": _DOCUMENT_SYSTEM}, {"role": "user", "content": content}],
+        "max_tokens": 700, "temperature": 0, "response_format": {"type": "json_object"},
+    }
+    try:
+        resp = await asyncio.wait_for(asyncio.to_thread(groq_service._openai_chat, model, body),
+                                      DOCUMENT_TIMEOUT_SECONDS)
+        data = json.loads(resp.choices[0].message.content or "{}")
+    except Exception as exc:  # noqa: BLE001 -- the report goes ahead without them
+        logger.warning("EPC / floor plan read failed: %s", exc)
+        return None
+    out: dict[str, Any] = {}
+    if epc:
+        for key in ("epc_current", "epc_potential"):
+            letter = str(data.get(key) or "").strip().upper()[:1]
+            if letter in _EPC_LETTERS:
+                out[key] = letter
+                score = _int_or_none(data.get(f"{key}_score"), 1, 150)
+                if score:
+                    out[f"{key}_score"] = score
+    if plans:
+        sqft = _int_or_none(data.get("floor_area_sqft"), 150, 30_000)
+        sqm = _int_or_none(data.get("floor_area_sqm"), 15, 3_000)
+        if sqft or sqm:
+            out["floor_area_sqft"] = sqft or int(round(sqm * 10.764))
+        floors = _int_or_none(data.get("floors"), 1, 8)
+        if floors:
+            out["floors"] = floors
+        rooms = _strings(data.get("rooms_labelled"), 30)
+        if rooms:
+            out["rooms_labelled"] = rooms
+        notes = str(data.get("layout_notes") or "").strip()
+        if notes:
+            out["layout_notes"] = notes[:400]
+    if not out:
+        return None
+    out["read_from"] = [k for k, v in (("epc", epc), ("floor_plan", plans)) if v]
+    return out
+
+
 def _strings(items: Any, limit: int) -> list[str]:
     return [str(x).strip() for x in (items or []) if str(x).strip()][:limit]
 
 
 async def review_photos(
     image_urls: Any, *, address: str, property_type: str | None, photo_count: int | None, model: str,
+    details: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Vision feedback on every listing photo, or None if there's nothing to
-    review or the call fails."""
+    review or the call fails. With the listing's `details` (its EPC chart and
+    floor plan images), those are read too, in parallel, and the result is
+    kept under "documents"."""
+    details = details if isinstance(details, dict) else {}
+    documents = None
+    if details.get("epc_urls") or details.get("floorplan_urls"):
+        documents = asyncio.ensure_future(read_documents(details.get("epc_urls"), details.get("floorplan_urls"),
+                                                         model=model))
+    review = await _review_photos(image_urls, address=address, property_type=property_type,
+                                  photo_count=photo_count, model=model)
+    docs = await documents if documents is not None else None
+    if docs:
+        review = {**(review or {"findings": [], "photos_seen": 0}), "documents": docs}
+    return review
+
+
+async def _review_photos(
+    image_urls: Any, *, address: str, property_type: str | None, photo_count: int | None, model: str,
+) -> dict[str, Any] | None:
     urls = [u for u in (image_urls or []) if isinstance(u, str) and u.startswith("http")][:MAX_PHOTOS]
     if not urls:
         return None
