@@ -2973,8 +2973,9 @@ export const WizardStyles = () => (
     .slw-offer-line b{color:#A409D2;font-weight:800}
     .slw-offer-line .slw-was-price{color:#737b86}
     .slw-offer-strip{position:relative;z-index:2;max-width:980px;margin:34px auto 0}
-    .slw-offer-strip + .slw-hero-image{margin-top:-70px}
-    @media (max-width:768px){.slw-offer-strip{margin-top:26px}.slw-offer-strip + .slw-hero-image{margin-top:-90px}}
+    /* The stats card sits close under the strip (about 90px on desktop). */
+    .slw-offer-strip + .slw-hero-image{margin-top:-160px}
+    @media (max-width:768px){.slw-offer-strip{margin-top:26px}.slw-offer-strip + .slw-hero-image{margin-top:-137px}}
     .slw-offer-pill{display:inline-block;align-self:center;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.2;padding:5px 10px;border-radius:999px;background:#F3E6FB;color:#6B0890;white-space:nowrap}
     .slw-paybar-cta{display:flex;flex-direction:column;align-items:center;gap:6px}
     .slw-locked-unlock-wrap{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
