@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { API_BASE } from '../../lib/api';
 
-// The /offer landing page's moving strip of properties recently assessed on
-// Havlo (app/services/recent_assessments.py): the lead photo, the street (never
-// a house number or postcode) and the Saleability Score. Social proof that
+// The moving strip of properties recently assessed on Havlo, on the /offer and
+// /assess/seller landing pages (app/services/recent_assessments.py): the lead
+// photo, the street (never a house number or postcode) and the Saleability
+// Score. Social proof that
 // other owners are checking their homes (Nov 2026 brief, section 1). Scrolls
 // on its own, seamlessly (the list twice over), pauses under the pointer, and
 // slows right down for anyone who prefers reduced motion. Hidden until there
@@ -21,11 +22,22 @@ export const RecentAssessmentsStrip = ({ wide = false }: { wide?: boolean } = {}
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE}/stale-listings/offer/recent-assessments`)
-      .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((d) => { if (!cancelled) setItems(Array.isArray(d.items) ? d.items : []); })
-      .catch(() => { /* no strip: the page reads fine without it */ });
-    return () => { cancelled = true; };
+    let retry: number | undefined;
+    const load = (triesLeft: number) => {
+      fetch(`${API_BASE}/stale-listings/offer/recent-assessments`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((d) => { if (!cancelled) setItems(Array.isArray(d.items) ? d.items : []); })
+        .catch(() => {
+          // Once more a little later (the backend restarts for a minute on
+          // each deploy); after that, no strip: the page reads fine without it.
+          if (!cancelled && triesLeft > 0) retry = window.setTimeout(() => load(triesLeft - 1), 8000);
+        });
+    };
+    load(2);
+    return () => {
+      cancelled = true;
+      if (retry) window.clearTimeout(retry);
+    };
   }, []);
 
   if (items.length < MIN_ITEMS) return null;

@@ -1897,6 +1897,9 @@ export const StaleProspectWizard = ({
   // app/services/analyst_review.py), with the add-ons offered straight after
   // paying and "Your analyst is on it" after that.
   const expert = journey === 'offer';
+  // The "Recently assessed on Havlo" strip above the stats card: the /offer
+  // page and the Meta ads seller page (/assess/seller).
+  const showRecentStrip = expert || (ads === 'owner' && channel === 'meta');
   const firesLeadPixel = !(ads && (channel === 'meta' || journey || sellPage));
   // Where payment ends on the Meta pages and the campaign journeys.
   const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : journey ? `/${journey}/complete` : null;
@@ -2540,7 +2543,7 @@ export const StaleProspectWizard = ({
                   <span>Full report <s className="slw-was-price">{formatGbp(USUAL_PRICE)}</s> <b>{formatGbp(OFFER_PRICE)}</b></span>
                 </p>
               ) : undefined}
-              beforeStats={expert ? <div className="slw-offer-strip"><RecentAssessmentsStrip wide /></div> : undefined}
+              beforeStats={showRecentStrip ? <div className="slw-recent-strip"><RecentAssessmentsStrip wide /></div> : undefined}
             />
           )}
           {step === 'finding' && (ads ? <AdsAnalysingStep /> : <FindingStep />)}
@@ -2967,15 +2970,15 @@ export const WizardStyles = () => (
     .slw-locked-unlock{background:none;border:none;padding:0;color:#A409D2;font:inherit;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap}
     /* Limited-time offer (the /offer page's £59): the usual price crossed out, and a badge. */
     .slw-was-price{text-decoration:line-through;text-decoration-thickness:2px;opacity:.7;font-weight:500}
-    /* /offer landing: the limited-time price under the form, and the
-       recently-assessed strip just above the stats and rating card. */
+    /* /offer landing: the limited-time price under the form. /offer and
+       /assess/seller: the recently-assessed strip just above the stats card. */
     .slw-offer-line{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;margin:18px 0 0;font-family:'Inter',sans-serif;font-size:15px;color:#1F1F1E}
     .slw-offer-line b{color:#A409D2;font-weight:800}
     .slw-offer-line .slw-was-price{color:#737b86}
-    .slw-offer-strip{position:relative;z-index:2;max-width:980px;margin:34px auto 0}
+    .slw-recent-strip{position:relative;z-index:2;max-width:980px;margin:34px auto 0}
     /* The stats card sits close under the strip (about 90px on desktop). */
-    .slw-offer-strip + .slw-hero-image{margin-top:-160px}
-    @media (max-width:768px){.slw-offer-strip{margin-top:26px}.slw-offer-strip + .slw-hero-image{margin-top:-137px}}
+    .slw-recent-strip + .slw-hero-image{margin-top:-160px}
+    @media (max-width:768px){.slw-recent-strip{margin-top:26px}.slw-recent-strip + .slw-hero-image{margin-top:-137px}}
     .slw-offer-pill{display:inline-block;align-self:center;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;line-height:1.2;padding:5px 10px;border-radius:999px;background:#F3E6FB;color:#6B0890;white-space:nowrap}
     .slw-paybar-cta{display:flex;flex-direction:column;align-items:center;gap:6px}
     .slw-locked-unlock-wrap{display:inline-flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}

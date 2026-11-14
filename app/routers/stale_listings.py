@@ -923,7 +923,8 @@ async def start_ads_assessment(
 @public_router.get("/offer/recent-assessments")
 async def offer_recent_assessments(db: AsyncSession = Depends(get_db)) -> dict:
     """Recently assessed properties (photo, street, Saleability Score) for the
-    /offer landing page's scrolling strip (recent_assessments.py)."""
+    scrolling strip on the /offer and /assess/seller landing pages
+    (recent_assessments.py)."""
     from app.services import recent_assessments
 
     return {"items": await recent_assessments.recent(db)}
