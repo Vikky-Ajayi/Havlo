@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { RecentAssessmentsStrip } from './stale-prospect/RecentAssessmentsStrip';
 import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { Footer } from '../components/shared/Footer';
@@ -1404,6 +1405,9 @@ export function StaleListingsLanding({ sell, offer = false }: { sell?: SellLandi
               )}
 
               {!sell && <PropertyCodeForm audience="owner" className="sl-code-form" />}
+
+              {/* /offer: properties recently assessed on Havlo, scrolling (social proof). */}
+              {offer && <RecentAssessmentsStrip />}
 
               {/* Trustpilot row */}
               <div className="sl-trustpilot-row" style={{ display:'flex', alignItems:'center', gap:12 }}>

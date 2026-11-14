@@ -1,4 +1,5 @@
 import { API_BASE } from '../../lib/api';
+import { getAttribution } from '../../lib/attribution';
 import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, NextStepsData, NextStepsOrder, ProspectPreview, ProspectReport, ReportStatus, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
@@ -29,7 +30,7 @@ export async function lookupProspect(propertyCode: string): Promise<ProspectPrev
   const response = await fetch(`${API_BASE}/stale-listings/prospects/lookup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ property_code: propertyCode }),
+    body: JSON.stringify({ property_code: propertyCode, attribution: getAttribution() }),
   });
   return parseJsonOrThrow(response);
 }
@@ -61,7 +62,7 @@ export async function startAdsAssessment(payload: {
   const response = await fetch(`${API_BASE}/stale-listings/ads/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, attribution: getAttribution() }),
   });
   return parseJsonOrThrow(response);
 }
@@ -166,7 +167,7 @@ export async function submitProspectDetails(payload: {
   const response = await fetch(`${API_BASE}/stale-listings/prospects/details`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, attribution: getAttribution() }),
   });
   return parseJsonOrThrow(response);
 }
@@ -196,7 +197,7 @@ export async function createProspectCheckout(payload: {
   const response = await fetch(`${API_BASE}/stale-listings/prospects/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, attribution: getAttribution() }),
   });
   return parseJsonOrThrow(response);
 }
@@ -306,7 +307,7 @@ export async function createNextStepsCheckout(payload: {
   const response = await fetch(`${API_BASE}/stale-listings/prospects/next-steps/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, attribution: getAttribution() }),
   });
   return parseJsonOrThrow(response);
 }

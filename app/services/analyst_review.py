@@ -39,6 +39,9 @@ logger = logging.getLogger(__name__)
 # buys that one.
 REVIEW_LEAD_SOURCES = ("review_seller", "review_agent")
 REVIEW_PERIOD = timedelta(hours=48)
+# The /offer page (Meta2) sells an expert review too, promised within 72
+# hours ("Expert review in 72 hours" on its assessment page), Nov 2026.
+HOLD_PERIODS = {"review_seller": REVIEW_PERIOD, "review_agent": REVIEW_PERIOD, "meta2_seller": timedelta(hours=72)}
 # Give up on a "report ready" email that still hasn't gone after this long
 # (Resend down or unconfigured); the report itself is already open to them.
 EMAIL_RETRY_LIMIT = timedelta(days=7)
@@ -56,7 +59,9 @@ def _aware(value: datetime | None) -> datetime | None:
 
 
 def is_review_lead(prospect: StaleListingProspect) -> bool:
-    return prospect.lead_source in REVIEW_LEAD_SOURCES
+    """Bought an expert-reviewed report, held until it's checked: the
+    /review/ pages and the /offer page."""
+    return prospect.lead_source in HOLD_PERIODS
 
 
 def mark_paid(prospect: StaleListingProspect, now: datetime | None = None) -> None:
@@ -66,7 +71,7 @@ def mark_paid(prospect: StaleListingProspect, now: datetime | None = None) -> No
     prospect.payment_status = "completed"
     prospect.unlocked_at = now
     if is_review_lead(prospect) and prospect.analyst_review_due_at is None and prospect.report_released_at is None:
-        prospect.analyst_review_due_at = now + REVIEW_PERIOD
+        prospect.analyst_review_due_at = now + HOLD_PERIODS[prospect.lead_source]
 
 
 def report_on_hold(prospect: StaleListingProspect) -> bool:
@@ -122,8 +127,11 @@ def report_url(prospect: StaleListingProspect) -> str:
     token_hash = sps.hash_access_token(token)
     if token_hash not in (prospect.qr_token_hashes or []):
         prospect.qr_token_hashes = [*(prospect.qr_token_hashes or []), token_hash]
-    page = "agent" if prospect.audience == "agent" else "seller"
-    return f"{_frontend_base_url()}/review/{page}?token={token}"
+    if prospect.lead_source in REVIEW_LEAD_SOURCES:
+        page = "agent" if prospect.audience == "agent" else "seller"
+        return f"{_frontend_base_url()}/review/{page}?token={token}"
+    # The /offer page's own journey (funnel_paths), which opens the report too.
+    return f"{_frontend_base_url()}{funnel_paths.landing_path(prospect.lead_source, prospect.audience)}?token={token}"
 
 
 async def deliver_report_ready(prospect_id: UUID | str) -> bool:

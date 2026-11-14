@@ -93,6 +93,8 @@ export interface ProspectPreview {
    * link: "pending" until it's in (preview empty), "failed" if writing it
    * failed (retryProspectReport starts it again). */
   report_status?: ReportStatus;
+  /** A real card sale, not a test order: the only purchase the page reports to Meta or Tag Manager. */
+  count_as_sale?: boolean;
 }
 
 export type ReportStatus = 'pending' | 'failed' | 'ready';
@@ -243,6 +245,8 @@ export interface NextStepsOrder {
   reference?: string | null;
   created_at?: string | null;
   paid_at?: string | null;
+  /** Paid and not a test order: the only kind reported as a purchase. */
+  count_as_sale?: boolean;
 }
 export interface NextStepsData {
   property_code: string;
@@ -252,6 +256,8 @@ export interface NextStepsData {
   currency: string;
   services: NextStepsService[];
   orders: NextStepsOrder[];
+  /** Paid, but the expert review isn't finished (the /offer page offers a Skip back to it). */
+  report_on_hold?: boolean;
 }
 
 export type WizardStep =

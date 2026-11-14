@@ -10,6 +10,7 @@ from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
 from app.config import get_settings
+from app.services import attribution
 
 logger = logging.getLogger(__name__)
 
@@ -311,7 +312,8 @@ def send_stale_prospect_abandonment_sms(to_phone: str, message: int, preview_url
     if not 0 <= message < len(SMS_ABANDONMENT_MESSAGES):
         logger.error("Unknown SMS abandonment message: %r", message)
         return SmsResult(False, None, "unknown message")
-    body = SMS_ABANDONMENT_MESSAGES[message].format(link=preview_url) + f"\n\nOpt out: {unsubscribe_url}"
+    link = attribution.tag_url(preview_url, source="sms", campaign="abandonment")
+    body = SMS_ABANDONMENT_MESSAGES[message].format(link=link) + f"\n\nOpt out: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
 
 
@@ -328,6 +330,7 @@ def send_stale_agent_followup_sms(to_phone: str, stage: int, *, brand: str, coun
     if not template:
         logger.error("Unknown agent follow-up SMS stage: %r", stage)
         return SmsResult(False, None, "unknown stage")
+    link = attribution.tag_url(link, source="sms", campaign="agent_followup")
     body = template.format(brand=brand, count=count, link=link) + f"\n\nOpt out: {unsubscribe_url}"
     return _send_sms(to_phone, body, from_override="Havlo")
 
@@ -343,4 +346,5 @@ MONITOR_DASHBOARD_SMS = (
 
 
 def send_monitor_dashboard_sms(to_phone: str, *, address: str, link: str, days: int = 90) -> SmsResult:
+    link = attribution.tag_url(link, source="sms", campaign="dashboard")
     return _send_sms(to_phone, MONITOR_DASHBOARD_SMS.format(days=days, address=address, link=link), from_override="Havlo")

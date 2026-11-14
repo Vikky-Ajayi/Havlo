@@ -39,7 +39,7 @@ import {
   type AdsChannel,
   type ManualListingDetails,
 } from './api';
-import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles } from './AdsLanding';
+import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles, ViewsNotice } from './AdsLanding';
 import {
   ReviewDetailsStep,
   ReviewInProgressStep,
@@ -738,8 +738,8 @@ const OfferPill = ({ prospect, save = false }: { prospect: ProspectPreview; save
   );
 };
 
-const StickyPayBar = ({ price, offer, locked, address, onUnlock }: {
-  price: ReactNode; offer?: ReactNode; locked: number; address: string; onUnlock: () => void;
+const StickyPayBar = ({ price, offer, locked, address, onUnlock, expert = false }: {
+  price: ReactNode; offer?: ReactNode; locked: number; address: string; onUnlock: () => void; expert?: boolean;
 }) => (
   <div className="slw-paybar">
     <div className="slw-paybar-inner">
@@ -750,9 +750,46 @@ const StickyPayBar = ({ price, offer, locked, address, onUnlock }: {
       <div className="slw-paybar-cta">
         {offer}
         <button type="button" className="slw-btn-pay" onClick={onUnlock}>
-          <span className="slw-paybar-long">View Full Assessment &ndash; {price}</span>
-          <span className="slw-paybar-short">Unlock full report &ndash; {price}</span>
+          <span className="slw-paybar-long">{expert ? 'Get Expert Review & Recommendation' : 'View Full Assessment'} &ndash; {price}</span>
+          <span className="slw-paybar-short">{expert ? 'Get Expert Review' : 'Unlock full report'} &ndash; {price}</span>
         </button>
+      </div>
+    </div>
+  </div>
+);
+
+// The /offer page sells an expert-reviewed report: who reviews it, how
+// soon, and how it arrives (Nov 2026 brief: "for them to see that it's a
+// human assessment").
+const ExpertReviewBanner = ({ hours = 72 }: { hours?: number }) => (
+  <div className="slw-expert-banner">
+    <span className="slw-expert-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="8" r="3.2" />
+        <path d="M3 19.5v-.8A4.7 4.7 0 0 1 7.7 14h2.6a4.7 4.7 0 0 1 4.7 4.7v.8" />
+        <circle cx="17" cy="9.5" r="2.5" />
+        <path d="M16.2 14.1h1.4a3.9 3.9 0 0 1 3.9 3.9v1.5" />
+      </svg>
+    </span>
+    <div className="slw-expert-copy">
+      <p>
+        <b>Our team of listing intelligence experts</b> will review your listing and share the factors identified and how
+        to improve them. Our report can be shared with your agent.
+      </p>
+      <div className="slw-expert-chips">
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4.5" width="18" height="16" rx="2.5" /><path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+            <path d="M7.5 13.5h.01M12 13.5h.01M16.5 13.5h.01M7.5 17h.01M12 17h.01" />
+          </svg>
+          Expert review in <b>{hours} hours</b>
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="m3 6.5 9 6.5 9-6.5" />
+          </svg>
+          Report delivered by email
+        </span>
       </div>
     </div>
   </div>
@@ -762,10 +799,14 @@ const AssessmentStep = ({
   prospect,
   access,
   onUnlock,
+  expert = false,
 }: {
   prospect: ProspectPreview;
   access: { token?: string; code?: string };
   onUnlock: () => void;
+  /** The /offer page: an expert-reviewed report (ExpertReviewBanner, the
+   * views line, "Get Expert Review & Recommendation"). */
+  expert?: boolean;
 }) => {
   const snapshot = prospect.listing_snapshot || {};
   const image = snapshot.image || (snapshot.images && snapshot.images[0]) || '';
@@ -800,6 +841,7 @@ const AssessmentStep = ({
                 <div><span>Days on Market</span><b className="slw-hl">{prospect.listing_duration_days ?? '—'} days</b></div>
               )}
             </div>
+            {expert && <ViewsNotice className="slw-views-notice-assess" />}
           </div>
         </div>
         <div className="slw-assess-gauge-card">
@@ -812,7 +854,11 @@ const AssessmentStep = ({
       </div>
 
       <h2 className="slw-assess-heading">We&rsquo;ve identified {totalFactors} potential factors</h2>
-      <p className="slw-assess-subheading"><span className="slw-hl">{revealed.length}</span> revealed &middot; <span className="slw-hl">{lockedList.length}</span> remain locked in your full report.</p>
+      {expert ? (
+        <ExpertReviewBanner />
+      ) : (
+        <p className="slw-assess-subheading"><span className="slw-hl">{revealed.length}</span> revealed &middot; <span className="slw-hl">{lockedList.length}</span> remain locked in your full report.</p>
+      )}
 
       <div className="slw-assess-findings-grid">
         <div>
@@ -906,7 +952,7 @@ const AssessmentStep = ({
           <div className="slw-price-box">
             <OfferPill prospect={prospect} save />
             <button type="button" className="slw-btn-pay slw-btn-pay-lg" onClick={onUnlock}>
-              View Full Assessment &ndash; {price}
+              {expert ? 'Get Expert Review & Recommendation' : 'View Full Assessment'} &ndash; {price}
             </button>
           </div>
           <PreparedFor address={prospect.property_address} />
@@ -935,7 +981,7 @@ const AssessmentStep = ({
         </div>
       </div>
 
-      <StickyPayBar price={price} offer={<OfferPill prospect={prospect} save />} locked={lockedList.length} address={prospect.property_address} onUnlock={onUnlock} />
+      <StickyPayBar price={price} offer={<OfferPill prospect={prospect} save />} locked={lockedList.length} address={prospect.property_address} onUnlock={onUnlock} expert={expert} />
     </section>
   );
 };
@@ -964,7 +1010,10 @@ const PaymentStep = ({
   bankDetails,
   loading,
   error,
+  expert = false,
 }: {
+  /** The /offer page's expert-reviewed report: say so, and when it comes. */
+  expert?: boolean;
   prospect: ProspectPreview;
   onPayCard: () => void;
   onPayBankTransfer: () => void;
@@ -1021,7 +1070,7 @@ const PaymentStep = ({
           <h2>{prospect.property_address}</h2>
           <div className="slw-payment-breakdown">
             <OfferPill prospect={prospect} save />
-            <div><span>Havlo Property Assessment</span><b><OfferPrice prospect={prospect} /></b></div>
+            <div><span>{expert ? 'Expert Review & Recommendation' : 'Havlo Property Assessment'}</span><b><OfferPrice prospect={prospect} /></b></div>
             <div className="slw-payment-total"><span>Total due today</span><b>{formatGbp(price)}</b></div>
           </div>
         </div>
@@ -1050,9 +1099,14 @@ const PaymentStep = ({
             {loading
               ? 'Processing…'
               : method === 'card'
-                ? `Pay ${formatGbp(price)} & View My Report`
-                : 'Apply Code & View My Report'}
+                ? `Pay ${formatGbp(price)} & ${expert ? 'Get My Expert Review' : 'View My Report'}`
+                : `Apply Code & ${expert ? 'Get My Expert Review' : 'View My Report'}`}
           </button>
+          {expert && (
+            <p className="slw-expert-pay-note">
+              A Havlo listing expert reviews your property and emails your report and recommendations within 72 hours.
+            </p>
+          )}
           <PreparedFor address={prospect.property_address} />
         </>
       )}
@@ -1704,7 +1758,12 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
 // (/assess/complete?...&paid=card), never for a promo-code unlock
 // (?paid=promo), so Meta counts paying customers only. Gated per property in
 // sessionStorage, and given a fixed event id so Meta drops a repeat.
+// The address alone isn't trusted: SumUp's "back to merchant" link adds
+// ?paid=card even when nothing was paid, and a tester can then unlock with the
+// promo code. So the server must also say it's a real card sale
+// (count_as_sale: paid by card, no promo code, not an internal address).
 function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience) {
+  if (!data.count_as_sale) return;
   const key = `sl_prospect_purchase_pixel_${data.property_code}`;
   try {
     if (sessionStorage.getItem(key)) return;
@@ -1741,6 +1800,7 @@ function pushTagManagerLeadEvent(data: ProspectPreview, page: string) {
 }
 
 function pushTagManagerPurchaseEvent(data: ProspectPreview, page: string) {
+  if (!data.count_as_sale) return; // a test order, or not confirmed as a card sale
   const value = prospectPrice(data);
   pushGtmEventOnce(`${page}_purchase_${data.property_code}`, 'purchase', {
     ecommerce: {
@@ -1822,6 +1882,11 @@ export const StaleProspectWizard = ({
   // directory with their own Tag Manager container (lib/gtm.ts).
   const journey: Journey | null = !ads ? null : channel === 'rm' ? 'rm' : channel === 'meta2' ? 'offer' : null;
   const tagManagerPage = sellPage ? 'sell' : journey;
+  // The /offer page (Allen's Meta2 campaign, Nov 2026) sells an expert-reviewed
+  // report: held for review like the /review/ pages (72 hours,
+  // app/services/analyst_review.py), with the add-ons offered straight after
+  // paying and "Your analyst is on it" after that.
+  const expert = journey === 'offer';
   const firesLeadPixel = !(ads && (channel === 'meta' || journey || sellPage));
   // Where payment ends on the Meta pages and the campaign journeys.
   const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : journey ? `/${journey}/complete` : null;
@@ -1866,6 +1931,27 @@ export const StaleProspectWizard = ({
     if (step !== 'success' || !prospect || !tagManagerPage || params.get('paid') !== 'card') return;
     pushTagManagerPurchaseEvent(prospect, tagManagerPage);
   }, [step, prospect, params, tagManagerPage]);
+
+  // /offer, straight after paying (after the purchase event above): the
+  // optional add-ons, which they can skip; either way they come back here to
+  // "Your analyst is on it". Once per property per browser tab, so reopening
+  // the page later shows the analyst page, not the add-ons again.
+  useEffect(() => {
+    if (!expert || step !== 'success' || !prospect?.report_on_hold) return;
+    const how = params.get('paid');
+    if (how !== 'card' && how !== 'promo') return;
+    const key = `offer_addons_offered_${prospect.property_code}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch {
+      // Storage blocked: still offer them, once for this page load.
+    }
+    const q = access.token ? `token=${encodeURIComponent(access.token)}` : `code=${encodeURIComponent(prospect.property_code)}`;
+    // On the next tick: the effect below that keeps token/code in the address
+    // would otherwise replace this navigation with /offer/complete again.
+    window.setTimeout(() => navigate(`/offer/next-steps?${q}&from=checkout`), 0);
+  }, [expert, step, prospect, params, access.token, navigate]);
 
   const query = useMemo(() => {
     const token = params.get('token') || undefined;
@@ -2058,6 +2144,8 @@ export const StaleProspectWizard = ({
         : step === 'success' && prospect?.report_on_hold ? 4
           : step === 'success' || step === 'report' ? 5
             : 1;
+  // /offer: paid, and the expert review isn't finished ("Your analyst is on it").
+  const heldForExpert = expert && step === 'success' && !!prospect?.report_on_hold;
 
   const handleBackToListings = async () => {
     const saved = readAgencyToken();
@@ -2234,7 +2322,7 @@ export const StaleProspectWizard = ({
   // funnel's report is usually still with the analyst, so it shows that wait rather
   // than the report.
   const afterUnlock = async () => {
-    if (review) {
+    if (review || expert) {
       const fresh = await getProspectPreview(access.token ? { token: access.token } : { code: access.code });
       setProspect(fresh);
       if (!fresh.report_on_hold) await loadReport();
@@ -2415,14 +2503,15 @@ export const StaleProspectWizard = ({
     <div className={`slw-page${isAgencyProperty ? ' slw-agent' : ''}${ads ? ' slw-ads' : ''}`}>
       <Header />
       <div className="slw-shell">
-        {step !== 'landing' && step !== 'finding' && !(review && step === 'success') && (
+        {step !== 'landing' && step !== 'finding' && !(review && step === 'success') && !heldForExpert && (
           <div className="slw-backrow">
             <GoBack onClick={handleGoBack} />
             {isAgencyProperty && !ads && <BackToListings onClick={handleBackToListings} />}
           </div>
         )}
-        {step !== 'landing' && step !== 'finding' && !review && <Stepper step={step} ads={!!ads} />}
+        {step !== 'landing' && step !== 'finding' && !review && !heldForExpert && <Stepper step={step} ads={!!ads} />}
         {step !== 'landing' && step !== 'finding' && review && <ReviewStepper active={reviewStepIndex} />}
+        {heldForExpert && <ReviewStepper active={4} />}
         <main className="slw-main">
           {step === 'landing' && !ads && <LandingStep onSubmit={handleLandingSubmit} loading={loading} error={error} />}
           {step === 'landing' && ads && (
@@ -2470,8 +2559,14 @@ export const StaleProspectWizard = ({
               error={error}
             />
           )}
-          {review && step === 'success' && prospect?.report_on_hold && (
-            <ReviewInProgressStep prospect={prospect} totalFactors={totalFactorsFor(prospect)} />
+          {(review || heldForExpert) && step === 'success' && prospect?.report_on_hold && (
+            <ReviewInProgressStep
+              prospect={prospect}
+              totalFactors={totalFactorsFor(prospect)}
+              notice={heldForExpert && params.get('addon') === 'paid'
+                ? 'Your add-on order is confirmed too. Our team will email you about it.'
+                : undefined}
+            />
           )}
           {!review && step === 'confirm' && prospect && ads === 'owner' && !showDetailsForm && (
             <AdsSellerSummary
@@ -2479,6 +2574,7 @@ export const StaleProspectWizard = ({
               access={access}
               totalFactors={totalFactorsFor(prospect)}
               onContinue={() => setShowDetailsForm(true)}
+              expert={expert}
             />
           )}
           {!review && step === 'confirm' && prospect && showDetailsForm && (
@@ -2486,7 +2582,7 @@ export const StaleProspectWizard = ({
           )}
           {!review && (step === 'assessment' || step === 'payment') && prospect && waitingForReport && reportPendingStep}
           {!review && step === 'assessment' && prospect && !waitingForReport && (
-            <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} />
+            <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} expert={expert} />
           )}
           {!review && step === 'payment' && prospect && !waitingForReport && (
             <PaymentStep
@@ -2497,9 +2593,10 @@ export const StaleProspectWizard = ({
               bankDetails={bankDetails}
               loading={loading}
               error={error}
+              expert={expert}
             />
           )}
-          {step === 'success' && prospect && !(review && prospect.report_on_hold) && (
+          {step === 'success' && prospect && !((review || heldForExpert) && prospect.report_on_hold) && (
             <SuccessStep prospect={prospect} onViewReport={handleViewReport} onDownloadPdf={handleDownloadPdf} onOpenDashboard={handleOpenDashboard} error={error} pdfBusy={pdfState.busy} />
           )}
           {step === 'report' && report && report.audience === 'agent' && (
@@ -2526,7 +2623,7 @@ export const StaleProspectWizard = ({
       )}
       <WizardStyles />
       {ads && <AdsStyles />}
-      {review && <ReviewStyles />}
+      {(review || expert) && <ReviewStyles />}
     </div>
   );
 };
@@ -2713,6 +2810,25 @@ export const WizardStyles = () => (
 
     .slw-assess-heading{font-family:'Right Grotesk','Bricolage Grotesque',sans-serif;font-size:32px;line-height:1;margin:0 0 14px;color:#202124}
     .slw-assess-subheading{color:#4b5563;margin:0 0 28px;font-weight:700}
+    /* /offer: who reviews the report, how soon, how it arrives. */
+    .slw-expert-banner{display:flex;align-items:center;gap:20px;margin:4px 0 30px;padding:20px 24px;border-radius:18px;background:linear-gradient(120deg,#F7EEFC 0%,#FBF7FE 55%,#F3ECFB 100%);border:1px solid #EAD9F5}
+    .slw-expert-icon{flex:none;width:56px;height:56px;border-radius:16px;background:#fff;color:#A409D2;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(16,24,40,.06),0 0 0 1px #F0E2F9}
+    .slw-expert-icon svg{width:30px;height:30px}
+    .slw-expert-copy{flex:1 1 auto;min-width:0}
+    .slw-expert-copy p{margin:0;font-size:17px;line-height:1.5;color:#2b2f36}
+    .slw-expert-copy p b{color:#111;font-weight:700}
+    .slw-expert-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .slw-expert-chips span{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #EAD9F5;border-radius:999px;padding:8px 14px;font-size:14.5px;font-weight:600;color:#2b2f36}
+    .slw-expert-chips svg{width:18px;height:18px;color:#A409D2;flex:none}
+    .slw-expert-chips b{color:#A409D2;font-weight:800}
+    .slw-views-notice.slw-views-notice-assess{margin:14px 0 0;font-size:14.5px}
+    .slw-expert-pay-note{margin:12px 0 0;font-size:14px;line-height:1.5;color:#5f6368;text-align:center}
+    @media (max-width:640px){
+      .slw-expert-banner{flex-direction:column;align-items:flex-start;gap:14px;padding:18px}
+      .slw-expert-icon{width:48px;height:48px;border-radius:14px}
+      .slw-expert-copy p{font-size:15.5px}
+      .slw-expert-chips span{font-size:13.5px;padding:7px 12px}
+    }
     .slw-assess-findings-grid{display:grid;grid-template-columns:1fr 1.45fr;gap:32px;margin-bottom:60px}
     .slw-assess-findings-grid h3{font-size:17px;margin:0 0 28px;font-weight:800}
     .slw-finding-card{display:flex;gap:16px;border:2px solid #edf0f4;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 1px 0 rgba(15,23,42,.02)}

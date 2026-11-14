@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journeyGtmId, loadGtmContainer, pushGtmEventOnce, type Journey } from '../../lib/gtm';
 import { createNextStepsCheckout, getNextSteps, getNextStepsOrderStatus } from './api';
 import { formatGbp, type NextStepsData, type NextStepsOrder } from './types';
@@ -33,6 +33,12 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
   const code = params.get('code') || undefined;
   const access = useMemo(() => ({ token, code }), [token, code]);
   const accessKey = token || code || '';
+  const navigate = useNavigate();
+  // /offer, report still with the expert: a Skip back to "Your analyst is on
+  // it", and the same place once an add-on order is paid (Nov 2026 brief).
+  const analystPath = journey === 'offer'
+    ? `/offer/complete?${token ? `token=${encodeURIComponent(token)}` : `code=${encodeURIComponent(code || '')}`}`
+    : null;
 
   const [data, setData] = useState<NextStepsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +77,15 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
       const { order } = await getNextStepsOrderStatus(access, pending.orderId);
       if (order.status === 'completed') {
         try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
-        if (journey) pushAddonPurchaseEvent(order, journey);
+        // Never a test order (the server decides: an internal address).
+        if (journey && order.count_as_sale) pushAddonPurchaseEvent(order, journey);
+        if (analystPath) {
+          const fresh = await getNextSteps(access).catch(() => null);
+          if (fresh?.report_on_hold) {
+            navigate(`${analystPath}&addon=paid`, { replace: true });
+            return;
+          }
+        }
         setConfirming(false);
         setJustPaid(order.items.map((i) => i.name));
         await load();
@@ -82,7 +96,7 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
     } catch {
       setConfirming(false);
     }
-  }, [access, accessKey, load, journey]);
+  }, [access, accessKey, load, journey, analystPath, navigate]);
 
   useEffect(() => {
     void load();
@@ -103,6 +117,8 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
   const included = (data?.services || []).filter((s) => s.status === 'included');
   const selectable = addons.filter((s) => s.status === 'available');
   const total = selectable.filter((s) => selected.has(s.key)).reduce((sum, s) => sum + s.price, 0);
+  const skipPath = analystPath && data?.report_on_hold ? analystPath : null;
+  const skip = () => { if (skipPath) navigate(skipPath); };
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -156,6 +172,12 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
                   </span>
                 </h1>
                 <p className="ns-sub">Choose the support you need to improve your listing, boost visibility and attract more serious buyers.</p>
+                {skipPath && (
+                  <p className="ns-skip-line">
+                    Payment received &mdash; your expert review has started.{' '}
+                    <button type="button" className="ns-skip-link" onClick={skip}>No thanks, skip for now &rarr;</button>
+                  </p>
+                )}
               </div>
 
               {confirming && <div className="ns-banner ns-banner-info">Confirming your payment…</div>}
@@ -247,9 +269,12 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
                     <span>Total</span>
                     <b>{formatGbp(total)}</b>
                   </div>
-                  <button type="button" className="ns-pay" disabled={selected.size === 0 || paying} onClick={pay}>
-                    {paying ? 'Opening secure checkout…' : selected.size === 0 ? 'Select a service' : `Pay ${formatGbp(total)}`}
-                  </button>
+                  <div className="ns-bar-actions">
+                    {skipPath && <button type="button" className="ns-skip" onClick={skip}>Skip</button>}
+                    <button type="button" className="ns-pay" disabled={selected.size === 0 || paying} onClick={pay}>
+                      {paying ? 'Opening secure checkout…' : selected.size === 0 ? 'Select a service' : `Pay ${formatGbp(total)}`}
+                    </button>
+                  </div>
                 </div>
               )}
             </>
@@ -269,6 +294,10 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
         .ns-underline{position:relative;display:inline-block;white-space:nowrap}
         .ns-underline svg{position:absolute;left:-2%;bottom:-10px;width:104%;height:16px}
         .ns-sub{margin:0;color:#3f4652;font-size:18px;line-height:1.5}
+        .ns-skip-line{margin:14px 0 0;font-size:15px;color:#3f4652}
+        .ns-skip-link{background:none;border:0;padding:0;font:inherit;font-weight:700;color:#A409D2;text-decoration:underline;cursor:pointer}
+        .ns-bar-actions{flex:1 1 auto;display:flex;align-items:center;gap:10px;min-width:0}
+        .ns-skip{flex:none;background:#fff;color:#111;border:1.5px solid #D0D5DD;border-radius:12px;padding:0 24px;height:68px;font-family:'Plus Jakarta Sans','Inter',sans-serif;font-size:18px;font-weight:700;cursor:pointer}
         .ns-banner{border-radius:12px;padding:14px 16px;margin:0 0 18px;font-size:14.5px;line-height:1.5}
         .ns-banner-info{background:#F1F0FB;color:#5A4AA8}
         .ns-banner-ok{background:#E7F6EC;color:#166534}
@@ -356,6 +385,7 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
           .ns-bar{gap:16px;padding:14px 16px}
           .ns-bar-total b{font-size:30px}
           .ns-pay{height:56px;font-size:18px}
+          .ns-skip{height:56px;padding:0 16px;font-size:16px}
         }
       `}</style>
     </div>

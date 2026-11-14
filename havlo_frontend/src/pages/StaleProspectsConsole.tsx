@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, API_BASE } from '../lib/api';
-import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProspectConsoleListItem } from '../lib/api';
+import type { StaleProspectAbandonedItem, StaleProspectConsoleDetail, StaleProspectConsoleListItem, UtmTouch } from '../lib/api';
 import { ReportAccuracyPanel } from './ReportAccuracyPanel';
 import { ModelComparisonPanel } from './ModelComparisonPanel';
 import { DatasetPanel } from './DatasetPanel';
@@ -74,6 +74,13 @@ function parseReport(data: Record<string, unknown>): ReportEdit {
 // Leads from the ads, analyst-review, seller (/sell) and Rightmove (/rm)
 // landing pages, by lead_source ('meta_seller', 'google_agent', 'review_seller',
 // 'sell_seller', 'rm_seller', ...).
+// "Email · abandonment (stage_3)", from a visit's UTM tags.
+function touchText(t?: UtmTouch | null) {
+  if (!t || !(t.label || t.source)) return null;
+  const detail = [t.campaign, t.content ? `(${t.content})` : ''].filter(Boolean).join(' ');
+  return `${t.label || t.source}${detail ? ` · ${detail}` : ''}${t.first_label ? `, first via ${t.first_label}` : ''}`;
+}
+
 function adLeadLabel(leadSource: string) {
   const who = leadSource.endsWith('_seller') ? 'vendor' : 'agent';
   if (leadSource.startsWith('review_')) return `Analyst review ${who}`;
@@ -1325,6 +1332,21 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           <div>{item.payment_status}{item.unlocked_at ? ` · ${fmtDate(item.unlocked_at)}` : ''}</div>
+                          {item.test_order && (
+                            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: '#FEF3C7', color: '#92400E' }}>
+                              Test order · not sent to Meta
+                            </span>
+                          )}
+                          {touchText(item.came_from?.lead) && (
+                            <div style={{ color: '#555', fontSize: 12, marginTop: 4, whiteSpace: 'normal', maxWidth: 260 }}>
+                              <b>Lead from</b> {touchText(item.came_from?.lead)}
+                            </div>
+                          )}
+                          {touchText(item.came_from?.purchase) && (
+                            <div style={{ color: '#555', fontSize: 12, marginTop: 2, whiteSpace: 'normal', maxWidth: 260 }}>
+                              <b>{item.status === 'paid' ? 'Bought from' : 'Checkout from'}</b> {touchText(item.came_from?.purchase)}
+                            </div>
+                          )}
                           {(item.addon_orders || []).map((order, i) => (
                             <div key={order.reference || i} style={{ marginTop: 6, padding: '6px 8px', borderRadius: 8, background: '#F0FDF4', border: '1px solid #BBF7D0', whiteSpace: 'normal', minWidth: 190 }}>
                               <div style={{ color: '#15803D', fontWeight: 700, fontSize: 12 }}>
@@ -1333,6 +1355,9 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                               <div style={{ color: '#555', fontSize: 12 }}>
                                 {money(order.amount)}{order.payment_method === 'promo' ? ' (promo code)' : ''}{order.paid_at ? ` · ${fmtDateTime(order.paid_at)}` : ''}
                               </div>
+                              {touchText(order.came_from) && (
+                                <div style={{ color: '#555', fontSize: 12 }}><b>Bought from</b> {touchText(order.came_from)}</div>
+                              )}
                               <div style={{ color: order.team_emailed_at ? '#555' : '#92400E', fontSize: 12 }}>
                                 {order.team_emailed_at ? `Team emailed ${fmtDateTime(order.team_emailed_at)}` : 'Team email not sent yet'}
                               </div>

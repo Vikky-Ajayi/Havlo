@@ -582,6 +582,8 @@ class StaleListingReportResponse(BaseModel):
 
 class StaleProspectLookupRequest(BaseModel):
     property_code: str = Field(..., min_length=4, max_length=12)
+    # The visitor's UTM tags, first and latest tagged visit (app/services/attribution.py).
+    attribution: Optional[dict] = None
 
 
 class StaleProspectCheckoutRequest(BaseModel):
@@ -590,6 +592,8 @@ class StaleProspectCheckoutRequest(BaseModel):
     redirect_url: Optional[str] = Field(None, max_length=2000)
     promo_code: Optional[str] = Field(None, max_length=100)
     payment_method: str = Field("card", pattern="^(card|bank_transfer)$")
+    # The visitor's UTM tags, first and latest tagged visit (app/services/attribution.py).
+    attribution: Optional[dict] = None
 
 
 class StaleProspectConfirmRequest(BaseModel):
@@ -607,6 +611,8 @@ class StaleProspectDetailsRequest(BaseModel):
     mobile_number: str = Field(..., min_length=5, max_length=50)
     # The analyst-review funnel's "send me occasional tips" box (None: not asked).
     marketing_opt_in: Optional[bool] = None
+    # The visitor's UTM tags, first and latest tagged visit (app/services/attribution.py).
+    attribution: Optional[dict] = None
 
 
 class AdsStartRequest(BaseModel):
@@ -622,6 +628,8 @@ class AdsStartRequest(BaseModel):
     # visitor typed in instead (ads_funnel.ManualDetailsNeeded).
     manual_address: Optional[str] = Field(None, max_length=300)
     manual_price: Optional[float] = Field(None, gt=0, lt=1_000_000_000)
+    # The visitor's UTM tags, first and latest tagged visit (app/services/attribution.py).
+    attribution: Optional[dict] = None
 
 
 class AdsStartResponse(BaseModel):
@@ -701,6 +709,9 @@ class StaleProspectPreviewResponse(BaseModel):
     # link: "pending" until it's in (preview empty), "failed" if writing it
     # failed (POST /prospects/report-retry starts it again), else "ready".
     report_status: str = "ready"
+    # Paid by card and not a test order (attribution.count_as_sale): the only
+    # purchase the page may report to Meta or Tag Manager.
+    count_as_sale: bool = False
 
 
 class AgentLookupRequest(BaseModel):
@@ -727,6 +738,8 @@ class ProspectNextStepsCheckoutRequest(BaseModel):
     property_code: Optional[str] = Field(None, min_length=4, max_length=12)
     items: list[str] = Field(..., min_length=1, max_length=10)
     redirect_url: Optional[str] = Field(None, max_length=2000)
+    # The visitor's UTM tags, first and latest tagged visit (app/services/attribution.py).
+    attribution: Optional[dict] = None
 
 
 class ProspectReportFiguresRequest(BaseModel):
@@ -897,6 +910,12 @@ class StaleProspectConsoleListItem(BaseModel):
     # QR link -- None if they never have.
     code_looked_up_at: Optional[str] = None
     letter_version: Optional[int] = None
+    # Where the lead and the sale came from (attribution.summary): {"lead":
+    # {label, source, medium, campaign, ...}, "purchase": {...}}; None inside
+    # when that visit had no UTM tags.
+    came_from: dict = Field(default_factory=dict)
+    # Unlocked with the free promo code or placed from an internal address.
+    test_order: bool = False
 
 
 class StaleProspectConsoleListResponse(BaseModel):
@@ -967,6 +986,12 @@ class StaleProspectAbandonedItem(BaseModel):
     # Rewrite, Relaunch Strategy): what, how much, when, and whether the team
     # was emailed to do the work. Empty when they haven't bought one.
     addon_orders: list["StaleProspectAddonOrderSummary"] = Field(default_factory=list)
+    # Where the lead and the sale came from (attribution.summary): {"lead":
+    # {label, source, medium, campaign, ...}, "purchase": {...}}; None inside
+    # when that visit had no UTM tags.
+    came_from: dict = Field(default_factory=dict)
+    # Unlocked with the free promo code or placed from an internal address.
+    test_order: bool = False
 
 
 class StaleProspectAddonOrderSummary(BaseModel):
@@ -977,6 +1002,8 @@ class StaleProspectAddonOrderSummary(BaseModel):
     reference: Optional[str] = None
     paid_at: Optional[str] = None
     team_emailed_at: Optional[str] = None
+    # Where this order came from (attribution.order_summary).
+    came_from: Optional[dict] = None
 
 
 class StaleProspectAbandonedResponse(BaseModel):

@@ -258,6 +258,8 @@ def render_nurture_email(prospect: StaleListingProspect, flow: str, stage: int) 
         note = flow_content("agent")["main"][0]["footer"]
         link_text, link_url = "Tell us", build_closed_url(prospect.id)
     return {
+        "utm_campaign": f"ads_{flow_name}_{flow}",
+        "utm_content": f"stage_{stage}",
         "subject": fill(entry["subject"]),
         "preheader": _preheader(paragraphs),
         "paragraphs": paragraphs,
@@ -273,6 +275,8 @@ def render_nurture_email(prospect: StaleListingProspect, flow: str, stage: int) 
 def render_reminder_email(lead: AdsUrlReminderLead, stage: int) -> dict[str, Any]:
     entry = _entry("url_reminder", "main", stage)
     return {
+        "utm_campaign": "url_reminder",
+        "utm_content": f"stage_{stage}",
         "subject": entry["subject"],
         "preheader": entry["preview"],
         "paragraphs": entry["paragraphs"],

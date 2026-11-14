@@ -47,7 +47,7 @@ class PaidAddonOrdersTests(unittest.TestCase):
         got = asyncio.run(stale_listings._paid_addon_orders(db, [a, b]))
         self.assertEqual(got[a], [{"items": ["Listing Rewrite", "Relaunch Strategy"], "amount": 498.0, "currency": "GBP",
                                    "payment_method": "card", "reference": "AO-1", "paid_at": paid.isoformat(),
-                                   "team_emailed_at": paid.isoformat()}])
+                                   "team_emailed_at": paid.isoformat(), "came_from": None}])
         self.assertEqual(got[b][0]["payment_method"], "promo")
         self.assertIsNone(got[b][0]["team_emailed_at"])
         self.assertEqual(got[b][0]["paid_at"], "2026-11-03T09:00:00+00:00")  # falls back to when it was placed

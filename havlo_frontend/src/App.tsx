@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
+import { captureAttribution } from './lib/attribution';
 import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import { ModalProvider } from './context/ModalContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -167,6 +168,15 @@ const ScrollToTop = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
+  return null;
+};
+
+// UTM tags of an in-app navigation that carries them (lib/attribution.ts).
+const AttributionCapture = () => {
+  const { search } = useLocation();
+  useEffect(() => {
+    captureAttribution(search);
+  }, [search]);
   return null;
 };
 
@@ -379,6 +389,7 @@ export default function App() {
       <Router>
         <ViewportStabilityManager />
         <ScrollToTop />
+        <AttributionCapture />
         <Layout>
           <Suspense fallback={<PageLoader />}>
             <Routes>

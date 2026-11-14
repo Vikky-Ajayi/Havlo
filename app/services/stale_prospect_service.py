@@ -859,6 +859,8 @@ def clean_preview(prospect: StaleListingProspect) -> dict[str, Any]:
 
 
 def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
+    from app.services import attribution
+
     snapshot = _safe_json(prospect.listing_snapshot_json)
     return {
         "prospect_id": str(prospect.id),
@@ -881,6 +883,7 @@ def serialize_preview(prospect: StaleListingProspect) -> dict[str, Any]:
         "unlock_price": unlock_price_for(prospect),
         "offer_was_price": offer_was_price(prospect),
         "report_status": report_status(prospect),
+        "count_as_sale": attribution.count_as_sale(prospect),
         # Analyst-review funnel (/review/...) purchases: paid, but the review isn't
         # finished, so the report isn't open yet (app/services/analyst_review.py).
         "report_on_hold": analyst_review.report_on_hold(prospect),
@@ -3324,3 +3327,55 @@ def attachment_from_file(path: str) -> dict[str, str]:
         "content": encoded,
         "content_type": "application/pdf",
     }
+
+
+# ── Report payments the browser never confirmed ───────────────────────────
+# A card payment is confirmed when the customer's browser comes back from
+# SumUp and asks (/prospects/payment-status). Someone who pays and closes the
+# tab would otherwise stay "pending" for good: no report written, and on the
+# expert-reviewed pages (/review/, /offer) no review clock, so no automatic
+# release or "report ready" email. This asks SumUp itself, every few minutes.
+PAYMENT_CHECK_WINDOW = timedelta(days=7)
+PAYMENT_CHECK_BATCH = 50
+_PAYMENT_WRITES: set[asyncio.Task] = set()
+
+
+async def reconcile_report_payments() -> dict[str, int]:
+    from app.services import sumup_service
+
+    stats = {"checked": 0, "confirmed": 0, "failed": 0}
+    cutoff = datetime.now(timezone.utc) - PAYMENT_CHECK_WINDOW
+    confirmed: list[str] = []
+    async with AsyncSessionLocal() as db:
+        pending = (await db.execute(
+            select(StaleListingProspect)
+            .where(StaleListingProspect.payment_status == "pending",
+                   StaleListingProspect.payment_method == "card",
+                   StaleListingProspect.sumup_checkout_id.is_not(None),
+                   StaleListingProspect.updated_at >= cutoff)
+            .order_by(StaleListingProspect.updated_at.desc())
+            .limit(PAYMENT_CHECK_BATCH)
+        )).scalars().all()
+        for prospect in pending:
+            stats["checked"] += 1
+            try:
+                data = await sumup_service.get_checkout_status(prospect.sumup_checkout_id)
+            except Exception as exc:  # noqa: BLE001 -- try again next time
+                logger.warning("Report payment check failed for %s: %s", prospect.property_code, exc)
+                continue
+            status = str(data.get("status") or "").upper()
+            if status == "PAID":
+                analyst_review.mark_paid(prospect)
+                confirmed.append(str(prospect.id))
+                stats["confirmed"] += 1
+            elif status in {"FAILED", "EXPIRED"}:
+                prospect.payment_status = "failed"
+                stats["failed"] += 1
+        await db.commit()
+    for prospect_id in confirmed:
+        logger.info("Report payment confirmed in the background for prospect %s", prospect_id)
+        # Write the full report now, as when the browser confirms it.
+        task = asyncio.create_task(expand_report_in_background(prospect_id))
+        _PAYMENT_WRITES.add(task)
+        task.add_done_callback(_PAYMENT_WRITES.discard)
+    return stats

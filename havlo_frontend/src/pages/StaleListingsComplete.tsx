@@ -83,7 +83,7 @@ export function StaleListingsComplete() {
   const verifyAndFetch = async (ref: string) => {
     try {
       const result = await api.staleListingsVerifyPayment(ref);
-      const { payment_status } = result as { payment_status: string; reference: string };
+      const { payment_status, count_as_sale } = result as { payment_status: string; reference: string; count_as_sale?: boolean };
 
       if (payment_status === 'completed') {
         stopPolling();
@@ -97,7 +97,8 @@ export function StaleListingsComplete() {
         } catch {
           // Non-fatal. The payment is already confirmed.
         }
-        trackPurchaseOnce(ref, completedPlanKey);
+        // Only a real SumUp payment: never a free promo-code plan or a test order.
+        if (count_as_sale) trackPurchaseOnce(ref, completedPlanKey);
         setPageState('success');
         return true;
       }

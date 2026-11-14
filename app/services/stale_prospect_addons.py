@@ -82,7 +82,9 @@ def catalog(orders: list[StaleProspectAddonOrder]) -> list[dict[str, Any]]:
     return out
 
 
-def serialize_order(order: StaleProspectAddonOrder) -> dict[str, Any]:
+def serialize_order(order: StaleProspectAddonOrder, prospect: StaleListingProspect | None = None) -> dict[str, Any]:
+    from app.services import attribution
+
     return {
         "order_id": str(order.id),
         "items": _loads(order.items_json, []),
@@ -92,6 +94,8 @@ def serialize_order(order: StaleProspectAddonOrder) -> dict[str, Any]:
         "reference": order.reference,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+        # Paid, and not a test order: the only kind the page reports as a purchase.
+        "count_as_sale": attribution.order_counts_as_sale(order, prospect),
     }
 
 
@@ -101,6 +105,7 @@ class AddonError(Exception):
 
 async def create_order(
     db: AsyncSession, prospect: StaleListingProspect, item_keys: list[str], *, redirect_url: str,
+    utm: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create a pending order for the selected add-ons and a single SumUp
     checkout for their total. The caller commits. Items already bought (in a
@@ -125,6 +130,9 @@ async def create_order(
     order = StaleProspectAddonOrder(
         prospect_id=prospect.id, items_json=json.dumps(items), amount=amount,
         currency=CURRENCY, status="pending", payment_method="card", reference=reference)
+    from app.services import attribution
+
+    attribution.record_order(order, utm)  # where this order came from
     db.add(order)
     await db.flush()
 

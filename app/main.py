@@ -783,6 +783,18 @@ async def startup() -> None:
     elif HAS_DATABASE:
         logger.info("Add-on order payment check disabled by ENABLE_ADDON_ORDER_CHECK.")
 
+    # ── Report payments the browser never confirmed ───────────────────────
+    # Someone who pays at SumUp and closes the tab before coming back
+    # (stale_prospect_service.reconcile_report_payments). Every 5 minutes.
+    if HAS_DATABASE:
+        from app.services.scraper_base import run_scraper_loop
+        from app.services.stale_prospect_service import reconcile_report_payments
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Report payments", reconcile_report_payments, 5 / 60, initial_delay_seconds=165)
+        ))
+        logger.info("Report payment check scheduled.")
+
     # ── 4-digit property codes running out ────────────────────────────────
     # Emails ADMIN_NOTIFY_EMAIL once when 90% of the owner property codes
     # are in use (see property_code_capacity). Every 6 hours.

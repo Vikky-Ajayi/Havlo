@@ -108,6 +108,10 @@ class Settings(BaseSettings):
     # property-code flow). Defaults to AUDIT001 so it works without extra
     # env setup; override or blank it out in Railway to rotate or disable it.
     STALE_PROSPECT_PROMO_CODE: str = "AUDIT001"
+    # Orders from these addresses are tests, never sales: comma-separated
+    # emails, or "@domain" for a whole domain (app/services/attribution.py).
+    # The site never tells Meta or Tag Manager about a test order.
+    TEST_ORDER_EMAILS: str = "@heyhavlo.com"
     # Code asked for before a prospect can be deleted from the prospects
     # console (e.g. clearing test lookups out of the Follow Up list).
     STALE_PROSPECT_DELETE_CODE: str = "8989"

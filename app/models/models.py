@@ -657,6 +657,11 @@ class StaleListingProspect(Base):
     # £49 (migration 20261104_0038 wrote it here). NULL = today's price,
     # stale_prospect_service.UNLOCK_PRICE. Read it via unlock_price_for().
     unlock_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    # Where they came from (app/services/attribution.py): the UTM tags of the
+    # visit that submitted the property (lead) and of the visit that started
+    # the checkout (purchase), each {"first": {...}, "last": {...}} touch.
+    lead_utm_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    purchase_utm_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # First time the Payment step was shown; anchors the ads flows'
     # checkout-recovery emails.
     checkout_visited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -1252,6 +1257,8 @@ class StaleProspectAddonOrder(Base):
     team_emailed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The UTM tags of the visit that placed the order (app/services/attribution.py).
+    utm_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class AssessmentRecord(Base):

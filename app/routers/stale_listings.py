@@ -101,7 +101,7 @@ from app.services import us_stale_discovery, zillow_scraper
 from app.services.listing_scraper import detect_listing_platform, scrape_single_listing
 from app.services.product_access import decode_stale_review_session
 from app.services import agent_campaign, agent_report, agent_report_pdf, listing_monitor, land_registry
-from app.services import ads_funnel, ads_nurture, analyst_review, funnel_paths, report_owner_figures, report_v2_pdf
+from app.services import ads_funnel, ads_nurture, analyst_review, attribution, funnel_paths, report_owner_figures, report_v2_pdf
 from app.services.stale_prospect_service import (
     address_with_full_postcode,
     cached_sold_comparables,
@@ -633,7 +633,15 @@ async def verify_stale_listing_payment(
     reference: str,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Poll SumUp to verify and update payment status."""
+    """Poll SumUp to verify and update payment status. count_as_sale: paid
+    through SumUp (not a free promo-code plan) and not from an internal
+    address, so the page may report it to Meta as a purchase."""
+
+    def answer(status: str) -> dict:
+        real = (status == "completed" and bool(assessment.sumup_checkout_id)
+                and not attribution.internal_email(assessment.email))
+        return {"payment_status": status, "reference": reference, "count_as_sale": real}
+
     result = await db.execute(
         select(StaleListingAssessment).where(
             StaleListingAssessment.reference == reference.upper()
@@ -644,10 +652,10 @@ async def verify_stale_listing_payment(
         raise HTTPException(status_code=404, detail="Assessment not found.")
 
     if assessment.payment_status == "completed":
-        return {"payment_status": "completed", "reference": reference}
+        return answer("completed")
 
     if not assessment.sumup_checkout_id:
-        return {"payment_status": assessment.payment_status, "reference": reference}
+        return answer(assessment.payment_status)
 
     try:
         checkout_data = await sumup_service.get_checkout_status(assessment.sumup_checkout_id)
@@ -655,15 +663,15 @@ async def verify_stale_listing_payment(
         if sumup_status == "PAID":
             assessment.payment_status = "completed"
             await db.commit()
-            return {"payment_status": "completed", "reference": reference}
+            return answer("completed")
         elif sumup_status in ("FAILED", "EXPIRED"):
             assessment.payment_status = "failed"
             await db.commit()
-            return {"payment_status": "failed", "reference": reference}
+            return answer("failed")
     except SumUpError as exc:
         logger.error("SumUp verification failed for %s: %s", reference, exc)
 
-    return {"payment_status": assessment.payment_status, "reference": reference}
+    return answer(assessment.payment_status)
 
 
 def _frontend_base_url() -> str:
@@ -724,6 +732,8 @@ async def lookup_stale_prospect(
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectPreviewResponse:
     prospect = await _get_prospect_by_access(db, property_code=payload.property_code)
+    if attribution.record_lead(prospect, payload.attribution):
+        await db.commit()
     _prefetch_sold_comparables(prospect, background_tasks)
     return StaleProspectPreviewResponse(**serialize_preview(prospect))
 
@@ -809,6 +819,7 @@ async def submit_stale_prospect_details(
     # never reset by a later edit of the same details.
     if prospect.contact_details_submitted_at is None:
         prospect.contact_details_submitted_at = datetime.utcnow()
+    attribution.record_lead(prospect, payload.attribution)
     await agent_campaign.remember_agency_contact(db, prospect)
     await db.commit()
     if prospect.lead_source in ads_funnel.NURTURED_LEAD_SOURCES:
@@ -889,6 +900,8 @@ async def start_ads_assessment(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     prospect_id = result.pop("prospect_id")
     prospect = await db.get(StaleListingProspect, prospect_id)
+    if prospect is not None and attribution.record_lead(prospect, payload.attribution):
+        await db.commit()
     if prospect is not None and prospect.ads_sheet_logged_at is None:
         # Every listing from the ads pages goes on the sheet once, for the
         # follow-up letters (retried by the ads loop if the sheet fails).
@@ -905,6 +918,15 @@ async def start_ads_assessment(
             await _retry_report(db, prospect)
         ads_funnel.start_report(prospect_id)
     return AdsStartResponse(**result)
+
+
+@public_router.get("/offer/recent-assessments")
+async def offer_recent_assessments(db: AsyncSession = Depends(get_db)) -> dict:
+    """Recently assessed properties (photo, street, Saleability Score) for the
+    /offer landing page's scrolling strip (recent_assessments.py)."""
+    from app.services import recent_assessments
+
+    return {"items": await recent_assessments.recent(db)}
 
 
 @public_router.get("/prospects/ads-summary")
@@ -1053,6 +1075,10 @@ async def create_stale_prospect_checkout(
             currency=currency,
             unlocked=True,
         )
+
+    # Where this sale came from: the visit that started the checkout (each
+    # branch below commits it).
+    attribution.record_purchase(prospect, payload.attribution)
 
     if _stale_prospect_promo_valid(payload.promo_code):
         analyst_review.mark_paid(prospect)
@@ -1701,6 +1727,8 @@ def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleLi
         created_at=prospect.created_at.isoformat(),
         code_looked_up_at=prospect.code_looked_up_at.isoformat() if prospect.code_looked_up_at else None,
         letter_version=prospect.letter_version,
+        came_from=attribution.summary(prospect),
+        test_order=attribution.is_test_order(prospect),
     )
 
 
@@ -1897,6 +1925,7 @@ async def _paid_addon_orders(db: AsyncSession, prospect_ids: list[uuid.UUID]) ->
             "reference": order.reference,
             "paid_at": _iso(order.paid_at or order.created_at),
             "team_emailed_at": _iso(order.team_emailed_at),
+            "came_from": attribution.order_summary(order),
         })
     return out
 
@@ -2375,6 +2404,8 @@ async def list_abandoned_prospects(
             report_released_at=_iso(p.report_released_at),
             report_ready_emailed_at=_iso(p.report_ready_emailed_at),
             addon_orders=addon_orders.get(p.id, []),
+            came_from=attribution.summary(p),
+            test_order=attribution.is_test_order(p),
         )
         for p, emails_sent, sms_sent in rows
     ]
@@ -3565,7 +3596,10 @@ async def get_prospect_next_steps(
         "audience": prospect.audience or "owner",
         "currency": addons.CURRENCY,
         "services": addons.catalog(orders),
-        "orders": [addons.serialize_order(o) for o in orders],
+        "orders": [addons.serialize_order(o, prospect) for o in orders],
+        # Still with the expert (the /offer and /review/ pages): the page offers
+        # a Skip back to "Your analyst is on it".
+        "report_on_hold": analyst_review.report_on_hold(prospect),
     }
 
 
@@ -3584,7 +3618,8 @@ async def create_prospect_next_steps_checkout(
     sep = "&" if "?" in redirect_url else "?"
     redirect_url = f"{redirect_url}{sep}{access_key}"
     try:
-        result = await addons.create_order(db, prospect, payload.items, redirect_url=redirect_url)
+        result = await addons.create_order(db, prospect, payload.items, redirect_url=redirect_url,
+                                           utm=payload.attribution)
     except addons.AddonError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except SumUpError as exc:
@@ -3620,7 +3655,7 @@ async def get_prospect_next_steps_status(
         # Email the team once, now that it's genuinely paid.
         await addons.email_team(order, prospect)
     await db.commit()
-    return {"order": addons.serialize_order(order)}
+    return {"order": addons.serialize_order(order, prospect)}
 
 
 @public_router.api_route("/agents/unsubscribe", methods=["GET", "POST"], response_class=HTMLResponse)

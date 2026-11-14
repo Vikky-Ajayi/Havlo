@@ -302,6 +302,15 @@ export const AdsStyles = () => (
     .slw-ads-summary-list li{font-size:15px;line-height:1.45;color:#475467;padding:12px 14px;background:#f8f9fb;border-radius:10px}
     .slw-ads-summary-list b{color:#202124}
     .slw-ads-pending{color:#98a2b3}
+    /* /offer: a turning ring by each line still being checked. */
+    .slw-ads-summary-list li.slw-ads-row-loading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .slw-row-spinner{flex:none;width:18px;height:18px;border-radius:50%;border:2.5px solid #EBD7F6;border-top-color:#A409D2;animation:slw-row-spin .8s linear infinite}
+    @keyframes slw-row-spin{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion:reduce){.slw-row-spinner{animation-duration:2.4s}}
+    /* /offer: the online-views line under the price. */
+    .slw-views-notice{display:flex;align-items:flex-start;gap:8px;margin:10px 0 0;font-size:15px;line-height:1.45;font-weight:500;color:#8A08B4}
+    .slw-views-notice svg{flex:none;margin-top:2px}
+    .slw-views-notice b{font-weight:800;color:#A409D2}
     .slw-ads-finding{margin:20px 0 0;padding:14px 16px;border-left:3px solid #a409d2;background:#fbf7fd;border-radius:0 10px 10px 0}
     .slw-ads-finding b{display:block;font-size:14px;color:#202124;margin-bottom:6px}
     .slw-ads-finding p{margin:0;font-size:15px;line-height:1.5;color:#334155}
@@ -321,6 +330,22 @@ const COMPETITION_BASIS: Record<string, string> = {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** The /offer page's attention line under a property's price (Nov 2026 brief).
+ * Always "over 200": the figure Rightmove gave for every listing's first days,
+ * never a per-property count we can't see. */
+export const ViewsNotice = ({ className = '' }: { className?: string }) => (
+  <p className={`slw-views-notice ${className}`.trim()}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1 12s4-7.5 11-7.5S23 12 23 12s-4 7.5-11 7.5S1 12 1 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+    <span>This property has had <b>over 200 online views</b> but may not be turning into as many viewings and offers as it could.</span>
+  </p>
+);
+
+/** A small turning ring beside a line that's still being worked out. */
+export const RowSpinner = () => <span className="slw-row-spinner" role="status" aria-label="Still checking" />;
+
 /** Ads homeowners' Confirm Property step, before the details form: what the
  * assessment found, in brief. "See all findings" then asks for their
  * details. Every line comes from their report (or, for competition, the
@@ -330,11 +355,15 @@ export const AdsSellerSummary = ({
   access,
   totalFactors,
   onContinue,
+  expert = false,
 }: {
   prospect: ProspectPreview;
   access: { token?: string; code?: string };
   totalFactors: number;
   onContinue: () => void;
+  /** The /offer page: the views line under the price, and a turning ring by
+   * each line still being checked, so nobody leaves thinking it's stuck. */
+  expert?: boolean;
 }) => {
   const [summary, setSummary] = useState<AdsSummary | null>(null);
   const snapshot = prospect.listing_snapshot || {};
@@ -373,12 +402,12 @@ export const AdsSellerSummary = ({
     prospect.bathrooms ? plural(prospect.bathrooms, 'Bathroom', 'Bathrooms') : null,
   ].filter(Boolean);
 
-  const rows: { label: string; text: ReactNode }[] = [];
+  const rows: { label: string; text: ReactNode; pending?: boolean }[] = [];
   const analysing = <span className="slw-ads-pending">Analysing your listing…</span>;
   if (summary && (reportPending || (summary.report_status && summary.report_status !== 'ready'))) {
-    rows.push({ label: 'Buyer Appeal', text: analysing });
-    rows.push({ label: 'Pricing Position', text: analysing });
-    rows.push({ label: 'Listing Presentation', text: analysing });
+    rows.push({ label: 'Buyer Appeal', text: analysing, pending: true });
+    rows.push({ label: 'Pricing Position', text: analysing, pending: true });
+    rows.push({ label: 'Listing Presentation', text: analysing, pending: true });
   } else if (summary) {
     if (summary.buyer_appeal) rows.push({ label: 'Buyer Appeal', text: summary.buyer_appeal });
     if (summary.pricing) rows.push({ label: 'Pricing Position', text: summary.pricing });
@@ -396,7 +425,7 @@ export const AdsSellerSummary = ({
         text: `Your property is competing with ${competition.count} ${COMPETITION_BASIS[competition.basis || 'nearby'] || 'homes for sale nearby'}`,
       });
     } else if (competition.status === 'pending') {
-      rows.push({ label: 'Local Competition', text: <span className="slw-ads-pending">Checking competing listings nearby…</span> });
+      rows.push({ label: 'Local Competition', text: <span className="slw-ads-pending">Checking competing listings nearby…</span>, pending: true });
     } else if (competition.fallback) {
       rows.push({ label: 'Local Competition', text: competition.fallback });
     }
@@ -413,6 +442,7 @@ export const AdsSellerSummary = ({
         <div className="slw-confirm-details slw-ads-summary">
           <h2>{prospect.property_address}</h2>
           {facts.length > 0 && <p className="slw-ads-facts">{facts.join(' · ')}</p>}
+          {expert && <ViewsNotice />}
           <div className="slw-confirm-signals">
             <div>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -435,7 +465,14 @@ export const AdsSellerSummary = ({
                   </p>
                   <ul className="slw-ads-summary-list">
                     {rows.map((row) => (
-                      <li key={row.label}><b>{row.label}</b> &mdash; {row.text}</li>
+                      expert && row.pending ? (
+                        <li key={row.label} className="slw-ads-row-loading">
+                          <span><b>{row.label}</b> &mdash; {row.text}</span>
+                          <RowSpinner />
+                        </li>
+                      ) : (
+                        <li key={row.label}><b>{row.label}</b> &mdash; {row.text}</li>
+                      )
                     ))}
                   </ul>
                 </>

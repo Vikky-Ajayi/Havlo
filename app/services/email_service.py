@@ -48,8 +48,14 @@ def _send_sync(
     plain_body: str,
     attachments: Optional[list[dict]] = None,
     unsubscribe_url: Optional[str] = None,
+    utm_campaign: Optional[str] = None,
+    utm_content: Optional[str] = None,
 ) -> bool:
     """Synchronous send with bounded retries. Always returns a bool, never raises.
+
+    utm_campaign (the funnel flows): every link to the site in the email gets
+    utm_source=email, utm_medium=email, utm_campaign and utm_content (the
+    step), so a visit from it shows where it came from (attribution.py).
 
     unsubscribe_url (marketing emails): sent as the List-Unsubscribe and
     List-Unsubscribe-Post headers, so Gmail, Yahoo and others show their own
@@ -74,6 +80,12 @@ def _send_sync(
     except ImportError:
         logger.warning("resend package not installed — email is disabled.")
         return False
+
+    if utm_campaign:
+        from app.services import attribution
+
+        html_body = attribution.tag_html(html_body, campaign=utm_campaign, content=utm_content)
+        plain_body = attribution.tag_text(plain_body, source="email", campaign=utm_campaign, content=utm_content)
 
     s = get_settings()
     resend.api_key = s.RESEND_API_KEY
@@ -2472,6 +2484,8 @@ def send_stale_prospect_abandonment_email_sync(
         html_body=html_body,
         plain_body=plain_body,
         unsubscribe_url=unsubscribe_url,
+        utm_campaign="abandonment",
+        utm_content=f"stage_{stage}",
     )
 
 
@@ -2518,6 +2532,8 @@ def send_ads_flow_email_sync(
     note_link_url: str = "",
     social_proof: bool = True,
     frontend_base_url: str | None = None,
+    utm_campaign: str = "ads_flow",
+    utm_content: str | None = None,
 ) -> bool:
     """Send one email of an ads funnel flow. The send loops in
     app/services/ads_nurture.py record each send so a stage never goes twice;
@@ -2588,7 +2604,7 @@ def send_ads_flow_email_sync(
     lines += [f"Unsubscribe: {unsubscribe_url}", "", "Copyright ©Havlo. All rights reserved."]
     return _send_sync(
         to_email=to_email, subject=subject, html_body=html_body, plain_body="\n".join(lines),
-        unsubscribe_url=unsubscribe_url,
+        unsubscribe_url=unsubscribe_url, utm_campaign=utm_campaign, utm_content=utm_content,
     )
 
 
@@ -2895,6 +2911,8 @@ def send_stale_prospect_post_purchase_email_sync(
         html_body=html_body,
         plain_body=plain_body,
         unsubscribe_url=unsubscribe_url,
+        utm_campaign="post_purchase",
+        utm_content=f"stage_{stage}",
     )
 
 
@@ -2959,7 +2977,8 @@ def send_analyst_report_ready_email_sync(
         "If anything in it is unclear, just reply to this email.\n\n"
         "Copyright ©Havlo. All rights reserved."
     )
-    return _send_sync(to_email=to_email, subject=subject, html_body=html_body, plain_body=plain_body)
+    return _send_sync(to_email=to_email, subject=subject, html_body=html_body, plain_body=plain_body,
+                      utm_campaign="analyst_report_ready")
 
 
 # Sync helpers exposed for FastAPI BackgroundTasks (which prefer sync callables).
@@ -3118,7 +3137,7 @@ def send_stale_agent_followup_email_sync(
     )
     return _send_sync(
         to_email=to_email, subject=config["subject"], html_body=html_body, plain_body=plain_body,
-        unsubscribe_url=unsubscribe_url,
+        unsubscribe_url=unsubscribe_url, utm_campaign="agent_followup", utm_content=f"stage_{stage}",
     )
 
 

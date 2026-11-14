@@ -146,6 +146,25 @@ export interface StaleProspectAbandonedItem {
   report_ready_emailed_at?: string | null;
   /** Paid orders for the optional services after the report (Listing Rewrite, Relaunch Strategy). */
   addon_orders?: StaleProspectAddonOrderSummary[];
+  /** Where the lead and the sale came from (UTM tags; app/services/attribution.py). */
+  came_from?: CameFrom;
+  /** Free promo code or an internal address: never counted as a sale. */
+  test_order?: boolean;
+}
+
+export interface UtmTouch {
+  label?: string | null;
+  source?: string | null;
+  medium?: string | null;
+  campaign?: string | null;
+  content?: string | null;
+  /** The first tagged visit, when it was a different source (e.g. a Meta ad before an email click). */
+  first_label?: string | null;
+}
+
+export interface CameFrom {
+  lead?: UtmTouch | null;
+  purchase?: UtmTouch | null;
 }
 
 export interface StaleProspectAddonOrderSummary {
@@ -157,6 +176,7 @@ export interface StaleProspectAddonOrderSummary {
   paid_at?: string | null;
   /** When the team was emailed to do the work; empty if that email hasn't gone. */
   team_emailed_at?: string | null;
+  came_from?: UtmTouch | null;
 }
 
 export interface ModelComparisonModels {

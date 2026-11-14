@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { REVIEW_COPIES, ReviewStars, staleListingsReviews } from '../../components/shared/StaleListingsReviews';
 import { getAdsSummary, type AdsSummary } from './api';
@@ -54,18 +54,29 @@ const ShieldIcon = () => (
 );
 
 /** The /g/ funnel's own stepper: done steps ticked, the current one purple. */
-export const ReviewStepper = ({ active }: { active: number }) => (
-  <div className="rv-stepper-wrap slw-noprint">
-    <ol className="rv-stepper">
-      {REVIEW_STEPS.map((label, i) => (
-        <li key={label} className={i < active ? 'rv-done' : i === active ? 'rv-active' : ''}>
-          {i < active ? <CheckIcon /> : <i className="rv-dot" />}
-          <span>{label === 'Full report' && active === 3 ? 'Full report in 48 hrs' : label}</span>
-        </li>
-      ))}
-    </ol>
-  </div>
-);
+export const ReviewStepper = ({ active, hours = 48 }: { active: number; hours?: number }) => {
+  // On a phone the bar scrolls sideways; bring the current step into view.
+  const wrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wrap.current;
+    const current = el?.querySelector<HTMLElement>('.rv-active');
+    if (!el || !current || el.scrollWidth <= el.clientWidth) return;
+    const offset = current.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+    el.scrollLeft = Math.max(0, offset - (el.clientWidth - current.offsetWidth) / 2);
+  }, [active]);
+  return (
+    <div className="rv-stepper-wrap slw-noprint" ref={wrap}>
+      <ol className="rv-stepper">
+        {REVIEW_STEPS.map((label, i) => (
+          <li key={label} className={i < active ? 'rv-done' : i === active ? 'rv-active' : ''}>
+            {i < active ? <CheckIcon /> : <i className="rv-dot" />}
+            <span>{label === 'Full report' && active === 3 ? `Full report in ${hours} hrs` : label}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+};
 
 const propertyImage = (prospect: ProspectPreview) => {
   const snapshot = prospect.listing_snapshot || {};
@@ -591,10 +602,13 @@ function formatDue(iso?: string | null): string | null {
   return `${day}, ${time}`;
 }
 
-export const ReviewInProgressStep = ({ prospect, totalFactors }: { prospect: ProspectPreview; totalFactors: number }) => {
+export const ReviewInProgressStep = ({ prospect, totalFactors, notice }: {
+  prospect: ProspectPreview; totalFactors: number; notice?: string;
+}) => {
   const due = formatDue(prospect.analyst_review_due_at);
   return (
     <section className="rv-progress">
+      {notice && <p className="rv-notice">{notice}</p>}
       <svg className="rv-progress-icon" width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
         <circle cx="32" cy="32" r="32" fill="#F5ECFA" />
         <circle cx="29" cy="29" r="11" stroke={PURPLE} strokeWidth="3.5" />
@@ -787,6 +801,7 @@ export const ReviewStyles = () => (
     .rv-banner button{flex:none;background:#fff;color:#111;border:none;border-radius:10px;padding:15px 22px;font:inherit;font-weight:700;cursor:pointer}
 
     .rv-progress{max-width:720px;margin:0 auto;text-align:center}
+    .rv-notice{margin:0 auto 22px;max-width:560px;background:#E7F6EC;color:#166534;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:600}
     .rv-progress-icon{display:block;margin:0 auto 18px}
     .slw-shell>.rv-stepper-wrap:first-child{margin-top:48px}
     .rv-due{margin:28px auto 0;padding:22px;max-width:460px}
