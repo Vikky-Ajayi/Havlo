@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { RecentAssessmentsStrip } from './stale-prospect/RecentAssessmentsStrip';
+import { USUAL_PRICE } from './stale-prospect/offer';
 import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { Footer } from '../components/shared/Footer';
@@ -230,13 +230,6 @@ function FAQItem({ q, a, defaultOpen }: { q: string; a: string; defaultOpen?: bo
   );
 }
 
-// The offer badge (Style B), as on the funnel's pay buttons.
-const OFFER_PILL: CSSProperties = {
-  display:'inline-block', fontFamily:'Inter, sans-serif', fontSize:11, fontWeight:700, letterSpacing:'0.03em',
-  textTransform:'uppercase', lineHeight:1.2, padding:'5px 10px', borderRadius:999, background:'#F3E6FB', color:'#6B0890',
-  whiteSpace:'nowrap', alignSelf:'center',
-};
-
 /* ─── MAIN COMPONENT ─── */
 // The seller page (/sell, SellLanding.tsx) is this page, with its search box
 // starting the instant listing-link funnel instead of the questionnaire: a
@@ -267,17 +260,11 @@ const SELL_FAQS = ALL_FAQS.flatMap((faq) => {
   return answer === null ? [] : [{ ...faq, a: answer }];
 }).map((faq, i) => ({ ...faq, q: faq.q.replace(/^\d+\./, `${i + 1}.`) }));
 
-// `offer` is the Meta2 campaign page (/offer/seller, OfferLanding in
-// AdsPages.tsx): the /sell page with the limited-time price, the usual price
-// crossed out and OFFER_PRICE instead.
-export const USUAL_PRICE = 99;
-export const OFFER_PRICE = 59;  // app/services/ads_funnel.py OFFER_PRICES["meta2"]
-
-export function StaleListingsLanding({ sell, offer = false }: { sell?: SellLandingStart; offer?: boolean } = {}) {
+export function StaleListingsLanding({ sell }: { sell?: SellLandingStart } = {}) {
   usePageMeta(sell ? {
     title: 'Why Hasn’t My Property Sold? | Free Listing Assessment | Havlo',
     description: 'Paste your Rightmove or Zoopla link and see what could be holding back your property’s sale, with recommendations you can use alongside your current estate agent.',
-    canonical: offer ? 'https://www.heyhavlo.com/offer/seller' : 'https://www.heyhavlo.com/sell',
+    canonical: 'https://www.heyhavlo.com/sell',
   } : {
     title: 'Is Your Property Not Selling? Get a Free Listing Audit | Havlo',
     description: 'Find out exactly why your property isn\'t selling. Stale Listings by Havlo gives you an expert review, pricing analysis, and action plan to attract buyers again.',
@@ -1389,13 +1376,6 @@ export function StaleListingsLanding({ sell, offer = false }: { sell?: SellLandi
                 <p style={{ margin:0, fontFamily:'Inter, sans-serif', fontSize:13, color:'#DC2626', fontWeight:500 }}>{shownInputError}</p>
               )}
 
-              {offer && (
-                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', fontFamily:'Inter, sans-serif', fontSize:15, color:'#1F1F1E' }}>
-                  <span style={OFFER_PILL}>Limited-time offer</span>
-                  <span>Full report <s style={{ color:'#737b86', textDecorationThickness:2 }}>£{USUAL_PRICE}</s> <b style={{ color:'#A409D2' }}>£{OFFER_PRICE}</b></span>
-                </div>
-              )}
-
               {sell?.manual && input.trim() === sell.manual.url && (
                 <ManualDetailsFields
                   message={sell.manual.message}
@@ -1405,9 +1385,6 @@ export function StaleListingsLanding({ sell, offer = false }: { sell?: SellLandi
               )}
 
               {!sell && <PropertyCodeForm audience="owner" className="sl-code-form" />}
-
-              {/* /offer: properties recently assessed on Havlo, scrolling (social proof). */}
-              {offer && <RecentAssessmentsStrip />}
 
               {/* Trustpilot row */}
               <div className="sl-trustpilot-row" style={{ display:'flex', alignItems:'center', gap:12 }}>
@@ -1730,10 +1707,8 @@ export function StaleListingsLanding({ sell, offer = false }: { sell?: SellLandi
             Havlo Stale Listings assessment intelligence is built around the Havlo Index, a proprietary scoring model that works out why a listing isn&rsquo;t selling, verified by human review, and turned into a plan to get it moving again.
           </p>
 
-          {offer && <span style={{ ...OFFER_PILL, marginTop:8 }}>Limited-time offer &middot; save £{USUAL_PRICE - OFFER_PRICE}</span>}
           <div style={{ fontFamily:'"Plus Jakarta Sans", sans-serif', fontSize:32, letterSpacing:'-0.02em', lineHeight:'120%', marginTop:8 }}>
-            <span style={{ fontWeight:700, color:'#000000' }}>{offer ? 'Now ' : 'From '}</span>
-            {offer && <s style={{ fontFamily:'Inter, sans-serif', fontWeight:700, fontSize:28, color:'#9AA0A6', marginRight:10, textDecorationThickness:3 }}>£{USUAL_PRICE}</s>}
+            <span style={{ fontWeight:700, color:'#000000' }}>From </span>
             <span
               style={{
                 fontFamily:'Inter, sans-serif',
@@ -1746,7 +1721,7 @@ export function StaleListingsLanding({ sell, offer = false }: { sell?: SellLandi
                 color:'#A409D2',
               } as CSSProperties}
             >
-              £{offer ? OFFER_PRICE : USUAL_PRICE}
+              £{USUAL_PRICE}
             </span>
           </div>
 

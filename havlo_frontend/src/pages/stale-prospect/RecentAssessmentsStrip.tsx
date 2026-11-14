@@ -16,7 +16,7 @@ const SECONDS_PER_CARD = 2.6; // brisk ("quick succession"), but each card can s
 
 const scoreTone = (score: number) => (score < 40 ? 'low' : score < 60 ? 'mid' : 'high');
 
-export const RecentAssessmentsStrip = () => {
+export const RecentAssessmentsStrip = ({ wide = false }: { wide?: boolean } = {}) => {
   const [items, setItems] = useState<Item[]>([]);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export const RecentAssessmentsStrip = () => {
   const loop = [...items, ...items];
 
   return (
-    <section className="ras" aria-label="Properties recently assessed on Havlo">
+    <section className={`ras${wide ? ' ras-wide' : ''}`} aria-label="Properties recently assessed on Havlo">
       <div className="ras-head">
         <span className="ras-live" aria-hidden="true" />
         Recently assessed on Havlo
@@ -55,6 +55,8 @@ export const RecentAssessmentsStrip = () => {
       </div>
       <style>{`
         .ras{width:100%;max-width:657px;min-width:0}
+        .ras-wide{max-width:none}
+        .ras-wide .ras-head{justify-content:center}
         .ras-head{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-family:Inter,sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#4b5563}
         .ras-live{width:8px;height:8px;border-radius:50%;background:#16A34A;box-shadow:0 0 0 0 rgba(22,163,74,.5);animation:ras-pulse 1.8s ease-out infinite}
         @keyframes ras-pulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)}80%,100%{box-shadow:0 0 0 8px rgba(22,163,74,0)}}

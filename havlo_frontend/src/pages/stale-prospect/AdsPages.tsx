@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { getProspectPreview, type AdsAudience, type AdsChannel } from './api';
-import { StaleListingsLanding } from '../StaleListingsLanding';
 import { Footer, Header, Spinner, StaleProspectWizard, WizardStyles } from './StaleProspectWizard';
 
 // Ads landing pages. See AdsLanding.tsx for what differs from /check. The
@@ -91,8 +90,18 @@ const AdsFunnel = ({ channel, base }: { channel: AdsChannel; base: string }) => 
 // Meta Pixel (index.html).
 export const OfferFunnel = () => {
   const { page } = useParams();
+  usePageMeta({
+    title: 'Why Hasn’t My Property Sold? | Free Listing Assessment | Havlo',
+    description:
+      'Paste your Rightmove or Zoopla link and see what could be holding back your property’s sale, with recommendations you can use alongside your current estate agent.',
+    canonical: 'https://www.heyhavlo.com/offer/seller',
+  });
   if (page !== 'seller' && page !== 'complete' && page !== 'report') return <Navigate to="/offer/seller" replace />;
-  return <StaleProspectWizard ads="owner" channel="meta2" landing={(start) => <StaleListingsLanding sell={start} offer />} />;
+  // The Meta ads page's design ("Has Your Property Been on the Market Too
+  // Long?", Nov 2026), with the offer page's own traits: the £59 price, the
+  // recently-assessed strip, Meta2 tags and its own Tag Manager container
+  // (StaleProspectWizard's `expert`, channel "meta2").
+  return <StaleProspectWizard ads="owner" channel="meta2" />;
 };
 
 export const GoogleAdsSellerLanding = () => <AdsSellerLanding channel="google" />;
