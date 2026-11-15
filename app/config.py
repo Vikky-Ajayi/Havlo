@@ -112,6 +112,12 @@ class Settings(BaseSettings):
     # emails, or "@domain" for a whole domain (app/services/attribution.py).
     # The site never tells Meta or Tag Manager about a test order.
     TEST_ORDER_EMAILS: str = "@heyhavlo.com"
+    # Trustpilot's Automatic Feedback Service address (Trustpilot Business >
+    # Get reviews > Invitation methods > Automatic Feedback Service), e.g.
+    # heyhavlo.com+abc123@invite.trustpilot.com. Everyone who checks out with
+    # the promo code gets a review invitation from Trustpilot
+    # (app/services/trustpilot_invites.py). Blank: no invitations.
+    TRUSTPILOT_AFS_EMAIL: str = ""
     # Code asked for before a prospect can be deleted from the prospects
     # console (e.g. clearing test lookups out of the Follow Up list).
     STALE_PROSPECT_DELETE_CODE: str = "8989"

@@ -1730,6 +1730,7 @@ def _console_list_item(prospect: StaleListingProspect) -> StaleProspectConsoleLi
         letter_version=prospect.letter_version,
         came_from=attribution.summary(prospect),
         test_order=attribution.is_test_order(prospect),
+        trustpilot_invited_at=_iso(prospect.trustpilot_invited_at),
     )
 
 
@@ -2407,6 +2408,7 @@ async def list_abandoned_prospects(
             addon_orders=addon_orders.get(p.id, []),
             came_from=attribution.summary(p),
             test_order=attribution.is_test_order(p),
+            trustpilot_invited_at=_iso(p.trustpilot_invited_at),
         )
         for p, emails_sent, sms_sent in rows
     ]

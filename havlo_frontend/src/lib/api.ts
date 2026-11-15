@@ -150,6 +150,7 @@ export interface StaleProspectAbandonedItem {
   came_from?: CameFrom;
   /** Free promo code or an internal address: never counted as a sale. */
   test_order?: boolean;
+  trustpilot_invited_at?: string | null;
 }
 
 export interface UtmTouch {

@@ -916,6 +916,8 @@ class StaleProspectConsoleListItem(BaseModel):
     came_from: dict = Field(default_factory=dict)
     # Unlocked with the free promo code or placed from an internal address.
     test_order: bool = False
+    # When their Trustpilot review invitation was requested (promo code).
+    trustpilot_invited_at: Optional[str] = None
 
 
 class StaleProspectConsoleListResponse(BaseModel):
@@ -992,6 +994,8 @@ class StaleProspectAbandonedItem(BaseModel):
     came_from: dict = Field(default_factory=dict)
     # Unlocked with the free promo code or placed from an internal address.
     test_order: bool = False
+    # When their Trustpilot review invitation was requested (promo code).
+    trustpilot_invited_at: Optional[str] = None
 
 
 class StaleProspectAddonOrderSummary(BaseModel):

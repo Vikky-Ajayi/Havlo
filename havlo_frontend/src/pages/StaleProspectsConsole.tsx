@@ -1337,6 +1337,11 @@ export const StaleProspectsConsole = ({ country = 'UK' }: { country?: 'UK' | 'US
                               Test order · not sent to Meta
                             </span>
                           )}
+                          {item.trustpilot_invited_at && (
+                            <div style={{ color: '#00804A', fontSize: 12, fontWeight: 600, marginTop: 4 }}>
+                              Trustpilot invite sent · {fmtDate(item.trustpilot_invited_at)}
+                            </div>
+                          )}
                           {touchText(item.came_from?.lead) && (
                             <div style={{ color: '#555', fontSize: 12, marginTop: 4, whiteSpace: 'normal', maxWidth: 260 }}>
                               <b>Lead from</b> {touchText(item.came_from?.lead)}

@@ -795,6 +795,18 @@ async def startup() -> None:
         ))
         logger.info("Report payment check scheduled.")
 
+    # ── Trustpilot invitations for promo-code customers ───────────────────
+    # Once they have their report (trustpilot_invites). Every 15 minutes;
+    # does nothing until TRUSTPILOT_AFS_EMAIL is set.
+    if HAS_DATABASE and _env_enabled("ENABLE_TRUSTPILOT_INVITES", True):
+        from app.services.scraper_base import run_scraper_loop
+        from app.services.trustpilot_invites import run_invite_cycle
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Trustpilot invitations", run_invite_cycle, 15 / 60, initial_delay_seconds=210)
+        ))
+        logger.info("Trustpilot invitations scheduled.")
+
     # ── 4-digit property codes running out ────────────────────────────────
     # Emails ADMIN_NOTIFY_EMAIL once when 90% of the owner property codes
     # are in use (see property_code_capacity). Every 6 hours.

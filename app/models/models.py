@@ -675,6 +675,9 @@ class StaleListingProspect(Base):
     report_released_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # When that email was delivered; the release loop retries until it is.
     report_ready_emailed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When their Trustpilot review invitation was requested (promo-code
+    # customers only, app/services/trustpilot_invites.py).
+    trustpilot_invited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # The analyst-review funnel's details form asks "Send me occasional tips on
     # selling faster". False: no marketing emails or texts (the ads nurture,
     # abandonment SMS, post-purchase drip after its first email). NULL where
