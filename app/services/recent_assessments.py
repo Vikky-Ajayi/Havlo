@@ -94,39 +94,34 @@ async def recent(db: AsyncSession) -> list[dict[str, Any]]:
     return items
 
 
-# ── How many sellers have used Havlo (the /assess/seller checkout) ────────
-# Homeowners who entered their own property on one of our seller pages
-# (ads_funnel.SELLER_SOURCES: /assess, /g, /review, /sell, /rm, /offer) and
-# got an assessment. Not the listings we assessed from our own searches,
-# which the seller never asked for; no agency copies, nothing typed in from
-# the console, and no internal (TEST_ORDER_EMAILS) addresses.
-_sellers_cache: dict[str, Any] = {"at": 0.0, "count": None}
+# ── How many listings Havlo has assessed (the /assess/seller checkout) ─────
+# Every UK listing with an assessment, counted once however many times it was
+# looked up: the listings found by our own searches as well as the ones
+# sellers entered. The checkout calls them "listings assessed", never
+# "sellers", since most of those owners never used Havlo themselves.
+_assessed_cache: dict[str, Any] = {"at": 0.0, "count": None}
 
 
-def sellers_label(count: int) -> str:
-    """"1,240+" (rounded down to the ten above 100), "87" below that."""
+def count_label(count: int) -> str:
+    """"6,000+" (rounded down to the thousand from 1,000), "140+" (to the ten
+    from 100), "87" below that. Never more than the real figure."""
+    if count >= 1000:
+        return f"{count // 1000 * 1000:,}+"
     if count >= 100:
         return f"{count // 10 * 10:,}+"
     return f"{count:,}"
 
 
-async def sellers_count(db: AsyncSession) -> int:
-    if time.monotonic() - _sellers_cache["at"] < CACHE_SECONDS and _sellers_cache["count"] is not None:
-        return _sellers_cache["count"]
-    from sqlalchemy import func, or_
-
-    from app.config import get_settings
-    from app.services import ads_funnel
+async def listings_assessed(db: AsyncSession) -> int:
+    if time.monotonic() - _assessed_cache["at"] < CACHE_SECONDS and _assessed_cache["count"] is not None:
+        return _assessed_cache["count"]
+    from sqlalchemy import func
 
     P = StaleListingProspect
-    query = (select(func.count()).select_from(P)
-             .where(P.lead_source.in_(ads_funnel.SELLER_SOURCES), P.audience == "owner",
-                    P.report_json.is_not(None), P.parent_prospect_id.is_(None), P.is_manual.is_(False)))
-    for entry in (get_settings().TEST_ORDER_EMAILS or "").split(","):
-        entry = entry.strip().lower()
-        if entry:
-            pattern = f"%{entry}" if entry.startswith("@") else entry
-            query = query.where(or_(P.contact_email.is_(None), ~func.lower(P.contact_email).like(pattern)))
-    count = int((await db.execute(query)).scalar_one() or 0)
-    _sellers_cache.update(at=time.monotonic(), count=count)
+    listing = func.coalesce(P.rightmove_id, P.rightmove_url)
+    count = int((await db.execute(
+        select(func.count(func.distinct(listing)))
+        .where(P.report_json.is_not(None), P.parent_prospect_id.is_(None), P.country == "UK")
+    )).scalar_one() or 0)
+    _assessed_cache.update(at=time.monotonic(), count=count)
     return count

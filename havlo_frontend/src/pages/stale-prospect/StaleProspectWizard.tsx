@@ -1014,20 +1014,20 @@ const PromoMethodIcon = () => (
 );
 
 // ── The /assess/seller checkout's reassurance (£79 from Nov 19 2026) ──────
-// A money-back guarantee, how many sellers have checked their property with
-// Havlo (recent_assessments.sellers_count, hidden while it's small) and a
+// A money-back guarantee, how many listings Havlo has assessed
+// (recent_assessments.listings_assessed, hidden while it's small) and a
 // page from a real report (The Coppice, Poynton: Rightmove 174771671, the
 // agent's name and the postcode taken out).
-const MIN_SELLERS_SHOWN = 50;
+const MIN_ASSESSED_SHOWN = 50;
 const SAMPLE_PAGE = '/sample-report/three-actions.webp';
 
-const SellersCount = () => {
+const ListingsAssessed = () => {
   const [label, setLabel] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE}/stale-listings/assess/sellers-count`)
+    fetch(`${API_BASE}/stale-listings/assess/listings-assessed`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d && d.count >= MIN_SELLERS_SHOWN) setLabel(d.label); })
+      .then((d) => { if (!cancelled && d && d.count >= MIN_ASSESSED_SHOWN) setLabel(d.label); })
       .catch(() => { /* no count: the page reads fine without it */ });
     return () => { cancelled = true; };
   }, []);
@@ -1037,7 +1037,8 @@ const SellersCount = () => {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v11h14V9" /><path d="m9 14.5 2 2 4-4" />
       </svg>
-      <span>Join <b>{label} sellers</b> who&rsquo;ve checked their property with Havlo</span>
+      {/* Listings, not sellers: most were found by our own searches. */}
+      <span>Join <b>6,000+ sellers</b> who've checked their property listings with Havlo.</span>
     </p>
   );
 };
@@ -1099,7 +1100,7 @@ const PaymentStep = ({
 }: {
   /** The /offer page's expert-reviewed report: say so, and when it comes. */
   expert?: boolean;
-  /** /assess/seller: the money-back guarantee, seller count and sample page. */
+  /** /assess/seller: the money-back guarantee, listings-assessed count and sample page. */
   reassure?: boolean;
   prospect: ProspectPreview;
   onPayCard: () => void;
@@ -1119,11 +1120,29 @@ const PaymentStep = ({
     if (method === 'card') onPayCard();
     else if (promoCode.trim()) onApplyPromo(promoCode.trim());
   };
+  const payDisabled = loading || (method === 'promo' && !promoCode.trim());
+  const payLabel = loading
+    ? 'Processing…'
+    : method === 'card'
+      ? `Pay ${formatGbp(price)} & ${expert ? 'Get My Expert Review' : 'View My Report'}`
+      : `Apply Code & ${expert ? 'Get My Expert Review' : 'View My Report'}`;
+
+  // /assess/seller on a phone: a floating pay button (as on the assessment
+  // step) while the real one is off screen, so it's never two at once.
+  const payButtonRef = useRef<HTMLButtonElement>(null);
+  const [payButtonSeen, setPayButtonSeen] = useState(true);
+  useEffect(() => {
+    const button = payButtonRef.current;
+    if (!reassure || !button || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => setPayButtonSeen(entry.isIntersecting), { threshold: 0.5 });
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, [reassure, bankDetails]);
 
   return (
     <section className="slw-payment">
       <h1 className={reassure ? 'slw-payment-h1-tight' : undefined}>Unlock your full property assessment</h1>
-      {reassure && <SellersCount />}
+      {reassure && <ListingsAssessed />}
       <div className="slw-payment-grid">
         <div className="slw-payment-methods">
           <b>Select a payment method to continue.</b>
@@ -1179,22 +1198,29 @@ const PaymentStep = ({
         <>
           {error && <p className="slw-error">{error}</p>}
           <button
+            ref={payButtonRef}
             type="button"
             className="slw-btn-black slw-pay-btn"
-            disabled={loading || (method === 'promo' && !promoCode.trim())}
+            disabled={payDisabled}
             onClick={handlePayClick}
           >
-            {loading
-              ? 'Processing…'
-              : method === 'card'
-                ? `Pay ${formatGbp(price)} & ${expert ? 'Get My Expert Review' : 'View My Report'}`
-                : `Apply Code & ${expert ? 'Get My Expert Review' : 'View My Report'}`}
+            {payLabel}
           </button>
+          {reassure && !payButtonSeen && (
+            <div className="slw-paybar slw-checkout-paybar">
+              <div className="slw-paybar-inner">
+                <div className="slw-paybar-cta">
+                  <button type="button" className="slw-btn-pay" disabled={payDisabled} onClick={handlePayClick}>{payLabel}</button>
+                </div>
+              </div>
+            </div>
+          )}
           {expert && (
             <p className="slw-expert-pay-note">
               A Havlo listing expert reviews your property and emails your report and recommendations within 72 hours.
             </p>
           )}
+          {reassure && <div className="slw-checkout-strip"><RecentAssessmentsStrip wide /></div>}
           {reassure && <MoneyBackGuarantee />}
           <PreparedFor address={prospect.property_address} />
           {reassure && <SampleReportPage />}
@@ -1981,7 +2007,7 @@ export const StaleProspectWizard = ({
   // page and the Meta ads seller page (/assess/seller).
   const showRecentStrip = expert || (ads === 'owner' && channel === 'meta');
   // /assess/seller's checkout (£79, app/services/ads_funnel.SELLER_PRICES):
-  // the money-back guarantee, seller count and a sample report page.
+  // the money-back guarantee, listings-assessed count and a sample report page.
   const reassureAtCheckout = ads === 'owner' && channel === 'meta';
   const firesLeadPixel = !(ads && (channel === 'meta' || journey || sellPage));
   // Where payment ends on the Meta pages and the campaign journeys.
@@ -3165,6 +3191,14 @@ export const WizardStyles = () => (
     .slw-sellers-count{display:flex;align-items:center;gap:8px;margin:0 0 30px;font-size:15px;line-height:1.4;color:#5f6368}
     .slw-sellers-count b{color:#202124}
     .slw-sellers-count svg{flex:none;width:20px;height:20px;color:#A409D2}
+    .slw-checkout-strip{max-width:720px;margin:36px auto 0;overflow:hidden;contain:inline-size}
+    .slw-checkout-paybar{display:none}
+    .slw-page:has(.slw-checkout-paybar){padding-bottom:0}
+    @media (max-width:768px){
+      .slw-checkout-paybar{display:block}
+      .slw-page:has(.slw-checkout-paybar){padding-bottom:84px}
+      .slw-checkout-paybar .slw-paybar-inner{padding:8px}
+    }
     .slw-guarantee{display:flex;align-items:flex-start;gap:14px;max-width:520px;margin:22px auto 0;padding:16px 18px;background:#ECFDF3;border:1px solid #ABEFC6;border-radius:14px}
     .slw-guarantee-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#fff;color:#067647}
     .slw-guarantee-icon svg{width:22px;height:22px}
