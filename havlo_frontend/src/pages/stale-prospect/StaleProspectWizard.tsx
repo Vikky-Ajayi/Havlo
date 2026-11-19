@@ -720,6 +720,13 @@ export function useHideChatWidget() {
   }, []);
 }
 
+// The same, for a step that only sometimes hides it (/assess/seller's checkout,
+// whose floating pay button the bubble would cover).
+const HideChatWidget = () => {
+  useHideChatWidget();
+  return null;
+};
+
 // Pinned to the bottom of the screen for the whole assessment step, so the
 // way to pay is always one tap away however far down they've read.
 // A limited-time offer price (the /offer page's £59): the usual price
@@ -1143,6 +1150,7 @@ const PaymentStep = ({
     <section className="slw-payment">
       <h1 className={reassure ? 'slw-payment-h1-tight' : undefined}>Unlock your full property assessment</h1>
       {reassure && <ListingsAssessed />}
+      {reassure && <HideChatWidget />}
       <div className="slw-payment-grid">
         <div className="slw-payment-methods">
           <b>Select a payment method to continue.</b>
@@ -3189,7 +3197,7 @@ export const WizardStyles = () => (
     .slw-pay-btn{max-width:370px;margin:56px auto 0;display:block}
     .slw-payment h1.slw-payment-h1-tight{margin-bottom:14px}
     .slw-sellers-count{display:flex;align-items:center;gap:8px;margin:0 0 30px;font-size:15px;line-height:1.4;color:#5f6368}
-    .slw-sellers-count b{color:#202124}
+    .slw-sellers-count b{color:#067647}
     .slw-sellers-count svg{flex:none;width:20px;height:20px;color:#A409D2}
     .slw-checkout-strip{max-width:720px;margin:36px auto 0;overflow:hidden;contain:inline-size}
     .slw-checkout-paybar{display:none}
