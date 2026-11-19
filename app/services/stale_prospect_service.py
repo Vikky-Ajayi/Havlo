@@ -224,7 +224,19 @@ def unlock_price_for(row: Any) -> float:
     locked = getattr(row, "unlock_price", None)
     if locked is not None:
         return float(locked)
-    return prospect_unlock_price(getattr(row, "asking_price", None), getattr(row, "audience", None))
+    today = prospect_unlock_price(getattr(row, "asking_price", None), getattr(row, "audience", None))
+    lead_source = getattr(row, "lead_source", None)
+    if lead_source:
+        # A lead from a page with its own lower price (/assess/seller's £79)
+        # that was in the funnel before the page's price changed.
+        from app.services import ads_funnel
+
+        channel = ads_funnel.channel_of(lead_source)
+        if lead_source == ads_funnel.seller_source(channel):
+            page = ads_funnel.SELLER_PRICES.get(channel)
+            if page is not None:
+                return min(page, today)
+    return today
 
 
 def normalize_property_code(code: str) -> str:

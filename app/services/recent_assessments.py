@@ -92,3 +92,41 @@ async def recent(db: AsyncSession) -> list[dict[str, Any]]:
     items = pick(list(rows))
     _cache.update(at=time.monotonic(), items=items)
     return items
+
+
+# ── How many sellers have used Havlo (the /assess/seller checkout) ────────
+# Homeowners who entered their own property on one of our seller pages
+# (ads_funnel.SELLER_SOURCES: /assess, /g, /review, /sell, /rm, /offer) and
+# got an assessment. Not the listings we assessed from our own searches,
+# which the seller never asked for; no agency copies, nothing typed in from
+# the console, and no internal (TEST_ORDER_EMAILS) addresses.
+_sellers_cache: dict[str, Any] = {"at": 0.0, "count": None}
+
+
+def sellers_label(count: int) -> str:
+    """"1,240+" (rounded down to the ten above 100), "87" below that."""
+    if count >= 100:
+        return f"{count // 10 * 10:,}+"
+    return f"{count:,}"
+
+
+async def sellers_count(db: AsyncSession) -> int:
+    if time.monotonic() - _sellers_cache["at"] < CACHE_SECONDS and _sellers_cache["count"] is not None:
+        return _sellers_cache["count"]
+    from sqlalchemy import func, or_
+
+    from app.config import get_settings
+    from app.services import ads_funnel
+
+    P = StaleListingProspect
+    query = (select(func.count()).select_from(P)
+             .where(P.lead_source.in_(ads_funnel.SELLER_SOURCES), P.audience == "owner",
+                    P.report_json.is_not(None), P.parent_prospect_id.is_(None), P.is_manual.is_(False)))
+    for entry in (get_settings().TEST_ORDER_EMAILS or "").split(","):
+        entry = entry.strip().lower()
+        if entry:
+            pattern = f"%{entry}" if entry.startswith("@") else entry
+            query = query.where(or_(P.contact_email.is_(None), ~func.lower(P.contact_email).like(pattern)))
+    count = int((await db.execute(query)).scalar_one() or 0)
+    _sellers_cache.update(at=time.monotonic(), count=count)
+    return count

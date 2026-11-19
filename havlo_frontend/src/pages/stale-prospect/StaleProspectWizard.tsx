@@ -42,6 +42,7 @@ import {
 import { ADS_COPY, AdsAnalysingStep, AdsListingForm, AdsSellerSummary, AdsStyles, ViewsNotice } from './AdsLanding';
 import { OFFER_PRICE, USUAL_PRICE } from './offer';
 import { RecentAssessmentsStrip } from './RecentAssessmentsStrip';
+import { API_BASE } from '../../lib/api';
 import {
   ReviewDetailsStep,
   ReviewInProgressStep,
@@ -1012,6 +1013,79 @@ const PromoMethodIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={PURPLE} strokeWidth="1.8"><path d="M20.5 12.79V6a1 1 0 0 0-1-1h-6.79a1 1 0 0 0-.7.29l-8 8a1 1 0 0 0 0 1.42l6.79 6.79a1 1 0 0 0 1.42 0l8-8a1 1 0 0 0 .28-.71z" /><circle cx="16" cy="8" r="1.4" fill={PURPLE} stroke="none" /></svg>
 );
 
+// ── The /assess/seller checkout's reassurance (£79 from Nov 19 2026) ──────
+// A money-back guarantee, how many sellers have checked their property with
+// Havlo (recent_assessments.sellers_count, hidden while it's small) and a
+// page from a real report (The Coppice, Poynton: Rightmove 174771671, the
+// agent's name and the postcode taken out).
+const MIN_SELLERS_SHOWN = 50;
+const SAMPLE_PAGE = '/sample-report/three-actions.webp';
+
+const SellersCount = () => {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/stale-listings/assess/sellers-count`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d && d.count >= MIN_SELLERS_SHOWN) setLabel(d.label); })
+      .catch(() => { /* no count: the page reads fine without it */ });
+    return () => { cancelled = true; };
+  }, []);
+  if (!label) return null;
+  return (
+    <p className="slw-sellers-count">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v11h14V9" /><path d="m9 14.5 2 2 4-4" />
+      </svg>
+      <span>Join <b>{label} sellers</b> who&rsquo;ve checked their property with Havlo</span>
+    </p>
+  );
+};
+
+const MoneyBackGuarantee = () => (
+  <div className="slw-guarantee">
+    <span className="slw-guarantee-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+        <path d="M9.5 12.5h5M12 10v5" />
+      </svg>
+    </span>
+    <div>
+      <b>Money-back guarantee</b>
+      <p>If we don&rsquo;t identify at least one actionable improvement for your property listing, we&rsquo;ll give you a full refund.</p>
+    </div>
+  </div>
+);
+
+const SampleReportPage = () => {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+  const alt = 'A page from a real Havlo report: "Your three most important actions", on repositioning the asking price, refreshing the advert and floor plan, and finding where buyers are dropping out.';
+  return (
+    <figure className="slw-sample">
+      <figcaption>
+        <b>See what you&rsquo;ll get</b>
+        <span>A page from a real Havlo report on a 4-bed detached house in Poynton, Cheshire (the agent&rsquo;s name removed).</span>
+      </figcaption>
+      <button type="button" className="slw-sample-page" onClick={() => setOpen(true)} aria-label="Enlarge the sample report page">
+        <img src={SAMPLE_PAGE} alt={alt} width={1200} height={957} loading="lazy" />
+        <span className="slw-sample-zoom-hint">Tap to enlarge</span>
+      </button>
+      {open && (
+        <div className="slw-sample-overlay" role="dialog" aria-modal="true" aria-label="Sample report page" onClick={() => setOpen(false)}>
+          <img src={SAMPLE_PAGE} alt={alt} />
+          <button type="button" className="slw-sample-close" onClick={() => setOpen(false)}>Close</button>
+        </div>
+      )}
+    </figure>
+  );
+};
+
 const PaymentStep = ({
   prospect,
   onPayCard,
@@ -1021,9 +1095,12 @@ const PaymentStep = ({
   loading,
   error,
   expert = false,
+  reassure = false,
 }: {
   /** The /offer page's expert-reviewed report: say so, and when it comes. */
   expert?: boolean;
+  /** /assess/seller: the money-back guarantee, seller count and sample page. */
+  reassure?: boolean;
   prospect: ProspectPreview;
   onPayCard: () => void;
   onPayBankTransfer: () => void;
@@ -1045,7 +1122,8 @@ const PaymentStep = ({
 
   return (
     <section className="slw-payment">
-      <h1>Unlock your full property assessment</h1>
+      <h1 className={reassure ? 'slw-payment-h1-tight' : undefined}>Unlock your full property assessment</h1>
+      {reassure && <SellersCount />}
       <div className="slw-payment-grid">
         <div className="slw-payment-methods">
           <b>Select a payment method to continue.</b>
@@ -1117,7 +1195,9 @@ const PaymentStep = ({
               A Havlo listing expert reviews your property and emails your report and recommendations within 72 hours.
             </p>
           )}
+          {reassure && <MoneyBackGuarantee />}
           <PreparedFor address={prospect.property_address} />
+          {reassure && <SampleReportPage />}
         </>
       )}
     </section>
@@ -1900,6 +1980,9 @@ export const StaleProspectWizard = ({
   // The "Recently assessed on Havlo" strip above the stats card: the /offer
   // page and the Meta ads seller page (/assess/seller).
   const showRecentStrip = expert || (ads === 'owner' && channel === 'meta');
+  // /assess/seller's checkout (£79, app/services/ads_funnel.SELLER_PRICES):
+  // the money-back guarantee, seller count and a sample report page.
+  const reassureAtCheckout = ads === 'owner' && channel === 'meta';
   const firesLeadPixel = !(ads && (channel === 'meta' || journey || sellPage));
   // Where payment ends on the Meta pages and the campaign journeys.
   const adsCompletePath = ads && channel === 'meta' ? '/assess/complete' : journey ? `/${journey}/complete` : null;
@@ -2614,6 +2697,7 @@ export const StaleProspectWizard = ({
               loading={loading}
               error={error}
               expert={expert}
+              reassure={reassureAtCheckout}
             />
           )}
           {step === 'success' && prospect && !((review || heldForExpert) && prospect.report_on_hold) && (
@@ -3077,6 +3161,25 @@ export const WizardStyles = () => (
     .slw-payment-total{border-top:1px solid #eee;font-weight:700;color:#111 !important}
     .slw-payment-total span,.slw-payment-total b{color:#111}
     .slw-pay-btn{max-width:370px;margin:56px auto 0;display:block}
+    .slw-payment h1.slw-payment-h1-tight{margin-bottom:14px}
+    .slw-sellers-count{display:flex;align-items:center;gap:8px;margin:0 0 30px;font-size:15px;line-height:1.4;color:#5f6368}
+    .slw-sellers-count b{color:#202124}
+    .slw-sellers-count svg{flex:none;width:20px;height:20px;color:#A409D2}
+    .slw-guarantee{display:flex;align-items:flex-start;gap:14px;max-width:520px;margin:22px auto 0;padding:16px 18px;background:#ECFDF3;border:1px solid #ABEFC6;border-radius:14px}
+    .slw-guarantee-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#fff;color:#067647}
+    .slw-guarantee-icon svg{width:22px;height:22px}
+    .slw-guarantee b{display:block;font-size:15px;color:#05603A}
+    .slw-guarantee p{margin:4px 0 0;font-size:14px;line-height:1.5;color:#1F2A37}
+    .slw-sample{max-width:720px;margin:44px auto 0;padding:0}
+    .slw-sample figcaption{margin:0 0 14px;text-align:center}
+    .slw-sample figcaption b{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:600;color:#202124}
+    .slw-sample figcaption span{display:block;margin-top:6px;font-size:14px;line-height:1.5;color:#5f6368}
+    .slw-sample-page{position:relative;display:block;width:100%;padding:0;border:1px solid #E5E7EB;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 12px 32px rgba(16,24,40,.10);cursor:zoom-in}
+    .slw-sample-page img{display:block;width:100%;height:auto}
+    .slw-sample-zoom-hint{position:absolute;right:12px;bottom:12px;padding:5px 10px;border-radius:999px;background:rgba(17,17,17,.78);color:#fff;font-size:12px;font-weight:600}
+    .slw-sample-overlay{position:fixed;inset:0;z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;background:rgba(10,10,10,.82);cursor:zoom-out}
+    .slw-sample-overlay img{max-width:min(1100px,100%);max-height:calc(100vh - 90px);border-radius:10px;background:#fff}
+    .slw-sample-close{padding:10px 22px;border:none;border-radius:8px;background:#fff;color:#111;font:600 15px Inter,sans-serif;cursor:pointer}
     .slw-bank-details{max-width:520px;margin:28px auto 0;background:#f7f8fa;border-radius:14px;padding:24px}
     .slw-bank-details p{color:#666;font-size:14px;margin:6px 0 18px}
     .slw-bank-details-grid{display:grid;gap:12px}

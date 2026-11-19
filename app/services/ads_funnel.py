@@ -67,6 +67,19 @@ CHANNELS = ("meta", "google", "review", "sell", "rm", "meta2")
 # Channels whose leads pay a lower, limited-time price, locked onto the lead
 # (unlock_price) so every later step, email and checkout charges it.
 OFFER_PRICES = {"meta2": 59.0}
+# Seller pages with their own everyday price (no "offer" crossed out),
+# locked onto the lead the same way. /assess/seller: £79 from Nov 19 2026, a
+# test of whether more sellers buy at £79 than at £99 (with the money-back
+# guarantee, seller count and sample page on its checkout).
+SELLER_PRICES = {"meta": 79.0}
+
+
+def channel_price(channel: str, audience: str) -> float | None:
+    """The lower price leads from this landing page pay, or None for the
+    usual price."""
+    if channel in OFFER_PRICES:
+        return OFFER_PRICES[channel]
+    return SELLER_PRICES.get(channel) if audience == "owner" else None
 
 
 def seller_source(channel: str) -> str:
@@ -642,10 +655,11 @@ async def start_from_listing(
                 logger.info("Ads funnel: Rightmove match %s for %s unreadable: %s", matched, url, exc)
     if target is None:
         target = await _funnel_prospect(db, url, audience, channel, manual)
-    offer = OFFER_PRICES.get(channel)
+    offer = channel_price(channel, audience)
     if offer is not None and target.payment_status != "completed":
-        # Coming through the offer page gets the offer, even on a listing
-        # first seen at £99; a lower price already locked in is kept.
+        # Coming through the offer page (or /assess/seller) gets its price,
+        # even on a listing first seen at £99; a lower price already locked
+        # in is kept.
         target.unlock_price = min(offer, sps.unlock_price_for(target))
     if target.code_looked_up_at is None:
         target.code_looked_up_at = datetime.now(timezone.utc)

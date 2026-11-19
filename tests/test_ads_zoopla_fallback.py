@@ -177,7 +177,8 @@ class StartFromZooplaTests(unittest.TestCase):
             calls.append((url, manual_details, zoopla_url))
             if rightmove_fails and "rightmove" in url:
                 raise ads_funnel.ListingLinkError("couldn't read")
-            return SimpleNamespace(code_looked_up_at=None, audience="owner", property_code="1234", id="p1")
+            return SimpleNamespace(code_looked_up_at=None, audience="owner", property_code="1234", id="p1",
+                                   payment_status="pending", unlock_price=None, asking_price=None)
 
         finder = mock.AsyncMock(return_value=matched)
         db = mock.AsyncMock()

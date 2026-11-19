@@ -86,8 +86,26 @@ class OfferPriceTests(unittest.TestCase):
         self.assertEqual(self._start(self._target(unlock_price=49.0), "meta2").unlock_price, 49.0)
 
     def test_other_pages_and_paid_reports_are_untouched(self):
-        self.assertIsNone(self._start(self._target(), "meta").unlock_price)
+        self.assertIsNone(self._start(self._target(), "google").unlock_price)
         self.assertIsNone(self._start(self._target(payment_status="completed"), "meta2").unlock_price)
+
+    def test_assess_seller_locks_in_79_but_not_for_agents(self):
+        self.assertEqual(self._start(self._target(), "meta").unlock_price, 79.0)
+        self.assertEqual(self._start(self._target(unlock_price=49.0), "meta").unlock_price, 49.0)
+        agent = self._target(audience="agent")
+        with mock.patch.object(ads_funnel, "_funnel_prospect", mock.AsyncMock(return_value=agent)), \
+                mock.patch.object(ads_funnel, "_grant_access", return_value="tok"):
+            asyncio.run(ads_funnel.start_from_listing(
+                mock.AsyncMock(), listing_url="https://www.rightmove.co.uk/properties/93138003", audience="agent",
+                channel="meta"))
+        self.assertIsNone(agent.unlock_price)
+
+    def test_assess_seller_leads_already_in_the_funnel_pay_79_with_nothing_crossed_out(self):
+        lead = SimpleNamespace(lead_source="meta_seller", unlock_price=None, asking_price=None, audience="owner")
+        self.assertEqual(sps.unlock_price_for(lead), 79.0)
+        self.assertIsNone(sps.offer_was_price(lead))
+        for source in ("meta_agent", "google_seller", "rm_seller", None):
+            self.assertEqual(sps.unlock_price_for(SimpleNamespace(lead_source=source, unlock_price=None)), 99.0, source)
 
     def test_99_shows_crossed_out_only_beside_the_offer(self):
         offer = SimpleNamespace(lead_source="meta2_seller", unlock_price=59.0, asking_price=None, audience="owner")

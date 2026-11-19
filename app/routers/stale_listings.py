@@ -930,6 +930,16 @@ async def offer_recent_assessments(db: AsyncSession = Depends(get_db)) -> dict:
     return {"items": await recent_assessments.recent(db)}
 
 
+@public_router.get("/assess/sellers-count")
+async def assess_sellers_count(db: AsyncSession = Depends(get_db)) -> dict:
+    """How many homeowners have checked their property with Havlo, for the
+    /assess/seller checkout (recent_assessments.sellers_count)."""
+    from app.services import recent_assessments
+
+    count = await recent_assessments.sellers_count(db)
+    return {"count": count, "label": recent_assessments.sellers_label(count)}
+
+
 @public_router.get("/prospects/ads-summary")
 async def get_ads_assessment_summary(
     background_tasks: BackgroundTasks,

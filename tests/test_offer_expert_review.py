@@ -99,6 +99,37 @@ class StripTests(unittest.TestCase):
         self.assertNotIn("1 Hoo", json.dumps(out))
 
 
+class SellersCountTests(unittest.TestCase):
+    def test_the_label_rounds_down_and_never_overstates(self):
+        self.assertEqual(ra.sellers_label(87), "87")
+        self.assertEqual(ra.sellers_label(1249), "1,240+")
+        self.assertEqual(ra.sellers_label(100), "100+")
+
+    def test_only_owners_who_entered_their_own_property_count(self):
+        engine = create_async_engine("sqlite+aiosqlite://")
+        Session = async_sessionmaker(engine, expire_on_commit=False)
+
+        async def run():
+            async with engine.begin() as conn:
+                await conn.run_sync(lambda c: StaleListingProspect.__table__.create(c))
+            async with Session() as db:
+                rows = [("1001", "meta_seller", "a@example.com", "{}"), ("1002", "offer_x", None, "{}"),
+                        ("1003", "review_seller", None, "{}"), ("1004", None, None, "{}"),  # found by our searches
+                        ("1005", "meta_seller", "me@heyhavlo.com", "{}"), ("1006", "rm_seller", None, None),
+                        ("1007", "meta_agent", None, "{}")]
+                for code, source, email, report in rows:
+                    db.add(StaleListingProspect(property_code=code, qr_token_hash=code, property_address="x",
+                                                country="UK", rightmove_url=f"https://example.com/{code}",
+                                                lead_source=source, contact_email=email, report_json=report))
+                await db.commit()
+                ra._sellers_cache.update(at=0.0, count=None)
+                with mock.patch("app.config.get_settings",
+                                return_value=SimpleNamespace(TEST_ORDER_EMAILS="@heyhavlo.com")):
+                    return await ra.sellers_count(db)
+        self.assertEqual(asyncio.run(run()), 2)  # 1001 and 1003
+        asyncio.run(engine.dispose())
+
+
 class BackgroundPaymentTests(unittest.TestCase):
     """Someone who pays at SumUp and closes the tab still gets their report:
     the payment is confirmed in the background, which starts the review clock."""
