@@ -247,6 +247,8 @@ export interface NextStepsOrder {
   paid_at?: string | null;
   /** Paid and not a test order: the only kind reported as a purchase. */
   count_as_sale?: boolean;
+  /** An /assess/seller lead's order: Meta gets an AddOnPurchase for it. */
+  meta_funnel?: boolean;
 }
 export interface NextStepsData {
   property_code: string;

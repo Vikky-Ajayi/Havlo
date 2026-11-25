@@ -93,21 +93,41 @@
         })();
       }
     </script>
-    <!-- Meta Pixel Code (every page but /sell, /rm/... and /offer/...) -->
+    <!-- Meta Pixel Code (every page but /sell, /rm/... and /offer/...).
+         Only on heyhavlo.com itself (never a local or preview build, so test
+         traffic stays out of the live data) and only once the visitor has
+         accepted cookies (the banner, src/lib/consent.ts, calls
+         havloLoadMetaPixel then). Page views after the first are the app's,
+         one per page (src/lib/metaPixel.ts), so the pixel's own page view on
+         every address change is switched off (disablePushState): a step
+         change on the same page isn't another page view. The marketing
+         team's tracking brief, Nov 2026. -->
     <script>
-      if (!window.havloSellPage && !window.havloRmPage && !window.havloOfferPage)
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-      if (window.fbq) {
-        fbq('init', '2204792573402043');
+      window.havloMetaHost = /^(www\.)?heyhavlo\.com$/.test(location.hostname);
+      window.havloMetaPath = function (path) {
+        return !/^\/sell\/?$/.test(path) && !/^\/rm\//.test(path) && !/^\/offer(\/|$)/.test(path);
+      };
+      window.havloLoadMetaPixel = function () {
+        if (!window.havloMetaHost || !window.havloMetaPath(location.pathname) || window.fbq) return;
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq.disablePushState = true;
+        // Hashed contact details from the details form, for advanced matching
+        // (src/lib/metaPixel.ts keeps them for this browser tab).
+        var userData;
+        try { userData = JSON.parse(sessionStorage.getItem('havlo_meta_am') || 'null') || undefined; } catch (e) {}
+        fbq('init', '2204792573402043', userData);
         fbq('track', 'PageView');
-      }
+      };
+      try {
+        if (localStorage.getItem('havlo_cookie_consent') === 'granted') window.havloLoadMetaPixel();
+      } catch (e) {}
     </script>
     <!-- End Meta Pixel Code -->
     <!--Start of Tawk.to Script-->
@@ -125,10 +145,6 @@
     <!--End of Tawk.to Script-->
   </head>
   <body>
-    <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id=2204792573402043&ev=PageView&noscript=1"
-    alt=""
-    /></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

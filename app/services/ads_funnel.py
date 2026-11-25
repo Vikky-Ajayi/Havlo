@@ -121,7 +121,14 @@ _OUTCODE_ONLY_RE = re.compile(r"^[A-Z]{1,2}\d[A-Z\d]?$", re.IGNORECASE)
 
 
 class ListingLinkError(ValueError):
-    """A problem with the pasted link, worded for the visitor."""
+    """A problem with the pasted link, worded for the visitor. kind says
+    which, for tracking (Meta's ListingLinkError event, error_type):
+    not_a_listing_link, not_a_listing_page (a Zoopla link to a search or
+    other page), unsupported_site, unreadable, manual_details_invalid, other."""
+
+    def __init__(self, message: str, kind: str = "other"):
+        super().__init__(message)
+        self.kind = kind
 
 
 class ManualDetailsNeeded(ListingLinkError):
@@ -152,16 +159,19 @@ def clean_rightmove_url(raw: str) -> str:
         if re.search(r"zoopla", text, re.IGNORECASE):
             raise ListingLinkError(
                 "That Zoopla link isn't a property page. Please paste the link that opens your property "
-                "(it looks like zoopla.co.uk/for-sale/details/12345678)."
+                "(it looks like zoopla.co.uk/for-sale/details/12345678).",
+                "not_a_listing_page",
             )
         if re.search(r"onthemarket|primelocation", text, re.IGNORECASE):
             raise ListingLinkError(
                 "We can only read Rightmove and Zoopla listings at the moment. Please paste your property's "
-                "Rightmove or Zoopla link."
+                "Rightmove or Zoopla link.",
+                "unsupported_site",
             )
         raise ListingLinkError(
             "Please paste the link to the property's Rightmove or Zoopla listing "
-            "(it looks like rightmove.co.uk/properties/123456789 or zoopla.co.uk/for-sale/details/12345678)."
+            "(it looks like rightmove.co.uk/properties/123456789 or zoopla.co.uk/for-sale/details/12345678).",
+            "not_a_listing_link",
         )
     return f"https://www.rightmove.co.uk/properties/{listing_id}"
 
@@ -183,10 +193,11 @@ def manual_listing_details(address: str | None, price: Any) -> tuple[str, float]
         return None
     number = sps.extract_price(price)
     if len(text) < 6 or not number:
-        raise ListingLinkError("Please enter the property's address and its asking price.")
+        raise ListingLinkError("Please enter the property's address and its asking price.", "manual_details_invalid")
     low, high = MANUAL_PRICE_RANGE
     if not low <= number <= high:
-        raise ListingLinkError("Please check the asking price: enter it in pounds, for example 450000.")
+        raise ListingLinkError("Please check the asking price: enter it in pounds, for example 450000.",
+                               "manual_details_invalid")
     return text[:300], float(number)
 
 
@@ -367,7 +378,8 @@ async def _create_owner_prospect(
         if not zoopla:
             raise ListingLinkError(
                 "We couldn't read that listing just now. Please check the link opens your property on "
-                "Rightmove and try again."
+                "Rightmove and try again.",
+                "unreadable",
             )
         if manual is None:
             raise ManualDetailsNeeded(

@@ -678,6 +678,11 @@ class StaleListingProspect(Base):
     # When their Trustpilot review invitation was requested (promo-code
     # customers only, app/services/trustpilot_invites.py).
     trustpilot_invited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Meta tracking (app/services/meta_capi.py): the visitor's cookie consent
+    # and click IDs (fbp, fbc, IP, user agent), kept for the Purchase the
+    # server sends once SumUp confirms; and when that Purchase went.
+    meta_tracking_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    meta_purchase_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # The analyst-review funnel's details form asks "Send me occasional tips on
     # selling faster". False: no marketing emails or texts (the ads nurture,
     # abandonment SMS, post-purchase drip after its first email). NULL where
@@ -1262,6 +1267,8 @@ class StaleProspectAddonOrder(Base):
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # The UTM tags of the visit that placed the order (app/services/attribution.py).
     utm_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # When its AddOnPurchase went to Meta (app/services/meta_capi.py).
+    meta_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AssessmentRecord(Base):

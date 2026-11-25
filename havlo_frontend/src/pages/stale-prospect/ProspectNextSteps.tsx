@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { journeyGtmId, loadGtmContainer, pushGtmEventOnce, type Journey } from '../../lib/gtm';
+import { trackMetaCustomEvent } from '../../lib/metaPixel';
 import { createNextStepsCheckout, getNextSteps, getNextStepsOrderStatus } from './api';
 import { formatGbp, type NextStepsData, type NextStepsOrder } from './types';
 import { Footer, Header, Spinner, WizardStyles, useHideChatWidget } from './StaleProspectWizard';
@@ -79,6 +80,14 @@ export const ProspectNextSteps = ({ journey }: { journey?: Journey } = {}) => {
         try { sessionStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
         // Never a test order (the server decides: an internal address).
         if (journey && order.count_as_sale) pushAddonPurchaseEvent(order, journey);
+        // /assess/seller: Meta's AddOnPurchase (only once cookies are accepted:
+        // no pixel otherwise), the event_id the server's copy uses too.
+        if (order.meta_funnel && order.count_as_sale) {
+          trackMetaCustomEvent('AddOnPurchase', {
+            value: order.amount, currency: order.currency || 'GBP',
+            content_name: order.items.map((i) => i.name).join(', '),
+          }, `addon-${order.order_id}`);
+        }
         if (analystPath) {
           const fresh = await getNextSteps(access).catch(() => null);
           if (fresh?.report_on_hold) {

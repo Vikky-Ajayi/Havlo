@@ -795,6 +795,18 @@ async def startup() -> None:
         ))
         logger.info("Report payment check scheduled.")
 
+    # ── Meta Conversions API: Purchase / AddOnPurchase not yet sent ───────
+    # A payment confirmed in the background, or a send that failed
+    # (meta_capi.run_sweep). Every 3 minutes; nothing without the token.
+    if HAS_DATABASE and _env_enabled("ENABLE_META_CAPI", True):
+        from app.services.meta_capi import run_sweep
+        from app.services.scraper_base import run_scraper_loop
+
+        app.state.scraper_tasks.append(asyncio.create_task(
+            run_scraper_loop("Meta Conversions API", run_sweep, 3 / 60, initial_delay_seconds=230)
+        ))
+        logger.info("Meta Conversions API sweep scheduled.")
+
     # ── Trustpilot invitations for promo-code customers ───────────────────
     # Once they have their report (trustpilot_invites). Every 15 minutes;
     # does nothing until TRUSTPILOT_AFS_EMAIL is set.

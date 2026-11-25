@@ -118,6 +118,16 @@ class Settings(BaseSettings):
     # the promo code gets a review invitation from Trustpilot
     # (app/services/trustpilot_invites.py). Blank: no invitations.
     TRUSTPILOT_AFS_EMAIL: str = ""
+    # Meta Conversions API (app/services/meta_capi.py): the /assess/seller
+    # funnel's events sent from the server too. The pixel is the one in
+    # havlo_frontend/index.html. The access token comes from Events Manager >
+    # Settings > Conversions API; blank sends nothing. While
+    # META_TEST_EVENT_CODE is set, every event goes to Test events instead of
+    # the live data (for testing; clear it afterwards).
+    META_PIXEL_ID: str = "2204792573402043"
+    META_CAPI_ACCESS_TOKEN: str = ""
+    META_TEST_EVENT_CODE: str = ""
+    META_GRAPH_VERSION: str = "v23.0"
     # Code asked for before a prospect can be deleted from the prospects
     # console (e.g. clearing test lookups out of the Follow Up list).
     STALE_PROSPECT_DELETE_CODE: str = "8989"

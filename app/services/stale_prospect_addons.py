@@ -96,6 +96,9 @@ def serialize_order(order: StaleProspectAddonOrder, prospect: StaleListingProspe
         "paid_at": order.paid_at.isoformat() if order.paid_at else None,
         # Paid, and not a test order: the only kind the page reports as a purchase.
         "count_as_sale": attribution.order_counts_as_sale(order, prospect),
+        # An /assess/seller lead's order: the page sends Meta its AddOnPurchase
+        # (the server sends the same, app/services/meta_capi.py).
+        "meta_funnel": getattr(prospect, "lead_source", None) == "meta_seller",
     }
 
 

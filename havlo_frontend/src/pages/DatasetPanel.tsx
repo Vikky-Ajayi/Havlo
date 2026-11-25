@@ -126,6 +126,28 @@ export const DatasetPanel = () => {
     }
   };
 
+  // Admins: everyone who left their details and didn't buy, as a customer
+  // list for Meta's audiences (app/services/meta_audience.py). Names, emails
+  // and phone numbers, so admin only and never part of the stats above.
+  const exportMetaAudience = async () => {
+    setNotice(''); setError('');
+    try {
+      const res = await fetch(`${API_BASE}/stale-listings/prospects-console/meta-audience.csv`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Admins only.' : `HTTP ${res.status}`);
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href; a.download = `havlo-meta-audience-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(href), 60000);
+      setNotice('Meta audience downloaded: everyone who left their details and didn’t buy (customers and unsubscribed left out).');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Audience export failed.');
+    }
+  };
+
   const syncNow = async () => {
     setNotice(''); setError('');
     try {
@@ -168,6 +190,12 @@ export const DatasetPanel = () => {
         </label>
         <button type="button" className="spc-btn spc-btn-primary" onClick={exportCsv}>Export CSV</button>
         {token && <button type="button" className="spc-btn spc-btn-ghost" onClick={syncNow}>Sync now</button>}
+        {token && (
+          <button type="button" className="spc-btn spc-btn-ghost" onClick={exportMetaAudience}
+            title="Everyone who left their details on a seller page and didn't buy, for a Meta custom audience">
+            Meta audience (CSV)
+          </button>
+        )}
       </div>
       {error && <p style={{ color: '#B91C1C', fontWeight: 700, fontSize: 13 }}>{error}</p>}
       {notice && <p style={{ color: '#15803D', fontWeight: 700, fontSize: 13 }}>{notice}</p>}

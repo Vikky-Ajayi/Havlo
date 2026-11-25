@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
 import { journeyGtmId, loadGtmContainer, pushGtmEventOnce, type Journey } from '../../lib/gtm';
-import { trackMetaPixelEvent } from '../../lib/metaPixel';
+import { setMetaUserData, trackMetaPixelEvent } from '../../lib/metaPixel';
+import { listingErrorType, sendMetaFunnelEvent } from './metaFunnel';
 import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
 import {
   ExpandableText,
@@ -1886,6 +1887,12 @@ function fireProspectLeadPixel(data: ProspectPreview, contentName = 'Stale Listi
 // ?paid=card even when nothing was paid, and a tester can then unlock with the
 // promo code. So the server must also say it's a real card sale
 // (count_as_sale: paid by card, no promo code, not an internal address).
+// value and currency for InitiateCheckout and AddPaymentInfo (the server's
+// copy reads its own from the prospect).
+function checkoutPixelParams(data: ProspectPreview) {
+  return { value: prospectPrice(data), currency: 'GBP', content_ids: [data.property_code], content_type: 'product' };
+}
+
 function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience) {
   if (!data.count_as_sale) return;
   const key = `sl_prospect_purchase_pixel_${data.property_code}`;
@@ -1901,7 +1908,10 @@ function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience)
     content_ids: [data.property_code],
     value: prospectPrice(data),
     currency: 'GBP',
-  }, `sl_prospect_purchase_${data.property_code}`);
+    ...(audience === 'owner' ? { order_id: data.prospect_id } : {}),
+    // /assess/seller: the order ID, the event_id the server's Purchase uses
+    // too (app/services/meta_capi.purchase_event_id), so Meta keeps one.
+  }, audience === 'owner' ? `order-${data.prospect_id}` : `sl_prospect_purchase_${data.property_code}`);
   if (!fired) return;
   try {
     sessionStorage.setItem(key, '1');
@@ -2014,6 +2024,9 @@ export const StaleProspectWizard = ({
   // The "Recently assessed on Havlo" strip above the stats card: the /offer
   // page and the Meta ads seller page (/assess/seller).
   const showRecentStrip = expert || (ads === 'owner' && channel === 'meta');
+  // /assess/seller's journey events for Meta (metaFunnel.ts; the marketing
+  // team's tracking brief, Nov 2026).
+  const metaFunnel = ads === 'owner' && channel === 'meta';
   // /assess/seller's checkout (£79, app/services/ads_funnel.SELLER_PRICES):
   // the money-back guarantee, listings-assessed count and a sample report page.
   const reassureAtCheckout = ads === 'owner' && channel === 'meta';
@@ -2360,6 +2373,10 @@ export const StaleProspectWizard = ({
       setProspect(data);
       fireLeadEvents(data);
       setAccess({ token: started.token, code: data.property_code });
+      if (metaFunnel) {
+        sendMetaFunnelEvent('PropertyFound', { access: { token: started.token }, propertyCode: data.property_code,
+          params: { content_ids: [data.property_code] } });
+      }
       if (data.is_unlocked && data.report_on_hold) {
         setStep('success');
       } else if (data.is_unlocked) {
@@ -2382,6 +2399,7 @@ export const StaleProspectWizard = ({
         return;
       }
       setManualNeeded(null);
+      if (metaFunnel) sendMetaFunnelEvent('ListingLinkError', { errorType: listingErrorType(e) });
       setError(message && message !== 'request_failed'
         ? message
         : 'We couldn’t assess that listing just now. Please check the link and try again.');
@@ -2396,6 +2414,11 @@ export const StaleProspectWizard = ({
     setError('');
     try {
       await submitProspectDetails({ ...fields, token: access.token, property_code: access.code });
+      // From here on Meta gets their hashed contact details (metaPixel.setMetaUserData).
+      if (metaFunnel) {
+        void setMetaUserData({ fullName: fields.full_name, email: fields.email, phone: fields.mobile_number,
+          prospectId: prospect?.prospect_id });
+      }
       // Functional, so a report that landed in the meantime (the poll above) isn't undone.
       setProspect((p) => (p ? { ...p, has_contact_details: true } : p));
       setStep(review ? 'payment' : 'assessment');
@@ -2463,6 +2486,9 @@ export const StaleProspectWizard = ({
   };
 
   const handlePayCard = async () => {
+    if (metaFunnel && prospect) {
+      sendMetaFunnelEvent('AddPaymentInfo', { access, propertyCode: prospect.property_code, params: checkoutPixelParams(prospect) });
+    }
     setLoading(true);
     setError('');
     try {
@@ -2710,7 +2736,10 @@ export const StaleProspectWizard = ({
               prospect={prospect}
               access={access}
               totalFactors={totalFactorsFor(prospect)}
-              onContinue={() => setShowDetailsForm(true)}
+              onContinue={() => {
+                setShowDetailsForm(true);
+                if (metaFunnel) sendMetaFunnelEvent('AssessmentStarted', { access, propertyCode: prospect.property_code });
+              }}
               expert={expert}
             />
           )}
@@ -2719,7 +2748,17 @@ export const StaleProspectWizard = ({
           )}
           {!review && (step === 'assessment' || step === 'payment') && prospect && waitingForReport && reportPendingStep}
           {!review && step === 'assessment' && prospect && !waitingForReport && (
-            <AssessmentStep prospect={prospect} access={access} onUnlock={() => setStep('payment')} expert={expert} />
+            <AssessmentStep
+              prospect={prospect}
+              access={access}
+              onUnlock={() => {
+                if (metaFunnel) {
+                  sendMetaFunnelEvent('InitiateCheckout', { access, propertyCode: prospect.property_code, params: checkoutPixelParams(prospect) });
+                }
+                setStep('payment');
+              }}
+              expert={expert}
+            />
           )}
           {!review && step === 'payment' && prospect && !waitingForReport && (
             <PaymentStep

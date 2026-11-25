@@ -1,5 +1,8 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect, useRef } from 'react';
 import { captureAttribution } from './lib/attribution';
+import { metaTrackingAllowed } from './lib/consent';
+import { trackMetaPixelEvent } from './lib/metaPixel';
+import { CookieBanner } from './components/CookieBanner';
 import { BrowserRouter as Router, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import { ModalProvider } from './context/ModalContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -177,6 +180,24 @@ const AttributionCapture = () => {
   useEffect(() => {
     captureAttribution(search);
   }, [search]);
+  return null;
+};
+
+// One Meta PageView per page: index.html sends the first; each later page
+// (a new path, not a step change on the same page) sends its own, once the
+// visitor has accepted cookies (src/lib/consent.ts).
+const MetaPageViews = () => {
+  const { pathname } = useLocation();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (!metaTrackingAllowed(pathname)) return;
+    if (typeof window.fbq === 'function') trackMetaPixelEvent('PageView');
+    else (window as Window & { havloLoadMetaPixel?: () => void }).havloLoadMetaPixel?.();
+  }, [pathname]);
   return null;
 };
 
@@ -390,6 +411,8 @@ export default function App() {
         <ViewportStabilityManager />
         <ScrollToTop />
         <AttributionCapture />
+        <MetaPageViews />
+        <CookieBanner />
         <Layout>
           <Suspense fallback={<PageLoader />}>
             <Routes>

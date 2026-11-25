@@ -14,9 +14,10 @@ import string
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile, status
+from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -897,7 +898,9 @@ async def start_ads_assessment(
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": str(exc)}) from exc
     except ads_funnel.ListingLinkError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # The code says which problem (ListingLinkError.kind), for the page's
+        # ListingLinkError tracking event.
+        raise HTTPException(status_code=400, detail={"code": f"listing_link:{exc.kind}", "message": str(exc)}) from exc
     prospect_id = result.pop("prospect_id")
     prospect = await db.get(StaleListingProspect, prospect_id)
     if prospect is not None and attribution.record_lead(prospect, payload.attribution):
@@ -928,6 +931,60 @@ async def offer_recent_assessments(db: AsyncSession = Depends(get_db)) -> dict:
     from app.services import recent_assessments
 
     return {"items": await recent_assessments.recent(db)}
+
+
+class MetaEventRequest(BaseModel):
+    """One /assess/seller funnel event, sent by the page with the same
+    event_id as its pixel event (app/services/meta_capi.py)."""
+    event_name: str = Field(..., max_length=40)
+    event_id: str = Field(..., min_length=4, max_length=120)
+    token: Optional[str] = Field(None, max_length=200)
+    code: Optional[str] = Field(None, max_length=12)
+    fbp: Optional[str] = Field(None, max_length=200)
+    fbc: Optional[str] = Field(None, max_length=500)
+    source_url: Optional[str] = Field(None, max_length=1000)
+    error_type: Optional[str] = Field(None, max_length=60)
+    # Only sent at all once the visitor has accepted the cookie banner.
+    consent: bool = False
+
+
+@public_router.post("/meta/event")
+async def send_meta_event(
+    payload: MetaEventRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """The server copy of a browser tracking event on /assess/seller, for
+    Meta's Conversions API. The value and contact details come from the
+    prospect here, never from the page."""
+    from app.services import meta_capi
+
+    if not payload.consent or payload.event_name not in meta_capi.BROWSER_EVENTS:
+        return {"sent": False}
+    client = {"ip": _client_key(request), "ua": request.headers.get("user-agent", ""), "fbp": payload.fbp,
+              "fbc": payload.fbc, "url": payload.source_url}
+    prospect = None
+    if payload.event_name != "ListingLinkError":
+        try:
+            prospect = await _get_prospect_by_access(db, token=payload.token, property_code=payload.code)
+        except HTTPException:
+            return {"sent": False}
+        if prospect.lead_source != meta_capi.LEAD_SOURCE:
+            return {"sent": False}
+        meta_capi.remember(prospect, client)
+        await db.commit()
+    custom: dict[str, Any] = {}
+    if payload.event_name in meta_capi.VALUE_EVENTS and prospect is not None:
+        custom = meta_capi.value_data(prospect)
+    elif payload.event_name == "ListingLinkError":
+        custom = {"error_type": re.sub(r"[^a-z_:]", "", (payload.error_type or "other").lower())[:60] or "other"}
+    elif prospect is not None:
+        custom = {"content_ids": [prospect.property_code]}
+    event = meta_capi.build_event(payload.event_name, payload.event_id, prospect=prospect, client=client,
+                                  custom_data=custom)
+    background_tasks.add_task(meta_capi.send, [event])
+    return {"sent": True}
 
 
 @public_router.get("/assess/listings-assessed")
@@ -1188,6 +1245,10 @@ async def get_stale_prospect_payment_status(
             # Same head start as the promo path — SumUp confirmation is the
             # other moment a prospect actually becomes unlocked.
             background_tasks.add_task(expand_report_in_background, str(prospect.id))
+            # Meta's Purchase, from the server (/assess/seller only; never a test order).
+            from app.services import meta_capi
+
+            background_tasks.add_task(meta_capi.send_purchase, str(prospect.id))
         elif sumup_status in {"FAILED", "EXPIRED"}:
             prospect.payment_status = "failed"
             await db.commit()
@@ -2153,6 +2214,20 @@ async def dataset_sync(_admin=Depends(require_admin)) -> dict[str, Any]:
     from app.services import assessment_dataset
 
     return await assessment_dataset.run_sync()
+
+
+@admin_router.get("/prospects-console/meta-audience.csv")
+async def meta_audience_export(db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)) -> Response:
+    """Everyone who left their details on a seller page and didn't buy, as a
+    customer list for Meta's audiences (meta_audience.py). Admin only."""
+    from app.services import meta_audience
+
+    audience = await meta_audience.rows(db)
+    logger.info("Meta audience exported: %d people.", len(audience))
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(content=meta_audience.to_csv(audience), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="havlo-meta-audience-{stamp}.csv"',
+                             "Cache-Control": "no-store"})
 
 
 @admin_router.get("/prospects-console/market-listings/track-records")
@@ -3668,6 +3743,10 @@ async def get_prospect_next_steps_status(
         # Email the team once, now that it's genuinely paid.
         await addons.email_team(order, prospect)
     await db.commit()
+    if order.status == "completed" and order.meta_sent_at is None:
+        from app.services import meta_capi
+
+        background_tasks.add_task(meta_capi.send_addon_purchase, str(order.id))
     return {"order": addons.serialize_order(order, prospect)}
 
 
