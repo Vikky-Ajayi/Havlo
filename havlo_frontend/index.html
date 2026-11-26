@@ -20,78 +20,50 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="preconnect" href="https://api.fontshare.com" />
     <link href="https://api.fontshare.com/v2/css?f[]=clash-display@500&display=swap" rel="stylesheet" />
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17989602376"></script>
+    <!-- Google tags: Google Ads and Analytics (gtag), and the Tag Manager
+         container of the page that has one (/sell GTM-537H8B3L, /rm/...
+         GTM-PF7GK3B9, /offer/... GTM-MF4FWMML, /buyabroad/listings
+         GTM-WS22MXCM; the same IDs as src/lib/gtm.ts). Like the Meta Pixel
+         below, they load only on heyhavlo.com and only once the visitor has
+         accepted cookies (the banner, src/lib/consent.ts, calls
+         havloLoadGoogleTags then). Until then the page's own events wait on
+         the dataLayer and go out if they accept. The containers start from
+         the gtag('js', ...) pushed here, so they aren't pushed again. -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'AW-17989602376');
-      gtag('config', 'G-YZC82R78VZ');
-    </script>
-    <!-- Google Tag Manager for the seller page (/sell) only: GTM-537H8B3L.
-         That page has no Meta Pixel (below). Its lead and purchase events
-         are pushed to the dataLayer from src/lib/gtm.ts. -->
-    <script>
+      window.havloTrackingHost = /^(www\.)?heyhavlo\.com$/.test(location.hostname);
       window.havloSellPage = /^\/sell\/?$/.test(location.pathname);
-      if (window.havloSellPage) {
-        (function(){
-          var s = document.createElement('script');
-          s.async = true;
-          s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-537H8B3L';
-          document.head.appendChild(s);
-        })();
-        // The container starts from the gtag('js', ...) already on the
-        // dataLayer above; a second one would count the page view twice.
-      }
-    </script>
-    <!-- Google Tag Manager for the Rightmove pages: GTM-PF7GK3B9 on every
-         /rm/ page, seller and agent alike (/rm/seller, /rm/agent,
-         /rm/complete, /rm/report, /rm/next-steps, /rm/dashboard/...; the
-         pages also load it themselves when reached from elsewhere on the
-         site, src/lib/gtm.ts). Like the containers above, it starts from the
-         gtag('js', ...) already on the dataLayer at the top of this head; a
-         second one would count the page view twice. No Meta Pixel on any
-         /rm/ page, as on /sell. -->
-    <script>
       window.havloRmPage = /^\/rm\//.test(location.pathname);
-      if (window.havloRmPage) {
-        (function(){
-          var s = document.createElement('script');
-          s.async = true;
-          s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-PF7GK3B9';
-          document.head.appendChild(s);
-        })();
-      }
-    </script>
-    <!-- Google Tag Manager for the Meta2 offer page: its own container on every
-         /offer/ page (/offer/seller, /offer/complete, /offer/report,
-         /offer/next-steps, /offer/dashboard/...). The same ID is in
-         src/lib/gtm.ts (OFFER_GTM_ID). No Meta
-         Pixel on any /offer/ page, as on /sell and /rm/. -->
-    <script>
       window.havloOfferPage = /^\/offer(\/|$)/.test(location.pathname);
-      (function(){
-        var id = 'GTM-MF4FWMML';
-        if (!window.havloOfferPage || !id) return;
+      window.havloGtmIdFor = function (path) {
+        if (/^\/sell\/?$/.test(path)) return 'GTM-537H8B3L';
+        if (/^\/rm\//.test(path)) return 'GTM-PF7GK3B9';
+        if (/^\/offer(\/|$)/.test(path)) return 'GTM-MF4FWMML';
+        if (/^\/buyabroad\/listings\/?$/.test(path)) return 'GTM-WS22MXCM';
+        return null;
+      };
+      window.havloLoadScript = function (src) {
+        if (document.querySelector('script[src="' + src + '"]')) return;
         var s = document.createElement('script');
         s.async = true;
-        s.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
+        s.src = src;
         document.head.appendChild(s);
-      })();
-    </script>
-    <!-- Google Tag Manager for the Buy Abroad listings page
-         (/buyabroad/listings) only: GTM-WS22MXCM. The page also loads it
-         itself when reached from elsewhere on the site (src/lib/gtm.ts). -->
-    <script>
-      if (/^\/buyabroad\/listings\/?$/.test(location.pathname)) {
-        (function(){
-          var s = document.createElement('script');
-          s.async = true;
-          s.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-WS22MXCM';
-          document.head.appendChild(s);
-        })();
-      }
+      };
+      window.havloLoadGoogleTags = function () {
+        if (!window.havloTrackingHost || window.havloGoogleLoaded) return;
+        window.havloGoogleLoaded = true;
+        gtag('consent', 'default', {ad_storage: 'granted', ad_user_data: 'granted', ad_personalization: 'granted', analytics_storage: 'granted'});
+        gtag('js', new Date());
+        gtag('config', 'AW-17989602376');
+        gtag('config', 'G-YZC82R78VZ');
+        window.havloLoadScript('https://www.googletagmanager.com/gtag/js?id=AW-17989602376');
+        var id = window.havloGtmIdFor(location.pathname);
+        if (id) window.havloLoadScript('https://www.googletagmanager.com/gtm.js?id=' + id);
+      };
+      try {
+        if (localStorage.getItem('havlo_cookie_consent') === 'granted') window.havloLoadGoogleTags();
+      } catch (e) {}
     </script>
     <!-- Meta Pixel Code (every page but /sell, /rm/... and /offer/...).
          Only on heyhavlo.com itself (never a local or preview build, so test
@@ -103,7 +75,7 @@
          change on the same page isn't another page view. The marketing
          team's tracking brief, Nov 2026. -->
     <script>
-      window.havloMetaHost = /^(www\.)?heyhavlo\.com$/.test(location.hostname);
+      window.havloMetaHost = window.havloTrackingHost;
       window.havloMetaPath = function (path) {
         return !/^\/sell\/?$/.test(path) && !/^\/rm\//.test(path) && !/^\/offer(\/|$)/.test(path);
       };

@@ -129,22 +129,26 @@ export const DatasetPanel = () => {
   // Admins: everyone who left their details and didn't buy, as a customer
   // list for Meta's audiences (app/services/meta_audience.py). Names, emails
   // and phone numbers, so admin only and never part of the stats above.
-  const exportMetaAudience = async () => {
+  // And the buyers: every homeowner who has bought, in the same format, so
+  // Meta keeps them out of the ads too.
+  const exportMetaList = async (list: 'audience' | 'buyers') => {
     setNotice(''); setError('');
     try {
-      const res = await fetch(`${API_BASE}/stale-listings/prospects-console/meta-audience.csv`, {
+      const res = await fetch(`${API_BASE}/stale-listings/prospects-console/meta-${list}.csv`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'Admins only.' : `HTTP ${res.status}`);
       const blob = await res.blob();
       const href = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = href; a.download = `havlo-meta-audience-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.href = href; a.download = `havlo-meta-${list}-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
       window.setTimeout(() => URL.revokeObjectURL(href), 60000);
-      setNotice('Meta audience downloaded: everyone who left their details and didn’t buy (customers and unsubscribed left out).');
+      setNotice(list === 'audience'
+        ? 'Meta audience downloaded: everyone who left their details and didn’t buy (customers and unsubscribed left out).'
+        : 'Meta buyers downloaded: every homeowner who has bought a report (unsubscribed left out).');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Audience export failed.');
+      setError(e instanceof Error ? e.message : 'Export failed.');
     }
   };
 
@@ -191,9 +195,15 @@ export const DatasetPanel = () => {
         <button type="button" className="spc-btn spc-btn-primary" onClick={exportCsv}>Export CSV</button>
         {token && <button type="button" className="spc-btn spc-btn-ghost" onClick={syncNow}>Sync now</button>}
         {token && (
-          <button type="button" className="spc-btn spc-btn-ghost" onClick={exportMetaAudience}
+          <button type="button" className="spc-btn spc-btn-ghost" onClick={() => exportMetaList('audience')}
             title="Everyone who left their details on a seller page and didn't buy, for a Meta custom audience">
             Meta audience (CSV)
+          </button>
+        )}
+        {token && (
+          <button type="button" className="spc-btn spc-btn-ghost" onClick={() => exportMetaList('buyers')}
+            title="Every homeowner who has bought a report, for a Meta custom audience">
+            Meta buyers (CSV)
           </button>
         )}
       </div>

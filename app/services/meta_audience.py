@@ -9,6 +9,11 @@ too), internal addresses (TEST_ORDER_EMAILS), and anyone who unsubscribed
 from our emails or texts. One row per person, in the columns Meta's customer
 list upload reads (email, phone, fn, ln, country); Meta hashes them itself on
 upload. Admin only (the console's Stats tab).
+
+And the buyers (buyers()): every homeowner who has bought a report, on any
+page, promo-code customers included, so Meta keeps them out of the ads for
+new customers too. Same columns, same people left out (internal addresses,
+anyone unsubscribed).
 """
 from __future__ import annotations
 
@@ -36,6 +41,29 @@ def _email(raw: str | None) -> str:
     return email if "@" in email else ""
 
 
+def _row(p: Any, email: str, phone: str) -> dict[str, str]:
+    parts = (p.contact_name or "").strip().split()
+    return {"email": email, "phone": phone, "fn": parts[0] if parts else "", "ln": " ".join(parts[1:]),
+            "country": "GB" if (p.country or "UK") == "UK" else p.country.lower()}
+
+
+def pick_buyers(rows: list[Any]) -> list[dict[str, str]]:
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for p in rows:
+        email, phone = _email(p.contact_email), _phone(p.contact_phone)
+        if p.payment_status != "completed" or (not email and not phone):
+            continue
+        if attribution.internal_email(email) or p.unsubscribed_at or p.sms_unsubscribed_at:
+            continue
+        key = email or phone
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(_row(p, email, phone))
+    return out
+
+
 def pick(rows: list[Any]) -> list[dict[str, str]]:
     """The audience from every seller-page prospect with contact details."""
     bought_emails: set[str] = set()
@@ -61,9 +89,7 @@ def pick(rows: list[Any]) -> list[dict[str, str]]:
         if key in seen:
             continue
         seen.add(key)
-        parts = (p.contact_name or "").strip().split()
-        out.append({"email": email, "phone": phone, "fn": parts[0] if parts else "",
-                    "ln": " ".join(parts[1:]), "country": "GB" if (p.country or "UK") == "UK" else p.country.lower()})
+        out.append(_row(p, email, phone))
     return out
 
 
@@ -76,6 +102,16 @@ async def rows(db: AsyncSession) -> list[dict[str, str]]:
                P.parent_prospect_id.is_(None))
     )).all()
     return pick(list(found))
+
+
+async def buyers(db: AsyncSession) -> list[dict[str, str]]:
+    P = StaleListingProspect
+    found = (await db.execute(
+        select(P.contact_email, P.contact_phone, P.contact_name, P.payment_status, P.unsubscribed_at,
+               P.sms_unsubscribed_at, P.country)
+        .where(P.audience == "owner", P.payment_status == "completed")
+    )).all()
+    return pick_buyers(list(found))
 
 
 def to_csv(audience: list[dict[str, str]]) -> str:

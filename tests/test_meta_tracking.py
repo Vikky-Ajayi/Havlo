@@ -194,6 +194,42 @@ class ServerEventTests(unittest.TestCase):
         self.assertEqual(self.sent, [])
 
 
+    def test_purchase_from_any_page_and_agentpurchase_for_agents(self):
+        async def add():
+            async with self.Session() as db:
+                rows = [prospect_row("3333", lead_source="google_seller", payment_status="completed",
+                                     payment_method="card", unlocked_at=datetime.now(timezone.utc)),
+                        prospect_row("4444", lead_source="meta_agent", audience="agent", payment_status="completed",
+                                     payment_method="card", unlocked_at=datetime.now(timezone.utc)),
+                        prospect_row("5555", lead_source=None, payment_status="completed", payment_method="card",
+                                     unlocked_at=datetime.now(timezone.utc))]  # no cookie consent
+                for row in rows:
+                    meta_capi.remember(row, {"fbc": "fb.1.1.c"}) if row.property_code != "5555" else None
+                    db.add(row)
+                await db.commit()
+                return [r.id for r in rows]
+        ids = asyncio.run(add())
+        results = [asyncio.run(meta_capi.send_purchase(str(i))) for i in ids]
+        self.assertEqual(results, [True, True, False])
+        self.assertEqual([e["event_name"] for e in self.sent], ["Purchase", "AgentPurchase"])
+        self.assertEqual(self.sent[1]["custom_data"]["content_name"], "Havlo Agent Report")
+
+    def test_the_checkout_keeps_consent_for_any_page(self):
+        async def add():
+            async with self.Session() as db:
+                db.add(prospect_row("6666", lead_source="sell_seller", report_json="{}"))
+                await db.commit()
+        asyncio.run(add())
+        # Bank transfer: the same checkout, without going to SumUp.
+        with mock.patch.object(stale_listings, "report_status", return_value="ready"):
+            self.client.post("/api/v1/stale-listings/prospects/checkout",
+                             json={"property_code": "6666", "payment_method": "bank_transfer",
+                                   "meta": {"consent": True, "fbp": "fb.1.1.p", "fbc": "fb.1.1.c"}},
+                             headers={"user-agent": "Safari"})
+        kept = meta_capi.tracking(self.prospect("6666"))
+        self.assertEqual((kept.get("consent"), kept.get("fbc")), (True, "fb.1.1.c"))
+
+
 def lead(email, phone="", name="Ann Smith", paid="pending", unsub=None, sms_unsub=None):
     return SimpleNamespace(contact_email=email, contact_phone=phone, contact_name=name, payment_status=paid,
                            unsubscribed_at=unsub, sms_unsubscribed_at=sms_unsub, country="UK")
@@ -219,6 +255,18 @@ class AudienceTests(unittest.TestCase):
             {"email": "", "phone": "447700900555", "fn": "Eve", "ln": "", "country": "GB"},
         ])
         self.assertTrue(meta_audience.to_csv(out).startswith("email,phone,fn,ln,country"))
+
+    def test_buyers_once_each_without_internal_or_opt_outs(self):
+        now = datetime.now(timezone.utc)
+        with mock.patch("app.services.attribution.get_settings", return_value=SETTINGS):
+            out = meta_audience.pick_buyers([
+                lead("bob@example.com", "+44 7700900999", paid="completed"),
+                lead("BOB@example.com", paid="completed"),
+                lead("ann@example.com"),  # didn't buy
+                lead("cat@example.com", paid="completed", unsub=now),
+                lead("team@heyhavlo.com", paid="completed"),
+            ])
+        self.assertEqual([r["email"] for r in out], ["bob@example.com"])
 
 
 if __name__ == "__main__":

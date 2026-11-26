@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CountryCodeSelect } from '../../components/shared/CountryCodeSelect';
 import { Footer as SiteFooter } from '../../components/shared/Footer';
 import { journeyGtmId, loadGtmContainer, pushGtmEventOnce, type Journey } from '../../lib/gtm';
-import { setMetaUserData, trackMetaPixelEvent } from '../../lib/metaPixel';
+import { setMetaUserData, trackMetaCustomEvent, trackMetaPixelEvent } from '../../lib/metaPixel';
 import { listingErrorType, sendMetaFunnelEvent } from './metaFunnel';
 import { AgentFullReport, AgentTeaser, readAgentFee } from './AgentReport';
 import {
@@ -1901,17 +1901,22 @@ function fireProspectPurchasePixel(data: ProspectPreview, audience: AdsAudience)
   } catch {
     // Storage unavailable: the event id still lets Meta drop a repeat.
   }
-  const fired = trackMetaPixelEvent('Purchase', {
+  // The order ID as event_id, as the server's copy uses it
+  // (app/services/meta_capi.purchase_event_id), so Meta keeps one. An agency's
+  // report is AgentPurchase, kept apart from the seller sales.
+  const params = {
     content_name: `Meta Ads ${audience === 'agent' ? 'Agent' : 'Seller'} Listing Assessment`,
     content_category: 'stale_listings_prospect',
     content_type: 'product',
     content_ids: [data.property_code],
     value: prospectPrice(data),
     currency: 'GBP',
-    ...(audience === 'owner' ? { order_id: data.prospect_id } : {}),
-    // /assess/seller: the order ID, the event_id the server's Purchase uses
-    // too (app/services/meta_capi.purchase_event_id), so Meta keeps one.
-  }, audience === 'owner' ? `order-${data.prospect_id}` : `sl_prospect_purchase_${data.property_code}`);
+    order_id: data.prospect_id,
+  };
+  const eventId = `order-${data.prospect_id}`;
+  const fired = audience === 'agent'
+    ? trackMetaCustomEvent('AgentPurchase', params, eventId)
+    : trackMetaPixelEvent('Purchase', params, eventId);
   if (!fired) return;
   try {
     sessionStorage.setItem(key, '1');
@@ -2414,10 +2419,13 @@ export const StaleProspectWizard = ({
     setError('');
     try {
       await submitProspectDetails({ ...fields, token: access.token, property_code: access.code });
-      // From here on Meta gets their hashed contact details (metaPixel.setMetaUserData).
-      if (metaFunnel) {
-        void setMetaUserData({ fullName: fields.full_name, email: fields.email, phone: fields.mobile_number,
-          prospectId: prospect?.prospect_id });
+      // From here on Meta gets their hashed contact details (metaPixel.setMetaUserData),
+      // starting with the Lead itself.
+      if (metaFunnel && prospect) {
+        await setMetaUserData({ fullName: fields.full_name, email: fields.email, phone: fields.mobile_number,
+          prospectId: prospect.prospect_id });
+        sendMetaFunnelEvent('Lead', { access, propertyCode: prospect.property_code,
+          params: { content_ids: [prospect.property_code], content_category: 'stale_listings_prospect' } });
       }
       // Functional, so a report that landed in the meantime (the poll above) isn't undone.
       setProspect((p) => (p ? { ...p, has_contact_details: true } : p));

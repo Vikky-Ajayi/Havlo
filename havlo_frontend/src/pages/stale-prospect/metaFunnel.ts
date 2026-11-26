@@ -6,17 +6,17 @@ import { getFbc, getFbp, trackMetaCustomEvent, trackMetaPixelEvent } from '../..
 // brief, Nov 2026), each sent from the pixel and from our server
 // (app/services/meta_capi.py) under the same event_id, so Meta keeps one:
 //
-//   PageView > PropertyFound > AssessmentStarted > Lead (the marketing team's
-//   own) > InitiateCheckout > AddPaymentInfo > Purchase
+//   PageView > PropertyFound > AssessmentStarted > Lead > InitiateCheckout >
+//   AddPaymentInfo > Purchase
 //
 // plus ListingLinkError when the pasted link isn't accepted. Each fires once
 // per property per browser tab, and only after the visitor has accepted
 // cookies. The value and contact details the server sends come from the
 // prospect, not from here.
 
-export type MetaFunnelEvent = 'PropertyFound' | 'ListingLinkError' | 'AssessmentStarted' | 'InitiateCheckout' | 'AddPaymentInfo';
+export type MetaFunnelEvent = 'PropertyFound' | 'ListingLinkError' | 'AssessmentStarted' | 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo';
 
-const STANDARD = new Set<MetaFunnelEvent>(['InitiateCheckout', 'AddPaymentInfo']);
+const STANDARD = new Set<MetaFunnelEvent>(['Lead', 'InitiateCheckout', 'AddPaymentInfo']);
 
 function firstTime(key: string): boolean {
   try {
@@ -46,7 +46,7 @@ export function sendMetaFunnelEvent(
   if (name !== 'ListingLinkError' && code && !firstTime(`meta_evt_${eventId}`)) return;
 
   const params = { ...(opts.params || {}), ...(opts.errorType ? { error_type: opts.errorType } : {}) };
-  if (STANDARD.has(name)) trackMetaPixelEvent(name as 'InitiateCheckout' | 'AddPaymentInfo', params, eventId);
+  if (STANDARD.has(name)) trackMetaPixelEvent(name as 'Lead' | 'InitiateCheckout' | 'AddPaymentInfo', params, eventId);
   else trackMetaCustomEvent(name, params, eventId);
 
   // keepalive: AddPaymentInfo is followed straight away by the move to SumUp.

@@ -3,9 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { setConsent, shouldAskConsent } from '../lib/consent';
 import { keepMetaClickId } from '../lib/metaPixel';
 
-// Asks before the Meta Pixel loads (src/lib/consent.ts), on the pages that
-// have it, until the visitor answers. Accepting loads the pixel there and
-// then; declining keeps Meta tracking off. Either choice is remembered, and
+// Asks before the Google tags and the Meta Pixel load (src/lib/consent.ts), on
+// every page of heyhavlo.com, until the visitor answers. Accepting loads them
+// there and then; declining keeps them off. Either choice is remembered, and
 // can be changed from the privacy policy.
 export const CookieBanner = () => {
   const { pathname } = useLocation();
@@ -28,8 +28,8 @@ export const CookieBanner = () => {
   return (
     <div className="hcb" role="dialog" aria-live="polite" aria-label="Cookies">
       <p>
-        We&rsquo;d like to use cookies to measure how our adverts on Facebook and Instagram perform, which shares
-        details of your visit with Meta. <Link to="/privacy-policy">Privacy policy</Link>
+        We&rsquo;d like to use cookies to measure how our adverts on Google, Facebook and Instagram perform, which
+        shares details of your visit with Google and Meta. <Link to="/privacy-policy">Privacy policy</Link>
       </p>
       <div className="hcb-actions">
         <button type="button" className="hcb-decline" onClick={() => choose(false)}>Decline</button>

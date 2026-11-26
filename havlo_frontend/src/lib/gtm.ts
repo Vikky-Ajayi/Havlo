@@ -7,6 +7,8 @@
 // site. Each event goes on the dataLayer once per browser session and key,
 // so reloads don't repeat it.
 
+import { trackingAllowed } from './consent';
+
 declare global {
   interface Window {
     dataLayer?: unknown[];
@@ -36,7 +38,9 @@ export const rmGtmId = (_audience?: string | null): string => RM_GTM_ID;
  * from elsewhere on the site. It starts from the gtag('js', ...) index.html
  * puts on the dataLayer, so it isn't pushed again. */
 export function loadGtmContainer(id: string): void {
-  if (!id) return;
+  // Only on heyhavlo.com, once cookies are accepted (src/lib/consent.ts); if
+  // they accept later on this page, index.html loads the page's container then.
+  if (!id || !trackingAllowed()) return;
   const src = `https://www.googletagmanager.com/gtm.js?id=${id}`;
   if (document.querySelector(`script[src="${src}"]`)) return;
   window.dataLayer = window.dataLayer || [];

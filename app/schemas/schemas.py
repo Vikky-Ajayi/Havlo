@@ -594,6 +594,10 @@ class StaleProspectCheckoutRequest(BaseModel):
     payment_method: str = Field("card", pattern="^(card|bank_transfer)$")
     # The visitor's UTM tags, first and latest tagged visit (app/services/attribution.py).
     attribution: Optional[dict] = None
+    # Sent only when the visitor has accepted cookies: {"consent": true, "fbp",
+    # "fbc"}, kept for the Purchase Meta gets once SumUp confirms
+    # (app/services/meta_capi.py).
+    meta: Optional[dict] = None
 
 
 class StaleProspectConfirmRequest(BaseModel):

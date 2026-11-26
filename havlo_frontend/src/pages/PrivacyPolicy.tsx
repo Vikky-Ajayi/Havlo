@@ -73,7 +73,7 @@ export const PrivacyPolicy: React.FC = () => {
               <p>We do not sell your personal data. We may share information with:</p>
               <ul className="list-disc pl-8 flex flex-col gap-1">
                 <li>Trusted service providers or partners</li>
-                <li>Meta (Facebook and Instagram), to measure and improve our advertising, as described in section 5</li>
+                <li>Meta (Facebook and Instagram) and Google, to measure and improve our advertising, as described in section 5</li>
                 <li>Legal or regulatory authorities if required by law</li>
               </ul>
             </div>
@@ -85,7 +85,7 @@ export const PrivacyPolicy: React.FC = () => {
             </h2>
             <div className="font-body text-lg font-medium leading-[1.5] tracking-[-0.27px] text-[#323546] flex flex-col gap-4">
               <p>
-                We advertise on Facebook and Instagram, which are run by Meta Platforms Ireland Limited. If you accept
+                We advertise on Google, and on Facebook and Instagram, which are run by Meta Platforms Ireland Limited. If you accept
                 cookies when our banner asks, we use the Meta Pixel and Meta&rsquo;s Conversions API to tell Meta which
                 steps of our property assessment you complete, such as finding your property, starting the assessment,
                 going to checkout and paying, so we can see how our adverts perform and show them to people more likely
@@ -103,7 +103,11 @@ export const PrivacyPolicy: React.FC = () => {
                 our service. We leave out anyone who has unsubscribed from our emails or texts.
               </p>
               <p>
-                Meta&rsquo;s use of this information is covered by its own privacy policy. You can object to this use of
+                With the same consent we also use Google Ads, Google Analytics and Google Tag Manager, which set cookies
+                to measure visits to our site and how our Google adverts perform.
+              </p>
+              <p>
+                Meta&rsquo;s and Google&rsquo;s use of this information is covered by their own privacy policies. You can object to this use of
                 your details at any time by contacting us.
               </p>
               <p>

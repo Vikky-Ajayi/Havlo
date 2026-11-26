@@ -1105,6 +1105,7 @@ async def report_ads_property_closed(
 async def create_stale_prospect_checkout(
     payload: StaleProspectCheckoutRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> StaleProspectCheckoutResponse:
     prospect = await _get_prospect_by_access(
@@ -1112,6 +1113,14 @@ async def create_stale_prospect_checkout(
         token=payload.token,
         property_code=payload.property_code,
     )
+    meta = payload.meta if isinstance(payload.meta, dict) else {}
+    if meta.get("consent") is True:
+        # They accepted cookies: Meta gets this sale's Purchase (any page) once
+        # SumUp confirms it, with these click IDs (meta_capi.send_purchase).
+        from app.services import meta_capi
+
+        meta_capi.remember(prospect, {"ip": _client_key(request), "ua": request.headers.get("user-agent", ""),
+                                      "fbp": meta.get("fbp"), "fbc": meta.get("fbc"), "url": meta.get("url")})
     package = SL_PACKAGES["listing_recovery_assessment"]
     amount = _stale_prospect_checkout_amount(prospect)
     currency = str(package["currency"])
@@ -2227,6 +2236,20 @@ async def meta_audience_export(db: AsyncSession = Depends(get_db), _admin=Depend
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return Response(content=meta_audience.to_csv(audience), media_type="text/csv",
                     headers={"Content-Disposition": f'attachment; filename="havlo-meta-audience-{stamp}.csv"',
+                             "Cache-Control": "no-store"})
+
+
+@admin_router.get("/prospects-console/meta-buyers.csv")
+async def meta_buyers_export(db: AsyncSession = Depends(get_db), _admin=Depends(require_admin)) -> Response:
+    """Every homeowner who has bought a report, in the same format, so Meta
+    keeps them out of the ads for new customers too (meta_audience.buyers). Admin only."""
+    from app.services import meta_audience
+
+    audience = await meta_audience.buyers(db)
+    logger.info("Meta buyers list exported: %d people.", len(audience))
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return Response(content=meta_audience.to_csv(audience), media_type="text/csv",
+                    headers={"Content-Disposition": f'attachment; filename="havlo-meta-buyers-{stamp}.csv"',
                              "Cache-Control": "no-store"})
 
 

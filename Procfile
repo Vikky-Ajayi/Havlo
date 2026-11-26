@@ -1,1 +1,1 @@
-web: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4 --loop uvloop --http httptools
+web: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --loop uvloop --http httptools

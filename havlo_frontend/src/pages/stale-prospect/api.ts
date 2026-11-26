@@ -1,5 +1,7 @@
 import { API_BASE } from '../../lib/api';
 import { getAttribution } from '../../lib/attribution';
+import { trackingAllowed } from '../../lib/consent';
+import { getFbc, getFbp } from '../../lib/metaPixel';
 import type { AgentIntelResponse, AgentPortfolio, MonitorDashboardData, NextStepsData, NextStepsOrder, ProspectPreview, ProspectReport, ReportStatus, SoldComparable } from './types';
 
 async function parseJsonOrThrow(response: Response): Promise<any> {
@@ -194,10 +196,16 @@ export async function createProspectCheckout(payload: {
   promo_code?: string;
   payment_method: 'card' | 'bank_transfer';
 }): Promise<CheckoutResult> {
+  // Accepted cookies: Meta gets this sale's Purchase from our server once SumUp
+  // confirms it, whichever page it's on (app/services/meta_capi.py).
+  const meta = trackingAllowed()
+    ? { consent: true, fbp: getFbp() || undefined, fbc: getFbc() || undefined,
+        url: `${window.location.origin}${window.location.pathname}` }
+    : undefined;
   const response = await fetch(`${API_BASE}/stale-listings/prospects/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...payload, attribution: getAttribution() }),
+    body: JSON.stringify({ ...payload, attribution: getAttribution(), meta }),
   });
   return parseJsonOrThrow(response);
 }

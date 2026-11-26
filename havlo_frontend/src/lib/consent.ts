@@ -1,14 +1,17 @@
-// Cookie consent for the Meta Pixel (the marketing team's tracking brief, Nov
-// 2026). The pixel in index.html loads only once the visitor accepts the
-// banner (components/CookieBanner.tsx), and the /assess/seller funnel only
-// sends its events to Meta, from the browser or the server, after that.
-// Declining, or not answering, means no Meta tracking at all.
+// Cookie consent for advertising and analytics (the marketing team's tracking
+// brief, Nov 2026). The Meta Pixel and the Google tags (Ads, Analytics, the
+// Tag Manager containers) in index.html load only once the visitor accepts the
+// banner (components/CookieBanner.tsx), and nothing goes to Meta from our
+// server for them before that either. Declining, or not answering, means none
+// of it. Only on heyhavlo.com: local and preview builds never track.
 
 const KEY = 'havlo_cookie_consent';
 export type ConsentChoice = 'granted' | 'denied';
 
 type MetaWindow = Window & {
+  havloTrackingHost?: boolean;
   havloMetaHost?: boolean;
+  havloLoadGoogleTags?: () => void;
   havloMetaPath?: (path: string) => boolean;
   havloLoadMetaPixel?: () => void;
 };
@@ -28,10 +31,15 @@ export function metaTrackingAllowed(path: string = window.location.pathname): bo
   return getConsent() === 'granted' && !!w.havloMetaHost && !!w.havloMetaPath?.(path);
 }
 
-/** Whether to ask: a page with the pixel on heyhavlo.com, no answer yet. */
-export function shouldAskConsent(path: string): boolean {
-  const w = window as MetaWindow;
-  return getConsent() === null && !!w.havloMetaHost && !!w.havloMetaPath?.(path);
+/** Consent given on heyhavlo.com: Google tags may load, and Meta may get this
+ * visit's purchase from our server (every page, not only the pixel's). */
+export function trackingAllowed(): boolean {
+  return getConsent() === 'granted' && !!(window as MetaWindow).havloTrackingHost;
+}
+
+/** Whether to ask: heyhavlo.com (every page has Google's tags), no answer yet. */
+export function shouldAskConsent(_path?: string): boolean {
+  return getConsent() === null && !!(window as MetaWindow).havloTrackingHost;
 }
 
 export function setConsent(choice: ConsentChoice) {
@@ -41,6 +49,7 @@ export function setConsent(choice: ConsentChoice) {
     // Storage blocked: the choice holds for this page only.
   }
   if (choice === 'granted') {
+    (window as MetaWindow).havloLoadGoogleTags?.();
     (window as MetaWindow).havloLoadMetaPixel?.();
   }
   window.dispatchEvent(new Event('havlo-consent'));

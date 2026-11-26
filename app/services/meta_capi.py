@@ -1,5 +1,6 @@
 """Meta Conversions API: the /assess/seller funnel's events, sent from the
-server as well as the browser (the marketing team's tracking brief, Nov 2026).
+server as well as the browser (the marketing team's tracking brief, Nov 2026),
+and Purchase for every paid report.
 
 Each event goes to Meta twice, from the pixel in the browser and from here,
 under the same event_name and event_id, so Meta keeps one. The journey:
@@ -8,11 +9,15 @@ under the same event_name and event_id, so Meta keeps one. The journey:
     PropertyFound         the listing link was accepted and the property loaded
     ListingLinkError      the link wasn't accepted (custom_data.error_type)
     AssessmentStarted     "continue" from the property page, details form shown
-    Lead                  set up by the marketing team in Events Manager
+    Lead                  the details form saved (the site's own Lead from
+                          Nov 25; the marketing team retire theirs)
     InitiateCheckout      the buy button on the assessment, value and currency
     AddPaymentInfo        "Pay" pressed, before SumUp
-    Purchase              SumUp confirmed the payment (send_purchase), the
-                          amount paid, the order ID as event_id
+    Purchase              SumUp confirmed a homeowner's report payment, on any
+                          page (send_purchase): the amount paid, the order ID
+                          as event_id
+    AgentPurchase         the same for an estate agent's report, kept apart
+                          from the seller sales
     AddOnPurchase         an add-on order paid (send_addon_purchase)
 
 From the details form onwards every event carries the person's hashed email,
@@ -20,9 +25,9 @@ phone and names, and always external_id (the hashed prospect id), the click
 IDs (fbp, fbc) and the browser's IP and user agent.
 
 Only with consent: the browser sends an event only once the visitor has
-accepted the cookie banner, and says so; the server keeps that, with the
-click IDs, on the prospect (meta_tracking_json) for the Purchase it sends
-later. Test orders (promo code, internal addresses: attribution.count_as_sale)
+accepted the cookie banner, and says so (with each event, and with the
+checkout on every page); the server keeps that, with the click IDs, on the
+prospect (meta_tracking_json) for the Purchase it sends later. Test orders (promo code, internal addresses: attribution.count_as_sale)
 never send Purchase or AddOnPurchase.
 
 Configured by META_CAPI_ACCESS_TOKEN (Events Manager > Settings > Conversions
@@ -48,11 +53,13 @@ from app.services import attribution
 
 logger = logging.getLogger(__name__)
 
-# The /assess/seller page's leads (ads_funnel.seller_source("meta")).
+# The /assess/seller page's leads (ads_funnel.seller_source("meta")): the
+# journey events. Purchase goes for every page's paid reports.
 LEAD_SOURCE = "meta_seller"
 # Sent from the browser through POST /stale-listings/meta/event.
-BROWSER_EVENTS = {"PropertyFound", "ListingLinkError", "AssessmentStarted", "InitiateCheckout", "AddPaymentInfo"}
-CUSTOM_EVENTS = {"PropertyFound", "ListingLinkError", "AssessmentStarted", "AddOnPurchase"}
+BROWSER_EVENTS = {"PropertyFound", "ListingLinkError", "AssessmentStarted", "Lead", "InitiateCheckout",
+                  "AddPaymentInfo"}
+CUSTOM_EVENTS = {"PropertyFound", "ListingLinkError", "AssessmentStarted", "AddOnPurchase", "AgentPurchase"}
 VALUE_EVENTS = {"InitiateCheckout", "AddPaymentInfo"}
 CURRENCY = "GBP"
 # Payments confirmed longer ago than this aren't sent by the sweep (Meta
@@ -211,28 +218,36 @@ def purchase_event_id(prospect_id: Any) -> str:
     return f"order-{prospect_id}"
 
 
+def purchase_event_name(prospect: Any) -> str:
+    """Purchase for a homeowner's report, AgentPurchase for an agency's, so
+    agent sales never mix with the seller sales Meta optimises for."""
+    return "AgentPurchase" if getattr(prospect, "audience", None) == "agent" else "Purchase"
+
+
 def wants_purchase(prospect: Any) -> bool:
-    return (getattr(prospect, "lead_source", None) == LEAD_SOURCE
-            and getattr(prospect, "meta_purchase_sent_at", None) is None
+    """A real card payment, from any page, by someone who accepted cookies."""
+    return (getattr(prospect, "meta_purchase_sent_at", None) is None
             and attribution.count_as_sale(prospect)
             and bool(tracking(prospect).get("consent")))
 
 
 async def send_purchase(prospect_id: Any) -> bool:
-    """Purchase for a confirmed card payment on /assess/seller, once."""
+    """Purchase (or AgentPurchase) for a confirmed card payment, once."""
     async with AsyncSessionLocal() as db:
         prospect = await db.get(StaleListingProspect, _uuid(prospect_id))
         if prospect is None or not wants_purchase(prospect):
             return False
         custom = {**value_data(prospect), "order_id": str(prospect.id)}
+        if prospect.audience == "agent":
+            custom["content_name"] = "Havlo Agent Report"
         paid_at = prospect.unlocked_at or datetime.now(timezone.utc)
-        event = build_event("Purchase", purchase_event_id(prospect.id), prospect=prospect,
+        event = build_event(purchase_event_name(prospect), purchase_event_id(prospect.id), prospect=prospect,
                             client=tracking(prospect), custom_data=custom, event_time=int(paid_at.timestamp()))
         if not await send([event]):
             return False
         prospect.meta_purchase_sent_at = datetime.now(timezone.utc)
         await db.commit()
-        logger.info("Meta Purchase sent for prospect %s.", prospect.property_code)
+        logger.info("Meta %s sent for prospect %s.", purchase_event_name(prospect), prospect.property_code)
         return True
 
 
@@ -243,7 +258,7 @@ async def send_addon_purchase(order_id: Any) -> bool:
         if order is None or order.meta_sent_at is not None:
             return False
         prospect = await db.get(StaleListingProspect, order.prospect_id)
-        if (prospect is None or prospect.lead_source != LEAD_SOURCE or not tracking(prospect).get("consent")
+        if (prospect is None or not tracking(prospect).get("consent")
                 or not attribution.order_counts_as_sale(order, prospect)):
             return False
         try:
@@ -272,8 +287,7 @@ async def run_sweep() -> dict[str, int]:
     async with AsyncSessionLocal() as db:
         prospect_ids = (await db.execute(
             select(StaleListingProspect.id)
-            .where(StaleListingProspect.lead_source == LEAD_SOURCE,
-                   StaleListingProspect.payment_status == "completed",
+            .where(StaleListingProspect.payment_status == "completed",
                    StaleListingProspect.payment_method == "card",
                    StaleListingProspect.meta_purchase_sent_at.is_(None),
                    StaleListingProspect.meta_tracking_json.is_not(None),
@@ -283,7 +297,7 @@ async def run_sweep() -> dict[str, int]:
         order_ids = (await db.execute(
             select(StaleProspectAddonOrder.id)
             .join(StaleListingProspect, StaleListingProspect.id == StaleProspectAddonOrder.prospect_id)
-            .where(StaleListingProspect.lead_source == LEAD_SOURCE,
+            .where(StaleListingProspect.meta_tracking_json.is_not(None),
                    StaleProspectAddonOrder.status == "completed",
                    StaleProspectAddonOrder.meta_sent_at.is_(None),
                    StaleProspectAddonOrder.paid_at >= cutoff)
